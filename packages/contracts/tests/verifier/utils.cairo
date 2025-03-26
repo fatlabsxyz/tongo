@@ -4,9 +4,9 @@ use core::ec::EcStateTrait;
 use core::ec::NonZeroEcPoint;
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
-use tongo::utils::in_order;
-use tongo::utils::{feltXOR, compute_challenge_or, compute_challenge_pob, compute_challenge};
-use tongo::structs::{ProofOfBit, ProofOfBalance};
+use tongo::verifier::utils::in_order;
+use tongo::verifier::utils::{feltXOR, compute_challenge_or, compute_challenge_pob, compute_challenge};
+use tongo::verifier::structs::{ProofOfBit, ProofOfBalance};
 
 use core::circuit::{
     CircuitElement, CircuitInput, circuit_add, circuit_mul,

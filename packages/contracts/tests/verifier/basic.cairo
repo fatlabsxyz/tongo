@@ -1,8 +1,7 @@
-use tongo::utils::feltXOR;
-//use crate::utils::generate_random;
+use tongo::verifier::utils::feltXOR;
 
 #[test]
-fn bitwiseAnd() { 
+fn bitwiseXOR() { 
     let a:u32 = 5;
     let b:u32 = 3;
     let c = a^b;
@@ -11,7 +10,7 @@ fn bitwiseAnd() {
 }
 
 #[test]
-fn feltAnd() {
+fn feltXOR_test() {
     // a ~ 2**142
     let a = 8321093812093812093821093821374102774388439;
     // b ~ 2 ** 134
@@ -22,12 +21,3 @@ fn feltAnd() {
     assert!(feltXOR(c,a) == b, "failed nilpotency");
 }
 
-//#[test]
-//fn AndNilpotent() {
-//    let seed = 2739182731293;
-//    let c1 = generate_random(seed,1);
-//    let c = generate_random(seed,2);
-//    
-//    let c0 = feltXOR(c, c1);
-//    assert!(c1 == feltXOR(c0,c), "failed");
-//}

@@ -12,6 +12,12 @@ pub struct ProofOfBit {
     pub s1: felt252,
 }
 
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct Nonce {
+    pub u: [felt252;2],
+    pub A_n: [felt252;2],
+    pub s_n: felt252,
+}
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfBalance {
