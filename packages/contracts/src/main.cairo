@@ -329,7 +329,7 @@ pub mod Tongo {
     fn write_buffer(ref self: ContractState, y:[felt252;2], Cipher:(EcPoint,EcPoint)){
         let (L,R) = Cipher;
         //TODO: Unwrap to NonZero and handle the Zero case
-        self.pending.entry((*y.span()[0], *y.span()[1])).write((
+        self.buffer.entry((*y.span()[0], *y.span()[1])).write((
             L.try_into().unwrap().coordinates(),
             R.try_into().unwrap().coordinates(),
         ));
