@@ -91,7 +91,6 @@ pub mod Tongo {
         //Verificar la proof
         self.validate_nonce(from, nonce);
 
-        self.balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
 
         let amount: u256 = amount.try_into().unwrap();
         let calldata = array![
@@ -103,6 +102,9 @@ pub mod Tongo {
            selector!("transfer"),
            calldata.span()
         ).unwrap_syscall();
+
+        self.balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
+        self.increment_nonce(from);
     }
 
     /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done w.r.t the
@@ -126,6 +128,11 @@ pub mod Tongo {
         let L_bar = EcPointTrait::new(*L_bar.span()[0],*L_bar.span()[1]).unwrap();
         self.to_buffer(from,(L,R));
         self.to_buffer(to, (-L_bar,-R));
+        self.increment_nonce(from);
+
+        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
+        self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
+        self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
     }
     
     /// Returns the cipher balance of the given public key y. The cipher balance consist in two points
