@@ -1,21 +1,21 @@
 use core::starknet::ContractAddress;
-use crate::verifier::structs::Nonce;
+use crate::verifier::structs::Proof;
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary, replay_protection.
 // the replay_protection should have the epoch in which the tx was generated (it is the same to the epoch in which the
 // tx is expected to pass) signed by the private key x of y = g**x, with  the selector_calldata and posiblly the proof itself.
 
 #[starknet::interface]
 pub trait ITongo<TContractState> {
-    fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252, nonce: Nonce); 
+    fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252, nonce: [felt252;2]); 
     fn get_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
-    fn withdraw(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, nonce: Nonce);
+    fn withdraw(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: Proof);
     fn transfer(ref self: TContractState,
         from:[felt252;2],
         to: [felt252;2],
         L:[felt252;2],
         L_bar:[felt252;2],
         R: [felt252;2],
-        nonce: Nonce,
+        proof: Proof,
     );
 }
 
@@ -39,8 +39,9 @@ pub mod Tongo {
         get_block_number,
     };
     
-    use crate::verifier::structs::Nonce;
-    use crate::verifier::utils::{in_range};
+    use crate::verifier::structs::{Proof,Inputs};
+    use crate::verifier::utils::{in_range };
+    use crate::verifier::verifier::verify;
     const BLOCKS_IN_EPOCH: u64 = 100;
 
     #[storage]
@@ -60,7 +61,7 @@ pub mod Tongo {
     
 
     /// Transfer some STARK to Tongo contract and assing some Tongo to account y
-    fn fund(ref self: ContractState, to: [felt252;2], amount: felt252,  nonce: Nonce) {
+    fn fund(ref self: ContractState, to: [felt252;2], amount: felt252,  nonce: [felt252;2]) {
         in_range(amount);
         // Hay que ver el tema del transfer
         self.get_transfer(amount);
@@ -72,9 +73,13 @@ pub mod Tongo {
     } 
 
     /// Withdraw ALL tongo from acount and send the stark to the recipient
-    fn withdraw(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, nonce: Nonce ) {
+    fn withdraw(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  Proof) {
+
+        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
+        let inputs:Inputs = Inputs { y : from , epoch: this_epoch };
+        verify(inputs, proof);
+        self.validate_nonce(proof.nonce);
         //Verificar la proof
-        self.validate_nonce(nonce.u);
 
 
         let amount: u256 = amount.try_into().unwrap();
@@ -92,7 +97,7 @@ pub mod Tongo {
         let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
         self.balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
         self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
-        self.nonce.entry(*nonce.u.span()[0]).write(true);
+        self.update_nonce(proof.nonce)
     }
 
     /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done w.r.t the
@@ -103,10 +108,13 @@ pub mod Tongo {
         L:[felt252;2],
         L_bar:[felt252;2],
         R: [felt252;2],
-        nonce: Nonce,
+        proof: Proof,
     ) {
-        
-        self.validate_nonce(nonce.u);
+        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
+        let inputs:Inputs = Inputs { y : from , epoch: this_epoch };
+        verify(inputs, proof);
+
+        self.validate_nonce(proof.nonce);
         self.rollover(from);
 
         // verificar la prueva with respect to balance + pending
@@ -116,11 +124,10 @@ pub mod Tongo {
         let L_bar = EcPointTrait::new(*L_bar.span()[0],*L_bar.span()[1]).unwrap();
         self.to_buffer(from,(L,R));
         self.to_buffer(to, (-L_bar,-R));
-        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
 
         self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
         self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
-        self.nonce.entry(*nonce.u.span()[0]).write(true);
+        self.update_nonce(proof.nonce)
     }
     
     /// Returns the cipher balance of the given public key y. The cipher balance consist in two points
@@ -246,7 +253,12 @@ pub mod Tongo {
 
     fn validate_nonce(ref self: ContractState, nonce: [felt252;2]) {
         //construct the 
-        assert!(self.nonce.entry(*nonce.span()[0]).read(), "");
+        assert(self.nonce.entry(*nonce.span()[0]).read() == false, 'Tx already used in epoch');
+    }
+
+    fn update_nonce(ref self: ContractState, nonce: [felt252;2]) {
+        //construct the 
+        self.nonce.entry(*nonce.span()[0]).write(true);
     }
 
     }

@@ -19,6 +19,22 @@ pub struct Nonce {
     pub s_n: felt252,
 }
 
+
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct Proof {
+    pub nonce: [felt252;2],
+    pub A_n: [felt252;2],
+    pub A_x: [felt252;2],
+    pub s_x: felt252,
+}
+
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct Inputs {
+    pub y: [felt252;2],
+    pub epoch: u64,
+}
+
+
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfBalance {
     pub L:[felt252;2], 

@@ -1,8 +1,8 @@
-
 use core::ec::stark_curve::{ORDER};
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
 use core::ec::EcPointTrait;
+use core::ec::EcPoint;
 
 // 2**32
 const MAX: u128 = 4294967296;
@@ -102,3 +102,16 @@ pub fn bin_to_num(num:[u32;6]) -> felt252 {
     s
 }
 
+
+pub fn g_epoch(epoch: u64) -> EcPoint {
+    let mut x:felt252 = 0;
+    let mut salt = 1;
+    while EcPointTrait::new_nz_from_x(x).is_none() {
+        x = PedersenTrait::new('TONGO')    
+            .update(epoch.try_into().unwrap())
+            .update(salt)
+        .finalize();
+        salt = salt + 1;
+    };
+    EcPointTrait::new_from_x(x).unwrap()
+}

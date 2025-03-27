@@ -1,12 +1,34 @@
 use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y,ORDER};
 use crate::verifier::utils::{in_order, in_range, on_curve, compute_challenge_pob, compute_challenge_or};
-use crate::verifier::utils::{compute_challenge};
+use crate::verifier::utils::{compute_challenge,g_epoch};
 use crate::verifier::utils::{feltXOR};
-use crate::verifier::structs::{ProofOfBit, ProofOfBalance, ProofOfCipher};
+use crate::verifier::structs::{Inputs, Proof, ProofOfBit, ProofOfBalance, ProofOfCipher};
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
 
+
+fn challenge_proof(A_x: [felt252;2], A_u: [felt252;2]) -> felt252 {
+    let mut salt = 1;
+    let mut c = ORDER + 1;
+    while !in_order(c) {
+        c = PedersenTrait::new(*A_x.span()[0])
+            .update(*A_x.span()[1])
+            .update(*A_u.span()[0])
+            .update(*A_u.span()[1])
+            .update(salt)
+        .finalize();
+        salt = salt + 1;
+    };
+    return c;
+}
+
+pub fn verify(inputs:Inputs, proof:Proof) {
+    let c = challenge_proof(proof.A_x, proof.A_n);
+    poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
+    let g_epoch:NonZeroEcPoint = g_epoch(inputs.epoch).try_into().unwrap();
+    poe(proof.nonce, [g_epoch.x(),g_epoch.y()], proof.A_n, c, proof.s_x);
+}
 
 /// Proof of Exponent: validate a proof of knowledge of the exponent y = g ** x. The sigma protocols runs
 /// V:  k <-- R        sends    A_x = g ** k
