@@ -13,14 +13,6 @@ pub struct ProofOfBit {
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
-pub struct Nonce {
-    pub u: [felt252;2],
-    pub A_n: [felt252;2],
-    pub s_n: felt252,
-}
-
-
-#[derive(Serde, Drop, Debug, Copy)]
 pub struct Proof {
     pub nonce: [felt252;2],
     pub A_n: [felt252;2],
@@ -34,6 +26,24 @@ pub struct Inputs {
     pub epoch: u64,
 }
 
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct InputsWithdraw {
+    pub y: [felt252;2],
+    pub epoch: u64,
+    pub amount: felt252,
+    pub L:[felt252;2], 
+    pub R:[felt252;2], 
+}
+
+
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct ProofOfWithdraw {
+    pub nonce: [felt252;2],
+    pub A_n: [felt252;2],
+    pub A_x:[felt252;2], 
+    pub A_cr:[felt252;2], 
+    pub s_x:felt252,
+}
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfBalance {

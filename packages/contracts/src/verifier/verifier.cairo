@@ -3,7 +3,7 @@ use core::ec::stark_curve::{GEN_X, GEN_Y,ORDER};
 use crate::verifier::utils::{in_order, in_range, on_curve, compute_challenge_pob, compute_challenge_or};
 use crate::verifier::utils::{compute_challenge,g_epoch};
 use crate::verifier::utils::{feltXOR};
-use crate::verifier::structs::{Inputs, Proof, ProofOfBit, ProofOfBalance, ProofOfCipher};
+use crate::verifier::structs::{Inputs,InputsWithdraw, Proof, ProofOfBit, ProofOfBalance, ProofOfCipher, ProofOfWithdraw};
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
 
@@ -23,11 +23,42 @@ fn challenge_proof(A_x: [felt252;2], A_u: [felt252;2]) -> felt252 {
     return c;
 }
 
+fn challenge_withdraw(A_x: [felt252;2], A_u: [felt252;2], A_cr: [felt252;2]) -> felt252 {
+    let mut salt = 1;
+    let mut c = ORDER + 1;
+    while !in_order(c) {
+        c = PedersenTrait::new(*A_x.span()[0])
+            .update(*A_x.span()[1])
+            .update(*A_u.span()[0])
+            .update(*A_u.span()[1])
+            .update(*A_cr.span()[0])
+            .update(*A_cr.span()[1])
+            .update(salt)
+        .finalize();
+        salt = salt + 1;
+    };
+    return c;
+}
+
 pub fn verify(inputs:Inputs, proof:Proof) {
     let c = challenge_proof(proof.A_x, proof.A_n);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
     let g_epoch:NonZeroEcPoint = g_epoch(inputs.epoch).try_into().unwrap();
     poe(proof.nonce, [g_epoch.x(),g_epoch.y()], proof.A_n, c, proof.s_x);
+}
+
+pub fn verify_withdraw(inputs:InputsWithdraw, proof:ProofOfWithdraw) {
+    let c = challenge_withdraw(proof.A_x, proof.A_n, proof.A_cr);
+    poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
+    let g_epoch:NonZeroEcPoint = g_epoch(inputs.epoch).try_into().unwrap();
+    poe(proof.nonce, [g_epoch.x(),g_epoch.y()], proof.A_n, c, proof.s_x);
+
+    let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
+
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+    let g_b = EcPointTrait::mul(g,inputs.amount);
+    let h: NonZeroEcPoint = (L - g_b.try_into().unwrap()).try_into().unwrap();
+    poe([h.x(), h.y()], [*inputs.R.span()[0], *inputs.R.span()[1]], proof.A_cr,c ,proof.s_x);
 }
 
 /// Proof of Exponent: validate a proof of knowledge of the exponent y = g ** x. The sigma protocols runs

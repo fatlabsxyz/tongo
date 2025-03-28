@@ -1,14 +1,17 @@
 use core::starknet::ContractAddress;
 use crate::verifier::structs::Proof;
+use crate::verifier::structs::ProofOfWithdraw;
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary, replay_protection.
 // the replay_protection should have the epoch in which the tx was generated (it is the same to the epoch in which the
 // tx is expected to pass) signed by the private key x of y = g**x, with  the selector_calldata and posiblly the proof itself.
 
 #[starknet::interface]
 pub trait ITongo<TContractState> {
-    fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252, nonce: [felt252;2]); 
+    fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252); 
+    fn current_epoch(ref self: TContractState) -> u64;
     fn get_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
-    fn withdraw(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: Proof);
+    fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252);
+    fn withdraw(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWithdraw);
     fn transfer(ref self: TContractState,
         from:[felt252;2],
         to: [felt252;2],
@@ -40,8 +43,10 @@ pub mod Tongo {
     };
     
     use crate::verifier::structs::{Proof,Inputs};
+    use crate::verifier::structs::{InputsWithdraw, ProofOfWithdraw};
     use crate::verifier::utils::{in_range };
     use crate::verifier::verifier::verify;
+    use crate::verifier::verifier::verify_withdraw;
     const BLOCKS_IN_EPOCH: u64 = 100;
 
     #[storage]
@@ -61,40 +66,37 @@ pub mod Tongo {
     
 
     /// Transfer some STARK to Tongo contract and assing some Tongo to account y
-    fn fund(ref self: ContractState, to: [felt252;2], amount: felt252,  nonce: [felt252;2]) {
+    fn fund(ref self: ContractState, to: [felt252;2], amount: felt252) {
         in_range(amount);
-        // Hay que ver el tema del transfer
-        self.get_transfer(amount);
+//        self.get_transfer(amount);
 
         let Cipher = self.cipher(amount, to);
         self.to_buffer(to, Cipher);
-        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
+        let this_epoch = self.current_epoch();
         self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
     } 
 
     /// Withdraw ALL tongo from acount and send the stark to the recipient
-    fn withdraw(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  Proof) {
-
-        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
-        let inputs:Inputs = Inputs { y : from , epoch: this_epoch };
-        verify(inputs, proof);
+    fn withdraw(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  ProofOfWithdraw) {
+        self.rollover(from);
+        let this_epoch = self.current_epoch();
+        let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
+        let inputs:InputsWithdraw = InputsWithdraw { y : from , epoch: this_epoch, amount, L:[Lx,Ly], R: [Rx,Ry]};
+        verify_withdraw(inputs, proof);
         self.validate_nonce(proof.nonce);
-        //Verificar la proof
+
+//        let amount: u256 = amount.try_into().unwrap();
+//        let calldata = array![
+//            to.into(),
+//            amount.low.into(),
+//            amount.high.into(),];
+//        syscalls::call_contract_syscall(
+//           STRK_ADDRESS.try_into().unwrap(),
+//           selector!("transfer"),
+//           calldata.span()
+//        ).unwrap_syscall();
 
 
-        let amount: u256 = amount.try_into().unwrap();
-        let calldata = array![
-            to.into(),
-            amount.low.into(),
-            amount.high.into(),];
-        syscalls::call_contract_syscall(
-           STRK_ADDRESS.try_into().unwrap(),
-           selector!("transfer"),
-           calldata.span()
-        ).unwrap_syscall();
-
-
-        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
         self.balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
         self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
         self.update_nonce(proof.nonce)
@@ -110,12 +112,12 @@ pub mod Tongo {
         R: [felt252;2],
         proof: Proof,
     ) {
-        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
+        self.rollover(from);
+        let this_epoch = self.current_epoch();
         let inputs:Inputs = Inputs { y : from , epoch: this_epoch };
         verify(inputs, proof);
 
         self.validate_nonce(proof.nonce);
-        self.rollover(from);
 
         // verificar la prueva with respect to balance + pending
 
@@ -137,6 +139,18 @@ pub mod Tongo {
         self.balance.entry((*y.span()[0], *y.span()[1])).read()
     }
     
+
+    fn get_buffer(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252) {
+        let (L,R) = self.buffer.entry((*y.span()[0], *y.span()[1])).read();
+        let last_epoch:felt252 = self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).read().try_into().unwrap();
+        return (L,R, last_epoch);
+    }
+    
+    fn current_epoch(ref self: ContractState) -> u64 {
+        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
+        return this_epoch;
+    }
+
     }
 
     #[generate_trait]
@@ -165,11 +179,6 @@ pub mod Tongo {
             let R = CR + R_buffer;
             self.write_balance(y,(L,R));
         };
-    }
-
-    fn this_epoch(ref self : @ContractState) -> u64 {
-        let block = get_block_number();
-        block/ BLOCKS_IN_EPOCH
     }
 
     fn buffer_to_balance(ref self: ContractState, y:[felt252;2]) {
@@ -226,7 +235,7 @@ pub mod Tongo {
     }
 
     fn rollover(ref self: ContractState, y:[felt252;2]) {
-        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
+        let this_epoch = self.current_epoch();
         let buffer_epoch = self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).read();
 
         if buffer_epoch == this_epoch -1 {return ;}; 
