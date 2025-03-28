@@ -2,7 +2,7 @@ use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y,ORDER};
 use crate::verifier::utils::{in_order, in_range, on_curve, compute_challenge_pob, compute_challenge_or};
 use crate::verifier::utils::{compute_challenge,g_epoch};
-use crate::verifier::utils::{feltXOR};
+use crate::verifier::utils::{feltXOR, challenge_commits};
 use crate::verifier::structs::{Inputs,InputsWithdraw, Proof, ProofOfBit, ProofOfBalance, ProofOfCipher, ProofOfWithdraw};
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
@@ -48,7 +48,8 @@ pub fn verify(inputs:Inputs, proof:Proof) {
 }
 
 pub fn verify_withdraw(inputs:InputsWithdraw, proof:ProofOfWithdraw) {
-    let c = challenge_withdraw(proof.A_x, proof.A_n, proof.A_cr);
+    let mut commits = array![proof.A_x, proof.A_n,proof.A_cr];
+    let c = challenge_commits(ref commits);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
     let g_epoch:NonZeroEcPoint = g_epoch(inputs.epoch).try_into().unwrap();
     poe(proof.nonce, [g_epoch.x(),g_epoch.y()], proof.A_n, c, proof.s_x);

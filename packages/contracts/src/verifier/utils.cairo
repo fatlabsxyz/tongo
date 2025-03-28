@@ -115,3 +115,24 @@ pub fn g_epoch(epoch: u64) -> EcPoint {
     };
     EcPointTrait::new_from_x(x).unwrap()
 }
+
+pub fn challenge_commits(ref commits: Array<[felt252;2]>) -> felt252 {
+    let mut state = PedersenTrait::new(0);
+    let mut commit = commits.pop_front();
+    while commit.is_some() {
+        let [x,y] = commit.unwrap();
+        state = state.update(x); 
+        state = state.update(y); 
+        commit = commits.pop_front();
+    };
+    let base = state.finalize();
+    let mut salt = 1;
+    let mut c = ORDER + 1;
+    while !in_order(c) {
+        c = PedersenTrait::new(base)
+            .update(salt)
+        .finalize();
+        salt = salt + 1;
+    };
+    return c;
+}
