@@ -4,8 +4,9 @@ use tongo::verifier::verifier::{poe,poc, por,oneORzero};
 use tongo::verifier::utils::{challenge_commits, generator_h};
 use tongo::verifier::structs::{ProofOfCipher};
 
-use crate::verifier::utils::{simPOE, create_proofofbit,  prover_poe};
-use tongo::prover::utils::{compute_s, generate_random, to_binary};
+use crate::verifier::utils::{ prover_poe};
+use tongo::prover::utils::{compute_s, generate_random, to_binary, simPOE};
+use tongo::prover::prover::{prove_bit};
 
 
 
@@ -52,9 +53,9 @@ fn test_simulatePOE() {
 #[test]
 fn test_OR0() {
     let seed = 371928371;
-    let r = generate_random(seed,2);
+    let r = generate_random(seed,1);
     
-    let pi = create_proofofbit(0,r);
+    let pi = prove_bit(0,r);
     oneORzero(pi);
 }
 
@@ -63,7 +64,7 @@ fn test_OR1() {
     let seed = 47198274198273;
     let r = generate_random(seed,2);
     
-    let pi = create_proofofbit(1,r);
+    let pi = prove_bit(1,r);
     oneORzero(pi);
 }
 
@@ -128,7 +129,7 @@ fn test_range() {
     let mut i:u32 = 0;
     while i < 32 {
         let r = generate_random(seed, i.try_into().unwrap()+1);
-        let pi = create_proofofbit(*b[i],r);
+        let pi = prove_bit(*b[i],r);
         R.append(r);
         proof.append(pi);
         i = i + 1;

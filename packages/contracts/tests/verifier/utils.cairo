@@ -2,72 +2,10 @@ use core::ec::stark_curve::{GEN_X,GEN_Y,ORDER};
 use core::ec::EcPointTrait;
 use core::ec::EcStateTrait;
 use core::ec::NonZeroEcPoint;
-use tongo::verifier::utils::{feltXOR, challenge_commits, generator_h};
-use tongo::verifier::structs::{ProofOfBit};
+use tongo::verifier::utils::{challenge_commits};
 
 use tongo::prover::utils::{generate_random, compute_s};
 
-/// Simulate a valid transcript (A_x, c, s) for a proof of exponent y = gen**x.
-/// Output: A_x:[felt252;2], challenge: felt252, s: felt252
-pub fn simPOE(y:[felt252;2], gen:[felt252;2], seed:felt252) -> ([felt252;2], felt252,felt252) {
-    let gen = EcPointTrait::new(*gen.span()[0], *gen.span()[1]).unwrap();
-    let y = EcPointTrait::new(*y.span()[0], *y.span()[1]).unwrap();
-    let s = generate_random(seed,1);
-    let c = generate_random(seed,2);
-    let temp1 = EcPointTrait::mul(gen, s);
-    let temp2 = EcPointTrait::mul(y, c.try_into().unwrap());
-    let A:NonZeroEcPoint = (temp1 - temp2).try_into().unwrap();
-    return ([A.x(),A.y()],c,s);
-}
-
-/// Generate the proof that assert that V = g**b h**r encodes a bit b that is either 0 or 1.
-pub fn create_proofofbit(b:u8, r:felt252) -> ProofOfBit {
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let [hx, hy] = generator_h();
-    let h = EcPointTrait::new(hx,hy).unwrap();
-    //if b == 0 we follow the standar poe for 0 and simulate for 1
-    if b== 0 {
-        let V = EcPointTrait::mul(h, r).try_into().unwrap();
-        let V_1:NonZeroEcPoint = (V - g).try_into().unwrap();
-        let k : felt252 = generate_random(r,1);
-        let A0:NonZeroEcPoint = EcPointTrait::mul(h, k).try_into().unwrap();
-
-        let (A1, c_1, s_1) = simPOE([V_1.x(), V_1.y()], [hx,hy], r);
-        let mut commits = array![[A0.x(), A0.y()],A1];
-        let c = challenge_commits(ref commits);
-        let c_0 = feltXOR(c, c_1);
-        let s_0 = compute_s(c_0, r, k);
-        let pi: ProofOfBit = ProofOfBit {
-            V:[V.try_into().unwrap().x(),V.try_into().unwrap().y()],
-            A0: [A0.x(), A0.y()],
-            A1,
-            c0:c_0,
-            s0:s_0,
-            s1:s_1};
-        return pi;
-    // if b == 1 we follow the standar poe for 1 and simulate for 0
-    } else {
-        //TODO: throw an error if b is not 0 nor 1.
-        let V = g + EcPointTrait::mul(h, r).try_into().unwrap();
-        let (A0,c_0,s_0) = simPOE([V.try_into().unwrap().x(), V.try_into().unwrap().y()],[hx,hy],r);
-
-//        let V_1 = V - g;
-        let k = generate_random(r,2);
-        let A1:NonZeroEcPoint = EcPointTrait::mul(h, k).try_into().unwrap();
-        let mut commits = array![A0, [A1.x(), A1.y()]];
-        let c = challenge_commits(ref commits);
-        let c_1 = feltXOR(c, c_0);
-        let s_1 = compute_s(c_1, r, k);
-        let pi: ProofOfBit = ProofOfBit {
-            V:[V.try_into().unwrap().x(),V.try_into().unwrap().y()],
-            A0,
-            A1:[A1.x(),A1.y()],
-            c0:c_0,
-            s0:s_0,
-            s1:s_1};
-        return pi;
-    }
-}
 
 
 pub fn cipher_balance(b:felt252, y:[felt252;2],random:felt252) -> ([felt252;2], [felt252;2]) {

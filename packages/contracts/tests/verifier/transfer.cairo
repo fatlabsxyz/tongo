@@ -1,11 +1,12 @@
 use core::ec::{EcPointTrait};
 use core::ec::{NonZeroEcPoint, EcStateTrait};
 use core::ec::stark_curve::{GEN_X,GEN_Y};
-use crate::verifier::utils::{cipher_balance, create_proofofbit};
+use crate::verifier::utils::{cipher_balance};
 
 use tongo::verifier::structs::{InputsTransfer, ProofOfTransfer};
 use tongo::verifier::utils::{challenge_commits, g_epoch, generator_h};
 use tongo::prover::utils::{generate_random, compute_s, to_binary};
+use tongo::prover::prover::prove_bit;
 use tongo::verifier::verifier::verify_transfer;
 
 
@@ -37,7 +38,7 @@ fn test_transfer_new() {
     let mut i:u32 = 0;
     while i < 32 {
         let r = generate_random(seed, i.try_into().unwrap()+1);
-        let pi = create_proofofbit(*b[i],r);
+        let pi = prove_bit(*b[i],r);
         R.append(r);
         proof.append(pi);
         i = i + 1;
@@ -66,7 +67,7 @@ fn test_transfer_new() {
     let mut i:u32 = 0;
     while i < 32 {
         let r = generate_random(seed, i.try_into().unwrap() + 100);
-        let pi = create_proofofbit(*b[i],r);
+        let pi = prove_bit(*b[i],r);
         R_temp.append(r);
         proof2.append(pi);
         i = i + 1;

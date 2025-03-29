@@ -1,4 +1,6 @@
 use core::ec::stark_curve::{ORDER};
+use core::ec::EcPointTrait;
+use core::ec::NonZeroEcPoint;
 use core::pedersen::PedersenTrait;
 use core::hash::{HashStateTrait};
 use tongo::verifier::utils::in_order;
@@ -74,4 +76,18 @@ pub fn to_binary(number: u32) -> Array<u8> {
         pow = 2 * pow;
     };
     arr
+}
+
+
+/// Simulate a valid transcript (A_x, c, s) for a proof of exponent y = gen**x.
+/// Output: A_x:[felt252;2], challenge: felt252, s: felt252
+pub fn simPOE(y:[felt252;2], gen:[felt252;2], seed:felt252) -> ([felt252;2], felt252,felt252) {
+    let gen = EcPointTrait::new(*gen.span()[0], *gen.span()[1]).unwrap();
+    let y = EcPointTrait::new(*y.span()[0], *y.span()[1]).unwrap();
+    let s = generate_random(seed,1);
+    let c = generate_random(seed,2);
+    let temp1 = EcPointTrait::mul(gen, s);
+    let temp2 = EcPointTrait::mul(y, c.try_into().unwrap());
+    let A:NonZeroEcPoint = (temp1 - temp2).try_into().unwrap();
+    return ([A.x(),A.y()],c,s);
 }
