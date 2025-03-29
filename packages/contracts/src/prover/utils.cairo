@@ -2,6 +2,7 @@ use core::ec::stark_curve::{ORDER};
 use core::pedersen::PedersenTrait;
 use core::hash::{HashStateTrait};
 use tongo::verifier::utils::in_order;
+use tongo::verifier::utils::in_range;
 
 use core::circuit::{
     CircuitElement, CircuitInput, circuit_add, circuit_mul,
@@ -58,3 +59,19 @@ pub fn generate_random(seed: felt252, multiplicity:felt252) -> felt252 {
     return c;
 }
 
+/// Computes the binary decomposition of the given number u32 number. The output is and array
+/// ordered in big in the end.
+pub fn to_binary(number: u32) -> Array<u8> {
+    assert!(in_range(number.try_into().unwrap()), "Number is not in range");
+    let number: u64 = number.try_into().unwrap();
+    let mut arr = array![];
+    let mut i:u8 = 0;
+    let mut pow:u64 = 1 ;
+    while i < 32 {
+        if number & pow == 0 { arr.append(0) }
+        else { arr.append(1) };
+        i = i + 1; 
+        pow = 2 * pow;
+    };
+    arr
+}

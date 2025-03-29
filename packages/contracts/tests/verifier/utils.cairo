@@ -21,7 +21,7 @@ pub fn simPOE(y:[felt252;2], gen:[felt252;2], seed:felt252) -> ([felt252;2], fel
 }
 
 /// Generate the proof that assert that V = g**b h**r encodes a bit b that is either 0 or 1.
-pub fn create_proofofbit(b:felt252, h:[felt252;2], r:felt252) -> ProofOfBit {
+pub fn create_proofofbit(b:u8, h:[felt252;2], r:felt252) -> ProofOfBit {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let gen = EcPointTrait::new(*h.span()[0], *h.span()[1]).unwrap();
     //if b == 0 we follow the standar poe for 0 and simulate for 1

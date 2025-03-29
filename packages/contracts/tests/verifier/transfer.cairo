@@ -5,7 +5,7 @@ use crate::verifier::utils::{cipher_balance, create_proofofbit};
 
 use tongo::verifier::structs::{InputsTransfer, ProofOfTransfer};
 use tongo::verifier::utils::{challenge_commits, g_epoch};
-use tongo::prover::utils::{generate_random, compute_s};
+use tongo::prover::utils::{generate_random, compute_s, to_binary};
 use tongo::verifier::verifier::verify_transfer;
 
 
@@ -31,7 +31,7 @@ fn test_transfer_new() {
     // end of setup
     
     //we want to transfer b to y_bar
-    let b = array![1,0,0,1,1,1,0,1,0,0,0,0,0,0,1,1,0,1,0,1,1,0,1,0,0,1,0,0,1,0,1,1,];
+    let b = to_binary(b_num.try_into().unwrap());
     let mut proof = array![];
     let mut R = array![];
     let mut i:u32 = 0;
@@ -60,7 +60,7 @@ fn test_transfer_new() {
     let (L_bar,_R_bar) = cipher_balance(b_num, [y_bar.x(), y_bar.y()], r);
 
     // sobran 2 pesos. hay que hacer lo mismo para eso
-    let b = array![0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,];
+    let b = to_binary(2);
     let mut proof2 = array![];
     let mut R_temp = array![];
     let mut i:u32 = 0;
