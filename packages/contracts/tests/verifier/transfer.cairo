@@ -5,86 +5,40 @@ use crate::verifier::utils::{cipher_balance};
 
 use tongo::verifier::structs::{InputsTransfer, ProofOfTransfer};
 use tongo::verifier::utils::{challenge_commits, g_epoch, generator_h};
-use tongo::prover::utils::{generate_random, compute_s, to_binary};
-use tongo::prover::prover::prove_bit;
+use tongo::prover::utils::{generate_random, compute_s};
+use tongo::prover::prover::{prove_range};
 use tongo::verifier::verifier::verify_transfer;
 
 
 #[test]
-fn test_transfer_new() {
+fn test_transfer() {
     // setup
+    let [hx,hy] = generator_h();
+    let h = EcPointTrait::new_nz(hx,hy).unwrap();
     let g:NonZeroEcPoint = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
 
     let seed = 47198274198273;
-    let [hx,hy] = generator_h();
-    let h = EcPointTrait::new_nz(hx,hy).unwrap();
-
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x).try_into().unwrap();
     
     let x_bar = generate_random(seed,2);
     let y_bar:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x_bar).try_into().unwrap();
-    let b_num = 3529162937;
-    let b0 = b_num + 2;
-    let r0 = generate_random(seed,3);
     
+    // balance stored
+    let b0 = 100;
+    let r0 = generate_random(seed,3);
     let (CL, CR) = cipher_balance(b0, [y.x(), y.y()], r0);
     // end of setup
+
+    //balance to transfer
+    let b = 30;
+    let (r, V, proof ) = prove_range(b.try_into().unwrap(), generate_random(seed+1, 1));
     
-    //we want to transfer b to y_bar
-    let b = to_binary((b_num).try_into().unwrap());
-    let mut proof = array![];
-    let mut R = array![];
-    let mut i:u32 = 0;
-    while i < 32 {
-        let r = generate_random(seed, i.try_into().unwrap()+1);
-        let pi = prove_bit(*b[i],r);
-        R.append(r);
-        proof.append(pi);
-        i = i + 1;
-    };
+    let (L,R) = cipher_balance(b, [y.x(), y.y()], r);
+    let (L_bar,_R_bar) = cipher_balance(b, [y_bar.x(), y_bar.y()], r);
 
-    let mut pow:felt252 = 1;
-    let mut r: felt252 = 0;
-    let mut i:u32 = 0;
-    while i < 32 {
-        r = compute_s(*R[i],pow,r);
-        i = i+1;
-        pow = 2*pow;
-    };
-    let mut state = EcStateTrait::init();
-        state.add_mul(b_num,g);
-        state.add_mul(r,h);
-    let V = state.finalize_nz().unwrap();
-    
-    let (L,R) = cipher_balance(b_num, [y.x(), y.y()], r);
-    let (L_bar,_R_bar) = cipher_balance(b_num, [y_bar.x(), y_bar.y()], r);
-
-    // sobran 2 pesos. hay que hacer lo mismo para eso
-    let b = to_binary(2);
-    let mut proof2 = array![];
-    let mut R_temp = array![];
-    let mut i:u32 = 0;
-    while i < 32 {
-        let r = generate_random(seed, i.try_into().unwrap() + 100);
-        let pi = prove_bit(*b[i],r);
-        R_temp.append(r);
-        proof2.append(pi);
-        i = i + 1;
-    };
-
-    let mut pow:felt252 = 1;
-    let mut r2: felt252 = 0;
-    let mut i:u32 = 0;
-    while i < 32 {
-        r2 = compute_s(*R_temp[i],pow,r2);
-        i = i+1;
-        pow = 2*pow;
-    };
-    let mut state = EcStateTrait::init();
-        state.add_mul(2,g);
-        state.add_mul(r2,h);
-    let V2 = state.finalize_nz().unwrap();
+    let b_left = b0-b;
+    let (r2, V2, proof2 ) = prove_range(b_left.try_into().unwrap(), generate_random(seed+2, 1));
 
     let CR = EcPointTrait::new(*CR.span()[0], *CR.span()[1]).unwrap();
     let R = EcPointTrait::new(*R.span()[0], *R.span()[1]).unwrap();
@@ -99,7 +53,6 @@ fn test_transfer_new() {
     let g_epoch = EcPointTrait::new(g_x,g_y).unwrap();
     let u = g_epoch.mul(x);
 
-    //TODO: Clase para que le haga rand.get() y me de un random distinto
     let kx = generate_random(seed+1 ,0);
     let kb = generate_random(seed+1 ,1);
     let kr = generate_random(seed+1 ,2);
@@ -148,9 +101,9 @@ fn test_transfer_new() {
     let c = challenge_commits(ref commits);
 
     let s_x = compute_s(c,x, kx);
-    let s_b = compute_s(c,b_num, kb);
+    let s_b = compute_s(c,b, kb);
     let s_r = compute_s(c,r, kr);
-    let s_b2 = compute_s(c,2, kb2);
+    let s_b2 = compute_s(c, b_left, kb2);
     let s_r2 = compute_s(c,r2, kr2);
 
     let inputs: InputsTransfer = InputsTransfer {
@@ -162,8 +115,8 @@ fn test_transfer_new() {
         R:[R.try_into().unwrap().x(), R.try_into().unwrap().y()],
         L:[L.try_into().unwrap().x(), L.try_into().unwrap().y()],
         L_bar,
-        V:[V.try_into().unwrap().x(), V.try_into().unwrap().y()],
-        V2:[V2.try_into().unwrap().x(), V2.try_into().unwrap().y()],
+        V:V,
+        V2:V2,
     };
 
     let proof: ProofOfTransfer = ProofOfTransfer {
@@ -181,8 +134,8 @@ fn test_transfer_new() {
         s_b,
         s_b2,
         s_r2,
-        range: proof.span(),
-        range2: proof2.span(),
+        range: proof,
+        range2: proof2,
     };
 
     verify_transfer(inputs,proof);
