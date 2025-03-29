@@ -1,7 +1,7 @@
 use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y,ORDER};
 use crate::verifier::utils::{in_order, on_curve};
-use crate::verifier::utils::{g_epoch};
+use crate::verifier::utils::{g_epoch, generator_h};
 use crate::verifier::utils::{feltXOR, challenge_commits};
 use crate::verifier::structs::{Inputs,InputsWithdraw, Proof, ProofOfBit, ProofOfCipher, ProofOfWithdraw};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
@@ -46,7 +46,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     poe2(inputs.L_bar, [GEN_X,GEN_Y], inputs.y_bar, proof.A_bar, c, proof.s_b,proof.s_r);
 
     // Now we need to show that V = g**b h**r with the same b and r.
-    poe2(inputs.V, [GEN_X,GEN_Y], inputs.h, proof.A_v, c, proof.s_b,proof.s_r);
+    poe2(inputs.V, [GEN_X,GEN_Y], generator_h(), proof.A_v, c, proof.s_b,proof.s_r);
     por(inputs.V, proof.range);
 
     let CL = EcPointTrait::new(*inputs.CL.span()[0], *inputs.CL.span()[1]).unwrap();
@@ -60,7 +60,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
 
     // Now we need to show that V = g**b h**r2 with the same b2
-    poe2(inputs.V2, [GEN_X,GEN_Y], inputs.h, proof.A_v2, c, proof.s_b2, proof.s_r2);
+    poe2(inputs.V2, [GEN_X,GEN_Y], generator_h(), proof.A_v2, c, proof.s_b2, proof.s_r2);
 
     // This is for asserting that b2 is in range 
     por(inputs.V2, proof.range2);
@@ -156,14 +156,14 @@ pub fn oneORzero(pi: ProofOfBit) {
     //TODO: update this challenge
     let c1 = feltXOR(c,pi.c0);
     
-    poe(pi.V,pi.h,pi.A0,pi.c0,pi.s0);
+    poe(pi.V,generator_h(),pi.A0,pi.c0,pi.s0);
 
     let gen = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     //TODO: Precompute -gen
     let V_0 = EcPointTrait::new(*pi.V.span()[0], *pi.V.span()[1]).unwrap();
     let V1: NonZeroEcPoint = (V_0 - gen).try_into().unwrap();
     
-    poe([V1.x(), V1.y()],pi.h,pi.A1,c1,pi.s1);
+    poe([V1.x(), V1.y()],generator_h(),pi.A1,c1,pi.s1);
 }
 
 ///TODO: think if h = y leads to a posible attack.

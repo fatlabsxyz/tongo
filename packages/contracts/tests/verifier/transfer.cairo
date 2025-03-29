@@ -4,7 +4,7 @@ use core::ec::stark_curve::{GEN_X,GEN_Y};
 use crate::verifier::utils::{cipher_balance, create_proofofbit};
 
 use tongo::verifier::structs::{InputsTransfer, ProofOfTransfer};
-use tongo::verifier::utils::{challenge_commits, g_epoch};
+use tongo::verifier::utils::{challenge_commits, g_epoch, generator_h};
 use tongo::prover::utils::{generate_random, compute_s, to_binary};
 use tongo::verifier::verifier::verify_transfer;
 
@@ -15,8 +15,8 @@ fn test_transfer_new() {
     let g:NonZeroEcPoint = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
 
     let seed = 47198274198273;
-    let ultra_secret = generate_random(seed,0);
-    let h:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), ultra_secret).try_into().unwrap();
+    let [hx,hy] = generator_h();
+    let h = EcPointTrait::new_nz(hx,hy).unwrap();
 
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x).try_into().unwrap();
@@ -31,13 +31,13 @@ fn test_transfer_new() {
     // end of setup
     
     //we want to transfer b to y_bar
-    let b = to_binary(b_num.try_into().unwrap());
+    let b = to_binary((b_num).try_into().unwrap());
     let mut proof = array![];
     let mut R = array![];
     let mut i:u32 = 0;
     while i < 32 {
         let r = generate_random(seed, i.try_into().unwrap()+1);
-        let pi = create_proofofbit(*b[i],[h.x(), h.y()],r);
+        let pi = create_proofofbit(*b[i],r);
         R.append(r);
         proof.append(pi);
         i = i + 1;
@@ -66,7 +66,7 @@ fn test_transfer_new() {
     let mut i:u32 = 0;
     while i < 32 {
         let r = generate_random(seed, i.try_into().unwrap() + 100);
-        let pi = create_proofofbit(*b[i],[h.x(), h.y()],r);
+        let pi = create_proofofbit(*b[i],r);
         R_temp.append(r);
         proof2.append(pi);
         i = i + 1;
@@ -156,7 +156,6 @@ fn test_transfer_new() {
         y:[y.x(), y.y()],
         y_bar:[y_bar.x(), y_bar.y()],
         epoch:this_epoch,
-        h:[h.x(), h.y()],
         CR:[CR.try_into().unwrap().x(), CR.try_into().unwrap().y()],
         CL:[CL.try_into().unwrap().x(), CL.try_into().unwrap().y()],
         R:[R.try_into().unwrap().x(), R.try_into().unwrap().y()],

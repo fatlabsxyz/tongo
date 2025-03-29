@@ -6,7 +6,6 @@ pub struct ProofOfBit {
     pub V:[felt252;2],
     pub A0:[felt252;2],
     pub A1:[felt252;2],
-    pub h:[felt252;2],
     pub c0:felt252,
     pub s0: felt252,
     pub s1: felt252,
@@ -37,11 +36,11 @@ pub struct InputsWithdraw {
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfWithdraw {
-    pub nonce: [felt252;2],
-    pub A_n: [felt252;2],
-    pub A_x:[felt252;2], 
-    pub A_cr:[felt252;2], 
-    pub s_x:felt252,
+    pub nonce:[felt252;2] ,
+    pub A_n:[felt252;2] ,
+    pub A_x:[felt252;2] , 
+    pub A_cr:[felt252;2] , 
+    pub s_x:felt252 ,
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
@@ -49,7 +48,6 @@ pub struct InputsTransfer {
     pub y: [felt252;2],
     pub y_bar: [felt252;2],
     pub epoch: u64,
-    pub h: [felt252;2],
     pub CL:[felt252;2], 
     pub CR:[felt252;2], 
     pub R:[felt252;2], 

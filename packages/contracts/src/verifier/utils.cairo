@@ -2,6 +2,7 @@ use core::ec::stark_curve::{ORDER};
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
 use core::ec::EcPointTrait;
+use core::ec::stark_curve::{GEN_X,GEN_Y};
 
 // 2**32
 const MAX: u128 = 4294967296;
@@ -83,4 +84,15 @@ pub fn challenge_commits(ref commits: Array<[felt252;2]>) -> felt252 {
         salt = salt + 1;
     };
     return c;
+}
+
+/// This generator has to be generated at random a it exponent CAN NOT be known.
+/// TODO: Generate one at random an store the cooridnates, generate the proof
+/// that there are not magic numbers under the sleve
+/// ULTRA WARNING: DO NOT FORGET TO DO THIS
+pub fn generator_h() -> [felt252;2] {
+    let ultra_secret:felt252 = 'TONGO';
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+    let h = g.mul(ultra_secret).try_into().unwrap();
+    [h.x(), h.y()]
 }
