@@ -1,11 +1,11 @@
 use core::ec::{EcPointTrait};
 use core::ec::{NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X,GEN_Y};
-use crate::setup::{setup_tongo};
-use crate::verifier::utils::{generate_random};
+use crate::tongo::setup::{setup_tongo};
 
 use tongo::verifier::structs::{InputsWithdraw, ProofOfWithdraw};
 use tongo::prover::prover::prove_withdraw;
+use tongo::prover::utils::generate_random;
 use tongo::main::ITongoDispatcherTrait;
 use snforge_std::{start_cheat_block_number};
 

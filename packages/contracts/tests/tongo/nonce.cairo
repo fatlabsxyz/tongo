@@ -1,27 +1,29 @@
 use core::ec::{EcPointTrait, EcStateTrait};
 use core::ec::{ NonZeroEcPoint};
-use core::ec::stark_curve::{GEN_X,GEN_Y,ORDER};
-use crate::setup::{setup_tongo};
-use crate::verifier::utils::{compute_s,generate_random};
-use core::pedersen::PedersenTrait;
-use core::hash::HashStateTrait;
+use core::ec::stark_curve::{GEN_X,GEN_Y};
+use crate::tongo::setup::{setup_tongo};
+use tongo::prover::utils::{compute_s,generate_random};
 
-use tongo::verifier::utils::{in_order};
 use tongo::verifier::structs::Proof;
-use tongo::verifier::utils::g_epoch;
+use tongo::verifier::utils::{g_epoch, challenge_commits};
 use tongo::main::ITongoDispatcherTrait;
 use snforge_std::{start_cheat_block_number};
 
 fn generate_proof(epoch: u64, seed:felt252, x: felt252) -> Proof {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let g_epoch = g_epoch(epoch);
+    let [g_epoch_x, g_epoch_y] = g_epoch(epoch);
+    let g_epoch = EcPointTrait::new(g_epoch_x, g_epoch_y).unwrap();
     let nonce: NonZeroEcPoint  = g_epoch.mul(x).try_into().unwrap();
     
     let k = generate_random(seed,1);
     let A_x: NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), k).try_into().unwrap();
     
     let A_u: NonZeroEcPoint = EcPointTrait::mul(g_epoch.try_into().unwrap(), k).try_into().unwrap();
-    let c = challenge_proof(A_x, A_u);
+    let mut commits = array![
+        [A_x.x(), A_x.y()], 
+        [A_u.x(), A_u.y()], 
+    ];
+    let c = challenge_commits(ref commits);
     let s = compute_s(c, x, k);
     let proof: Proof = Proof {
         nonce: [nonce.x(), nonce.y()],
@@ -30,21 +32,6 @@ fn generate_proof(epoch: u64, seed:felt252, x: felt252) -> Proof {
         s_x: s,
     } ;
     return proof;
-}
-
-fn challenge_proof(A_x: NonZeroEcPoint, A_u: NonZeroEcPoint) -> felt252 {
-    let mut salt = 1;
-    let mut c = ORDER + 1;
-    while !in_order(c) {
-        c = PedersenTrait::new(A_x.x())
-            .update(A_x.y())
-            .update(A_u.x())
-            .update(A_u.y())
-            .update(salt)
-        .finalize();
-        salt = salt + 1;
-    };
-    return c;
 }
 
 #[test]

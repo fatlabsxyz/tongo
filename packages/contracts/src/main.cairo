@@ -78,6 +78,7 @@ pub mod Tongo {
 
     /// Withdraw ALL tongo from acount and send the stark to the recipient
     fn withdraw(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  ProofOfWithdraw) {
+        //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
         self.rollover(from);
         let this_epoch = self.current_epoch();
         let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);

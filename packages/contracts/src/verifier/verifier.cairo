@@ -1,58 +1,80 @@
 use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y,ORDER};
-use crate::verifier::utils::{in_order, in_range, on_curve, compute_challenge_pob, compute_challenge_or};
-use crate::verifier::utils::{compute_challenge,g_epoch};
+use crate::verifier::utils::{in_order, on_curve};
+use crate::verifier::utils::{g_epoch};
 use crate::verifier::utils::{feltXOR, challenge_commits};
-use crate::verifier::structs::{Inputs,InputsWithdraw, Proof, ProofOfBit, ProofOfBalance, ProofOfCipher, ProofOfWithdraw};
+use crate::verifier::structs::{Inputs,InputsWithdraw, Proof, ProofOfBit, ProofOfCipher, ProofOfWithdraw};
+use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
 
 
-fn challenge_proof(A_x: [felt252;2], A_u: [felt252;2]) -> felt252 {
-    let mut salt = 1;
-    let mut c = ORDER + 1;
-    while !in_order(c) {
-        c = PedersenTrait::new(*A_x.span()[0])
-            .update(*A_x.span()[1])
-            .update(*A_u.span()[0])
-            .update(*A_u.span()[1])
-            .update(salt)
-        .finalize();
-        salt = salt + 1;
-    };
-    return c;
-}
-
-fn challenge_withdraw(A_x: [felt252;2], A_u: [felt252;2], A_cr: [felt252;2]) -> felt252 {
-    let mut salt = 1;
-    let mut c = ORDER + 1;
-    while !in_order(c) {
-        c = PedersenTrait::new(*A_x.span()[0])
-            .update(*A_x.span()[1])
-            .update(*A_u.span()[0])
-            .update(*A_u.span()[1])
-            .update(*A_cr.span()[0])
-            .update(*A_cr.span()[1])
-            .update(salt)
-        .finalize();
-        salt = salt + 1;
-    };
-    return c;
-}
-
 pub fn verify(inputs:Inputs, proof:Proof) {
-    let c = challenge_proof(proof.A_x, proof.A_n);
+    let mut commits = array![proof.A_x, proof.A_n];
+    let c = challenge_commits(ref commits);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
-    let g_epoch:NonZeroEcPoint = g_epoch(inputs.epoch).try_into().unwrap();
-    poe(proof.nonce, [g_epoch.x(),g_epoch.y()], proof.A_n, c, proof.s_x);
+//    let g_epoch:NonZeroEcPoint = g_epoch(inputs.epoch).try_into().unwrap();
+    poe(proof.nonce, g_epoch(inputs.epoch), proof.A_n, c, proof.s_x);
 }
 
+pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
+    let mut commits = array![
+        proof.A_x,
+        proof.A_n,
+        proof.A_r,
+        proof.A_b,
+        proof.A_b2,
+        proof.A_v,
+        proof.A_v2,
+        proof.A_bar,
+    ];
+    let c = challenge_commits(ref commits);
+    poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
+//    let g_epoch:NonZeroEcPoint = g_epoch(inputs.epoch).try_into().unwrap();
+    poe(proof.nonce, g_epoch(inputs.epoch), proof.A_n, c, proof.s_x);
+
+    // This is for asserting knowledge of x
+    poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
+    
+    // This is for asserting R = g**r
+    poe(inputs.R, [GEN_X,GEN_Y], proof.A_r, c, proof.s_r );
+    
+    //This is for asserting L = g**b y**r
+    poe2(inputs.L, [GEN_X,GEN_Y], inputs.y, proof.A_b, c, proof.s_b,proof.s_r);
+
+    //This is for asserting L_bar = g**b y_bar**r
+    poe2(inputs.L_bar, [GEN_X,GEN_Y], inputs.y_bar, proof.A_bar, c, proof.s_b,proof.s_r);
+
+    // Now we need to show that V = g**b h**r with the same b and r.
+    poe2(inputs.V, [GEN_X,GEN_Y], inputs.h, proof.A_v, c, proof.s_b,proof.s_r);
+    por(inputs.V, proof.range);
+
+    let CL = EcPointTrait::new(*inputs.CL.span()[0], *inputs.CL.span()[1]).unwrap();
+    let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
+    let Y:NonZeroEcPoint = (CL - L).try_into().unwrap();
+
+    let CR = EcPointTrait::new(*inputs.CR.span()[0], *inputs.CR.span()[1]).unwrap();
+    let R = EcPointTrait::new(*inputs.R.span()[0], *inputs.R.span()[1]).unwrap();
+    let G:NonZeroEcPoint = (CR - R).try_into().unwrap();
+    poe2([Y.x(), Y.y()], [GEN_X, GEN_Y], [G.x(), G.y()], proof.A_b2,c, proof.s_b2, proof.s_x );
+
+
+    // Now we need to show that V = g**b h**r2 with the same b2
+    poe2(inputs.V2, [GEN_X,GEN_Y], inputs.h, proof.A_v2, c, proof.s_b2, proof.s_r2);
+
+    // This is for asserting that b2 is in range 
+    por(inputs.V2, proof.range2);
+}
+
+/// Proof of Withdraw: validate the proof needed for withdraw all balance b. The cipher balance is
+/// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the correct
+/// balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r = R. We also need to
+/// check that the exponent x is the same of the private key y = g ** x and that the nonce u = g_epoc ** x
 pub fn verify_withdraw(inputs:InputsWithdraw, proof:ProofOfWithdraw) {
     let mut commits = array![proof.A_x, proof.A_n,proof.A_cr];
     let c = challenge_commits(ref commits);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
-    let g_epoch:NonZeroEcPoint = g_epoch(inputs.epoch).try_into().unwrap();
-    poe(proof.nonce, [g_epoch.x(),g_epoch.y()], proof.A_n, c, proof.s_x);
+    poe(proof.nonce, g_epoch(inputs.epoch), proof.A_n, c, proof.s_x);
 
     let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
 
@@ -104,34 +126,12 @@ pub fn poe2(y: [felt252;2], g1: [felt252;2],g2:[felt252;2], A: [felt252;2], c:fe
     assert!(LHS.coordinates() == RHS.coordinates(), "Failed the proof of exponent");
 }
 
-/// Proof of Balance: validate the proof needed for withdraw all balance b. The cipher balance is
-/// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the correct
-/// balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r = R. We also need to
-/// check that the exponent x is the same of the private key y = g ** x
-pub fn pob(b: felt252, y: [felt252;2], pi: ProofOfBalance) { 
-    assert!(b != 0,"failed");
-    assert!(in_range(b), "failed");
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let c = compute_challenge_pob(pi.A_x, pi.A_cr);
-    
-    // Proof of exponent of y = g ** x
-    poe(y,[GEN_X,GEN_Y], pi.A_x, c, pi.s_x);
-
-    let L = EcPointTrait::new(*pi.L.span()[0], *pi.L.span()[1]).unwrap();
-
-    //Define h = L * g**(-b)
-    // Warning: doing -b is dangerous because -b is doing mod starknet prime and it should be done mod curve order.
-    // The simple way to do it is doing g**b and then use the corresponding curve operation.
-    let g_b = EcPointTrait::mul(g,b);
-    let h = L - g_b.try_into().unwrap();
-    poe([h.try_into().unwrap().x(), h.try_into().unwrap().y()], [*pi.R.span()[0], *pi.R.span()[1]], pi.A_cr,c ,pi.s_x);
-}
-
 /// Prof of Ciphertext: validate the proof that the two ciphertext (L,R) = (g**b y**r, g**r ) and (L_bar, R) = (g**b y_bar**r , g**r)
 /// are valids ciphertext for b under y and y_bar with the same r and the same b.
 pub fn poc(y:[felt252;2], y_bar:[felt252;2], pi: ProofOfCipher) {
 
-    let c = compute_challenge(pi.A_r);
+    let mut commits = array![pi.A_r];
+    let c = challenge_commits(ref commits);
     poe(pi.R, [GEN_X,GEN_Y], pi.A_r, c, pi.s_r );
     
     let y_p = EcPointTrait::new(*y.span()[0], *y.span()[1]).unwrap();
@@ -151,7 +151,8 @@ pub fn poc(y:[felt252;2], y_bar:[felt252;2], pi: ProofOfCipher) {
 /// proven with a poe. This is combined in a OR statement and the protocol can valitates that one of the cases is
 /// valid without leak which one is valid.
 pub fn oneORzero(pi: ProofOfBit) {
-    let c = compute_challenge_or(pi.A0, pi.A1);
+    let mut commits = array![pi.A0, pi.A1];
+    let c = challenge_commits(ref commits);
     //TODO: update this challenge
     let c1 = feltXOR(c,pi.c0);
     
@@ -169,12 +170,12 @@ pub fn oneORzero(pi: ProofOfBit) {
 /// rta: Yes. Given V = g**b h**r if h has a known log with respect to b then a proof can be forge to any value of b.
 /// solution. h has to be another generator without known log with respecto to g. I think the standar way of select one
 /// is the nothing-up-my-sleve algorithm. research. 
-pub fn por(V:[felt252;2], proof: Array<ProofOfBit>) {
+pub fn por(V:[felt252;2], proof: Span<ProofOfBit>) {
     let mut i:u32 = 0;
     let mut state = EcStateTrait::init();
     let mut pow: felt252 = 1;
     while i < 32 {
-        let pi = *proof.span()[i];
+        let pi = *proof[i];
         oneORzero(pi) ;
         let vi = EcPointTrait::new_nz(*pi.V.span()[0], *pi.V.span()[1]).unwrap();
         state.add_mul(pow,vi);
@@ -263,7 +264,7 @@ pub fn proofoftransfer(
     poe2(V, [GEN_X,GEN_Y], h, A_v, c, s_b,s_r);
 
     // This is for asserting that b is in range 
-    por(V, proof);
+    por(V, proof.span());
 
     let CL = EcPointTrait::new(*CL.span()[0], *CL.span()[1]).unwrap();
     let L = EcPointTrait::new(*L.span()[0], *L.span()[1]).unwrap();
@@ -279,5 +280,5 @@ pub fn proofoftransfer(
     poe2(V2, [GEN_X,GEN_Y], h, A_v2, c, s_b2,s_r2);
 
     // This is for asserting that b2 is in range 
-    por(V2, proof2);
+    por(V2, proof2.span());
 }

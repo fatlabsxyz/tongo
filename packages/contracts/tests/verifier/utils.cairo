@@ -2,66 +2,10 @@ use core::ec::stark_curve::{GEN_X,GEN_Y,ORDER};
 use core::ec::EcPointTrait;
 use core::ec::EcStateTrait;
 use core::ec::NonZeroEcPoint;
-use core::pedersen::PedersenTrait;
-use core::hash::HashStateTrait;
-use tongo::verifier::utils::in_order;
-use tongo::verifier::utils::{feltXOR, compute_challenge_or, compute_challenge_pob, compute_challenge};
-use tongo::verifier::structs::{ProofOfBit, ProofOfBalance};
+use tongo::verifier::utils::{feltXOR, challenge_commits};
+use tongo::verifier::structs::{ProofOfBit};
 
-use core::circuit::{
-    CircuitElement, CircuitInput, circuit_add, circuit_mul,
-    EvalCircuitTrait, u384, CircuitOutputsTrait, CircuitModulus,
-    AddInputResultTrait, CircuitInputs
-};
-
-
-/// Computes k + c*x mod (CURVE ORDER). The inputs should be in curve order.
-pub fn compute_s(c: felt252, x: felt252, k: felt252) -> felt252 {
-    let c: u384 = c.try_into().unwrap();
-    let k: u384 = k.try_into().unwrap();
-    let x: u384 = x.try_into().unwrap();
-    let so: u384 = ORDER.try_into().unwrap();
-    let modulus = TryInto::< _, CircuitModulus, >::try_into([so.limb0, so.limb1, so.limb2, so.limb3]) .unwrap();
-
-
-    // INPUT stack
-    let in0 = CircuitElement::<CircuitInput<0>> {}; // c
-    let in1 = CircuitElement::<CircuitInput<1>> {}; // x
-    let in2 = CircuitElement::<CircuitInput<2>> {}; // k
-
-    // WITNESS stack
-    let t0 = circuit_mul(in0, in1); // c * x
-    let t1 = circuit_add(t0, in2); // c * x + k
-
-    let mut circuit_inputs = (t1,).new_inputs(); // declare outputs
-
-    circuit_inputs = circuit_inputs.next(c);
-    circuit_inputs = circuit_inputs.next(x);
-    circuit_inputs = circuit_inputs.next(k);
-
-    let outputs = match circuit_inputs.done().eval(modulus) {
-        Result::Ok(outputs) => { outputs },
-        Result::Err(_) => { panic!("Expected success") },
-    };
-    let result = outputs.get_output(t1); // c * x + k
-    //These unwraps should not fail, s is computed mod CURVE ORDER < prime
-    let temp: u256 = result.try_into().unwrap();
-    temp.try_into().unwrap()
-}
-
-/// Generates a "random" number in the curve order. 
-pub fn generate_random(seed: felt252, multiplicity:felt252) -> felt252 {
-    let mut salt = 1;
-    let mut c = ORDER + 1;
-    while !in_order(c) {
-        c = PedersenTrait::new(seed)
-            .update(multiplicity)
-            .update(salt)
-        .finalize();
-        salt = salt + 1;
-    };
-    return c;
-}
+use tongo::prover::utils::{generate_random, compute_s};
 
 /// Simulate a valid transcript (A_x, c, s) for a proof of exponent y = gen**x.
 /// Output: A_x:[felt252;2], challenge: felt252, s: felt252
@@ -88,7 +32,8 @@ pub fn create_proofofbit(b:felt252, h:[felt252;2], r:felt252) -> ProofOfBit {
         let A0:NonZeroEcPoint = EcPointTrait::mul(gen, k).try_into().unwrap();
 
         let (A1, c_1, s_1) = simPOE([V_1.x(), V_1.y()], h, r);
-        let c = compute_challenge_or([A0.x(), A0.y()], A1);
+        let mut commits = array![[A0.x(), A0.y()],A1];
+        let c = challenge_commits(ref commits);
         let c_0 = feltXOR(c, c_1);
         let s_0 = compute_s(c_0, r, k);
         let pi: ProofOfBit = ProofOfBit {
@@ -109,7 +54,8 @@ pub fn create_proofofbit(b:felt252, h:[felt252;2], r:felt252) -> ProofOfBit {
 //        let V_1 = V - g;
         let k = generate_random(r,2);
         let A1:NonZeroEcPoint = EcPointTrait::mul(gen, k).try_into().unwrap();
-        let c = compute_challenge_or(A0,[A1.x(), A1.y()]);
+        let mut commits = array![A0, [A1.x(), A1.y()]];
+        let c = challenge_commits(ref commits);
         let c_1 = feltXOR(c, c_0);
         let s_1 = compute_s(c_1, r, k);
         let pi: ProofOfBit = ProofOfBit {
@@ -124,33 +70,6 @@ pub fn create_proofofbit(b:felt252, h:[felt252;2], r:felt252) -> ProofOfBit {
     }
 }
 
-pub fn create_proofofbalance(b:felt252, x:felt252, seed:felt252) -> ProofOfBalance {
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x).try_into().unwrap();
-    let r = generate_random(seed,2);
-    let mut state = EcStateTrait::init();
-        state.add_mul(b, g);
-        state.add_mul(r, y);
-    let L = state.finalize_nz().unwrap();
-    let R:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), r).try_into().unwrap();
-
-    //poe for y = g**x and L/g**b = R**x
-    let k = generate_random(seed,3);
-    let A_x: NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), k).try_into().unwrap();
-    let A_cr: NonZeroEcPoint = EcPointTrait::mul(R.try_into().unwrap(), k).try_into().unwrap();
-    let c = compute_challenge_pob([A_x.x(),A_x.y()], [A_cr.x(), A_cr.y()]);
-    let s = compute_s(c, x, k);
-
-    let pi: ProofOfBalance = ProofOfBalance {
-        L: [L.x(), L.y()],
-        R: [R.x(), R.y()],
-        A_x: [A_x.x(), A_x.y()],
-        A_cr: [A_cr.x(), A_cr.y()],
-        s_x: s,
-    };
-    
-    return pi;
-}
 
 pub fn cipher_balance(b:felt252, y:[felt252;2],random:felt252) -> ([felt252;2], [felt252;2]) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
@@ -167,7 +86,8 @@ pub fn prover_poe(g: [felt252;2], x: felt252, seed: felt252) -> ([felt252;2], fe
     let g = EcPointTrait::new_nz(*g.span()[0], *g.span()[1]).unwrap();
     let k = generate_random(seed, 1000);
     let A_x: NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), k).try_into().unwrap();
-    let c = compute_challenge([A_x.x(),A_x.y()]);
+    let mut commit = array![[A_x.x(),A_x.y()]];
+    let c = challenge_commits(ref commit);
     let s = compute_s(c, x, k);
     return ([A_x.x(), A_x.y()], c,s);
 }

@@ -9,7 +9,8 @@ use core::ec::{NonZeroEcPoint, EcPointTrait};
 pub fn prove_withdraw(inputs: InputsWithdraw, x:felt252, seed:felt252) -> ProofOfWithdraw {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let R = EcPointTrait::new_nz(*inputs.R.span()[0],  *inputs.R.span()[1]).unwrap();
-    let g_epoch = g_epoch(inputs.epoch);
+    let [g_x,g_y] = g_epoch(inputs.epoch);
+    let g_epoch = EcPointTrait::new(g_x,g_y).unwrap();
     let nonce: NonZeroEcPoint  = g_epoch.mul(x).try_into().unwrap();
 
     //poe for y = g**x and L/g**b = R**x
@@ -34,4 +35,5 @@ pub fn prove_withdraw(inputs: InputsWithdraw, x:felt252, seed:felt252) -> ProofO
     };
     return proof;
 }
+
 

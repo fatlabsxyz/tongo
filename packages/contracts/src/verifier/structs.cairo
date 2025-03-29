@@ -35,7 +35,6 @@ pub struct InputsWithdraw {
     pub R:[felt252;2], 
 }
 
-
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfWithdraw {
     pub nonce: [felt252;2],
@@ -46,12 +45,38 @@ pub struct ProofOfWithdraw {
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
-pub struct ProofOfBalance {
-    pub L:[felt252;2], 
+pub struct InputsTransfer {
+    pub y: [felt252;2],
+    pub y_bar: [felt252;2],
+    pub epoch: u64,
+    pub h: [felt252;2],
+    pub CL:[felt252;2], 
+    pub CR:[felt252;2], 
     pub R:[felt252;2], 
-    pub A_x:[felt252;2], 
-    pub A_cr:[felt252;2], 
-    pub s_x:felt252,
+    pub L:[felt252;2], 
+    pub L_bar:[felt252;2], 
+    pub V:[felt252;2], 
+    pub V2:[felt252;2], 
+}
+
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct ProofOfTransfer {
+    pub nonce: [felt252;2],
+    pub A_x: [felt252;2], 
+    pub A_n: [felt252;2],
+    pub A_r: [felt252;2], 
+    pub A_b: [felt252;2],
+    pub A_b2: [felt252;2],
+    pub A_v: [felt252;2],
+    pub A_v2:[felt252;2],
+    pub A_bar: [felt252;2],
+    pub s_x: felt252,
+    pub s_r: felt252,
+    pub s_b: felt252,
+    pub s_b2: felt252,
+    pub s_r2: felt252,
+    pub range: Span<ProofOfBit>,
+    pub range2: Span<ProofOfBit>,
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
@@ -64,4 +89,3 @@ pub struct ProofOfCipher {
     pub s_r:felt252,
     pub s_b:felt252,
 }
-

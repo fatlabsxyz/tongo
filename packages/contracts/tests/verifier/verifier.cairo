@@ -1,12 +1,13 @@
 use core::ec::stark_curve::{GEN_X, GEN_Y, ORDER};
 use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
-use tongo::verifier::verifier::{poe,pob,poc, por,oneORzero, proofoftransfer};
-use tongo::verifier::utils::{compute_challenge, in_order};
-use tongo::verifier::structs::{ ProofOfCipher};
+use tongo::verifier::verifier::{poe,poc, por,oneORzero, proofoftransfer};
+use tongo::verifier::utils::{challenge_commits, in_order};
+use tongo::verifier::structs::{ProofOfCipher};
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
 
-use crate::verifier::utils::{compute_s, generate_random, simPOE, create_proofofbit, create_proofofbalance, cipher_balance, prover_poe};
+use crate::verifier::utils::{simPOE, create_proofofbit, cipher_balance, prover_poe};
+use tongo::prover::utils::{compute_s, generate_random};
 
 
 
@@ -21,7 +22,8 @@ fn test_poe(){
     let seed = 38120931;
     let k = generate_random(seed, 1);
     let A_x: NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), k).try_into().unwrap();
-    let c = compute_challenge([A_x.x(),A_x.y()]);
+    let mut commit = array![[A_x.x(),A_x.y()]];
+    let c = challenge_commits(ref commit);
     let s = compute_s(c, x, k);
     //Verify
     poe([y.x(), y.y()], [g.x(),g.y()], [A_x.x(), A_x.y()], c, s);
@@ -73,18 +75,6 @@ fn test_OR1() {
     oneORzero(pi);
 }
 
-#[test]
-fn test_pob() {
-    //Setup of L,R
-    let seed = 123456789;
-    let x = generate_random(seed,1);
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x).try_into().unwrap();
-
-    let b = 200; 
-    let pi = create_proofofbalance(b, x, seed );
-    pob(b, [y.x(), y.y()], pi);
-}
 
 #[test]
 fn test_poc() { 
@@ -111,7 +101,8 @@ fn test_poc() {
     
     let k_r = generate_random(seed,4);
     let A_r = EcPointTrait::mul(g.try_into().unwrap(), k_r).try_into().unwrap();
-    let c = compute_challenge([A_r.x(), A_r.y()]);
+    let mut commit = array![[A_r.x(),A_r.y()]];
+    let c = challenge_commits(ref commit);
     let s_r = compute_s(c, r, k_r);
     
     let h = y.try_into().unwrap() - y_bar.try_into().unwrap();
@@ -164,7 +155,7 @@ fn test_range() {
         state.add_mul(r,h);
     let V = state.finalize_nz().unwrap();
     
-    por([V.x(), V.y()], proof);
+    por([V.x(), V.y()], proof.span());
 }
 
 #[test]

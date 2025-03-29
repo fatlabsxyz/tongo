@@ -2,7 +2,6 @@ use core::ec::stark_curve::{ORDER};
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
 use core::ec::EcPointTrait;
-use core::ec::EcPoint;
 
 // 2**32
 const MAX: u128 = 4294967296;
@@ -37,57 +36,6 @@ pub fn on_curve(coordinates: [felt252;2]) -> bool {
     return point.is_some();
 }
 
-///TODO: This function is the simple one I propose, is it hard to test because
-/// we have to find a A_x such that the challenge computed from it overflows the curve order.
-pub fn compute_challenge(A_x:[felt252;2]) -> felt252 {
-    assert!(on_curve(A_x));
-    let mut salt = 1;
-    let mut c = ORDER + 1;
-    while !in_order(c) {
-        c = PedersenTrait::new(*A_x.span()[0])
-            .update(*A_x.span()[1])
-            .update(salt)
-        .finalize();
-        salt = salt + 1;
-    };
-    return c;
-}
-
-/// Compute the challenge in the non-interactive sigma protocol needed in the proof of balance
-pub fn compute_challenge_pob(A_x:[felt252;2], A_cr:[felt252;2]) -> felt252 {
-    assert!(on_curve(A_x));
-    let mut salt = 1;
-    let mut c = ORDER + 1;
-    while !in_order(c) {
-        c = PedersenTrait::new(*A_x.span()[0])
-            .update(*A_x.span()[1])
-            .update(*A_cr.span()[0])
-            .update(*A_cr.span()[1])
-            .update(salt)
-        .finalize();
-        salt = salt + 1;
-    };
-    return c;
-}
-
-
-/// Compute the challenge in the non-interactive sigma protocol needed in the OR proof
-pub fn compute_challenge_or(A_0:[felt252;2], A_1:[felt252;2]) -> felt252 {
-    assert!(on_curve(A_0));
-    assert!(on_curve(A_1));
-    let mut salt = 1;
-    let mut c = ORDER + 1;
-    while !in_order(c) {
-        c = PedersenTrait::new(*A_0.span()[0])
-            .update(*A_0.span()[1])
-            .update(*A_1.span()[0])
-            .update(*A_1.span()[1])
-            .update(salt)
-        .finalize();
-        salt = salt + 1;
-    };
-    return c;
-}
 
 /// Reconstruct the number given its binary decomposition.
 /// TODO: uptdate this to 2**32
@@ -102,8 +50,7 @@ pub fn bin_to_num(num:[u32;6]) -> felt252 {
     s
 }
 
-
-pub fn g_epoch(epoch: u64) -> EcPoint {
+pub fn g_epoch(epoch: u64) -> [felt252;2] {
     let mut x:felt252 = 0;
     let mut salt = 1;
     while EcPointTrait::new_nz_from_x(x).is_none() {
@@ -113,7 +60,8 @@ pub fn g_epoch(epoch: u64) -> EcPoint {
         .finalize();
         salt = salt + 1;
     };
-    EcPointTrait::new_from_x(x).unwrap()
+    let g_epoch = EcPointTrait::new_nz_from_x(x).unwrap();
+    [g_epoch.x(), g_epoch.y()]
 }
 
 pub fn challenge_commits(ref commits: Array<[felt252;2]>) -> felt252 {
