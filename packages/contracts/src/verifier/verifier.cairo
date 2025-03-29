@@ -55,8 +55,8 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     poe2(inputs.L_bar, [GEN_X,GEN_Y], inputs.y_bar, proof.A_bar, c, proof.s_b,proof.s_r);
 
     // Now we need to show that V = g**b h**r with the same b and r.
-    poe2(inputs.V, [GEN_X,GEN_Y], generator_h(), proof.A_v, c, proof.s_b,proof.s_r);
-    verify_range(inputs.V, proof.range);
+    let V =  verify_range(proof.range);
+    poe2(V, [GEN_X,GEN_Y], generator_h(), proof.A_v, c, proof.s_b,proof.s_r);
 
     let CL = EcPointTrait::new(*inputs.CL.span()[0], *inputs.CL.span()[1]).unwrap();
     let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
@@ -69,10 +69,10 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
 
     // Now we need to show that V = g**b h**r2 with the same b2
-    poe2(inputs.V2, [GEN_X,GEN_Y], generator_h(), proof.A_v2, c, proof.s_b2, proof.s_r2);
-
     // This is for asserting that b2 is in range 
-    verify_range(inputs.V2, proof.range2);
+    let V2 = verify_range(proof.range2);
+    poe2(V2, [GEN_X,GEN_Y], generator_h(), proof.A_v2, c, proof.s_b2, proof.s_r2);
+
 }
 
 /// Proof of Withdraw: validate the proof needed for withdraw all balance b. The cipher balance is
@@ -178,7 +178,7 @@ pub fn oneORzero(pi: ProofOfBit) {
 /// Verify that a span of Vi = g**b_i h**r_i are encoding either b=1 or b=0 and that
 /// those bi are indeed the binary decomposition b = sum_i b_i 2**i. With the b that
 /// is encoded in V = g**b h**r. (Note that r = sim_i r_i 2**i)
-pub fn verify_range(V:[felt252;2], proof: Span<ProofOfBit>) {
+pub fn verify_range(proof: Span<ProofOfBit>) -> [felt252;2] {
     let mut i:u32 = 0;
     let mut state = EcStateTrait::init();
     let mut pow: felt252 = 1;
@@ -190,7 +190,7 @@ pub fn verify_range(V:[felt252;2], proof: Span<ProofOfBit>) {
         pow = 2*pow;
         i = i + 1; 
     };
-    let LHS = state.finalize_nz().unwrap();
-    assert!([LHS.x(), LHS.y()] == V, "failed");
+    let V = state.finalize_nz().unwrap();
+    return [V.x(), V.y()];
 }
 

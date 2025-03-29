@@ -1,5 +1,5 @@
 use core::starknet::ContractAddress;
-use crate::verifier::structs::Proof;
+use crate::verifier::structs::ProofOfTransfer;
 use crate::verifier::structs::ProofOfWithdraw;
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary, replay_protection.
 // the replay_protection should have the epoch in which the tx was generated (it is the same to the epoch in which the
@@ -18,7 +18,7 @@ pub trait ITongo<TContractState> {
         L:[felt252;2],
         L_bar:[felt252;2],
         R: [felt252;2],
-        proof: Proof,
+        proof: ProofOfTransfer,
     );
 }
 
@@ -42,11 +42,11 @@ pub mod Tongo {
         get_block_number,
     };
     
-    use crate::verifier::structs::{Proof,Inputs};
+    use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
     use crate::verifier::structs::{InputsWithdraw, ProofOfWithdraw};
     use crate::verifier::utils::{in_range };
-    use crate::verifier::verifier::verify;
     use crate::verifier::verifier::verify_withdraw;
+    use crate::verifier::verifier::verify_transfer;
     const BLOCKS_IN_EPOCH: u64 = 100;
 
     #[storage]
@@ -83,8 +83,8 @@ pub mod Tongo {
         let this_epoch = self.current_epoch();
         let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
         let inputs:InputsWithdraw = InputsWithdraw { y : from , epoch: this_epoch, amount, L:[Lx,Ly], R: [Rx,Ry]};
-        verify_withdraw(inputs, proof);
         self.validate_nonce(proof.nonce);
+        verify_withdraw(inputs, proof);
 
 //        let amount: u256 = amount.try_into().unwrap();
 //        let calldata = array![
@@ -111,14 +111,26 @@ pub mod Tongo {
         L:[felt252;2],
         L_bar:[felt252;2],
         R: [felt252;2],
-        proof: Proof,
+        proof: ProofOfTransfer,
     ) {
         self.rollover(from);
+        let ((CLx,CLy), (CRx,CRy)) = self.get_balance(from);
+        
         let this_epoch = self.current_epoch();
-        let inputs:Inputs = Inputs { y : from , epoch: this_epoch };
-        verify(inputs, proof);
-
+        let inputs:InputsTransfer = InputsTransfer {
+            y: from ,
+            y_bar: to,
+            epoch: this_epoch,
+            CL: [CLx,CLy],
+            CR: [CRx,CRy],
+            R: R,
+            L: L,
+            L_bar:L_bar,
+        };
+        
         self.validate_nonce(proof.nonce);
+        verify_transfer(inputs, proof);
+
 
         // verificar la prueva with respect to balance + pending
 
@@ -239,10 +251,10 @@ pub mod Tongo {
         let this_epoch = self.current_epoch();
         let buffer_epoch = self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).read();
 
-        if buffer_epoch == this_epoch -1 {return ;}; 
+        if buffer_epoch == this_epoch {return ;}; 
         self.buffer_to_balance(y);
         self.buffer.entry((*y.span()[0],  *y.span()[1])).write( ((0,0),(0,0)) );
-        self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).write(0);
+        self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).write(this_epoch);
         //TODO: Should be reseted to 0 or to this_epoch?
     }
 

@@ -53,8 +53,6 @@ pub struct InputsTransfer {
     pub R:[felt252;2], 
     pub L:[felt252;2], 
     pub L_bar:[felt252;2], 
-    pub V:[felt252;2], 
-    pub V2:[felt252;2], 
 }
 
 #[derive(Serde, Drop, Debug, Copy)]

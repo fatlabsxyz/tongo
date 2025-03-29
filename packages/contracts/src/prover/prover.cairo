@@ -58,12 +58,12 @@ pub fn prove_transfer(
     let nonce: NonZeroEcPoint  = g_epoch.mul(x).try_into().unwrap();
     
     
-    let (r, V, proof ) = prove_range(b.try_into().unwrap(), generate_random(seed+1, 1));
+    let (r, proof ) = prove_range(b.try_into().unwrap(), generate_random(seed+1, 1));
     let (L,R) = cipher_balance(b, [y.x(), y.y()], r);
     let (L_bar,_R_bar) = cipher_balance(b, y_bar, r);
 
     let b_left = b0-b;
-    let (r2, V2, proof2 ) = prove_range(b_left.try_into().unwrap(), generate_random(seed+2, 1));
+    let (r2, proof2 ) = prove_range(b_left.try_into().unwrap(), generate_random(seed+2, 1));
 
 
     let CR = EcPointTrait::new(*CR.span()[0], *CR.span()[1]).unwrap();
@@ -132,8 +132,6 @@ pub fn prove_transfer(
         R:[R.try_into().unwrap().x(), R.try_into().unwrap().y()],
         L:L,
         L_bar,
-        V:V,
-        V2:V2,
     };
 
     let proof: ProofOfTransfer = ProofOfTransfer {
@@ -209,10 +207,7 @@ pub fn prove_bit(b:u8, r:felt252) -> ProofOfBit {
 }
 
 /// Generate a element V = g**b h**r with a proof that b belongs to a range.
-pub fn prove_range(b: u32, seed:felt252) -> (felt252, [felt252;2], Span<ProofOfBit>) {
-    let g:NonZeroEcPoint = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
-    let [hx,hy] = generator_h();
-    let h = EcPointTrait::new_nz(hx,hy).unwrap();
+pub fn prove_range(b: u32, seed:felt252) -> (felt252, Span<ProofOfBit>) {
     let b_bin = to_binary(b);
     
     let mut proof = array![];
@@ -230,13 +225,10 @@ pub fn prove_range(b: u32, seed:felt252) -> (felt252, [felt252;2], Span<ProofOfB
     let mut r: felt252 = 0;
     let mut i:u32 = 0;
     while i < 32 {
+        //this magic trick let us sum compute de correct random
         r = compute_s(*R[i],pow,r);
         i = i+1;
         pow = 2*pow;
     };
-    let mut state = EcStateTrait::init();
-        state.add_mul(b.try_into().unwrap(),g);
-        state.add_mul(r,h);
-    let V = state.finalize_nz().unwrap();
-    return (r, [V.x(), V.y()], proof.span());
+    return (r, proof.span());
 }

@@ -4,7 +4,6 @@ use tongo::verifier::verifier::{poe,poc, verify_range,oneORzero};
 use tongo::verifier::utils::{challenge_commits};
 use tongo::verifier::structs::{ProofOfCipher};
 
-use crate::verifier::utils::{prover_poe};
 use tongo::prover::utils::{compute_s, generate_random, simPOE};
 use tongo::prover::prover::{prove_bit, prove_range};
 
@@ -26,9 +25,6 @@ fn test_poe(){
     let s = compute_s(c, x, k);
     //Verify
     poe([y.x(), y.y()], [g.x(),g.y()], [A_x.x(), A_x.y()], c, s);
-    
-    let (A_x,c, s ) = prover_poe([GEN_X, GEN_Y],x, seed);
-    poe([y.x(), y.y()], [g.x(),g.y()], A_x, c, s);
 }
 
 #[test]
@@ -118,7 +114,7 @@ fn test_poc() {
 fn test_range() {
     let seed = 128309213893;
     let b = 18; 
-    let (_ , V, proof) = prove_range(b, seed);
-    verify_range(V, proof)
+    let (_ , proof) = prove_range(b, seed);
+    let _V = verify_range(proof);
 }
 

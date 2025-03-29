@@ -1,9 +1,8 @@
 use core::ec::{EcPointTrait};
 use core::ec::{NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X,GEN_Y};
-use crate::verifier::utils::{cipher_balance};
 
-use tongo::prover::utils::{generate_random};
+use tongo::prover::utils::{cipher_balance, generate_random};
 use tongo::prover::prover::{ prove_transfer};
 use tongo::verifier::verifier::verify_transfer;
 
