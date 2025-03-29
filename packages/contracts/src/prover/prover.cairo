@@ -3,10 +3,10 @@ use crate::verifier::structs::{ProofOfWithdraw, InputsWithdraw};
 use crate::verifier::structs::{ ProofOfBit };
 
 use crate::verifier::utils::{g_epoch, challenge_commits, generator_h, feltXOR};
-use crate::prover::utils::{generate_random, compute_s, simPOE};
+use crate::prover::utils::{generate_random, compute_s, simPOE, to_binary};
 
 use core::ec::stark_curve::{GEN_X,GEN_Y};
-use core::ec::{NonZeroEcPoint, EcPointTrait};
+use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait};
 
 
 pub fn prove_withdraw(inputs: InputsWithdraw, x:felt252, seed:felt252) -> ProofOfWithdraw {
@@ -107,4 +107,37 @@ pub fn prove_bit(b:u8, r:felt252) -> ProofOfBit {
             s1:s_1};
         return pi;
     }
+}
+
+/// Generate a element V = g**b h**r with a proof that b belongs to a range.
+pub fn prove_range(b: u32, seed:felt252) -> (felt252, [felt252;2], Span<ProofOfBit>) {
+    let g:NonZeroEcPoint = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
+    let [hx,hy] = generator_h();
+    let h = EcPointTrait::new_nz(hx,hy).unwrap();
+    let b_bin = to_binary(b);
+    
+    let mut proof = array![];
+    let mut R = array![];
+    let mut i:u32 = 0;
+    while i < 32 {
+        let r = generate_random(seed, i.try_into().unwrap()+1);
+        let pi = prove_bit(*b_bin[i],r);
+        R.append(r);
+        proof.append(pi);
+        i = i + 1;
+    };
+
+    let mut pow:felt252 = 1;
+    let mut r: felt252 = 0;
+    let mut i:u32 = 0;
+    while i < 32 {
+        r = compute_s(*R[i],pow,r);
+        i = i+1;
+        pow = 2*pow;
+    };
+    let mut state = EcStateTrait::init();
+        state.add_mul(b.try_into().unwrap(),g);
+        state.add_mul(r,h);
+    let V = state.finalize_nz().unwrap();
+    return (r, [V.x(), V.y()], proof.span());
 }

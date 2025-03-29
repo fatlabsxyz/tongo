@@ -6,8 +6,6 @@ use tongo::verifier::utils::{challenge_commits};
 
 use tongo::prover::utils::{generate_random, compute_s};
 
-
-
 pub fn cipher_balance(b:felt252, y:[felt252;2],random:felt252) -> ([felt252;2], [felt252;2]) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y = EcPointTrait::new_nz(*y.span()[0], *y.span()[1]).unwrap();

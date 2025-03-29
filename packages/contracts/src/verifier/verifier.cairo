@@ -1,12 +1,10 @@
 use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
-use core::ec::stark_curve::{GEN_X, GEN_Y,ORDER};
+use core::ec::stark_curve::{GEN_X, GEN_Y};
 use crate::verifier::utils::{in_order, on_curve};
 use crate::verifier::utils::{g_epoch, generator_h};
 use crate::verifier::utils::{feltXOR, challenge_commits};
 use crate::verifier::structs::{Inputs,InputsWithdraw, Proof, ProofOfBit, ProofOfCipher, ProofOfWithdraw};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
-use core::pedersen::PedersenTrait;
-use core::hash::HashStateTrait;
 
 
 pub fn verify(inputs:Inputs, proof:Proof) {
@@ -17,6 +15,17 @@ pub fn verify(inputs:Inputs, proof:Proof) {
     poe(proof.nonce, g_epoch(inputs.epoch), proof.A_n, c, proof.s_x);
 }
 
+/// Transfer b from y = g**x to y_bar.  Public inputs: y, y_bar L = g**b y**r, L_bar = g**b y_bar**r, R = g**r.
+/// We need to prove:
+/// 1) knowlede of x in y = g**x.
+/// 2) knowlede of r in R = g**r.
+/// 3) knowlede of b and r in L = g**b y**r with the same r that 2)
+/// 4) knowlede of b and r in L_bar = g**b y_bar**r with the same r that 2) and same b that 3)
+/// 5) b is in range [0,2**n-1]. For this we commit V = g**b h**r and an array of n  V_i = g**bi h**ri. r = sum 2**i r_i
+/// 5b) proof that bi are either 0 or 1.
+/// 5c) knowledge of b and r in V = g**b y**r with the same r that 2) and b that 3)
+/// 6) The proof neceary to show that the remaining balance is in range.
+/// TODO: finish the doc
 pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let mut commits = array![
         proof.A_x,
@@ -47,7 +56,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
     // Now we need to show that V = g**b h**r with the same b and r.
     poe2(inputs.V, [GEN_X,GEN_Y], generator_h(), proof.A_v, c, proof.s_b,proof.s_r);
-    por(inputs.V, proof.range);
+    verify_range(inputs.V, proof.range);
 
     let CL = EcPointTrait::new(*inputs.CL.span()[0], *inputs.CL.span()[1]).unwrap();
     let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
@@ -63,7 +72,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     poe2(inputs.V2, [GEN_X,GEN_Y], generator_h(), proof.A_v2, c, proof.s_b2, proof.s_r2);
 
     // This is for asserting that b2 is in range 
-    por(inputs.V2, proof.range2);
+    verify_range(inputs.V2, proof.range2);
 }
 
 /// Proof of Withdraw: validate the proof needed for withdraw all balance b. The cipher balance is
@@ -166,11 +175,10 @@ pub fn oneORzero(pi: ProofOfBit) {
     poe([V1.x(), V1.y()],generator_h(),pi.A1,c1,pi.s1);
 }
 
-///TODO: think if h = y leads to a posible attack.
-/// rta: Yes. Given V = g**b h**r if h has a known log with respect to b then a proof can be forge to any value of b.
-/// solution. h has to be another generator without known log with respecto to g. I think the standar way of select one
-/// is the nothing-up-my-sleve algorithm. research. 
-pub fn por(V:[felt252;2], proof: Span<ProofOfBit>) {
+/// Verify that a span of Vi = g**b_i h**r_i are encoding either b=1 or b=0 and that
+/// those bi are indeed the binary decomposition b = sum_i b_i 2**i. With the b that
+/// is encoded in V = g**b h**r. (Note that r = sim_i r_i 2**i)
+pub fn verify_range(V:[felt252;2], proof: Span<ProofOfBit>) {
     let mut i:u32 = 0;
     let mut state = EcStateTrait::init();
     let mut pow: felt252 = 1;
@@ -186,99 +194,3 @@ pub fn por(V:[felt252;2], proof: Span<ProofOfBit>) {
     assert!([LHS.x(), LHS.y()] == V, "failed");
 }
 
-/// Transfer b from y = g**x to y_bar.  Public inputs: y, y_bar L = g**b y**r, L_bar = g**b y_bar**r, R = g**r.
-/// We need to prove:
-/// 1) knowlede of x in y = g**x.
-/// 2) knowlede of r in R = g**r.
-/// 3) knowlede of b and r in L = g**b y**r with the same r that 2)
-/// 4) knowlede of b and r in L_bar = g**b y_bar**r with the same r that 2) and same b that 3)
-/// 5) b is in range [0,2**n-1]. For this we commit V = g**b h**r and an array of n  V_i = g**bi h**ri. r = sum 2**i r_i
-/// 5b) proof that bi are either 0 or 1.
-/// 5c) knowledge of b and r in V = g**b y**r with the same r that 2) and b that 3)
-/// 6) The proof neceary to show that the remaining balance is in range.
-/// TODO: finish the doc
-pub fn proofoftransfer(
-        CL:[felt252;2],
-        CR:[felt252;2],
-        y:[felt252;2],
-        y_bar:[felt252;2],
-        h:[felt252;2],
-        L:[felt252;2],
-        L_bar:[felt252;2],
-        R:[felt252;2],
-        A_r:[felt252;2],
-        A_x:[felt252;2],
-        //A_b = g**kb y**kr
-        A_b:[felt252;2],
-        A_bar:[felt252;2],
-        A_v:[felt252;2],
-        A_b2:[felt252;2],
-        A_v2:[felt252;2],
-        s_r:felt252,
-        s_x:felt252,
-        s_b:felt252,
-        s_b2:felt252,
-        s_r2:felt252,
-        V:[felt252;2],
-        V2:[felt252;2],
-        proof: Array<ProofOfBit>,
-        proof2: Array<ProofOfBit>,
-    ) {
-
-    // TODO: h tiene que estar hardcodeado en el verifier.
-    let mut salt = 1;
-    let mut c = ORDER + 1;
-    while !in_order(c) {
-        c = PedersenTrait::new(*A_x.span()[0])
-            .update(*A_x.span()[1])
-            .update(*A_r.span()[0])
-            .update(*A_r.span()[1])
-            .update(*A_b.span()[0])
-            .update(*A_b.span()[1])
-            .update(*A_bar.span()[0])
-            .update(*A_bar.span()[1])
-            .update(*A_v.span()[0])
-            .update(*A_v.span()[1])
-            .update(*A_b2.span()[0])
-            .update(*A_b2.span()[1])
-            .update(*A_v2.span()[0])
-            .update(*A_v2.span()[1])
-            .update(salt)
-        .finalize();
-        salt = salt + 1;
-    };
-
-    // This is for asserting knowledge of x
-    poe(y, [GEN_X,GEN_Y], A_x, c, s_x);
-    
-    // This is for asserting R = g**r
-    poe(R, [GEN_X,GEN_Y], A_r, c, s_r );
-    
-    //This is for asserting L = g**b y**r
-    poe2(L, [GEN_X,GEN_Y], y, A_b, c, s_b,s_r);
-
-    //This is for asserting L_bar = g**b y_bar**r
-    poe2(L_bar, [GEN_X,GEN_Y], y_bar, A_bar, c, s_b,s_r);
-
-    // Now we need to show that V = g**b h**r with the same b and r.
-    poe2(V, [GEN_X,GEN_Y], h, A_v, c, s_b,s_r);
-
-    // This is for asserting that b is in range 
-    por(V, proof.span());
-
-    let CL = EcPointTrait::new(*CL.span()[0], *CL.span()[1]).unwrap();
-    let L = EcPointTrait::new(*L.span()[0], *L.span()[1]).unwrap();
-    let Y:NonZeroEcPoint = (CL - L).try_into().unwrap();
-
-    let CR = EcPointTrait::new(*CR.span()[0], *CR.span()[1]).unwrap();
-    let R = EcPointTrait::new(*R.span()[0], *R.span()[1]).unwrap();
-    let G:NonZeroEcPoint = (CR - R).try_into().unwrap();
-    poe2([Y.x(), Y.y()], [GEN_X, GEN_Y], [G.x(), G.y()], A_b2,c, s_b2, s_x );
-
-
-    // Now we need to show that V = g**b h**r2 with the same b2
-    poe2(V2, [GEN_X,GEN_Y], h, A_v2, c, s_b2,s_r2);
-
-    // This is for asserting that b2 is in range 
-    por(V2, proof2.span());
-}

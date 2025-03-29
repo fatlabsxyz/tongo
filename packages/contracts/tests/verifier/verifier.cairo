@@ -1,12 +1,12 @@
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
-use tongo::verifier::verifier::{poe,poc, por,oneORzero};
-use tongo::verifier::utils::{challenge_commits, generator_h};
+use tongo::verifier::verifier::{poe,poc, verify_range,oneORzero};
+use tongo::verifier::utils::{challenge_commits};
 use tongo::verifier::structs::{ProofOfCipher};
 
-use crate::verifier::utils::{ prover_poe};
-use tongo::prover::utils::{compute_s, generate_random, to_binary, simPOE};
-use tongo::prover::prover::{prove_bit};
+use crate::verifier::utils::{prover_poe};
+use tongo::prover::utils::{compute_s, generate_random, simPOE};
+use tongo::prover::prover::{prove_bit, prove_range};
 
 
 
@@ -116,38 +116,9 @@ fn test_poc() {
 
 #[test]
 fn test_range() {
-    let seed = 47198274198273;
-    let g:NonZeroEcPoint = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
-    let [hx,hy] = generator_h();
-    let h = EcPointTrait::new_nz(hx,hy).unwrap();
-    //b = 3529162937 = 0b11010010010110101100000010111001
-    // in bigintheend: 10011101000000110101101001001011
-    let b0 = 3529162937;
-    let b = to_binary(b0);
-    let mut proof = array![];
-    let mut R = array![];
-    let mut i:u32 = 0;
-    while i < 32 {
-        let r = generate_random(seed, i.try_into().unwrap()+1);
-        let pi = prove_bit(*b[i],r);
-        R.append(r);
-        proof.append(pi);
-        i = i + 1;
-    };
-
-    let mut pow:felt252 = 1;
-    let mut r: felt252 = 0;
-    let mut i:u32 = 0;
-    while i < 32 {
-        r = compute_s(*R[i],pow,r);
-        i = i+1;
-        pow = 2*pow;
-    };
-    let mut state = EcStateTrait::init();
-        state.add_mul(b0.try_into().unwrap(),g);
-        state.add_mul(r,h);
-    let V = state.finalize_nz().unwrap();
-    
-    por([V.x(), V.y()], proof.span());
+    let seed = 128309213893;
+    let b = 18; 
+    let (_ , V, proof) = prove_range(b, seed);
+    verify_range(V, proof)
 }
 
