@@ -1,5 +1,5 @@
-use core::ec::stark_curve::{ORDER};
-use core::ec::EcPointTrait;
+use core::ec::stark_curve::{GEN_X, GEN_Y, ORDER};
+use core::ec::{EcPointTrait, EcStateTrait};
 use core::ec::NonZeroEcPoint;
 use core::pedersen::PedersenTrait;
 use core::hash::{HashStateTrait};
@@ -90,4 +90,16 @@ pub fn simPOE(y:[felt252;2], gen:[felt252;2], seed:felt252) -> ([felt252;2], fel
     let temp2 = EcPointTrait::mul(y, c.try_into().unwrap());
     let A:NonZeroEcPoint = (temp1 - temp2).try_into().unwrap();
     return ([A.x(),A.y()],c,s);
+}
+
+/// Generates the ciphertext of the balace in the form  (L,R) = (g**b y **r , g**r)
+pub fn cipher_balance(b:felt252, y:[felt252;2], random:felt252) -> ([felt252;2], [felt252;2]) {
+    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
+    let y = EcPointTrait::new_nz(*y.span()[0], *y.span()[1]).unwrap();
+    let mut state = EcStateTrait::init();
+        state.add_mul(b,g);
+        state.add_mul(random,y);
+    let L = state.finalize_nz().unwrap();
+    let R:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), random).try_into().unwrap();
+    return ([L.x(),L.y()], [R.x(), R.y()]);
 }
