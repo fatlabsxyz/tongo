@@ -253,9 +253,10 @@ pub mod Tongo {
 
         if buffer_epoch == this_epoch {return ;}; 
         self.buffer_to_balance(y);
+
+        //TODO: These write is reduntand in the transfer and withdraw
         self.buffer.entry((*y.span()[0],  *y.span()[1])).write( ((0,0),(0,0)) );
         self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).write(this_epoch);
-        //TODO: Should be reseted to 0 or to this_epoch?
     }
 
     fn get_transfer(self: @ContractState, amount: felt252) {
