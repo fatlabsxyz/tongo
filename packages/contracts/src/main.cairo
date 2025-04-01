@@ -1,6 +1,5 @@
 use core::starknet::ContractAddress;
-use crate::verifier::structs::ProofOfTransfer;
-use crate::verifier::structs::ProofOfWithdraw;
+use crate::verifier::structs::{ProofOfTransfer, ProofOfWithdraw};
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary, replay_protection.
 // the replay_protection should have the epoch in which the tx was generated (it is the same to the epoch in which the
 // tx is expected to pass) signed by the private key x of y = g**x, with  the selector_calldata and posiblly the proof itself.
@@ -24,10 +23,7 @@ pub trait ITongo<TContractState> {
 
 #[starknet::contract]
 pub mod Tongo {
-    pub const STRK_ADDRESS: felt252= 0x49D36570D4E46F48E99674BD3FCC84644DDD6B96F7C741B1562B82F9E004DC7;
-    use core::ec::EcStateTrait;
-    use core::ec::EcPointTrait;
-    use core::ec::{EcPoint};
+    use core::ec::{EcPoint, EcPointTrait,  EcStateTrait};
     use core::ec::stark_curve::{GEN_X, GEN_Y};
     use core::starknet::{
         storage::StoragePointerReadAccess,
@@ -42,12 +38,10 @@ pub mod Tongo {
         get_block_number,
     };
     
-    use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
-    use crate::verifier::structs::{InputsWithdraw, ProofOfWithdraw};
-    use crate::verifier::utils::{in_range };
-    use crate::verifier::verifier::verify_withdraw;
-    use crate::verifier::verifier::verify_transfer;
-    const BLOCKS_IN_EPOCH: u64 = 100;
+    use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer, InputsWithdraw, ProofOfWithdraw};
+    use crate::verifier::verifier::{verify_withdraw, verify_transfer};
+    use crate::verifier::utils::{in_range};
+    use crate::constants::{STRK_ADDRESS, BLOCKS_IN_EPOCH};
 
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are stored
@@ -275,12 +269,10 @@ pub mod Tongo {
     }
 
     fn validate_nonce(ref self: ContractState, nonce: [felt252;2]) {
-        //construct the 
         assert(self.nonce.entry(*nonce.span()[0]).read() == false, 'Tx already used in epoch');
     }
 
     fn update_nonce(ref self: ContractState, nonce: [felt252;2]) {
-        //construct the 
         self.nonce.entry(*nonce.span()[0]).write(true);
     }
 
