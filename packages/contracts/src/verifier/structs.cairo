@@ -12,6 +12,16 @@ pub struct ProofOfBit {
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
+pub struct ProofOfBit2 {
+    pub V:[felt252;2],
+    pub A:[felt252;2],
+    pub B:[felt252;2],
+    pub sb: felt252,
+    pub sr: felt252,
+    pub z: felt252,
+}
+
+#[derive(Serde, Drop, Debug, Copy)]
 pub struct InputsWithdraw {
     pub y: [felt252;2],
     pub epoch: u64,

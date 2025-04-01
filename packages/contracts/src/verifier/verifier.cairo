@@ -3,7 +3,7 @@ use core::ec::stark_curve::{GEN_X, GEN_Y};
 use crate::verifier::utils::{in_order, on_curve};
 use crate::verifier::utils::{g_epoch, generator_h};
 use crate::verifier::utils::{feltXOR, challenge_commits};
-use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWithdraw};
+use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWithdraw, ProofOfBit2};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
 
 
@@ -166,3 +166,18 @@ pub fn verify_range(proof: Span<ProofOfBit>) -> [felt252;2] {
     return [V.x(), V.y()];
 }
 
+pub fn alternative_oneORzero(proof:ProofOfBit2) {
+    let [h_x, h_y] = generator_h();
+    
+    let mut commits = array![proof.A, proof.B];
+    let c = challenge_commits(ref commits);
+
+    poe2(proof.V, [GEN_X,GEN_Y], generator_h(),proof.A,c ,proof.sb, proof.sr );
+
+    let h = EcPointTrait::new(h_x,h_y).unwrap();
+    let V = EcPointTrait::new(*proof.V.span()[0],*proof.V.span()[1]).unwrap();
+    let B = EcPointTrait::new(*proof.B.span()[0],*proof.B.span()[1]).unwrap();
+    let LHS = h.mul(proof.z);
+    let RHS = V.mul(c) - V.mul(proof.sb) + B;
+    assert!(LHS.try_into().unwrap().coordinates() == RHS.try_into().unwrap().coordinates(), "asd2");
+}

@@ -47,6 +47,46 @@ pub fn compute_s(c: felt252, x: felt252, k: felt252) -> felt252 {
     temp.try_into().unwrap()
 }
 
+
+use core::circuit::circuit_sub;
+/// Computes r (c - sb) + t
+pub fn compute_z(c: felt252, r: felt252, sb: felt252, t:felt252) -> felt252 {
+    let r: u384 = r.try_into().unwrap();
+    let sb: u384 = sb.try_into().unwrap();
+    let c: u384 = c.try_into().unwrap();
+    let t: u384 = t.try_into().unwrap();
+    let so: u384 = ORDER.try_into().unwrap();
+    let modulus = TryInto::< _, CircuitModulus, >::try_into([so.limb0, so.limb1, so.limb2, so.limb3]) .unwrap();
+
+
+    // INPUT stack
+    let in0 = CircuitElement::<CircuitInput<0>> {}; // x
+    let in1 = CircuitElement::<CircuitInput<1>> {}; // r
+    let in2 = CircuitElement::<CircuitInput<2>> {}; // f
+    let in3 = CircuitElement::<CircuitInput<3>> {}; // t
+
+    // WITNESS stack
+    let t0 = circuit_sub(in0, in2); // (x-f)
+    let t1 = circuit_mul(t0, in1); // r(x-f)
+    let t2 = circuit_add(t1, in3); // r(x-f) + t
+
+    let mut circuit_inputs = (t2,).new_inputs(); // declare outputs
+
+    circuit_inputs = circuit_inputs.next(c);
+    circuit_inputs = circuit_inputs.next(r);
+    circuit_inputs = circuit_inputs.next(sb);
+    circuit_inputs = circuit_inputs.next(t);
+
+    let outputs = match circuit_inputs.done().eval(modulus) {
+        Result::Ok(outputs) => { outputs },
+        Result::Err(_) => { panic!("Expected success") },
+    };
+    let result = outputs.get_output(t2); // c * x - k
+    //These unwraps should not fail, s is computed mod CURVE ORDER < prime
+    let temp: u256 = result.try_into().unwrap();
+    temp.try_into().unwrap()
+}
+
 /// Generates a "random" number in the curve order. 
 pub fn generate_random(seed: felt252, multiplicity:felt252) -> felt252 {
     let mut salt = 1;

@@ -72,3 +72,25 @@ fn test_range() {
     let _V = verify_range(proof);
 }
 
+use tongo::verifier::verifier::alternative_oneORzero;
+use tongo::prover::prover::alternative_prove_bit;
+#[test]
+fn alternative_OR1(){
+    let seed = 1293812;
+    let r = generate_random(seed,1);
+    let b = 1;
+    let proof = alternative_prove_bit(b,r);
+
+    alternative_oneORzero(proof);
+}
+
+
+#[test]
+fn alternative_OR0(){
+    let seed = 1293812;
+    let r = generate_random(seed,1);
+    let b = 0;
+    let proof = alternative_prove_bit(b,r);
+
+    alternative_oneORzero(proof);
+}

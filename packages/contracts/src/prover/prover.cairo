@@ -1,9 +1,9 @@
 use crate::verifier::structs::{ProofOfWithdraw, InputsWithdraw};
 use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
-use crate::verifier::structs::{ ProofOfBit };
+use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 
 use crate::verifier::utils::{g_epoch, challenge_commits, generator_h, feltXOR};
-use crate::prover::utils::{generate_random, compute_s, simPOE, to_binary, cipher_balance};
+use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_binary, cipher_balance};
 
 use core::ec::stark_curve::{GEN_X,GEN_Y};
 use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait};
@@ -231,4 +231,38 @@ pub fn prove_range(b: u32, seed:felt252) -> (felt252, Span<ProofOfBit>) {
         pow = 2*pow;
     };
     return (r, proof.span());
+}
+
+
+pub fn alternative_prove_bit(b:u8, r:felt252) -> ProofOfBit2 {
+    let seed = 1293812;
+    let b:felt252 = b.try_into().unwrap();
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+    let [h_x, h_y] = generator_h();
+    let h = EcPointTrait::new(h_x,h_y).unwrap();
+
+    let V:NonZeroEcPoint = (g.mul(b) + h.mul(r)).try_into().unwrap();
+
+    let kb = generate_random(seed,2);
+    let kr = generate_random(seed,3);
+    let t = generate_random(seed,4);
+    
+    let A:NonZeroEcPoint = (g.mul(kb) + h.mul(kr)).try_into().unwrap();
+    let B:NonZeroEcPoint = (g.mul(b*kb) + h.mul(t)).try_into().unwrap();
+    
+    let mut commits = array![[A.x(), A.y()],[B.x(),B.y()]];
+    let c = challenge_commits(ref commits);
+
+    let sb = compute_s(c,b,kb);
+    let sr = compute_s(c,r,kr);
+    let z = compute_z(c,r,sb,t);
+
+    ProofOfBit2 {
+        V: [V.x(), V.y()],
+        A: [A.x(), A.y()],
+        B: [B.x(), B.y()],
+        sb: sb,
+        sr: sr,
+        z:z,
+    }
 }
