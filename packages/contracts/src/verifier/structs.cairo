@@ -12,20 +12,6 @@ pub struct ProofOfBit {
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
-pub struct Proof {
-    pub nonce: [felt252;2],
-    pub A_n: [felt252;2],
-    pub A_x: [felt252;2],
-    pub s_x: felt252,
-}
-
-#[derive(Serde, Drop, Debug, Copy)]
-pub struct Inputs {
-    pub y: [felt252;2],
-    pub epoch: u64,
-}
-
-#[derive(Serde, Drop, Debug, Copy)]
 pub struct InputsWithdraw {
     pub y: [felt252;2],
     pub epoch: u64,
@@ -75,13 +61,3 @@ pub struct ProofOfTransfer {
     pub range2: Span<ProofOfBit>,
 }
 
-#[derive(Serde, Drop, Debug, Copy)]
-pub struct ProofOfCipher {
-    pub L:[felt252;2], 
-    pub L_bar:[felt252;2], 
-    pub R:[felt252;2], 
-    pub A_r:[felt252;2], 
-    pub A_b:[felt252;2], 
-    pub s_r:felt252,
-    pub s_b:felt252,
-}

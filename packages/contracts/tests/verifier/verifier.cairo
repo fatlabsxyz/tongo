@@ -1,8 +1,7 @@
 use core::ec::stark_curve::{GEN_X, GEN_Y};
-use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
-use tongo::verifier::verifier::{poe,poc, verify_range,oneORzero};
+use core::ec::{EcPointTrait, NonZeroEcPoint};
+use tongo::verifier::verifier::{poe, verify_range,oneORzero};
 use tongo::verifier::utils::{challenge_commits};
-use tongo::verifier::structs::{ProofOfCipher};
 
 use tongo::prover::utils::{compute_s, generate_random, simPOE};
 use tongo::prover::prover::{prove_bit, prove_range};
@@ -62,51 +61,6 @@ fn test_OR1() {
     
     let pi = prove_bit(1,r);
     oneORzero(pi);
-}
-
-
-#[test]
-fn test_poc() { 
-    let seed = 73198273;
-    let x = generate_random(seed,1);
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x).try_into().unwrap();
-    let x_bar = generate_random(seed,2);
-    let y_bar:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x_bar).try_into().unwrap();
-    let r = generate_random(seed,3);
-    let R = EcPointTrait::mul(g.try_into().unwrap(), r).try_into().unwrap();
-    let r2 = r;
-    let b = 20;
-    let mut state = EcStateTrait::init();
-        state.add_mul(b,g);
-        state.add_mul(r2,y);
-    let L = state.finalize_nz().unwrap();
-
-    let b_bar = 20;
-    let mut state = EcStateTrait::init();
-        state.add_mul(b_bar,g);
-        state.add_mul(r2,y_bar);
-    let L_bar = state.finalize_nz().unwrap();
-    
-    let k_r = generate_random(seed,4);
-    let A_r = EcPointTrait::mul(g.try_into().unwrap(), k_r).try_into().unwrap();
-    let mut commit = array![[A_r.x(),A_r.y()]];
-    let c = challenge_commits(ref commit);
-    let s_r = compute_s(c, r, k_r);
-    
-    let h = y.try_into().unwrap() - y_bar.try_into().unwrap();
-    let A_b = EcPointTrait::mul(h, k_r).try_into().unwrap();
-    
-    let pi: ProofOfCipher = ProofOfCipher {
-        L:[L.x(),L.y()],
-        L_bar:[L_bar.x(),L_bar.y()],
-        R:[R.x(),R.y()],
-        A_r:[A_r.x(), A_r.y()],
-        A_b:[A_b.x(), A_b.y()],
-        s_r,
-        s_b:1000,
-    };
-    poc([y.x(),y.y()], [y_bar.x(), y_bar.y()], pi);
 }
 
 

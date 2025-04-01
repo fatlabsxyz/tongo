@@ -3,17 +3,9 @@ use core::ec::stark_curve::{GEN_X, GEN_Y};
 use crate::verifier::utils::{in_order, on_curve};
 use crate::verifier::utils::{g_epoch, generator_h};
 use crate::verifier::utils::{feltXOR, challenge_commits};
-use crate::verifier::structs::{Inputs,InputsWithdraw, Proof, ProofOfBit, ProofOfCipher, ProofOfWithdraw};
+use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWithdraw};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
 
-
-pub fn verify(inputs:Inputs, proof:Proof) {
-    let mut commits = array![proof.A_x, proof.A_n];
-    let c = challenge_commits(ref commits);
-    poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
-//    let g_epoch:NonZeroEcPoint = g_epoch(inputs.epoch).try_into().unwrap();
-    poe(proof.nonce, g_epoch(inputs.epoch), proof.A_n, c, proof.s_x);
-}
 
 /// Transfer b from y = g**x to y_bar.  Public inputs: y, y_bar L = g**b y**r, L_bar = g**b y_bar**r, R = g**r.
 /// We need to prove:
@@ -133,26 +125,6 @@ pub fn poe2(y: [felt252;2], g1: [felt252;2],g2:[felt252;2], A: [felt252;2], c:fe
         state.add_mul(c, y);
     let RHS = state.finalize_nz().unwrap();
     assert!(LHS.coordinates() == RHS.coordinates(), "Failed the proof of exponent");
-}
-
-/// Prof of Ciphertext: validate the proof that the two ciphertext (L,R) = (g**b y**r, g**r ) and (L_bar, R) = (g**b y_bar**r , g**r)
-/// are valids ciphertext for b under y and y_bar with the same r and the same b.
-pub fn poc(y:[felt252;2], y_bar:[felt252;2], pi: ProofOfCipher) {
-
-    let mut commits = array![pi.A_r];
-    let c = challenge_commits(ref commits);
-    poe(pi.R, [GEN_X,GEN_Y], pi.A_r, c, pi.s_r );
-    
-    let y_p = EcPointTrait::new(*y.span()[0], *y.span()[1]).unwrap();
-    let y_barp = EcPointTrait::new(*y_bar.span()[0], *y_bar.span()[1]).unwrap();
-    let h: NonZeroEcPoint = (y_p - y_barp).try_into().unwrap();
-
-    let L_p = EcPointTrait::new(*pi.L.span()[0], *pi.L.span()[1]).unwrap();
-    let L_barp = EcPointTrait::new(*pi.L_bar.span()[0], *pi.L_bar.span()[1]).unwrap();
-    let h_r:NonZeroEcPoint = (L_p - L_barp).try_into().unwrap();
-    
-    poe([h_r.x(),h_r.y()], [h.x(), h.y()], pi.A_b, c, pi.s_r);
-    //TODO: This has to be complemented with the proof of range
 }
 
 /// Proof of Bit: validate that a commited V = g**b h**r is the ciphertext of  either b=0 OR b=1. 
