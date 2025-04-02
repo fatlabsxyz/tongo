@@ -8,7 +8,8 @@ use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_bin
 use core::ec::stark_curve::{GEN_X,GEN_Y};
 use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait};
 
-
+/// Generate the prove necesary to make a withdraw transaction. In this version the withdraw is for all the balance
+/// that is stored in the y=g**x account.
 pub fn prove_withdraw(inputs: InputsWithdraw, x:felt252, seed:felt252) -> ProofOfWithdraw {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let R = EcPointTrait::new_nz(*inputs.R.span()[0],  *inputs.R.span()[1]).unwrap();
@@ -39,6 +40,9 @@ pub fn prove_withdraw(inputs: InputsWithdraw, x:felt252, seed:felt252) -> ProofO
     return proof;
 }
 
+/// Generate the proof for transfer an amount b from the account y = g**x to y_bar. The inputs are 
+/// the disponible balance b0 of the account, the ciphertext that is stored inthe contract, the current
+/// epoch and the accounts involved.
 pub fn prove_transfer(
     x:felt252,
     y_bar:[felt252;2],
@@ -157,6 +161,8 @@ pub fn prove_transfer(
 
 
 /// Generate the proof that assert that V = g**b h**r encodes a bit b that is either 0 or 1.
+/// Following standar OR for sigma protocols (read book of Dan Boneh for example) we follow 
+/// the standar sigma proving protocol for the correct one and simultate the proof for the other one
 pub fn prove_bit(b:u8, r:felt252) -> ProofOfBit {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let [hx,hy] = generator_h();

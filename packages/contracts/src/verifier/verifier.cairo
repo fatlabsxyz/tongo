@@ -109,6 +109,13 @@ pub fn poe(y: [felt252;2], g: [felt252;2], A_x: [felt252;2], c:felt252, s:felt25
     assert!(LHS.coordinates() == RHS.coordinates(), "Failed the proof of exponent");
 }
 
+
+/// Proof of Exponent 2: validate a proof of knowledge of the exponent y = g**x h**r. The sigma protocols runs
+/// V:  kx,kr <-- R        sends    A = g ** kx h**kr
+/// P:  c <-- R            sends    c
+/// V:  sx = k + c*x 
+/// V:  sr = k + c*r       send sr, sx
+/// The verifier asserts  g**sx h**sr == A * (y**c)
 pub fn poe2(y: [felt252;2], g1: [felt252;2],g2:[felt252;2], A: [felt252;2], c:felt252, s1:felt252, s2:felt252 ) {
     let g1 = EcPointTrait::new_nz(*g1.span()[0], *g1.span()[1]).unwrap();
     let g2 = EcPointTrait::new_nz(*g2.span()[0], *g2.span()[1]).unwrap();
@@ -150,6 +157,7 @@ pub fn oneORzero(pi: ProofOfBit) {
 /// Verify that a span of Vi = g**b_i h**r_i are encoding either b=1 or b=0 and that
 /// those bi are indeed the binary decomposition b = sum_i b_i 2**i. With the b that
 /// is encoded in V = g**b h**r. (Note that r = sim_i r_i 2**i)
+/// TODO: This could (and probably should) be change to bulletproof.
 pub fn verify_range(proof: Span<ProofOfBit>) -> [felt252;2] {
     let mut i:u32 = 0;
     let mut state = EcStateTrait::init();
@@ -166,6 +174,10 @@ pub fn verify_range(proof: Span<ProofOfBit>) -> [felt252;2] {
     return [V.x(), V.y()];
 }
 
+/// Alternative proof of commit a bit or one or zero. It seems it is not as efficient
+/// as the proof we are ussing now but this can be check all at one. This could be log(n) 
+/// instead linear in n as the other one.
+/// TODO: test and decide (If we change to bulletproof this has no sense)
 pub fn alternative_oneORzero(proof:ProofOfBit2) {
     let [h_x, h_y] = generator_h();
     
