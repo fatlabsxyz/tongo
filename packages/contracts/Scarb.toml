@@ -16,3 +16,8 @@ sierra = true
 
 [scripts]
 test = "snforge test"
+
+# Needed for compilation to declare and deploy with sncast scripts
+[lib]
+sierra = true
+casm = true
