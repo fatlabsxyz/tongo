@@ -39,6 +39,7 @@ fn test_transfer() {
         proof,
     );
 }
+
 #[test]
 fn test_benchmark_prover() {
     let seed = 1293123841;
