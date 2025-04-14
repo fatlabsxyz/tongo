@@ -9,6 +9,7 @@ pub trait ITongo<TContractState> {
     fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252); 
     fn current_epoch(ref self: TContractState) -> u64;
     fn get_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
+    fn audit_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252);
     fn withdraw(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWithdraw);
     fn transfer(ref self: TContractState,
@@ -16,6 +17,7 @@ pub trait ITongo<TContractState> {
         to: [felt252;2],
         L:[felt252;2],
         L_bar:[felt252;2],
+        L_audit:[felt252;2],
         R: [felt252;2],
         proof: ProofOfTransfer,
     );
@@ -40,7 +42,7 @@ pub mod Tongo {
     
     use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer, InputsWithdraw, ProofOfWithdraw};
     use crate::verifier::verifier::{verify_withdraw, verify_transfer};
-    use crate::verifier::utils::{in_range};
+    use crate::verifier::utils::{in_range, view_key};
     use crate::constants::{STRK_ADDRESS, BLOCKS_IN_EPOCH};
 
     #[storage]
@@ -49,6 +51,7 @@ pub mod Tongo {
     // TODO: it would be nice to set te default value to curve points like  (y,g)
     struct Storage {
         balance: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
+        audit_balance: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
         buffer: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
         buffer_epoch: Map<(felt252,felt252), u64 >,
         nonce: Map<felt252, bool>,
@@ -66,6 +69,9 @@ pub mod Tongo {
 
         let Cipher = self.cipher(amount, to);
         self.to_buffer(to, Cipher);
+
+        let Cipher_audit = self.cipher(amount, view_key());
+        self.write_audit(to, Cipher_audit);
         let this_epoch = self.current_epoch();
         self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
     } 
@@ -93,6 +99,8 @@ pub mod Tongo {
 
 
         self.balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
+        //TODO: mejorar el audit_balance
+        self.audit_balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
         self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
         self.update_nonce(proof.nonce)
     }
@@ -104,6 +112,7 @@ pub mod Tongo {
         to: [felt252;2],
         L:[felt252;2],
         L_bar:[felt252;2],
+        L_audit:[felt252;2],
         R: [felt252;2],
         proof: ProofOfTransfer,
     ) {
@@ -120,6 +129,7 @@ pub mod Tongo {
             R: R,
             L: L,
             L_bar:L_bar,
+            L_audit: L_audit,
         };
         
         self.validate_nonce(proof.nonce);
@@ -131,8 +141,15 @@ pub mod Tongo {
         let L = EcPointTrait::new(*L.span()[0],*L.span()[1]).unwrap();
         let R = EcPointTrait::new(*R.span()[0],*R.span()[1]).unwrap();
         let L_bar = EcPointTrait::new(*L_bar.span()[0],*L_bar.span()[1]).unwrap();
-        self.to_buffer(from,(L,R));
-        self.to_buffer(to, (-L_bar,-R));
+        let L_audit = EcPointTrait::new(*L_audit.span()[0],*L_audit.span()[1]).unwrap();
+        self.to_buffer(from,(-L,-R));
+
+        //TODO: Acomodar el audit
+        self.write_audit(from,(-L_audit,-R));
+
+        self.to_buffer(to, (L_bar,R));
+        //TODO: Acomodar el audit
+        self.write_audit(to,(L_audit,R));
 
         self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
         self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
@@ -146,6 +163,9 @@ pub mod Tongo {
         self.balance.entry((*y.span()[0], *y.span()[1])).read()
     }
     
+    fn audit_balance(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252)) {
+        self.audit_balance.entry((*y.span()[0], *y.span()[1])).read()
+    }
 
     fn get_buffer(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252) {
         let (L,R) = self.buffer.entry((*y.span()[0], *y.span()[1])).read();
@@ -203,8 +223,19 @@ pub mod Tongo {
         };
     }
 
+
     fn read_balance(ref self: ContractState, y:[felt252;2])  -> Option<(EcPoint, EcPoint)> {
         let balance = self.balance.entry((*y.span()[0], *y.span()[1])).read();
+        if balance == ((0,0),(0,0)) { return Option::None ; }
+
+        let ((Lx, Ly), (Rx,Ry)) = balance;
+        let L = EcPointTrait::new(Lx,Ly).unwrap();
+        let R = EcPointTrait::new(Rx,Ry).unwrap();
+        return Option::Some((L,R));
+    }
+
+    fn read_audit(ref self: ContractState, y:[felt252;2])  -> Option<(EcPoint, EcPoint)> {
+        let balance = self.audit_balance.entry((*y.span()[0], *y.span()[1])).read();
         if balance == ((0,0),(0,0)) { return Option::None ; }
 
         let ((Lx, Ly), (Rx,Ry)) = balance;
@@ -230,6 +261,26 @@ pub mod Tongo {
             L.try_into().unwrap().coordinates(),
             R.try_into().unwrap().coordinates(),
         ));
+    }
+
+    fn write_audit(ref self: ContractState, y:[felt252;2], Cipher:(EcPoint, EcPoint)) {
+        let balance = self.read_audit(y);
+        let (L,R) = Cipher;
+        if balance.is_none() {
+            self.audit_balance.entry((*y.span()[0], *y.span()[1])).write((
+                L.try_into().unwrap().coordinates(),
+                R.try_into().unwrap().coordinates(),
+            ));
+        } else {
+            let (L_old, R_old) = balance.unwrap();
+            let L = L + L_old;
+            let R = R + R_old;
+
+            self.audit_balance.entry((*y.span()[0], *y.span()[1])).write((
+                L.try_into().unwrap().coordinates(),
+                R.try_into().unwrap().coordinates(),
+            ));
+        }
     }
 
     fn write_buffer(ref self: ContractState, y:[felt252;2], Cipher:(EcPoint,EcPoint)){

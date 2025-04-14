@@ -96,3 +96,13 @@ pub fn generator_h() -> [felt252;2] {
     let h = g.mul(ultra_secret).try_into().unwrap();
     [h.x(), h.y()]
 }
+
+
+/// This return the key y from the auditor.
+/// TODO: This sould change to a constat point whit the exponent only known for the auditor
+pub fn view_key() -> [felt252;2] {
+    let ultra_secret:felt252 = 'CURIOSITY';
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+    let h = g.mul(ultra_secret).try_into().unwrap();
+    [h.x(), h.y()]
+}

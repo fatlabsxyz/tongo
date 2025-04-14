@@ -1,7 +1,7 @@
 use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use crate::verifier::utils::{in_order, on_curve};
-use crate::verifier::utils::{g_epoch, generator_h};
+use crate::verifier::utils::{g_epoch, generator_h, view_key};
 use crate::verifier::utils::{feltXOR, challenge_commits};
 use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWithdraw, ProofOfBit2};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
@@ -13,6 +13,7 @@ use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
 /// 2) knowlede of r in R = g**r.
 /// 3) knowlede of b and r in L = g**b y**r with the same r that 2)
 /// 4) knowlede of b and r in L_bar = g**b y_bar**r with the same r that 2) and same b that 3)
+/// 4b) knowlede of b and r in L_audit = g**b y_audit**r with the same r that 2) and same b that 3)
 /// 5) b is in range [0,2**n-1]. For this we commit V = g**b h**r and an array of n  V_i = g**bi h**ri. r = sum 2**i r_i
 /// 5b) proof that bi are either 0 or 1.
 /// 5c) knowledge of b and r in V = g**b y**r with the same r that 2) and b that 3)
@@ -28,6 +29,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
         proof.A_v,
         proof.A_v2,
         proof.A_bar,
+        proof.A_audit,
     ];
     let c = challenge_commits(ref commits);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
@@ -45,6 +47,9 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
     //This is for asserting L_bar = g**b y_bar**r
     poe2(inputs.L_bar, [GEN_X,GEN_Y], inputs.y_bar, proof.A_bar, c, proof.s_b,proof.s_r);
+
+    //This is for asserting L_audit= g**b y_audit*r
+    poe2(inputs.L_audit, [GEN_X,GEN_Y], view_key(), proof.A_audit, c, proof.s_b,proof.s_r);
 
     // Now we need to show that V = g**b h**r with the same b and r.
     let V =  verify_range(proof.range);

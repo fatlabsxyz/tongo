@@ -34,6 +34,7 @@ fn test_transfer() {
         inputs.y_bar,
         inputs.L,
         inputs.L_bar,
+        inputs.L_audit,
         inputs.R,
         proof,
     );
@@ -59,12 +60,4 @@ fn test_benchmark_prover() {
     
     let b = 100; 
     let (_inputs, _proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy], this_epoch, seed + 1);
-//    dispatcher.transfer(
-//        inputs.y,
-//        inputs.y_bar,
-//        inputs.L,
-//        inputs.L_bar,
-//        inputs.R,
-//        proof,
-//    );
 }

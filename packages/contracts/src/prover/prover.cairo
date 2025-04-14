@@ -2,7 +2,7 @@ use crate::verifier::structs::{ProofOfWithdraw, InputsWithdraw};
 use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
 use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 
-use crate::verifier::utils::{g_epoch, challenge_commits, generator_h, feltXOR};
+use crate::verifier::utils::{g_epoch, challenge_commits, generator_h, feltXOR, view_key};
 use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_binary, cipher_balance};
 
 use core::ec::stark_curve::{GEN_X,GEN_Y};
@@ -57,6 +57,7 @@ pub fn prove_transfer(
     let y = g.try_into().unwrap().mul(x).try_into().unwrap();
     let [g_x,g_y] = g_epoch(epoch);
     let [h_x,h_y] = generator_h();
+    let [view_x,view_y] = view_key();
     let h = EcPointTrait::new_nz(h_x,h_y).unwrap();
     let g_epoch = EcPointTrait::new(g_x,g_y).unwrap();
     let nonce: NonZeroEcPoint  = g_epoch.mul(x).try_into().unwrap();
@@ -65,6 +66,7 @@ pub fn prove_transfer(
     let (r, proof ) = prove_range(b.try_into().unwrap(), generate_random(seed+1, 1));
     let (L,R) = cipher_balance(b, [y.x(), y.y()], r);
     let (L_bar,_R_bar) = cipher_balance(b, y_bar, r);
+    let (L_audit,_R_audit) = cipher_balance(b, view_key() , r);
 
     let b_left = b0-b;
     let (r2, proof2 ) = prove_range(b_left.try_into().unwrap(), generate_random(seed+2, 1));
@@ -93,6 +95,11 @@ pub fn prove_transfer(
         state.add_mul(kb, g);
         state.add_mul(kr, EcPointTrait::new_nz(*y_bar.span()[0], *y_bar.span()[1]).unwrap());
     let A_bar = state.finalize_nz().unwrap();
+
+    let mut state = EcStateTrait::init();
+        state.add_mul(kb, g);
+        state.add_mul(kr, EcPointTrait::new_nz(view_x,view_y).unwrap());
+    let A_audit = state.finalize_nz().unwrap();
     
     let mut state = EcStateTrait::init();
         state.add_mul(kb, g);
@@ -118,6 +125,7 @@ pub fn prove_transfer(
          [A_v.x() , A_v.y()],
          [A_v2.x() , A_v2.y()],
          [A_bar.x() , A_bar.y()],
+         [A_audit.x() , A_audit.y()],
     ];
     let c = challenge_commits(ref commits);
 
@@ -136,6 +144,7 @@ pub fn prove_transfer(
         R:[R.try_into().unwrap().x(), R.try_into().unwrap().y()],
         L:L,
         L_bar,
+        L_audit,
     };
 
     let proof: ProofOfTransfer = ProofOfTransfer {
@@ -148,6 +157,7 @@ pub fn prove_transfer(
         A_v:[A_v.x() , A_v.y()],
         A_v2:[A_v2.x() , A_v2.y()],
         A_bar:[A_bar.x() , A_bar.y()],
+        A_audit:[A_audit.x(), A_audit.y()],
         s_x,
         s_r,
         s_b,

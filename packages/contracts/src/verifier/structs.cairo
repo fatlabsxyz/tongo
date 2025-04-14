@@ -49,6 +49,7 @@ pub struct InputsTransfer {
     pub R:[felt252;2], 
     pub L:[felt252;2], 
     pub L_bar:[felt252;2], 
+    pub L_audit:[felt252;2],
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
@@ -62,6 +63,7 @@ pub struct ProofOfTransfer {
     pub A_v: [felt252;2],
     pub A_v2:[felt252;2],
     pub A_bar: [felt252;2],
+    pub A_audit: [felt252;2],
     pub s_x: felt252,
     pub s_r: felt252,
     pub s_b: felt252,
