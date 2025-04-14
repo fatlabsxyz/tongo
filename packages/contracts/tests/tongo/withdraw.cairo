@@ -3,7 +3,6 @@ use core::ec::{NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X,GEN_Y};
 use crate::tongo::setup::{setup_tongo};
 
-use tongo::verifier::structs::{InputsWithdraw, ProofOfWithdraw};
 use tongo::prover::prover::prove_withdraw;
 use tongo::prover::utils::generate_random;
 use tongo::main::ITongoDispatcherTrait;
@@ -28,14 +27,7 @@ fn test_withdraw() {
 
     let ((Lx,Ly), (Rx,Ry), _last_epoch) = dispatcher.get_buffer([y.x(),y.y()]);
 
-    let inputs: InputsWithdraw = InputsWithdraw {
-        y: [y.x(),y.y()],
-        epoch,
-        amount: b,
-        L: [Lx,Ly],
-        R: [Rx,Ry],
-    };
-    let proof: ProofOfWithdraw = prove_withdraw(inputs,x, seed);
+    let (_inputs,proof)= prove_withdraw(x,b,[Lx,Ly],[Rx,Ry],epoch,seed);
     
     dispatcher.withdraw([y.x(),y.y()],b,address, proof);
     let balance = dispatcher.get_balance([y.x(),y.y()]);

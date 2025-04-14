@@ -1,4 +1,4 @@
-use crate::verifier::structs::{ProofOfWithdraw, InputsWithdraw};
+use crate::verifier::structs::{ProofOfWithdraw,InputsWithdraw};
 use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
 use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 
@@ -10,10 +10,17 @@ use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait};
 
 /// Generate the prove necesary to make a withdraw transaction. In this version the withdraw is for all the balance
 /// that is stored in the y=g**x account.
-pub fn prove_withdraw(inputs: InputsWithdraw, x:felt252, seed:felt252) -> ProofOfWithdraw {
+pub fn prove_withdraw(
+        x:felt252,
+        amount:felt252,
+        CL:[felt252;2],
+        CR:[felt252;2],
+        epoch:u64,
+        seed:felt252
+) -> (InputsWithdraw, ProofOfWithdraw) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let R = EcPointTrait::new_nz(*inputs.R.span()[0],  *inputs.R.span()[1]).unwrap();
-    let [g_x,g_y] = g_epoch(inputs.epoch);
+    let R = EcPointTrait::new_nz(*CR.span()[0],  *CR.span()[1]).unwrap();
+    let [g_x,g_y] = g_epoch(epoch);
     let g_epoch = EcPointTrait::new(g_x,g_y).unwrap();
     let nonce: NonZeroEcPoint  = g_epoch.mul(x).try_into().unwrap();
 
@@ -37,7 +44,16 @@ pub fn prove_withdraw(inputs: InputsWithdraw, x:felt252, seed:felt252) -> ProofO
         A_cr: [A_cr.x(), A_cr.y()],
         s_x: s,
     };
-    return proof;
+
+    let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(),x).try_into().unwrap();
+    let inputs: InputsWithdraw = InputsWithdraw {
+        y: [y.x(), y.y()],
+        epoch: epoch,
+        amount: amount,
+        L: CL,
+        R: CR,
+    };
+    return (inputs,proof);
 }
 
 /// Generate the proof for transfer an amount b from the account y = g**x to y_bar. The inputs are 
