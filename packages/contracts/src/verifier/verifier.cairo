@@ -76,7 +76,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 /// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the correct
 /// balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r = R. We also need to
 /// check that the exponent x is the same of the private key y = g ** x and that the nonce u = g_epoc ** x
-pub fn verify_withdraw(inputs:InputsWithdraw, proof:ProofOfWithdraw) {
+pub fn verify_withdraw_all(inputs:InputsWithdraw, proof:ProofOfWithdraw) {
     let mut commits = array![proof.A_x, proof.A_n,proof.A_cr];
     let c = challenge_commits(ref commits);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);

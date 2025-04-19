@@ -10,7 +10,7 @@ use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait};
 
 /// Generate the prove necesary to make a withdraw transaction. In this version the withdraw is for all the balance
 /// that is stored in the y=g**x account.
-pub fn prove_withdraw(
+pub fn prove_withdraw_all(
         x:felt252,
         amount:felt252,
         CL:[felt252;2],

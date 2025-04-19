@@ -3,14 +3,14 @@ use core::ec::{NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X,GEN_Y};
 use crate::tongo::setup::{setup_tongo};
 
-use tongo::prover::prover::prove_withdraw;
+use tongo::prover::prover::prove_withdraw_all;
 use tongo::prover::utils::generate_random;
 use tongo::main::ITongoDispatcherTrait;
 use snforge_std::{start_cheat_block_number};
 
 
 #[test]
-fn test_withdraw() {
+fn test_withdraw_all() {
     let seed = 12931238;
     let (address,dispatcher) = setup_tongo();
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
@@ -27,9 +27,9 @@ fn test_withdraw() {
 
     let ((Lx,Ly), (Rx,Ry), _last_epoch) = dispatcher.get_buffer([y.x(),y.y()]);
 
-    let (_inputs,proof)= prove_withdraw(x,b,[Lx,Ly],[Rx,Ry],epoch,seed);
+    let (_inputs,proof)= prove_withdraw_all(x,b,[Lx,Ly],[Rx,Ry],epoch,seed);
     
-    dispatcher.withdraw([y.x(),y.y()],b,address, proof);
+    dispatcher.withdraw_all([y.x(),y.y()],b,address, proof);
     let balance = dispatcher.get_balance([y.x(),y.y()]);
     assert!(balance == ((0,0),(0,0)),"fail" );
     let buffer = dispatcher.get_buffer([y.x(),y.y()]);
