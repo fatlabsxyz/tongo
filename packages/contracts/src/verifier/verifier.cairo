@@ -136,7 +136,7 @@ pub fn poe2(y: [felt252;2], g1: [felt252;2],g2:[felt252;2], A: [felt252;2], c:fe
         state.add(A);
         state.add_mul(c, y);
     let RHS = state.finalize_nz().unwrap();
-    assert!(LHS.coordinates() == RHS.coordinates(), "Failed the proof of exponent");
+    assert!(LHS.coordinates() == RHS.coordinates(), "Failed the proof of exponent2");
 }
 
 /// Proof of Bit: validate that a commited V = g**b h**r is the ciphertext of  either b=0 OR b=1. 

@@ -8,6 +8,7 @@ use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_bin
 use core::ec::stark_curve::{GEN_X,GEN_Y};
 use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait};
 
+
 /// Generate the prove necesary to make a withdraw transaction. In this version the withdraw is for all the balance
 /// that is stored in the y=g**x account.
 pub fn prove_withdraw_all(
