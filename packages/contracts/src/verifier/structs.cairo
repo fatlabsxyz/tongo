@@ -22,7 +22,7 @@ pub struct ProofOfBit2 {
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
-pub struct InputsWithdraw {
+pub struct InputswithdrawAll {
     pub y: [felt252;2],
     pub epoch: u64,
     pub amount: felt252,
@@ -31,12 +31,32 @@ pub struct InputsWithdraw {
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
-pub struct ProofOfWithdraw {
+pub struct ProofOfWitdhrawAll {
     pub nonce:[felt252;2] ,
     pub A_n:[felt252;2] ,
     pub A_x:[felt252;2] , 
     pub A_cr:[felt252;2] , 
     pub s_x:felt252 ,
+}
+
+
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct Inputswithdraw {
+    pub y: [felt252;2],
+    pub amount: felt252,
+    pub L:[felt252;2], 
+    pub R:[felt252;2], 
+}
+
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct ProofOfWithdraw {
+    pub A_x:[felt252;2] , 
+    pub A:[felt252;2] , 
+    pub A_v:[felt252;2] , 
+    pub sx: felt252,
+    pub sb: felt252,
+    pub sr: felt252,
+    pub range: Span<ProofOfBit>,
 }
 
 #[derive(Serde, Drop, Debug, Copy)]

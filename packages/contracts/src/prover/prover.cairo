@@ -1,4 +1,5 @@
-use crate::verifier::structs::{ProofOfWithdraw,InputsWithdraw};
+use crate::verifier::structs::{ProofOfWitdhrawAll,InputswithdrawAll};
+use crate::verifier::structs::{ProofOfWithdraw, Inputswithdraw};
 use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
 use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 
@@ -18,7 +19,7 @@ pub fn prove_withdraw_all(
         CR:[felt252;2],
         epoch:u64,
         seed:felt252
-) -> (InputsWithdraw, ProofOfWithdraw) {
+) -> (InputswithdrawAll, ProofOfWitdhrawAll) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let R = EcPointTrait::new_nz(*CR.span()[0],  *CR.span()[1]).unwrap();
     let [g_x,g_y] = g_epoch(epoch);
@@ -38,7 +39,7 @@ pub fn prove_withdraw_all(
     let c = challenge_commits(ref commits);
     let s = compute_s(c, x, k);
 
-    let proof: ProofOfWithdraw = ProofOfWithdraw {
+    let proof: ProofOfWitdhrawAll = ProofOfWitdhrawAll {
         nonce: [nonce.x(), nonce.y()],
         A_n: [A_u.x(), A_u.y()],
         A_x: [A_x.x(), A_x.y()],
@@ -47,7 +48,7 @@ pub fn prove_withdraw_all(
     };
 
     let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(),x).try_into().unwrap();
-    let inputs: InputsWithdraw = InputsWithdraw {
+    let inputs: InputswithdrawAll = InputswithdrawAll {
         y: [y.x(), y.y()],
         epoch: epoch,
         amount: amount,
@@ -55,6 +56,66 @@ pub fn prove_withdraw_all(
         R: CR,
     };
     return (inputs,proof);
+}
+
+pub fn prove_withdraw(
+        x:felt252,
+        initial_balance: felt252,
+        amount:felt252,
+        CL:[felt252;2],
+        CR:[felt252;2],
+        seed:felt252
+) -> (Inputswithdraw, ProofOfWithdraw) {
+    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
+    let y = g.try_into().unwrap().mul(x).try_into().unwrap();
+    let R = EcPointTrait::new_nz(*CR.span()[0], *CR.span()[1]).unwrap();
+    let L = EcPointTrait::new_nz(*CL.span()[0], *CL.span()[1]).unwrap();
+    let [hx,hy] = generator_h();
+    let h = EcPointTrait::new_nz(hx,hy).unwrap();
+
+    let left = initial_balance-amount;
+
+    let (r, RangeProof) = prove_range(left.try_into().unwrap(), generate_random(seed+1,0));
+
+    let kb = generate_random(seed,3);
+    let kx = generate_random(seed,4);
+    let kr = generate_random(seed,5);
+
+    let A_x:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), kx).try_into().unwrap();
+
+    let mut state = EcStateTrait::init();
+        state.add_mul(kb, g);
+        state.add_mul(kx, R);
+    let A = state.finalize_nz().unwrap();
+
+    let mut state = EcStateTrait::init();
+        state.add_mul(kb, g);
+        state.add_mul(kr, h);
+    let A_v = state.finalize_nz().unwrap();
+
+    let mut commits = array![[A_x.x(), A_x.y()], [A.x(), A.y()], [A_v.x(),A_v.y()]];
+    let c = challenge_commits(ref commits);
+    let sb = compute_s(c,left,kb);
+    let sx = compute_s(c,x,kx);
+    let sr = compute_s(c,r,kr);
+
+    let proof: ProofOfWithdraw = ProofOfWithdraw {
+        A_x: [A_x.x(),A_x.y()],
+        A: [A.x(),A.y()],
+        A_v: [A_v.x(),A_v.y()],
+        sx: sx,
+        sb: sb,
+        sr: sr,
+        range: RangeProof,
+    };
+
+    let inputs: Inputswithdraw = Inputswithdraw {
+        y: [y.x(), y.y()],
+        amount: amount,
+        L: [L.x(),L.y()],
+        R: [R.x(),R.y()],
+    };
+    return (inputs, proof);
 }
 
 /// Generate the proof for transfer an amount b from the account y = g**x to y_bar. The inputs are 

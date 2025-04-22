@@ -3,8 +3,9 @@ use core::ec::stark_curve::{GEN_X, GEN_Y};
 use crate::verifier::utils::{in_order, on_curve};
 use crate::verifier::utils::{g_epoch, generator_h, view_key};
 use crate::verifier::utils::{feltXOR, challenge_commits};
-use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWithdraw, ProofOfBit2};
+use crate::verifier::structs::{InputswithdrawAll, ProofOfBit, ProofOfWitdhrawAll, ProofOfBit2};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
+use crate::verifier::structs::{Inputswithdraw, ProofOfWithdraw};
 
 
 /// Transfer b from y = g**x to y_bar.  Public inputs: y, y_bar L = g**b y**r, L_bar = g**b y_bar**r, R = g**r.
@@ -76,7 +77,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 /// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the correct
 /// balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r = R. We also need to
 /// check that the exponent x is the same of the private key y = g ** x and that the nonce u = g_epoc ** x
-pub fn verify_withdraw_all(inputs:InputsWithdraw, proof:ProofOfWithdraw) {
+pub fn verify_withdraw_all(inputs:InputswithdrawAll, proof:ProofOfWitdhrawAll) {
     let mut commits = array![proof.A_x, proof.A_n,proof.A_cr];
     let c = challenge_commits(ref commits);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
@@ -88,6 +89,39 @@ pub fn verify_withdraw_all(inputs:InputsWithdraw, proof:ProofOfWithdraw) {
     let g_b = EcPointTrait::mul(g,inputs.amount);
     let h: NonZeroEcPoint = (L - g_b.try_into().unwrap()).try_into().unwrap();
     poe([h.x(), h.y()], [*inputs.R.span()[0], *inputs.R.span()[1]], proof.A_cr,c ,proof.s_x);
+}
+
+pub fn verify_withdraw(inputs:Inputswithdraw, proof: ProofOfWithdraw) {
+    let mut commits = array![proof.A_x, proof.A, proof.A_v];
+    let c = challenge_commits(ref commits);
+
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
+    let g_b  = EcPointTrait::mul(g,inputs.amount).try_into().unwrap();
+    let L = EcPointTrait::new(*inputs.L.span()[0],*inputs.L.span()[1]).unwrap();
+    let L: NonZeroEcPoint = (L - g_b).try_into().unwrap();
+    poe2(
+        [L.x(),L.y()],
+        [GEN_X, GEN_Y],
+        [*inputs.R.span()[0], *inputs.R.span()[1]],
+        [*proof.A.span()[0], *proof.A.span()[1]],
+        c,
+        proof.sb,
+        proof.sx
+    );
+
+    let V = verify_range(proof.range);
+    poe2(
+        V,
+        [GEN_X, GEN_Y],
+        generator_h(),
+        [*proof.A_v.span()[0],*proof.A_v.span()[1]],
+        c,
+        proof.sb,
+        proof.sr
+    );
+
+    poe(inputs.y, [GEN_X, GEN_Y], proof.A_x, c, proof.sx);
+
 }
 
 /// Proof of Exponent: validate a proof of knowledge of the exponent y = g ** x. The sigma protocols runs

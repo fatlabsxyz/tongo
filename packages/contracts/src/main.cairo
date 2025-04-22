@@ -1,5 +1,5 @@
 use core::starknet::ContractAddress;
-use crate::verifier::structs::{ProofOfTransfer, ProofOfWithdraw};
+use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll};
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary, replay_protection.
 // the replay_protection should have the epoch in which the tx was generated (it is the same to the epoch in which the
 // tx is expected to pass) signed by the private key x of y = g**x, with  the selector_calldata and posiblly the proof itself.
@@ -11,7 +11,7 @@ pub trait ITongo<TContractState> {
     fn get_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn audit_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252);
-    fn withdraw_all(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWithdraw);
+    fn withdraw_all(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWitdhrawAll);
     fn transfer(ref self: TContractState,
         from:[felt252;2],
         to: [felt252;2],
@@ -40,7 +40,7 @@ pub mod Tongo {
         get_block_number,
     };
     
-    use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer, InputsWithdraw, ProofOfWithdraw};
+    use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer, InputswithdrawAll, ProofOfWitdhrawAll};
     use crate::verifier::verifier::{verify_withdraw_all, verify_transfer};
     use crate::verifier::utils::{in_range, view_key};
     use crate::constants::{STRK_ADDRESS, BLOCKS_IN_EPOCH};
@@ -77,12 +77,12 @@ pub mod Tongo {
     } 
 
     /// Withdraw ALL tongo from acount and send the stark to the recipient
-    fn withdraw_all(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  ProofOfWithdraw) {
+    fn withdraw_all(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  ProofOfWitdhrawAll) {
         //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
         self.rollover(from);
         let this_epoch = self.current_epoch();
         let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
-        let inputs:InputsWithdraw = InputsWithdraw { y : from , epoch: this_epoch, amount, L:[Lx,Ly], R: [Rx,Ry]};
+        let inputs:InputswithdrawAll = InputswithdrawAll { y : from , epoch: this_epoch, amount, L:[Lx,Ly], R: [Rx,Ry]};
         self.validate_nonce(proof.nonce);
         verify_withdraw_all(inputs, proof);
 
