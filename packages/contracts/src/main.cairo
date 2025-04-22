@@ -72,11 +72,11 @@ pub mod Tongo {
         in_range(amount);
 //        self.get_transfer(amount);
 
-        let Cipher = self.cipher(amount, to);
+        let Cipher = self.cipher(amount, to, 'fund');
         self.to_balance(to, Cipher);
 
-        let Cipher_audit = self.cipher(amount, view_key());
-        self.write_audit(to, Cipher_audit);
+        let Cipher_audit = self.cipher(amount, view_key(), 'fund');
+        self.to_audit(to, Cipher_audit);
         let this_epoch = self.current_epoch();
         self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
     } 
@@ -100,9 +100,11 @@ pub mod Tongo {
 //           calldata.span()
 //        ).unwrap_syscall();
 
-        self.balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
         //TODO: mejorar el audit_balance
-        self.audit_balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
+        let (L,R) = self.cipher(amount, from, 'withdraw');
+        self.to_buffer(from, (-L, -R));
+        let (L,R) = self.cipher(amount, view_key(), 'withdraw');
+        self.to_audit(from, (-L, -R));
     }
 
     /// Withdraw ALL tongo from acount and send the stark to the recipient
@@ -129,7 +131,8 @@ pub mod Tongo {
 
         self.balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
         //TODO: mejorar el audit_balance
-        self.audit_balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
+        let (L,R) = self.cipher(amount, view_key(),'withdraw_all');
+        self.to_audit(from, (-L, -R));
         self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
         self.update_nonce(proof.nonce)
     }
@@ -174,11 +177,11 @@ pub mod Tongo {
         self.to_buffer(from,(-L,-R));
 
         //TODO: Acomodar el audit
-        self.write_audit(from,(-L_audit,-R));
+        self.to_audit(from,(-L_audit,-R));
 
         self.to_buffer(to, (L_bar,R));
         //TODO: Acomodar el audit
-        self.write_audit(to,(L_audit,R));
+        self.to_audit(to,(L_audit,R));
 
         self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
         self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
@@ -212,16 +215,18 @@ pub mod Tongo {
     #[generate_trait]
     pub impl PrivateImpl of IPrivate {
     /// Cipher the balance b under the y key with a fixed randomnes. The fixed randomness should
-    /// not be a problem because b is known here. This only is performed on fund transactions
-    fn cipher(self: @ContractState, b:felt252, y:[felt252;2]) -> (EcPoint, EcPoint) {
+    /// not be a problem because b is known here. This only is performed on fund transactions or
+    /// withdraw all
+    /// TODO: think what to do with the randomness to avoid end up un a ZeroPoint
+    fn cipher(self: @ContractState, b:felt252, y:[felt252;2], r: felt252) -> (EcPoint, EcPoint) {
         let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
         let y = EcPointTrait::new_nz(*y.span()[0],*y.span()[1]).unwrap();
         
         let mut state1 = EcStateTrait::init();
             state1.add_mul(b, g.try_into().unwrap());
-            state1.add_mul(1, y);
+            state1.add_mul(r, y);
         let CL = state1.finalize();
-        return (CL,g);
+        return (CL,g.mul(r));
     }
     
     fn to_balance(ref self: ContractState, y:[felt252;2], Cipher: (EcPoint,EcPoint)) {
@@ -305,16 +310,16 @@ pub mod Tongo {
         ));
     }
 
-    fn write_audit(ref self: ContractState, y:[felt252;2], Cipher:(EcPoint, EcPoint)) {
-        let balance = self.read_audit(y);
+    fn to_audit(ref self: ContractState, y:[felt252;2], Cipher:(EcPoint, EcPoint)) {
+        let audit = self.read_audit(y);
         let (L,R) = Cipher;
-        if balance.is_none() {
+        if audit.is_none() {
             self.audit_balance.entry((*y.span()[0], *y.span()[1])).write((
                 L.try_into().unwrap().coordinates(),
                 R.try_into().unwrap().coordinates(),
             ));
         } else {
-            let (L_old, R_old) = balance.unwrap();
+            let (L_old, R_old) = audit.unwrap();
             let L = L + L_old;
             let R = R + R_old;
 

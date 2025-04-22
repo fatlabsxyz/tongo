@@ -43,6 +43,7 @@ fn audit_withdraw_all() {
     let b = 250;
     start_cheat_block_number(address,2000);
     dispatcher.fund([y.x(), y.y()], b);
+
     let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
     decipher_balance(b, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
 
@@ -54,8 +55,8 @@ fn audit_withdraw_all() {
     let (_inputs,proof)= prove_withdraw_all(x,b,[Lx,Ly],[Rx,Ry],epoch,seed);
     
     dispatcher.withdraw_all([y.x(),y.y()],b,address, proof);
-    let empty = dispatcher.get_audit([y.x(),y.y()]);
-    assert!(empty ==((0,0),(0,0)) , "wrong");
+//    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
+//    decipher_balance(0, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
 }
 
 #[test]

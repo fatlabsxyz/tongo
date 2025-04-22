@@ -148,12 +148,18 @@ pub fn cipher_balance(b:felt252, y:[felt252;2], random:felt252) -> ([felt252;2],
 /// balance (L,R) = (g**b y**r, g**r). 
 /// This function DOES NOT bruteforces b and is intended only for testing purposes
 pub fn decipher_balance(b: felt252, x:felt252, L:[felt252;2], R:[felt252;2]) {
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let LHS:NonZeroEcPoint = g.mul(b).try_into().unwrap();
     let L = EcPointTrait::new(*L.span()[0], *L.span()[1]).unwrap();
     let R = EcPointTrait::new(*R.span()[0], *R.span()[1]).unwrap();
-    let RHS:NonZeroEcPoint = (L - R.mul(x)).try_into().unwrap();
+    if b != 0{
+        let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+        let RHS:NonZeroEcPoint = (L - R.mul(x)).try_into().unwrap();
+        let LHS:NonZeroEcPoint = g.mul(b).try_into().unwrap();
+        assert!(LHS.coordinates() == RHS.coordinates(),"decipher failed");
+    } else {
+        let LHS:NonZeroEcPoint = L.try_into().unwrap();
+        let RHS:NonZeroEcPoint = R.mul(x).try_into().unwrap();
+        assert!(LHS.coordinates() == RHS.coordinates(),"decipher failed for b 0");
+    }
 
-    assert!(LHS.coordinates() == RHS.coordinates(),"decipher failed");
 
 }
