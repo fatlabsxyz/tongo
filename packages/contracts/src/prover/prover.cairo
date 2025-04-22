@@ -3,7 +3,7 @@ use crate::verifier::structs::{ProofOfWithdraw, Inputswithdraw};
 use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
 use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 
-use crate::verifier::utils::{g_epoch, challenge_commits, generator_h, feltXOR, view_key};
+use crate::verifier::utils::{ challenge_commits, generator_h, feltXOR, view_key};
 use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_binary, cipher_balance};
 
 use core::ec::stark_curve::{GEN_X,GEN_Y};
@@ -17,31 +17,23 @@ pub fn prove_withdraw_all(
         amount:felt252,
         CL:[felt252;2],
         CR:[felt252;2],
-        epoch:u64,
         seed:felt252
 ) -> (InputswithdrawAll, ProofOfWitdhrawAll) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let R = EcPointTrait::new_nz(*CR.span()[0],  *CR.span()[1]).unwrap();
-    let [g_x,g_y] = g_epoch(epoch);
-    let g_epoch = EcPointTrait::new(g_x,g_y).unwrap();
-    let nonce: NonZeroEcPoint  = g_epoch.mul(x).try_into().unwrap();
 
     //poe for y = g**x and L/g**b = R**x
     let k = generate_random(seed+1,1);
     let A_x: NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), k).try_into().unwrap();
     let A_cr: NonZeroEcPoint = EcPointTrait::mul(R.try_into().unwrap(), k).try_into().unwrap();
-    let A_u: NonZeroEcPoint = EcPointTrait::mul(g_epoch.try_into().unwrap(), k).try_into().unwrap();
     let mut commits = array![
         [A_x.x(),A_x.y()],
-        [A_u.x(),A_u.y()],
         [A_cr.x(),A_cr.y()],
     ];
     let c = challenge_commits(ref commits);
     let s = compute_s(c, x, k);
 
     let proof: ProofOfWitdhrawAll = ProofOfWitdhrawAll {
-        nonce: [nonce.x(), nonce.y()],
-        A_n: [A_u.x(), A_u.y()],
         A_x: [A_x.x(), A_x.y()],
         A_cr: [A_cr.x(), A_cr.y()],
         s_x: s,
@@ -50,7 +42,6 @@ pub fn prove_withdraw_all(
     let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(),x).try_into().unwrap();
     let inputs: InputswithdrawAll = InputswithdrawAll {
         y: [y.x(), y.y()],
-        epoch: epoch,
         amount: amount,
         L: CL,
         R: CR,
@@ -118,9 +109,6 @@ pub fn prove_withdraw(
     return (inputs, proof);
 }
 
-/// Generate the proof for transfer an amount b from the account y = g**x to y_bar. The inputs are 
-/// the disponible balance b0 of the account, the ciphertext that is stored inthe contract, the current
-/// epoch and the accounts involved.
 pub fn prove_transfer(
     x:felt252,
     y_bar:[felt252;2],
@@ -128,17 +116,13 @@ pub fn prove_transfer(
     b:felt252,
     CL:[felt252;2],
     CR:[felt252;2],
-    epoch:u64,
     seed:felt252
 ) -> (InputsTransfer, ProofOfTransfer ) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y = g.try_into().unwrap().mul(x).try_into().unwrap();
-    let [g_x,g_y] = g_epoch(epoch);
     let [h_x,h_y] = generator_h();
     let [view_x,view_y] = view_key();
     let h = EcPointTrait::new_nz(h_x,h_y).unwrap();
-    let g_epoch = EcPointTrait::new(g_x,g_y).unwrap();
-    let nonce: NonZeroEcPoint  = g_epoch.mul(x).try_into().unwrap();
     
     
     let (r, proof ) = prove_range(b.try_into().unwrap(), generate_random(seed+1, 1));
@@ -161,7 +145,6 @@ pub fn prove_transfer(
     let kr2 = generate_random(seed+1 ,4);
 
     let A_x:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), kx).try_into().unwrap();
-    let A_n:NonZeroEcPoint = EcPointTrait::mul(g_epoch.try_into().unwrap(), kx).try_into().unwrap();
     let A_r:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), kr).try_into().unwrap();
 
     let mut state = EcStateTrait::init();
@@ -196,7 +179,6 @@ pub fn prove_transfer(
 
     let mut commits = array![
          [A_x.x() , A_x.y()],
-         [A_n.x() , A_n.y()],
          [A_r.x() , A_r.y()],
          [A_b.x() , A_b.y()],
          [A_b2.x() , A_b2.y()],
@@ -216,7 +198,6 @@ pub fn prove_transfer(
     let inputs: InputsTransfer = InputsTransfer {
         y:[y.x(), y.y()],
         y_bar:y_bar,
-        epoch:epoch,
         CR:[CR.try_into().unwrap().x(), CR.try_into().unwrap().y()],
         CL:CL,
         R:[R.try_into().unwrap().x(), R.try_into().unwrap().y()],
@@ -226,9 +207,7 @@ pub fn prove_transfer(
     };
 
     let proof: ProofOfTransfer = ProofOfTransfer {
-        nonce: [nonce.x(),nonce.y()],
         A_x:[A_x.x() , A_x.y()],
-        A_n:[A_n.x() , A_n.y()],
         A_r:[A_r.x() , A_r.y()],
         A_b:[A_b.x() , A_b.y()],
         A_b2:[A_b2.x() , A_b2.y()],

@@ -1,16 +1,13 @@
 use core::starknet::ContractAddress;
 use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw};
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary, replay_protection.
-// the replay_protection should have the epoch in which the tx was generated (it is the same to the epoch in which the
-// tx is expected to pass) signed by the private key x of y = g**x, with  the selector_calldata and posiblly the proof itself.
 
 #[starknet::interface]
 pub trait ITongo<TContractState> {
     fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252); 
-    fn current_epoch(ref self: TContractState) -> u64;
     fn get_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_audit(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
-    fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252);
+    fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn withdraw_all(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWitdhrawAll);
     fn withdraw(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWithdraw);
     fn transfer(ref self: TContractState,
@@ -38,7 +35,6 @@ pub mod Tongo {
         ContractAddress,
         get_caller_address,
         get_contract_address,
-        get_block_number,
     };
     
     use crate::verifier::structs::{ 
@@ -48,7 +44,7 @@ pub mod Tongo {
     };
     use crate::verifier::verifier::{verify_withdraw, verify_withdraw_all, verify_transfer};
     use crate::verifier::utils::{in_range, view_key};
-    use crate::constants::{STRK_ADDRESS, BLOCKS_IN_EPOCH};
+    use crate::constants::{STRK_ADDRESS};
 
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are stored
@@ -58,7 +54,6 @@ pub mod Tongo {
         balance: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
         audit_balance: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
         buffer: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
-        buffer_epoch: Map<(felt252,felt252), u64 >,
         nonce: Map<felt252, bool>,
     }
 
@@ -77,8 +72,6 @@ pub mod Tongo {
 
         let Cipher_audit = self.cipher(amount, view_key(), 'fund');
         self.to_audit(to, Cipher_audit);
-        let this_epoch = self.current_epoch();
-        self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
     } 
 
     /// Withdraw some tongo from acount and send the stark to the recipient
@@ -110,11 +103,8 @@ pub mod Tongo {
     /// Withdraw ALL tongo from acount and send the stark to the recipient
     fn withdraw_all(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  ProofOfWitdhrawAll) {
         //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
-        self.rollover(from);
-        let this_epoch = self.current_epoch();
         let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
-        let inputs:InputswithdrawAll = InputswithdrawAll { y : from , epoch: this_epoch, amount, L:[Lx,Ly], R: [Rx,Ry]};
-        self.validate_nonce(proof.nonce);
+        let inputs:InputswithdrawAll = InputswithdrawAll { y : from ,amount , L:[Lx,Ly], R: [Rx,Ry]};
         verify_withdraw_all(inputs, proof);
 
 //        let amount: u256 = amount.try_into().unwrap();
@@ -133,8 +123,6 @@ pub mod Tongo {
         //TODO: mejorar el audit_balance
         let (L,R) = self.cipher(amount, view_key(),'withdraw_all');
         self.to_audit(from, (-L, -R));
-        self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
-        self.update_nonce(proof.nonce)
     }
 
     /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done w.r.t the
@@ -151,11 +139,9 @@ pub mod Tongo {
         self.rollover(from);
         let ((CLx,CLy), (CRx,CRy)) = self.get_balance(from);
         
-        let this_epoch = self.current_epoch();
         let inputs:InputsTransfer = InputsTransfer {
             y: from ,
             y_bar: to,
-            epoch: this_epoch,
             CL: [CLx,CLy],
             CR: [CRx,CRy],
             R: R,
@@ -164,7 +150,6 @@ pub mod Tongo {
             L_audit: L_audit,
         };
         
-        self.validate_nonce(proof.nonce);
         verify_transfer(inputs, proof);
 
 
@@ -182,15 +167,10 @@ pub mod Tongo {
         self.to_buffer(to, (L_bar,R));
         //TODO: Acomodar el audit
         self.to_audit(to,(L_audit,R));
-
-        self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
-        self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
-        self.update_nonce(proof.nonce)
     }
     
     /// Returns the cipher balance of the given public key y. The cipher balance consist in two points
     /// of the stark curve. (L,R) = ((Lx, Ly), (Rx, Ry )) = (g**b y**r , g**r) for some random r.
-    /// TODO: return also the buffer balance if correspond to an old epoch
     fn get_balance(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252)) {
         self.balance.entry((*y.span()[0], *y.span()[1])).read()
     }
@@ -199,16 +179,11 @@ pub mod Tongo {
         self.audit_balance.entry((*y.span()[0], *y.span()[1])).read()
     }
 
-    fn get_buffer(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252) {
+    fn get_buffer(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252)) {
         let (L,R) = self.buffer.entry((*y.span()[0], *y.span()[1])).read();
-        let last_epoch:felt252 = self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).read().try_into().unwrap();
-        return (L,R, last_epoch);
+        return (L,R);
     }
     
-    fn current_epoch(ref self: ContractState) -> u64 {
-        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
-        return this_epoch;
-    }
 
     }
 
@@ -340,15 +315,7 @@ pub mod Tongo {
     }
 
     fn rollover(ref self: ContractState, y:[felt252;2]) {
-        let this_epoch = self.current_epoch();
-        let buffer_epoch = self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).read();
-
-        if buffer_epoch == this_epoch {return ;}; 
         self.buffer_to_balance(y);
-
-        //TODO: These write is reduntand in the transfer and withdraw
-        self.buffer.entry((*y.span()[0],  *y.span()[1])).write( ((0,0),(0,0)) );
-        self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).write(this_epoch);
     }
 
     fn get_transfer(self: @ContractState, amount: felt252) {
@@ -364,14 +331,6 @@ pub mod Tongo {
            selector!("transfer_from"),
            calldata.span()
         ).unwrap_syscall();
-    }
-
-    fn validate_nonce(ref self: ContractState, nonce: [felt252;2]) {
-        assert(self.nonce.entry(*nonce.span()[0]).read() == false, 'Tx already used in epoch');
-    }
-
-    fn update_nonce(ref self: ContractState, nonce: [felt252;2]) {
-        self.nonce.entry(*nonce.span()[0]).write(true);
     }
 
     }

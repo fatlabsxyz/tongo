@@ -6,13 +6,11 @@ use tongo::prover::utils::{generate_random};
 use tongo::prover::prover::prove_transfer;
 
 use tongo::main::ITongoDispatcherTrait;
-use snforge_std::{start_cheat_block_number};
 
 #[test]
 fn test_transfer() {
     let seed = 1293123841;
-    let (address,dispatcher) = setup_tongo();
-    start_cheat_block_number(address,120);
+    let (_address,dispatcher) = setup_tongo();
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     
     let x = generate_random(seed,1);
@@ -23,12 +21,10 @@ fn test_transfer() {
     let b0 = 3124;
     dispatcher.fund([y.x(),y.y()], b0);
 
-    start_cheat_block_number(address,220);
-    let this_epoch = dispatcher.current_epoch();
     let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance([y.x(), y.y()]);
     
     let b = 100; 
-    let (inputs, proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy], this_epoch, seed + 1);
+    let (inputs, proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy], seed + 1);
     dispatcher.transfer(
         inputs.y,
         inputs.y_bar,
@@ -43,8 +39,7 @@ fn test_transfer() {
 #[test]
 fn test_benchmark_prover() {
     let seed = 1293123841;
-    let (address,dispatcher) = setup_tongo();
-    start_cheat_block_number(address,120);
+    let (_address,dispatcher) = setup_tongo();
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     
     let x = generate_random(seed,1);
@@ -55,10 +50,8 @@ fn test_benchmark_prover() {
     let b0 = 3124;
     dispatcher.fund([y.x(),y.y()], b0);
 
-    start_cheat_block_number(address,220);
-    let this_epoch = dispatcher.current_epoch();
     let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance([y.x(), y.y()]);
     
     let b = 100; 
-    let (_inputs, _proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy], this_epoch, seed + 1);
+    let (_inputs, _proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy], seed + 1);
 }

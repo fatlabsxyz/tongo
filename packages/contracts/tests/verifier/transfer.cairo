@@ -11,7 +11,6 @@ use tongo::verifier::verifier::verify_transfer;
 fn test_transfer() {
     // setup
     let g:NonZeroEcPoint = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
-    let epoch = 94;
 
     let seed = 47198274198273;
     let x = generate_random(seed,1);
@@ -27,7 +26,7 @@ fn test_transfer() {
     let x_bar = generate_random(seed,2);
     let y_bar:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x_bar).try_into().unwrap();
     
-    let (inputs, proof ) = prove_transfer(x, [y_bar.x(), y_bar.y()],b0, b,CL,CR, epoch, generate_random(seed,4));
+    let (inputs, proof ) = prove_transfer(x, [y_bar.x(), y_bar.y()],b0, b,CL,CR, generate_random(seed,4));
 
     verify_transfer(inputs,proof);
 }

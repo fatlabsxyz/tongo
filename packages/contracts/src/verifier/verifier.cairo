@@ -1,7 +1,7 @@
 use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use crate::verifier::utils::{in_order, on_curve};
-use crate::verifier::utils::{g_epoch, generator_h, view_key};
+use crate::verifier::utils::{ generator_h, view_key};
 use crate::verifier::utils::{feltXOR, challenge_commits};
 use crate::verifier::structs::{InputswithdrawAll, ProofOfBit, ProofOfWitdhrawAll, ProofOfBit2};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
@@ -23,7 +23,6 @@ use crate::verifier::structs::{Inputswithdraw, ProofOfWithdraw};
 pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let mut commits = array![
         proof.A_x,
-        proof.A_n,
         proof.A_r,
         proof.A_b,
         proof.A_b2,
@@ -34,8 +33,6 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     ];
     let c = challenge_commits(ref commits);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
-//    let g_epoch:NonZeroEcPoint = g_epoch(inputs.epoch).try_into().unwrap();
-    poe(proof.nonce, g_epoch(inputs.epoch), proof.A_n, c, proof.s_x);
 
     // This is for asserting knowledge of x
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
@@ -75,13 +72,11 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
 /// Proof of Withdraw: validate the proof needed for withdraw all balance b. The cipher balance is
 /// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the correct
-/// balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r = R. We also need to
-/// check that the exponent x is the same of the private key y = g ** x and that the nonce u = g_epoc ** x
+/// balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r = R. 
 pub fn verify_withdraw_all(inputs:InputswithdrawAll, proof:ProofOfWitdhrawAll) {
-    let mut commits = array![proof.A_x, proof.A_n,proof.A_cr];
+    let mut commits = array![proof.A_x,proof.A_cr];
     let c = challenge_commits(ref commits);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
-    poe(proof.nonce, g_epoch(inputs.epoch), proof.A_n, c, proof.s_x);
 
     let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
 

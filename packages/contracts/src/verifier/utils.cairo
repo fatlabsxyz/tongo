@@ -51,20 +51,6 @@ pub fn bin_to_num(num:[u32;6]) -> felt252 {
     s
 }
 
-pub fn g_epoch(epoch: u64) -> [felt252;2] {
-    let mut x:felt252 = 0;
-    let mut salt = 1;
-    while EcPointTrait::new_nz_from_x(x).is_none() {
-        x = PedersenTrait::new('TONGO')    
-            .update(epoch.try_into().unwrap())
-            .update(salt)
-        .finalize();
-        salt = salt + 1;
-    };
-    let g_epoch = EcPointTrait::new_nz_from_x(x).unwrap();
-    [g_epoch.x(), g_epoch.y()]
-}
-
 pub fn challenge_commits(ref commits: Array<[felt252;2]>) -> felt252 {
     let mut state = PedersenTrait::new(0);
     let mut commit = commits.pop_front();
