@@ -49,7 +49,7 @@ fn audit_withdraw_all() {
     start_cheat_block_number(address, 2200);
     let epoch = dispatcher.current_epoch();
 
-    let ((Lx,Ly), (Rx,Ry), _last_epoch) = dispatcher.get_buffer([y.x(),y.y()]);
+    let ((Lx,Ly), (Rx,Ry)) = dispatcher.get_balance([y.x(),y.y()]);
 
     let (_inputs,proof)= prove_withdraw_all(x,b,[Lx,Ly],[Rx,Ry],epoch,seed);
     
@@ -84,7 +84,7 @@ fn audit_transfer() {
 
     start_cheat_block_number(address,220);
     let this_epoch = dispatcher.current_epoch();
-    let ((CLx,CLy),(CRx,CRy), _) = dispatcher.get_buffer([y.x(), y.y()]);
+    let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance([y.x(), y.y()]);
     
     let b = 100; 
     let (inputs, proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy], this_epoch, seed + 1);

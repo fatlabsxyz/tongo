@@ -1,5 +1,5 @@
 use core::starknet::ContractAddress;
-use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll};
+use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw};
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary, replay_protection.
 // the replay_protection should have the epoch in which the tx was generated (it is the same to the epoch in which the
 // tx is expected to pass) signed by the private key x of y = g**x, with  the selector_calldata and posiblly the proof itself.
@@ -12,6 +12,7 @@ pub trait ITongo<TContractState> {
     fn audit_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252);
     fn withdraw_all(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWitdhrawAll);
+    fn withdraw(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWithdraw);
     fn transfer(ref self: TContractState,
         from:[felt252;2],
         to: [felt252;2],
@@ -40,8 +41,12 @@ pub mod Tongo {
         get_block_number,
     };
     
-    use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer, InputswithdrawAll, ProofOfWitdhrawAll};
-    use crate::verifier::verifier::{verify_withdraw_all, verify_transfer};
+    use crate::verifier::structs::{ 
+        InputsTransfer, ProofOfTransfer,
+        InputswithdrawAll, ProofOfWitdhrawAll,
+        Inputswithdraw,ProofOfWithdraw
+    };
+    use crate::verifier::verifier::{verify_withdraw, verify_withdraw_all, verify_transfer};
     use crate::verifier::utils::{in_range, view_key};
     use crate::constants::{STRK_ADDRESS, BLOCKS_IN_EPOCH};
 
@@ -68,13 +73,37 @@ pub mod Tongo {
 //        self.get_transfer(amount);
 
         let Cipher = self.cipher(amount, to);
-        self.to_buffer(to, Cipher);
+        self.to_balance(to, Cipher);
 
         let Cipher_audit = self.cipher(amount, view_key());
         self.write_audit(to, Cipher_audit);
         let this_epoch = self.current_epoch();
         self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
     } 
+
+    /// Withdraw some tongo from acount and send the stark to the recipient
+    fn withdraw(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  ProofOfWithdraw) {
+        //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
+        self.rollover(from);
+        let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
+        let inputs:Inputswithdraw = Inputswithdraw { y : from , amount, L:[Lx,Ly], R: [Rx,Ry]};
+        verify_withdraw(inputs, proof);
+
+//        let amount: u256 = amount.try_into().unwrap();
+//        let calldata = array![
+//            to.into(),
+//            amount.low.into(),
+//            amount.high.into(),];
+//        syscalls::call_contract_syscall(
+//           STRK_ADDRESS.try_into().unwrap(),
+//           selector!("transfer"),
+//           calldata.span()
+//        ).unwrap_syscall();
+
+        self.balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
+        //TODO: mejorar el audit_balance
+        self.audit_balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
+    }
 
     /// Withdraw ALL tongo from acount and send the stark to the recipient
     fn withdraw_all(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  ProofOfWitdhrawAll) {
@@ -195,6 +224,19 @@ pub mod Tongo {
         return (CL,g);
     }
     
+    fn to_balance(ref self: ContractState, y:[felt252;2], Cipher: (EcPoint,EcPoint)) {
+        let balance = self.read_balance(y);
+        if balance.is_none() {
+            self.write_balance(y, Cipher);
+        } else {
+            let (L_balance,R_balance) = balance.unwrap();
+            let (CL,CR) = Cipher;
+            let L = CL + L_balance;
+            let R = CR + R_balance;
+            self.write_balance(y,(L,R));
+        };
+    }
+
     fn to_buffer(ref self: ContractState, y:[felt252;2], Cipher: (EcPoint,EcPoint)) {
         let buffer = self.read_buffer(y);
         if buffer.is_none() {
@@ -204,7 +246,7 @@ pub mod Tongo {
             let (CL,CR) = Cipher;
             let L = CL + L_buffer;
             let R = CR + R_buffer;
-            self.write_balance(y,(L,R));
+            self.write_buffer(y,(L,R));
         };
     }
 

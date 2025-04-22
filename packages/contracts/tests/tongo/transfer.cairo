@@ -25,7 +25,7 @@ fn test_transfer() {
 
     start_cheat_block_number(address,220);
     let this_epoch = dispatcher.current_epoch();
-    let ((CLx,CLy),(CRx,CRy), _) = dispatcher.get_buffer([y.x(), y.y()]);
+    let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance([y.x(), y.y()]);
     
     let b = 100; 
     let (inputs, proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy], this_epoch, seed + 1);
@@ -57,7 +57,7 @@ fn test_benchmark_prover() {
 
     start_cheat_block_number(address,220);
     let this_epoch = dispatcher.current_epoch();
-    let ((CLx,CLy),(CRx,CRy), _) = dispatcher.get_buffer([y.x(), y.y()]);
+    let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance([y.x(), y.y()]);
     
     let b = 100; 
     let (_inputs, _proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy], this_epoch, seed + 1);
