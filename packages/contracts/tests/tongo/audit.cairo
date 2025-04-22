@@ -18,13 +18,13 @@ fn audit_fund() {
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
     
-    let empty = dispatcher.audit_balance([y.x(),y.y()]);
+    let empty = dispatcher.get_audit([y.x(),y.y()]);
     assert!(empty ==((0,0),(0,0)) , "wrong");
 
     let b0 = 3124;
     dispatcher.fund([y.x(),y.y()], b0);
 
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.audit_balance([y.x(),y.y()]);
+    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
     decipher_balance(b0, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
 }
 
@@ -37,13 +37,13 @@ fn audit_withdraw_all() {
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
 
-    let empty = dispatcher.audit_balance([y.x(),y.y()]);
+    let empty = dispatcher.get_audit([y.x(),y.y()]);
     assert!(empty ==((0,0),(0,0)) , "wrong");
 
     let b = 250;
     start_cheat_block_number(address,2000);
     dispatcher.fund([y.x(), y.y()], b);
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.audit_balance([y.x(),y.y()]);
+    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
     decipher_balance(b, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
 
     start_cheat_block_number(address, 2200);
@@ -54,7 +54,7 @@ fn audit_withdraw_all() {
     let (_inputs,proof)= prove_withdraw_all(x,b,[Lx,Ly],[Rx,Ry],epoch,seed);
     
     dispatcher.withdraw_all([y.x(),y.y()],b,address, proof);
-    let empty = dispatcher.audit_balance([y.x(),y.y()]);
+    let empty = dispatcher.get_audit([y.x(),y.y()]);
     assert!(empty ==((0,0),(0,0)) , "wrong");
 }
 
@@ -67,19 +67,19 @@ fn audit_transfer() {
     
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let empty = dispatcher.audit_balance([y.x(),y.y()]);
+    let empty = dispatcher.get_audit([y.x(),y.y()]);
     assert!(empty ==((0,0),(0,0)) , "wrong");
 
 
     let x_bar = generate_random(seed,2);
     let y_bar:NonZeroEcPoint = g.mul(x_bar).try_into().unwrap();
-    let empty = dispatcher.audit_balance([y_bar.x(),y_bar.y()]);
+    let empty = dispatcher.get_audit([y_bar.x(),y_bar.y()]);
     assert!(empty ==((0,0),(0,0)) , "wrong");
     
     let b0 = 3124;
     dispatcher.fund([y.x(),y.y()], b0);
 
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.audit_balance([y.x(),y.y()]);
+    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
     decipher_balance(b0, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
 
     start_cheat_block_number(address,220);
@@ -98,9 +98,9 @@ fn audit_transfer() {
         proof,
     );
 
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.audit_balance([y.x(),y.y()]);
+    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
     decipher_balance(b0-b, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
 
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.audit_balance([y_bar.x(),y_bar.y()]);
+    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y_bar.x(),y_bar.y()]);
     decipher_balance(b, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
 }

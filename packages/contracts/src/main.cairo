@@ -9,7 +9,7 @@ pub trait ITongo<TContractState> {
     fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252); 
     fn current_epoch(ref self: TContractState) -> u64;
     fn get_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
-    fn audit_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
+    fn get_audit(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252);
     fn withdraw_all(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWitdhrawAll);
     fn withdraw(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWithdraw);
@@ -192,7 +192,7 @@ pub mod Tongo {
         self.balance.entry((*y.span()[0], *y.span()[1])).read()
     }
     
-    fn audit_balance(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252)) {
+    fn get_audit(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252)) {
         self.audit_balance.entry((*y.span()[0], *y.span()[1])).read()
     }
 
