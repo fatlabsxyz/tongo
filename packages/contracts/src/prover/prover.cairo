@@ -3,9 +3,12 @@ use crate::verifier::structs::{ProofOfWithdraw, Inputswithdraw};
 use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
 use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 
+use crate::verifier::utils::{compute_prefix, challenge_commits2};
+
 use crate::verifier::utils::{ challenge_commits, generator_h, feltXOR, view_key};
 use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_binary, cipher_balance};
 
+use core::starknet::ContractAddress;
 use core::ec::stark_curve::{GEN_X,GEN_Y};
 use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait};
 
@@ -15,22 +18,35 @@ use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait};
 pub fn prove_withdraw_all(
         x:felt252,
         amount:felt252,
+        to:ContractAddress,
         CL:[felt252;2],
         CR:[felt252;2],
+        nonce:u64,
         seed:felt252
 ) -> (InputswithdrawAll, ProofOfWitdhrawAll) {
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let R = EcPointTrait::new_nz(*CR.span()[0],  *CR.span()[1]).unwrap();
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+    let y = g.mul(x).try_into().unwrap();
+    let R = EcPointTrait::new(*CR.span()[0],  *CR.span()[1]).unwrap();
 
     //poe for y = g**x and L/g**b = R**x
     let k = generate_random(seed+1,1);
-    let A_x: NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), k).try_into().unwrap();
-    let A_cr: NonZeroEcPoint = EcPointTrait::mul(R.try_into().unwrap(), k).try_into().unwrap();
+    let A_x: NonZeroEcPoint = EcPointTrait::mul(g, k).try_into().unwrap();
+    let A_cr: NonZeroEcPoint = EcPointTrait::mul(R, k).try_into().unwrap();
+
+    let mut seq: Array<felt252> = array![
+        'withdraw_all',
+        y.x(),
+        y.y(),
+        to.into(),
+        nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
     let mut commits = array![
         [A_x.x(),A_x.y()],
         [A_cr.x(),A_cr.y()],
     ];
-    let c = challenge_commits(ref commits);
+
+    let c = challenge_commits2(prefix,ref commits);
     let s = compute_s(c, x, k);
 
     let proof: ProofOfWitdhrawAll = ProofOfWitdhrawAll {
@@ -43,6 +59,8 @@ pub fn prove_withdraw_all(
     let inputs: InputswithdrawAll = InputswithdrawAll {
         y: [y.x(), y.y()],
         amount: amount,
+        to:to,
+        nonce: nonce,
         L: CL,
         R: CR,
     };
@@ -53,8 +71,10 @@ pub fn prove_withdraw(
         x:felt252,
         initial_balance: felt252,
         amount:felt252,
+        to:ContractAddress,
         CL:[felt252;2],
         CR:[felt252;2],
+        nonce:u64,
         seed:felt252
 ) -> (Inputswithdraw, ProofOfWithdraw) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
@@ -84,8 +104,16 @@ pub fn prove_withdraw(
         state.add_mul(kr, h);
     let A_v = state.finalize_nz().unwrap();
 
+    let mut seq: Array<felt252> = array![
+        'withdraw',
+        y.x(),
+        y.y(),
+        to.into(),
+        nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
     let mut commits = array![[A_x.x(), A_x.y()], [A.x(), A.y()], [A_v.x(),A_v.y()]];
-    let c = challenge_commits(ref commits);
+    let c = challenge_commits2(prefix,ref commits);
     let sb = compute_s(c,left,kb);
     let sx = compute_s(c,x,kx);
     let sr = compute_s(c,r,kr);
@@ -105,6 +133,8 @@ pub fn prove_withdraw(
         amount: amount,
         L: [L.x(),L.y()],
         R: [R.x(),R.y()],
+        nonce: nonce,
+        to:to,
     };
     return (inputs, proof);
 }
@@ -116,6 +146,7 @@ pub fn prove_transfer(
     b:felt252,
     CL:[felt252;2],
     CR:[felt252;2],
+    nonce:u64,
     seed:felt252
 ) -> (InputsTransfer, ProofOfTransfer ) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
@@ -187,7 +218,21 @@ pub fn prove_transfer(
          [A_bar.x() , A_bar.y()],
          [A_audit.x() , A_audit.y()],
     ];
-    let c = challenge_commits(ref commits);
+
+    let mut seq: Array<felt252> = array![
+        'transfer',
+        y.x(),
+        y.y(),
+        *y_bar.span()[0],
+        *y_bar.span()[1],
+        *L.span()[0],
+        *L.span()[1],
+        R.try_into().unwrap().x(),
+        R.try_into().unwrap().y(),
+        nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
+    let c = challenge_commits2(prefix, ref commits);
 
     let s_x = compute_s(c,x, kx);
     let s_b = compute_s(c,b, kb);
@@ -204,6 +249,7 @@ pub fn prove_transfer(
         L:L,
         L_bar,
         L_audit,
+        nonce: nonce,
     };
 
     let proof: ProofOfTransfer = ProofOfTransfer {

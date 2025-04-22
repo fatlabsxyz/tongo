@@ -8,6 +8,7 @@ pub trait ITongo<TContractState> {
     fn get_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_audit(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
+    fn get_nonce(self: @TContractState, y: [felt252;2]) -> u64;
     fn withdraw_all(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWitdhrawAll);
     fn withdraw(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWithdraw);
     fn transfer(ref self: TContractState,
@@ -54,7 +55,7 @@ pub mod Tongo {
         balance: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
         audit_balance: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
         buffer: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
-        nonce: Map<felt252, bool>,
+        nonce: Map<(felt252,felt252), u64>,
     }
 
 
@@ -64,6 +65,7 @@ pub mod Tongo {
 
     /// Transfer some STARK to Tongo contract and assing some Tongo to account y
     fn fund(ref self: ContractState, to: [felt252;2], amount: felt252) {
+        //TODO: Prove knowledge of x for fund operations
         in_range(amount);
 //        self.get_transfer(amount);
 
@@ -72,14 +74,15 @@ pub mod Tongo {
 
         let Cipher_audit = self.cipher(amount, view_key(), 'fund');
         self.to_audit(to, Cipher_audit);
+        self.increase_nonce(to);
     } 
 
     /// Withdraw some tongo from acount and send the stark to the recipient
     fn withdraw(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  ProofOfWithdraw) {
         //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
-        self.rollover(from);
         let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
-        let inputs:Inputswithdraw = Inputswithdraw { y : from , amount, L:[Lx,Ly], R: [Rx,Ry]};
+        let nonce = self.get_nonce(from);
+        let inputs:Inputswithdraw = Inputswithdraw { y : from , amount,nonce,to, L:[Lx,Ly], R: [Rx,Ry]};
         verify_withdraw(inputs, proof);
 
 //        let amount: u256 = amount.try_into().unwrap();
@@ -98,13 +101,15 @@ pub mod Tongo {
         self.to_buffer(from, (-L, -R));
         let (L,R) = self.cipher(amount, view_key(), 'withdraw');
         self.to_audit(from, (-L, -R));
+        self.increase_nonce(from);
     }
 
     /// Withdraw ALL tongo from acount and send the stark to the recipient
     fn withdraw_all(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  ProofOfWitdhrawAll) {
         //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
         let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
-        let inputs:InputswithdrawAll = InputswithdrawAll { y : from ,amount , L:[Lx,Ly], R: [Rx,Ry]};
+        let nonce = self.get_nonce(from);
+        let inputs:InputswithdrawAll = InputswithdrawAll {y : from, amount,to, nonce, L:[Lx,Ly], R: [Rx,Ry]};
         verify_withdraw_all(inputs, proof);
 
 //        let amount: u256 = amount.try_into().unwrap();
@@ -123,6 +128,7 @@ pub mod Tongo {
         //TODO: mejorar el audit_balance
         let (L,R) = self.cipher(amount, view_key(),'withdraw_all');
         self.to_audit(from, (-L, -R));
+        self.increase_nonce(from);
     }
 
     /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done w.r.t the
@@ -138,10 +144,12 @@ pub mod Tongo {
     ) {
         self.rollover(from);
         let ((CLx,CLy), (CRx,CRy)) = self.get_balance(from);
+        let nonce = self.get_nonce(from);
         
         let inputs:InputsTransfer = InputsTransfer {
             y: from ,
             y_bar: to,
+            nonce: nonce,
             CL: [CLx,CLy],
             CR: [CRx,CRy],
             R: R,
@@ -167,8 +175,13 @@ pub mod Tongo {
         self.to_buffer(to, (L_bar,R));
         //TODO: Acomodar el audit
         self.to_audit(to,(L_audit,R));
+        self.increase_nonce(from);
     }
     
+    fn get_nonce(self: @ContractState, y: [felt252;2]) -> u64 {
+        self.nonce.entry((*y.span()[0], *y.span()[1])).read()
+    }
+
     /// Returns the cipher balance of the given public key y. The cipher balance consist in two points
     /// of the stark curve. (L,R) = ((Lx, Ly), (Rx, Ry )) = (g**b y**r , g**r) for some random r.
     fn get_balance(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252)) {
@@ -331,6 +344,12 @@ pub mod Tongo {
            selector!("transfer_from"),
            calldata.span()
         ).unwrap_syscall();
+    }
+
+    fn increase_nonce(ref self: ContractState, y:[felt252;2]){
+        let mut nonce = self.nonce.entry((*y.span()[0], *y.span()[1])).read();
+        nonce = nonce + 1;
+        self.nonce.entry((*y.span()[0], *y.span()[1])).write(nonce);
     }
 
     }

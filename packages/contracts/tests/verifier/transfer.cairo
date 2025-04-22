@@ -23,10 +23,11 @@ fn test_transfer() {
     // end of setup
 
     let b = 12; 
+    let nonce = 1;
     let x_bar = generate_random(seed,2);
     let y_bar:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x_bar).try_into().unwrap();
     
-    let (inputs, proof ) = prove_transfer(x, [y_bar.x(), y_bar.y()],b0, b,CL,CR, generate_random(seed,4));
+    let (inputs, proof ) = prove_transfer(x, [y_bar.x(), y_bar.y()],b0, b,CL,CR,nonce, generate_random(seed,4));
 
     verify_transfer(inputs,proof);
 }

@@ -3,6 +3,7 @@ use core::ec::stark_curve::{GEN_X, GEN_Y};
 use crate::verifier::utils::{in_order, on_curve};
 use crate::verifier::utils::{ generator_h, view_key};
 use crate::verifier::utils::{feltXOR, challenge_commits};
+use crate::verifier::utils::{compute_prefix, challenge_commits2};
 use crate::verifier::structs::{InputswithdrawAll, ProofOfBit, ProofOfWitdhrawAll, ProofOfBit2};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
 use crate::verifier::structs::{Inputswithdraw, ProofOfWithdraw};
@@ -21,6 +22,20 @@ use crate::verifier::structs::{Inputswithdraw, ProofOfWithdraw};
 /// 6) The proof neceary to show that the remaining balance is in range.
 /// TODO: finish the doc
 pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
+    let mut seq: Array<felt252> = array![
+        'transfer',
+        *inputs.y.span()[0],
+        *inputs.y.span()[1],
+        *inputs.y_bar.span()[0],
+        *inputs.y_bar.span()[1],
+        *inputs.L.span()[0],
+        *inputs.L.span()[1],
+        *inputs.R.span()[0],
+        *inputs.R.span()[1],
+        inputs.nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
+
     let mut commits = array![
         proof.A_x,
         proof.A_r,
@@ -31,7 +46,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
         proof.A_bar,
         proof.A_audit,
     ];
-    let c = challenge_commits(ref commits);
+    let c = challenge_commits2(prefix, ref commits);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
 
     // This is for asserting knowledge of x
@@ -74,8 +89,17 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 /// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the correct
 /// balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r = R. 
 pub fn verify_withdraw_all(inputs:InputswithdrawAll, proof:ProofOfWitdhrawAll) {
+    let mut seq: Array<felt252> = array![
+        'withdraw_all',
+        *inputs.y.span()[0],
+        *inputs.y.span()[1],
+        inputs.to.into(),
+        inputs.nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
+
     let mut commits = array![proof.A_x,proof.A_cr];
-    let c = challenge_commits(ref commits);
+    let c = challenge_commits2(prefix, ref commits);
     poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
 
     let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
@@ -87,8 +111,17 @@ pub fn verify_withdraw_all(inputs:InputswithdrawAll, proof:ProofOfWitdhrawAll) {
 }
 
 pub fn verify_withdraw(inputs:Inputswithdraw, proof: ProofOfWithdraw) {
+    let mut seq: Array<felt252> = array![
+        'withdraw',
+        *inputs.y.span()[0],
+        *inputs.y.span()[1],
+        inputs.to.into(),
+        inputs.nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
+
     let mut commits = array![proof.A_x, proof.A, proof.A_v];
-    let c = challenge_commits(ref commits);
+    let c = challenge_commits2(prefix,ref commits);
 
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let g_b  = EcPointTrait::mul(g,inputs.amount).try_into().unwrap();

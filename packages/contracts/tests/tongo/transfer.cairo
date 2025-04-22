@@ -22,9 +22,10 @@ fn test_transfer() {
     dispatcher.fund([y.x(),y.y()], b0);
 
     let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance([y.x(), y.y()]);
+    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
     
     let b = 100; 
-    let (inputs, proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy], seed + 1);
+    let (inputs, proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy],nonce, seed + 1);
     dispatcher.transfer(
         inputs.y,
         inputs.y_bar,
@@ -51,7 +52,8 @@ fn test_benchmark_prover() {
     dispatcher.fund([y.x(),y.y()], b0);
 
     let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance([y.x(), y.y()]);
+    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
     
     let b = 100; 
-    let (_inputs, _proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy], seed + 1);
+    let (_inputs, _proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy],nonce, seed + 1);
 }

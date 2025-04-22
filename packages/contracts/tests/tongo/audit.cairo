@@ -1,4 +1,5 @@
 use core::ec::{EcPointTrait};
+use starknet::ContractAddress;
 use core::ec::{ NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X,GEN_Y};
 use crate::tongo::setup::{setup_tongo};
@@ -30,9 +31,10 @@ fn audit_fund() {
 #[test]
 fn audit_withdraw_all() {
     let seed = 4719823;
-    let (address,dispatcher) = setup_tongo();
+    let (_address,dispatcher) = setup_tongo();
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     
+    let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
 
@@ -47,10 +49,11 @@ fn audit_withdraw_all() {
 
 
     let ((Lx,Ly), (Rx,Ry)) = dispatcher.get_balance([y.x(),y.y()]);
+    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
 
-    let (_inputs,proof)= prove_withdraw_all(x,b,[Lx,Ly],[Rx,Ry],seed);
+    let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,[Lx,Ly],[Rx,Ry],nonce,seed);
     
-    dispatcher.withdraw_all([y.x(),y.y()],b,address, proof);
+    dispatcher.withdraw_all([y.x(),y.y()],b,tranfer_address, proof);
     let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
     decipher_balance(0, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
 }
@@ -74,6 +77,7 @@ fn audit_transfer() {
     
     let b0 = 3124;
     dispatcher.fund([y.x(),y.y()], b0);
+    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
 
     let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
     decipher_balance(b0, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
@@ -81,7 +85,7 @@ fn audit_transfer() {
     let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance([y.x(), y.y()]);
     
     let b = 100; 
-    let (inputs, proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy],  seed + 1);
+    let (inputs, proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy],nonce,  seed + 1);
     dispatcher.transfer(
         inputs.y,
         inputs.y_bar,

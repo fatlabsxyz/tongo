@@ -1,3 +1,4 @@
+use core::starknet::ContractAddress;
 
 #[derive(Serde, Drop, Debug, Copy)]
 /// Proof that V = g**b h**r with b either one or zero is well formed. The proof use a OR protocol to assert 
@@ -24,6 +25,8 @@ pub struct ProofOfBit2 {
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct InputswithdrawAll {
     pub y: [felt252;2],
+    pub nonce: u64,
+    pub to: ContractAddress,
     pub amount: felt252,
     pub L:[felt252;2], 
     pub R:[felt252;2], 
@@ -40,6 +43,8 @@ pub struct ProofOfWitdhrawAll {
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct Inputswithdraw {
     pub y: [felt252;2],
+    pub nonce: u64,
+    pub to: ContractAddress,
     pub amount: felt252,
     pub L:[felt252;2], 
     pub R:[felt252;2], 
@@ -58,6 +63,7 @@ pub struct ProofOfWithdraw {
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct InputsTransfer {
+    pub nonce:u64,
     pub y: [felt252;2],
     pub y_bar: [felt252;2],
     pub CL:[felt252;2], 

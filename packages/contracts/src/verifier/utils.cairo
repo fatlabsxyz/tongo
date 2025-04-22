@@ -51,6 +51,37 @@ pub fn bin_to_num(num:[u32;6]) -> felt252 {
     s
 }
 
+pub fn compute_prefix(ref seq: Array<felt252>) -> felt252{
+    let mut state = PedersenTrait::new(0);
+    let mut element = seq.pop_front();
+    while element.is_some(){
+        state = state.update(element.unwrap());
+        element = seq.pop_front();
+    };
+    state.finalize()
+}
+
+pub fn challenge_commits2(prefix: felt252, ref commits: Array<[felt252;2]>) -> felt252 {
+    let mut state = PedersenTrait::new(prefix);
+    let mut commit = commits.pop_front();
+    while commit.is_some() {
+        let [x,y] = commit.unwrap();
+        state = state.update(x); 
+        state = state.update(y); 
+        commit = commits.pop_front();
+    };
+    let base = state.finalize();
+    let mut salt = 1;
+    let mut c = ORDER + 1;
+    while !in_order(c) {
+        c = PedersenTrait::new(base)
+            .update(salt)
+        .finalize();
+        salt = salt + 1;
+    };
+    return c;
+}
+
 pub fn challenge_commits(ref commits: Array<[felt252;2]>) -> felt252 {
     let mut state = PedersenTrait::new(0);
     let mut commit = commits.pop_front();
