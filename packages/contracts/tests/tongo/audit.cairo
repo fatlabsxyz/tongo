@@ -6,6 +6,7 @@ use crate::tongo::setup::{setup_tongo};
 use tongo::prover::utils::{generate_random, decipher_balance};
 use tongo::prover::prover::prove_withdraw_all;
 use tongo::prover::prover::prove_transfer;
+use tongo::prover::prover::prove_fund;
 
 use tongo::main::ITongoDispatcherTrait;
 
@@ -20,9 +21,12 @@ fn audit_fund() {
     
     let empty = dispatcher.get_audit([y.x(),y.y()]);
     assert!(empty ==((0,0),(0,0)) , "wrong");
+    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+
+    let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
 
     let b0 = 3124;
-    dispatcher.fund([y.x(),y.y()], b0);
+    dispatcher.fund([y.x(),y.y()], b0, fund_proof);
 
     let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
     decipher_balance(b0, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
@@ -40,9 +44,12 @@ fn audit_withdraw_all() {
 
     let empty = dispatcher.get_audit([y.x(),y.y()]);
     assert!(empty ==((0,0),(0,0)) , "wrong");
+    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+
+    let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
 
     let b = 250;
-    dispatcher.fund([y.x(), y.y()], b);
+    dispatcher.fund([y.x(), y.y()], b, fund_proof);
 
     let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
     decipher_balance(b, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
@@ -74,9 +81,12 @@ fn audit_transfer() {
     let y_bar:NonZeroEcPoint = g.mul(x_bar).try_into().unwrap();
     let empty = dispatcher.get_audit([y_bar.x(),y_bar.y()]);
     assert!(empty ==((0,0),(0,0)) , "wrong");
+    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+
+    let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
     
     let b0 = 3124;
-    dispatcher.fund([y.x(),y.y()], b0);
+    dispatcher.fund([y.x(),y.y()], b0, fund_proof);
     let nonce = dispatcher.get_nonce([y.x(),y.y()]);
 
     let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);

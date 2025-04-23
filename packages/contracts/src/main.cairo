@@ -1,10 +1,10 @@
 use core::starknet::ContractAddress;
-use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw};
+use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw, ProofOfFund};
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary, replay_protection.
 
 #[starknet::interface]
 pub trait ITongo<TContractState> {
-    fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252); 
+    fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252, proof: ProofOfFund); 
     fn get_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_audit(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
@@ -41,9 +41,10 @@ pub mod Tongo {
     use crate::verifier::structs::{ 
         InputsTransfer, ProofOfTransfer,
         InputswithdrawAll, ProofOfWitdhrawAll,
-        Inputswithdraw,ProofOfWithdraw
+        Inputswithdraw,ProofOfWithdraw,
+        InputsFund, ProofOfFund,
     };
-    use crate::verifier::verifier::{verify_withdraw, verify_withdraw_all, verify_transfer};
+    use crate::verifier::verifier::{verify_withdraw, verify_withdraw_all, verify_transfer, verify_fund};
     use crate::verifier::utils::{in_range, view_key};
     use crate::constants::{STRK_ADDRESS};
 
@@ -64,10 +65,13 @@ pub mod Tongo {
     
 
     /// Transfer some STARK to Tongo contract and assing some Tongo to account y
-    fn fund(ref self: ContractState, to: [felt252;2], amount: felt252) {
-        //TODO: Prove knowledge of x for fund operations
+    fn fund(ref self: ContractState, to: [felt252;2], amount: felt252, proof: ProofOfFund) {
         in_range(amount);
+        let nonce = self.get_nonce(to);
 //        self.get_transfer(amount);
+
+        let inputs: InputsFund = InputsFund{y:to, nonce: nonce};
+        verify_fund(inputs, proof);
 
         let Cipher = self.cipher(amount, to, 'fund');
         self.to_balance(to, Cipher);

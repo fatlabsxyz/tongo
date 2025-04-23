@@ -7,6 +7,7 @@ use crate::verifier::utils::{compute_prefix, challenge_commits2};
 use crate::verifier::structs::{InputswithdrawAll, ProofOfBit, ProofOfWitdhrawAll, ProofOfBit2};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
 use crate::verifier::structs::{Inputswithdraw, ProofOfWithdraw};
+use crate::verifier::structs::{InputsFund,ProofOfFund};
 
 
 /// Transfer b from y = g**x to y_bar.  Public inputs: y, y_bar L = g**b y**r, L_bar = g**b y_bar**r, R = g**r.
@@ -83,6 +84,20 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let V2 = verify_range(proof.range2);
     poe2(V2, [GEN_X,GEN_Y], generator_h(), proof.A_v2, c, proof.s_b2, proof.s_r2);
 
+}
+
+pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund){
+    let mut seq: Array<felt252> = array![
+        'fund',
+        *inputs.y.span()[0],
+        *inputs.y.span()[1],
+        inputs.nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
+    let mut commits = array![proof.Ax];
+    let c = challenge_commits2(prefix, ref commits);
+
+    poe(inputs.y, [GEN_X,GEN_Y],proof.Ax,c, proof.sx);
 }
 
 /// Proof of Withdraw: validate the proof needed for withdraw all balance b. The cipher balance is

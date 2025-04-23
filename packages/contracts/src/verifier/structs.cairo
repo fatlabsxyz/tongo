@@ -13,6 +13,18 @@ pub struct ProofOfBit {
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
+pub struct InputsFund {
+    pub y:[felt252;2],
+    pub nonce: u64,
+}
+
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct ProofOfFund {
+    pub Ax:[felt252;2],
+    pub sx: felt252,
+}
+
+#[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfBit2 {
     pub V:[felt252;2],
     pub A:[felt252;2],

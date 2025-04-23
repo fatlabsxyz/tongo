@@ -4,7 +4,7 @@ use core::ec::stark_curve::{GEN_X,GEN_Y};
 use starknet::ContractAddress;
 use crate::tongo::setup::{setup_tongo};
 
-use tongo::prover::prover::{prove_withdraw_all, prove_withdraw};
+use tongo::prover::prover::{prove_withdraw_all, prove_withdraw, prove_fund};
 use tongo::prover::utils::generate_random;
 use tongo::main::ITongoDispatcherTrait;
 
@@ -18,9 +18,11 @@ fn test_withdraw_all() {
     
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
 
+    let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
     let b = 250;
-    dispatcher.fund([y.x(), y.y()], b);
+    dispatcher.fund([y.x(), y.y()], b, fund_proof);
 
     let ((Lx,Ly), (Rx,Ry)) = dispatcher.get_balance([y.x(),y.y()]);
     let nonce = dispatcher.get_nonce([y.x(),y.y()]);
@@ -43,10 +45,13 @@ fn test_withdraw() {
     
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+
+    let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
 
     let initial_balance = 250;
     let amount = 50;
-    dispatcher.fund([y.x(), y.y()], initial_balance);
+    dispatcher.fund([y.x(), y.y()], initial_balance, fund_proof);
 
     let ((Lx,Ly), (Rx,Ry)) = dispatcher.get_balance([y.x(),y.y()]);
     let nonce = dispatcher.get_nonce([y.x(),y.y()]);

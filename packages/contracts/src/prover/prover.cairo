@@ -2,6 +2,7 @@ use crate::verifier::structs::{ProofOfWitdhrawAll,InputswithdrawAll};
 use crate::verifier::structs::{ProofOfWithdraw, Inputswithdraw};
 use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
 use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
+use crate::verifier::structs::{ InputsFund,ProofOfFund};
 
 use crate::verifier::utils::{compute_prefix, challenge_commits2};
 
@@ -64,6 +65,30 @@ pub fn prove_withdraw_all(
         L: CL,
         R: CR,
     };
+    return (inputs,proof);
+}
+
+pub fn prove_fund(x:felt252,nonce:u64, seed: felt252) -> (InputsFund, ProofOfFund) {
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
+    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+    let inputs : InputsFund = InputsFund {y:[y.x(), y.y()], nonce: nonce};
+    let mut seq: Array<felt252> = array![
+        'fund',
+        *inputs.y.span()[0],
+        *inputs.y.span()[1],
+        inputs.nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
+
+    //prover
+    let k = generate_random(seed,2);
+    let Ax:NonZeroEcPoint = g.mul(k).try_into().unwrap();
+
+    let mut commits = array![[Ax.x(), Ax.y()]];
+    let c = challenge_commits2(prefix, ref commits);
+    let s = compute_s(c, x, k);
+
+    let proof: ProofOfFund = ProofOfFund {Ax: [Ax.x(), Ax.y()], sx: s};
     return (inputs,proof);
 }
 
