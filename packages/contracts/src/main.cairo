@@ -109,7 +109,8 @@ pub mod Tongo {
 
         //TODO: mejorar el audit_balance
         let (L,R) = self.cipher(amount, from, 'withdraw');
-        self.to_buffer(from, (-L, -R));
+        self.to_balance(from, (-L, -R));
+
         let (L,R) = self.cipher(amount, view_key(), 'withdraw');
         self.to_audit(from, (-L, -R));
         self.increase_nonce(from);
@@ -177,7 +178,7 @@ pub mod Tongo {
         let R = EcPointTrait::new(*R.span()[0],*R.span()[1]).unwrap();
         let L_bar = EcPointTrait::new(*L_bar.span()[0],*L_bar.span()[1]).unwrap();
         let L_audit = EcPointTrait::new(*L_audit.span()[0],*L_audit.span()[1]).unwrap();
-        self.to_buffer(from,(-L,-R));
+        self.to_balance(from,(-L,-R));
 
         //TODO: Acomodar el audit
         self.to_audit(from,(-L_audit,-R));
@@ -264,8 +265,9 @@ pub mod Tongo {
             let (L_balance,R_balance) = balance.unwrap();
             let L = L_buffer + L_balance;
             let R = R_buffer + R_balance;
-            self.write_buffer(y,(L,R));
+            self.write_balance(y,(L,R));
         };
+        self.buffer.entry((*y.span()[0], *y.span()[1])).write( ((0,0),(0,0)) );
     }
 
 
