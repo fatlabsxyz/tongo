@@ -8,7 +8,151 @@ use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWitdhrawAll, P
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
 use crate::verifier::structs::{ProofOfWithdraw};
 use crate::verifier::structs::{InputsFund,ProofOfFund};
+use crate::errors::{FUND, WITHDRAW, TRANSFER};
 
+
+/// Proof of Exponent: validate a proof of knowledge of the exponent y = g ** x. The sigma protocols runs
+/// V:  k <-- R        sends    A_x = g ** k
+/// P:  c <-- R        sends    c
+/// V:  s = k + c*x    sends    s
+/// The verifier asserts  g**s == A_x * (y**c)
+pub fn poe(y: [felt252;2], g: [felt252;2], A_x: [felt252;2], c:felt252, s:felt252 ) -> bool {
+    assert!(on_curve(y), "failed");
+    assert!(on_curve(g), "failed");
+    assert!(on_curve(A_x), "failed");
+    assert!(in_order(c), "failed");
+    assert!(in_order(s), "failed");
+
+    let g = EcPointTrait::new(*g.span()[0], *g.span()[1]).unwrap();
+    let y = EcPointTrait::new_nz(*y.span()[0], *y.span()[1]).unwrap();
+    let A_x = EcPointTrait::new_nz(*A_x.span()[0], *A_x.span()[1]).unwrap();
+        
+    let mut state = EcStateTrait::init();
+        state.add(A_x);
+        state.add_mul(c, y);
+    let RHS = state.finalize_nz().unwrap();
+    let LHS:NonZeroEcPoint = EcPointTrait::mul(g, s).try_into().unwrap();
+
+    LHS.coordinates() == RHS.coordinates()
+}
+
+
+/// Proof of Exponent 2: validate a proof of knowledge of the exponent y = g**x h**r. The sigma protocols runs
+/// V:  kx,kr <-- R        sends    A = g ** kx h**kr
+/// P:  c <-- R            sends    c
+/// V:  sx = k + c*x 
+/// V:  sr = k + c*r       send sr, sx
+/// The verifier asserts  g**sx h**sr == A * (y**c)
+pub fn poe2(y: [felt252;2], g1: [felt252;2],g2:[felt252;2], A: [felt252;2], c:felt252, s1:felt252, s2:felt252 ) -> bool {
+    let g1 = EcPointTrait::new_nz(*g1.span()[0], *g1.span()[1]).unwrap();
+    let g2 = EcPointTrait::new_nz(*g2.span()[0], *g2.span()[1]).unwrap();
+    let y = EcPointTrait::new_nz(*y.span()[0], *y.span()[1]).unwrap();
+    let A = EcPointTrait::new_nz(*A.span()[0], *A.span()[1]).unwrap();
+
+    let mut state = EcStateTrait::init();
+        state.add_mul(s1,g1);
+        state.add_mul(s2,g2);
+    let LHS = state.finalize_nz().unwrap();
+        
+    let mut state = EcStateTrait::init();
+        state.add(A);
+        state.add_mul(c, y);
+    let RHS = state.finalize_nz().unwrap();
+
+    LHS.coordinates() == RHS.coordinates()
+}
+
+pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund){
+    let mut seq: Array<felt252> = array![
+        'fund',
+        *inputs.y.span()[0],
+        *inputs.y.span()[1],
+        inputs.nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
+    let mut commits = array![proof.Ax];
+    let c = challenge_commits2(prefix, ref commits);
+
+    let res = poe(inputs.y, [GEN_X,GEN_Y],proof.Ax,c, proof.sx);
+    assert(res, FUND::F100);
+}
+
+
+/// Proof of Withdraw: validate the proof needed for withdraw all balance b. The cipher balance is
+/// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the correct
+/// balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r = R. 
+pub fn verify_withdraw_all(inputs:InputsWithdraw, proof:ProofOfWitdhrawAll) {
+    let mut seq: Array<felt252> = array![
+        'withdraw_all',
+        *inputs.y.span()[0],
+        *inputs.y.span()[1],
+        inputs.to.into(),
+        inputs.nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
+    let mut commits = array![proof.A_x,proof.A_cr];
+    let c = challenge_commits2(prefix, ref commits);
+
+    let res = poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
+    assert(res, WITHDRAW::W100);
+
+    let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
+
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+    let g_b = EcPointTrait::mul(g,inputs.amount);
+    let Y: NonZeroEcPoint = (L - g_b.try_into().unwrap()).try_into().unwrap();
+
+    let res = poe([Y.x(), Y.y()], [*inputs.R.span()[0], *inputs.R.span()[1]], proof.A_cr,c ,proof.s_x);
+    assert(res, WITHDRAW::W101);
+}
+
+
+pub fn verify_withdraw(inputs:InputsWithdraw, proof: ProofOfWithdraw) {
+    let mut seq: Array<felt252> = array![
+        'withdraw',
+        *inputs.y.span()[0],
+        *inputs.y.span()[1],
+        inputs.to.into(),
+        inputs.nonce.into(),
+    ];
+    let prefix = compute_prefix(ref seq);
+
+    let mut commits = array![proof.A_x, proof.A, proof.A_v];
+    let c = challenge_commits2(prefix,ref commits);
+
+    let res = poe(inputs.y, [GEN_X, GEN_Y], proof.A_x, c, proof.sx);
+    assert(res, WITHDRAW::W100);
+
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
+    let g_b  = EcPointTrait::mul(g,inputs.amount).try_into().unwrap();
+    let L = EcPointTrait::new(*inputs.L.span()[0],*inputs.L.span()[1]).unwrap();
+    let L: NonZeroEcPoint = (L - g_b).try_into().unwrap();
+    let res =poe2(
+        [L.x(),L.y()],
+        [GEN_X, GEN_Y],
+        [*inputs.R.span()[0], *inputs.R.span()[1]],
+        [*proof.A.span()[0], *proof.A.span()[1]],
+        c,
+        proof.sb,
+        proof.sx
+    );
+    assert(res, 'POE2');
+    assert(res,WITHDRAW::W103);
+
+
+    let V = verify_range(proof.range);
+    let res = poe2(
+        V,
+        [GEN_X, GEN_Y],
+        generator_h(),
+        [*proof.A_v.span()[0],*proof.A_v.span()[1]],
+        c,
+        proof.sb,
+        proof.sr
+    );
+    assert(res,WITHDRAW::W102);
+
+}
 
 /// Transfer b from y = g**x to y_bar.  Public inputs: y, y_bar L = g**b y**r, L_bar = g**b y_bar**r, R = g**r.
 /// We need to prove:
@@ -48,26 +192,31 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
         proof.A_audit,
     ];
     let c = challenge_commits2(prefix, ref commits);
-    poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
 
     // This is for asserting knowledge of x
-    poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
+    let res = poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
+    assert(res, TRANSFER::T100);
     
     // This is for asserting R = g**r
-    poe(inputs.R, [GEN_X,GEN_Y], proof.A_r, c, proof.s_r );
+    let res = poe(inputs.R, [GEN_X,GEN_Y], proof.A_r, c, proof.s_r );
+    assert(res, TRANSFER::T101);
     
     //This is for asserting L = g**b y**r
-    poe2(inputs.L, [GEN_X,GEN_Y], inputs.y, proof.A_b, c, proof.s_b,proof.s_r);
+    let res = poe2(inputs.L, [GEN_X,GEN_Y], inputs.y, proof.A_b, c, proof.s_b,proof.s_r);
+    assert(res, TRANSFER::T102);
 
     //This is for asserting L_bar = g**b y_bar**r
-    poe2(inputs.L_bar, [GEN_X,GEN_Y], inputs.y_bar, proof.A_bar, c, proof.s_b,proof.s_r);
+    let res = poe2(inputs.L_bar, [GEN_X,GEN_Y], inputs.y_bar, proof.A_bar, c, proof.s_b,proof.s_r);
+    assert(res, TRANSFER::T103);
 
     //This is for asserting L_audit= g**b y_audit*r
-    poe2(inputs.L_audit, [GEN_X,GEN_Y], view_key(), proof.A_audit, c, proof.s_b,proof.s_r);
+    let res = poe2(inputs.L_audit, [GEN_X,GEN_Y], view_key(), proof.A_audit, c, proof.s_b,proof.s_r);
+    assert(res, TRANSFER::T104);
 
     // Now we need to show that V = g**b h**r with the same b and r.
     let V =  verify_range(proof.range);
-    poe2(V, [GEN_X,GEN_Y], generator_h(), proof.A_v, c, proof.s_b,proof.s_r);
+    let res = poe2(V, [GEN_X,GEN_Y], generator_h(), proof.A_v, c, proof.s_b,proof.s_r);
+    assert(res, TRANSFER::T105);
 
     let CL = EcPointTrait::new(*inputs.CL.span()[0], *inputs.CL.span()[1]).unwrap();
     let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
@@ -76,145 +225,17 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let CR = EcPointTrait::new(*inputs.CR.span()[0], *inputs.CR.span()[1]).unwrap();
     let R = EcPointTrait::new(*inputs.R.span()[0], *inputs.R.span()[1]).unwrap();
     let G:NonZeroEcPoint = (CR - R).try_into().unwrap();
-    poe2([Y.x(), Y.y()], [GEN_X, GEN_Y], [G.x(), G.y()], proof.A_b2,c, proof.s_b2, proof.s_x );
+    let res = poe2([Y.x(), Y.y()], [GEN_X, GEN_Y], [G.x(), G.y()], proof.A_b2,c, proof.s_b2, proof.s_x );
+    assert(res, TRANSFER::T106);
 
 
     // Now we need to show that V = g**b h**r2 with the same b2
     // This is for asserting that b2 is in range 
     let V2 = verify_range(proof.range2);
-    poe2(V2, [GEN_X,GEN_Y], generator_h(), proof.A_v2, c, proof.s_b2, proof.s_r2);
-
+    let res = poe2(V2, [GEN_X,GEN_Y], generator_h(), proof.A_v2, c, proof.s_b2, proof.s_r2);
+    assert(res, TRANSFER::T107);
 }
 
-pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund){
-    let mut seq: Array<felt252> = array![
-        'fund',
-        *inputs.y.span()[0],
-        *inputs.y.span()[1],
-        inputs.nonce.into(),
-    ];
-    let prefix = compute_prefix(ref seq);
-    let mut commits = array![proof.Ax];
-    let c = challenge_commits2(prefix, ref commits);
-
-    poe(inputs.y, [GEN_X,GEN_Y],proof.Ax,c, proof.sx);
-}
-
-/// Proof of Withdraw: validate the proof needed for withdraw all balance b. The cipher balance is
-/// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the correct
-/// balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r = R. 
-pub fn verify_withdraw_all(inputs:InputsWithdraw, proof:ProofOfWitdhrawAll) {
-    let mut seq: Array<felt252> = array![
-        'withdraw_all',
-        *inputs.y.span()[0],
-        *inputs.y.span()[1],
-        inputs.to.into(),
-        inputs.nonce.into(),
-    ];
-    let prefix = compute_prefix(ref seq);
-
-    let mut commits = array![proof.A_x,proof.A_cr];
-    let c = challenge_commits2(prefix, ref commits);
-    poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
-
-    let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
-
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let g_b = EcPointTrait::mul(g,inputs.amount);
-    let h: NonZeroEcPoint = (L - g_b.try_into().unwrap()).try_into().unwrap();
-    poe([h.x(), h.y()], [*inputs.R.span()[0], *inputs.R.span()[1]], proof.A_cr,c ,proof.s_x);
-}
-
-pub fn verify_withdraw(inputs:InputsWithdraw, proof: ProofOfWithdraw) {
-    let mut seq: Array<felt252> = array![
-        'withdraw',
-        *inputs.y.span()[0],
-        *inputs.y.span()[1],
-        inputs.to.into(),
-        inputs.nonce.into(),
-    ];
-    let prefix = compute_prefix(ref seq);
-
-    let mut commits = array![proof.A_x, proof.A, proof.A_v];
-    let c = challenge_commits2(prefix,ref commits);
-
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
-    let g_b  = EcPointTrait::mul(g,inputs.amount).try_into().unwrap();
-    let L = EcPointTrait::new(*inputs.L.span()[0],*inputs.L.span()[1]).unwrap();
-    let L: NonZeroEcPoint = (L - g_b).try_into().unwrap();
-    poe2(
-        [L.x(),L.y()],
-        [GEN_X, GEN_Y],
-        [*inputs.R.span()[0], *inputs.R.span()[1]],
-        [*proof.A.span()[0], *proof.A.span()[1]],
-        c,
-        proof.sb,
-        proof.sx
-    );
-
-    let V = verify_range(proof.range);
-    poe2(
-        V,
-        [GEN_X, GEN_Y],
-        generator_h(),
-        [*proof.A_v.span()[0],*proof.A_v.span()[1]],
-        c,
-        proof.sb,
-        proof.sr
-    );
-
-    poe(inputs.y, [GEN_X, GEN_Y], proof.A_x, c, proof.sx);
-
-}
-
-/// Proof of Exponent: validate a proof of knowledge of the exponent y = g ** x. The sigma protocols runs
-/// V:  k <-- R        sends    A_x = g ** k
-/// P:  c <-- R        sends    c
-/// V:  s = k + c*x    sends    s
-/// The verifier asserts  g**s == A_x * (y**c)
-pub fn poe(y: [felt252;2], g: [felt252;2], A_x: [felt252;2], c:felt252, s:felt252 ) {
-    assert!(on_curve(y), "failed");
-    assert!(on_curve(g), "failed");
-    assert!(on_curve(A_x), "failed");
-    assert!(in_order(c), "failed");
-    assert!(in_order(s), "failed");
-
-    let g = EcPointTrait::new(*g.span()[0], *g.span()[1]).unwrap();
-    let y = EcPointTrait::new_nz(*y.span()[0], *y.span()[1]).unwrap();
-    let A_x = EcPointTrait::new_nz(*A_x.span()[0], *A_x.span()[1]).unwrap();
-        
-    let mut state = EcStateTrait::init();
-        state.add(A_x);
-        state.add_mul(c, y);
-    let RHS = state.finalize_nz().unwrap();
-    let LHS:NonZeroEcPoint = EcPointTrait::mul(g, s).try_into().unwrap();
-    assert!(LHS.coordinates() == RHS.coordinates(), "Failed the proof of exponent");
-}
-
-
-/// Proof of Exponent 2: validate a proof of knowledge of the exponent y = g**x h**r. The sigma protocols runs
-/// V:  kx,kr <-- R        sends    A = g ** kx h**kr
-/// P:  c <-- R            sends    c
-/// V:  sx = k + c*x 
-/// V:  sr = k + c*r       send sr, sx
-/// The verifier asserts  g**sx h**sr == A * (y**c)
-pub fn poe2(y: [felt252;2], g1: [felt252;2],g2:[felt252;2], A: [felt252;2], c:felt252, s1:felt252, s2:felt252 ) {
-    let g1 = EcPointTrait::new_nz(*g1.span()[0], *g1.span()[1]).unwrap();
-    let g2 = EcPointTrait::new_nz(*g2.span()[0], *g2.span()[1]).unwrap();
-    let y = EcPointTrait::new_nz(*y.span()[0], *y.span()[1]).unwrap();
-    let A = EcPointTrait::new_nz(*A.span()[0], *A.span()[1]).unwrap();
-
-    let mut state = EcStateTrait::init();
-        state.add_mul(s1,g1);
-        state.add_mul(s2,g2);
-    let LHS = state.finalize_nz().unwrap();
-        
-    let mut state = EcStateTrait::init();
-        state.add(A);
-        state.add_mul(c, y);
-    let RHS = state.finalize_nz().unwrap();
-    assert!(LHS.coordinates() == RHS.coordinates(), "Failed the proof of exponent2");
-}
 
 /// Proof of Bit: validate that a commited V = g**b h**r is the ciphertext of  either b=0 OR b=1. 
 /// If b = 0 then V = h**r and a proof of exponet for r is enought. If b=1 then V/g = h**r could be also 
