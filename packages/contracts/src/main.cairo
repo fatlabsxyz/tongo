@@ -5,6 +5,7 @@ use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithd
 #[starknet::interface]
 pub trait ITongo<TContractState> {
     fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252, proof: ProofOfFund); 
+    fn rollover(ref self: TContractState, to: [felt252;2], proof: ProofOfFund); 
     fn get_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_audit(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
     fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
@@ -62,6 +63,13 @@ pub mod Tongo {
     #[abi(embed_v0)]
     impl TongoImpl of super::ITongo<ContractState> {
     
+    fn rollover(ref self: ContractState, to: [felt252;2], proof: ProofOfFund) {
+        let nonce = self.get_nonce(to);
+        let inputs: InputsFund = InputsFund{y:to, nonce: nonce};
+        verify_fund(inputs, proof);
+        self.buffer_to_balance(to);
+        self.increase_nonce(to);
+    }
 
     /// Transfer some STARK to Tongo contract and assing some Tongo to account y
     fn fund(ref self: ContractState, to: [felt252;2], amount: felt252, proof: ProofOfFund) {
@@ -145,7 +153,6 @@ pub mod Tongo {
         R: [felt252;2],
         proof: ProofOfTransfer,
     ) {
-        self.rollover(from);
         let ((CLx,CLy), (CRx,CRy)) = self.get_balance(from);
         let nonce = self.get_nonce(from);
         
@@ -328,10 +335,6 @@ pub mod Tongo {
             L.try_into().unwrap().coordinates(),
             R.try_into().unwrap().coordinates(),
         ));
-    }
-
-    fn rollover(ref self: ContractState, y:[felt252;2]) {
-        self.buffer_to_balance(y);
     }
 
     fn get_transfer(self: @ContractState, amount: felt252) {
