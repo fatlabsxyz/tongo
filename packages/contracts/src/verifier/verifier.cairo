@@ -4,9 +4,9 @@ use crate::verifier::utils::{in_order, on_curve};
 use crate::verifier::utils::{ generator_h, view_key};
 use crate::verifier::utils::{feltXOR, challenge_commits};
 use crate::verifier::utils::{compute_prefix, challenge_commits2};
-use crate::verifier::structs::{InputswithdrawAll, ProofOfBit, ProofOfWitdhrawAll, ProofOfBit2};
+use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWitdhrawAll, ProofOfBit2};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
-use crate::verifier::structs::{Inputswithdraw, ProofOfWithdraw};
+use crate::verifier::structs::{ProofOfWithdraw};
 use crate::verifier::structs::{InputsFund,ProofOfFund};
 
 
@@ -103,7 +103,7 @@ pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund){
 /// Proof of Withdraw: validate the proof needed for withdraw all balance b. The cipher balance is
 /// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the correct
 /// balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r = R. 
-pub fn verify_withdraw_all(inputs:InputswithdrawAll, proof:ProofOfWitdhrawAll) {
+pub fn verify_withdraw_all(inputs:InputsWithdraw, proof:ProofOfWitdhrawAll) {
     let mut seq: Array<felt252> = array![
         'withdraw_all',
         *inputs.y.span()[0],
@@ -125,7 +125,7 @@ pub fn verify_withdraw_all(inputs:InputswithdrawAll, proof:ProofOfWitdhrawAll) {
     poe([h.x(), h.y()], [*inputs.R.span()[0], *inputs.R.span()[1]], proof.A_cr,c ,proof.s_x);
 }
 
-pub fn verify_withdraw(inputs:Inputswithdraw, proof: ProofOfWithdraw) {
+pub fn verify_withdraw(inputs:InputsWithdraw, proof: ProofOfWithdraw) {
     let mut seq: Array<felt252> = array![
         'withdraw',
         *inputs.y.span()[0],

@@ -1,5 +1,5 @@
-use crate::verifier::structs::{ProofOfWitdhrawAll,InputswithdrawAll};
-use crate::verifier::structs::{ProofOfWithdraw, Inputswithdraw};
+use crate::verifier::structs::{ProofOfWitdhrawAll,InputsWithdraw};
+use crate::verifier::structs::{ProofOfWithdraw};
 use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
 use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 use crate::verifier::structs::{ InputsFund,ProofOfFund};
@@ -24,7 +24,7 @@ pub fn prove_withdraw_all(
         CR:[felt252;2],
         nonce:u64,
         seed:felt252
-) -> (InputswithdrawAll, ProofOfWitdhrawAll) {
+) -> (InputsWithdraw, ProofOfWitdhrawAll) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let y = g.mul(x).try_into().unwrap();
     let R = EcPointTrait::new(*CR.span()[0],  *CR.span()[1]).unwrap();
@@ -57,7 +57,7 @@ pub fn prove_withdraw_all(
     };
 
     let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(),x).try_into().unwrap();
-    let inputs: InputswithdrawAll = InputswithdrawAll {
+    let inputs: InputsWithdraw = InputsWithdraw {
         y: [y.x(), y.y()],
         amount: amount,
         to:to,
@@ -101,7 +101,7 @@ pub fn prove_withdraw(
         CR:[felt252;2],
         nonce:u64,
         seed:felt252
-) -> (Inputswithdraw, ProofOfWithdraw) {
+) -> (InputsWithdraw, ProofOfWithdraw) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y = g.try_into().unwrap().mul(x).try_into().unwrap();
     let R = EcPointTrait::new_nz(*CR.span()[0], *CR.span()[1]).unwrap();
@@ -153,7 +153,7 @@ pub fn prove_withdraw(
         range: RangeProof,
     };
 
-    let inputs: Inputswithdraw = Inputswithdraw {
+    let inputs: InputsWithdraw = InputsWithdraw {
         y: [y.x(), y.y()],
         amount: amount,
         L: [L.x(),L.y()],

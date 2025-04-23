@@ -40,9 +40,8 @@ pub mod Tongo {
     
     use crate::verifier::structs::{ 
         InputsTransfer, ProofOfTransfer,
-        InputswithdrawAll, ProofOfWitdhrawAll,
-        Inputswithdraw,ProofOfWithdraw,
-        InputsFund, ProofOfFund,
+        ProofOfWitdhrawAll, ProofOfWithdraw,
+        InputsFund, ProofOfFund, InputsWithdraw
     };
     use crate::verifier::verifier::{verify_withdraw, verify_withdraw_all, verify_transfer, verify_fund};
     use crate::verifier::utils::{in_range, view_key};
@@ -86,7 +85,7 @@ pub mod Tongo {
         //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
         let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
         let nonce = self.get_nonce(from);
-        let inputs:Inputswithdraw = Inputswithdraw { y : from , amount,nonce,to, L:[Lx,Ly], R: [Rx,Ry]};
+        let inputs: InputsWithdraw = InputsWithdraw{ y : from , amount,nonce,to, L:[Lx,Ly], R: [Rx,Ry]};
         verify_withdraw(inputs, proof);
 
 //        let amount: u256 = amount.try_into().unwrap();
@@ -113,7 +112,7 @@ pub mod Tongo {
         //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
         let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
         let nonce = self.get_nonce(from);
-        let inputs:InputswithdrawAll = InputswithdrawAll {y : from, amount,to, nonce, L:[Lx,Ly], R: [Rx,Ry]};
+        let inputs:InputsWithdraw = InputsWithdraw {y : from, amount,to, nonce, L:[Lx,Ly], R: [Rx,Ry]};
         verify_withdraw_all(inputs, proof);
 
 //        let amount: u256 = amount.try_into().unwrap();
