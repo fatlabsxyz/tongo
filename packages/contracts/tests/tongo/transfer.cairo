@@ -19,7 +19,6 @@ fn test_transfer() {
     let y_bar:NonZeroEcPoint = g.mul(x_bar).try_into().unwrap();
 
     let nonce = dispatcher.get_nonce([y.x(),y.y()]);
-
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
     
     let b0 = 3124;
@@ -39,6 +38,7 @@ fn test_transfer() {
         inputs.R,
         proof,
     );
+
 }
 
 #[test]

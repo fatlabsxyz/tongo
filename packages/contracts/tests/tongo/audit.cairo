@@ -28,8 +28,8 @@ fn audit_fund() {
     let b0 = 3124;
     dispatcher.fund([y.x(),y.y()], b0, fund_proof);
 
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
-    decipher_balance(b0, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
+    let audit = dispatcher.get_audit([y.x(),y.y()]);
+    decipher_balance(b0, 'CURIOSITY', audit);
 }
 
 #[test]
@@ -51,8 +51,8 @@ fn audit_withdraw_all() {
     let b = 250;
     dispatcher.fund([y.x(), y.y()], b, fund_proof);
 
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
-    decipher_balance(b, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
+    let audit = dispatcher.get_audit([y.x(),y.y()]);
+    decipher_balance(b, 'CURIOSITY',audit);
 
 
     let ((Lx,Ly), (Rx,Ry)) = dispatcher.get_balance([y.x(),y.y()]);
@@ -61,8 +61,8 @@ fn audit_withdraw_all() {
     let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,[Lx,Ly],[Rx,Ry],nonce,seed);
     
     dispatcher.withdraw_all([y.x(),y.y()],b,tranfer_address, proof);
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
-    decipher_balance(0, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
+    let audit = dispatcher.get_audit([y.x(),y.y()]);
+    decipher_balance(0, 'CURIOSITY', audit);
 }
 
 #[test]
@@ -89,8 +89,8 @@ fn audit_transfer() {
     dispatcher.fund([y.x(),y.y()], b0, fund_proof);
     let nonce = dispatcher.get_nonce([y.x(),y.y()]);
 
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
-    decipher_balance(b0, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
+    let audit = dispatcher.get_audit([y.x(),y.y()]);
+    decipher_balance(b0, 'CURIOSITY', audit);
 
     let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance([y.x(), y.y()]);
     
@@ -106,9 +106,9 @@ fn audit_transfer() {
         proof,
     );
 
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y.x(),y.y()]);
-    decipher_balance(b0-b, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
+    let audit = dispatcher.get_audit([y.x(),y.y()]);
+    decipher_balance(b0-b, 'CURIOSITY', audit);
 
-    let ((Lx,Ly) ,(Rx,Ry)) = dispatcher.get_audit([y_bar.x(),y_bar.y()]);
-    decipher_balance(b, 'CURIOSITY', [Lx,Ly], [Rx,Ry]);
+    let audit = dispatcher.get_audit([y_bar.x(),y_bar.y()]);
+    decipher_balance(b, 'CURIOSITY',audit);
 }
