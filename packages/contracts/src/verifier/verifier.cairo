@@ -62,6 +62,7 @@ pub fn poe2(y: [felt252;2], g1: [felt252;2],g2:[felt252;2], A: [felt252;2], c:fe
     LHS.coordinates() == RHS.coordinates()
 }
 
+/// Verify knowledge of x such that y = g**x 
 pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund){
     let mut seq: Array<felt252> = array![
         'fund',

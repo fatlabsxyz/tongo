@@ -3,6 +3,7 @@ use core::ec::{EcPointTrait, NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 
 
+/// Represent the public key y = g ** x of a user. 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct PubKey {
     pub x: felt252,
@@ -11,18 +12,22 @@ pub struct PubKey {
 
 #[generate_trait]
 pub impl PubKeyImpl of PubKeyTrait {
+    /// Generates a PubKey from a SecretKey x.
     fn from_secret(x:felt252) -> PubKey {
         assert!(x != 0 , "x must not be 0");
+        //TODO: if x == curve_order the unwrap will fail
         let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
         let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
         PubKey {x:y.x(), y: y.y()}
     }
 
+    /// Asserts that the coordinates of PubKey correspond to a EC point on the STARKNET curve.
     fn assert_on_curve(self: PubKey) {
         let point = EcPointTrait::new_nz(self.x, self.y);
         assert!(point.is_some(),"PK not a curve point");
     }
 
+    /// Returns the NonZeroEcPoint (if any) with coordinates stored in PubKey
     fn point(self: PubKey) -> NonZeroEcPoint {
         let point = EcPointTrait::new_nz(self.x, self.y);
         assert!(point.is_some(),"PK not a curve point");
