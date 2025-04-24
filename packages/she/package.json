@@ -1,10 +1,22 @@
 {
-  "name": "she",
-  "version": "1.0.0",
+  "name": "she-js",
+  "version": "0.0.1",
   "description": "Homomorphic Encryption over the Stark curve",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./lib/index.js"
+    }
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "rm -rf lib",
+    "build": "tsc -p ./tsconfig.json --outDir lib",
+    "test": "vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests"
+  },
+  "dependencies": {
+    "@scure/starknet": "^1.1.0",
+    "@noble/curves": "1.7.0"
   },
   "keywords": [],
   "author": "",
