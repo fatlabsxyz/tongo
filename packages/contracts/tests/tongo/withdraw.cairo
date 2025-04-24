@@ -1,6 +1,3 @@
-use core::ec::{EcPointTrait};
-use core::ec::{NonZeroEcPoint};
-use core::ec::stark_curve::{GEN_X,GEN_Y};
 use starknet::ContractAddress;
 use crate::tongo::setup::{setup_tongo};
 
@@ -8,7 +5,7 @@ use tongo::prover::prover::{prove_withdraw_all, prove_withdraw, prove_fund};
 use tongo::prover::utils::generate_random;
 use tongo::main::ITongoDispatcherTrait;
 
-use tongo::verifier::structs::PubKey;
+use tongo::verifier::structs::{PubKeyTrait};
 
 
 #[test]
@@ -16,11 +13,9 @@ fn test_withdraw_all() {
     let seed = 12931238;
     let (_address,dispatcher) = setup_tongo();
     let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     
     let x = generate_random(seed,1);
-    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let y = PubKeyTrait::from_secret(x);
     let nonce = dispatcher.get_nonce(y);
 
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
@@ -43,12 +38,10 @@ fn test_withdraw_all() {
 fn test_withdraw() {
     let seed = 8309218;
     let (_address,dispatcher) = setup_tongo();
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
     
     let x = generate_random(seed,1);
-    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let y = PubKeyTrait::from_secret(x);
     let nonce = dispatcher.get_nonce(y);
 
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));

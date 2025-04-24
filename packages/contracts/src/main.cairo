@@ -95,7 +95,7 @@ pub mod Tongo {
         //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
         let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
         let nonce = self.get_nonce(from);
-        let inputs: InputsWithdraw = InputsWithdraw{ y : [from.x, from.y] , amount,nonce,to, L:[Lx,Ly], R: [Rx,Ry]};
+        let inputs: InputsWithdraw = InputsWithdraw{ y : from , amount,nonce,to, L:[Lx,Ly], R: [Rx,Ry]};
         verify_withdraw(inputs, proof);
 
 //        let amount: u256 = amount.try_into().unwrap();
@@ -123,7 +123,7 @@ pub mod Tongo {
         //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
         let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
         let nonce = self.get_nonce(from);
-        let inputs:InputsWithdraw = InputsWithdraw {y : [from.x, from.y], amount,to, nonce, L:[Lx,Ly], R: [Rx,Ry]};
+        let inputs:InputsWithdraw = InputsWithdraw {y : from, amount,to, nonce, L:[Lx,Ly], R: [Rx,Ry]};
         verify_withdraw_all(inputs, proof);
 
 //        let amount: u256 = amount.try_into().unwrap();

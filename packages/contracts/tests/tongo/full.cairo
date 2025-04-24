@@ -1,11 +1,8 @@
 use tongo::prover::utils::{generate_random, decipher_balance};
-use core::ec::{EcPointTrait};
-use core::ec::{ NonZeroEcPoint};
-use core::ec::stark_curve::{GEN_X,GEN_Y};
 use crate::tongo::setup::{setup_tongo};
 use tongo::prover::prover::{prove_transfer, prove_fund, prove_withdraw};
 use starknet::ContractAddress;
-use tongo::verifier::structs::PubKey;
+use tongo::verifier::structs::{PubKeyTrait};
 
 use tongo::main::ITongoDispatcherTrait;
 
@@ -15,14 +12,12 @@ fn full(){
     let seed = 23097198721;
     let (_address,dispatcher) = setup_tongo();
 
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let x = generate_random(seed,1);
-    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()};
-    let x_bar = generate_random(seed,2);
+    let y = PubKeyTrait::from_secret(x);
 
-    let y_bar:NonZeroEcPoint = g.mul(x_bar).try_into().unwrap();
-    let y_bar:PubKey = PubKey {x: y_bar.x(), y: y_bar.y()};
+    let x_bar = generate_random(seed,2);
+    let y_bar = PubKeyTrait::from_secret(x_bar);
+
 
     // The initial buffers, balance, and audits should be 0
         let buffer = dispatcher.get_buffer(y);

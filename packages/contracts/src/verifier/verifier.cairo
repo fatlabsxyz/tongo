@@ -84,8 +84,8 @@ pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund){
 pub fn verify_withdraw_all(inputs:InputsWithdraw, proof:ProofOfWitdhrawAll) {
     let mut seq: Array<felt252> = array![
         'withdraw_all',
-        *inputs.y.span()[0],
-        *inputs.y.span()[1],
+        inputs.y.x,
+        inputs.y.y,
         inputs.to.into(),
         inputs.nonce.into(),
     ];
@@ -93,7 +93,7 @@ pub fn verify_withdraw_all(inputs:InputsWithdraw, proof:ProofOfWitdhrawAll) {
     let mut commits = array![proof.A_x,proof.A_cr];
     let c = challenge_commits2(prefix, ref commits);
 
-    let res = poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
+    let res = poe([inputs.y.x, inputs.y.y], [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
     assert(res, WITHDRAW::W100);
 
     let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
@@ -110,8 +110,8 @@ pub fn verify_withdraw_all(inputs:InputsWithdraw, proof:ProofOfWitdhrawAll) {
 pub fn verify_withdraw(inputs:InputsWithdraw, proof: ProofOfWithdraw) {
     let mut seq: Array<felt252> = array![
         'withdraw',
-        *inputs.y.span()[0],
-        *inputs.y.span()[1],
+        inputs.y.x,
+        inputs.y.y,
         inputs.to.into(),
         inputs.nonce.into(),
     ];
@@ -120,7 +120,7 @@ pub fn verify_withdraw(inputs:InputsWithdraw, proof: ProofOfWithdraw) {
     let mut commits = array![proof.A_x, proof.A, proof.A_v];
     let c = challenge_commits2(prefix,ref commits);
 
-    let res = poe(inputs.y, [GEN_X, GEN_Y], proof.A_x, c, proof.sx);
+    let res = poe([inputs.y.x, inputs.y.y], [GEN_X, GEN_Y], proof.A_x, c, proof.sx);
     assert(res, WITHDRAW::W100);
 
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();

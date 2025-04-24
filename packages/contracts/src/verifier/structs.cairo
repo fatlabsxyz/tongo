@@ -1,10 +1,36 @@
 use core::starknet::ContractAddress;
+use core::ec::{EcPointTrait, NonZeroEcPoint};
+use core::ec::stark_curve::{GEN_X, GEN_Y};
+
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct PubKey {
     pub x: felt252,
     pub y: felt252,
 }
+
+#[generate_trait]
+pub impl PubKeyImpl of PubKeyTrait {
+    fn from_secret(x:felt252) -> PubKey {
+        assert!(x != 0 , "x must not be 0");
+        let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+        let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+        PubKey {x:y.x(), y: y.y()}
+    }
+
+    fn assert_on_curve(self: PubKey) {
+        let point = EcPointTrait::new_nz(self.x, self.y);
+        assert!(point.is_some(),"PK not a curve point");
+    }
+
+    fn point(self: PubKey) -> NonZeroEcPoint {
+        let point = EcPointTrait::new_nz(self.x, self.y);
+        assert!(point.is_some(),"PK not a curve point");
+        point.unwrap()
+        
+    }
+}
+
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct InputsFund {
@@ -30,7 +56,7 @@ pub struct ProofOfBit2 {
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct InputsWithdraw {
-    pub y: [felt252;2],
+    pub y: PubKey,
     pub nonce: u64,
     pub to: ContractAddress,
     pub amount: felt252,

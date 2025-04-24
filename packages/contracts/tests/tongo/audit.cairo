@@ -1,13 +1,10 @@
-use core::ec::{EcPointTrait};
 use starknet::ContractAddress;
-use core::ec::{ NonZeroEcPoint};
-use core::ec::stark_curve::{GEN_X,GEN_Y};
 use crate::tongo::setup::{setup_tongo};
 use tongo::prover::utils::{generate_random, decipher_balance};
 use tongo::prover::prover::prove_withdraw_all;
 use tongo::prover::prover::prove_transfer;
 use tongo::prover::prover::prove_fund;
-use tongo::verifier::structs::PubKey;
+use tongo::verifier::structs::{PubKeyTrait};
 
 use tongo::main::ITongoDispatcherTrait;
 
@@ -15,11 +12,9 @@ use tongo::main::ITongoDispatcherTrait;
 fn audit_fund() {
     let seed = 9130123;
     let (_address,dispatcher) = setup_tongo();
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     
     let x = generate_random(seed,1);
-    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let y = PubKeyTrait::from_secret(x);
     
     let empty = dispatcher.get_audit(y);
     assert!(empty ==((0,0),(0,0)) , "wrong");
@@ -38,12 +33,10 @@ fn audit_fund() {
 fn audit_withdraw_all() {
     let seed = 4719823;
     let (_address,dispatcher) = setup_tongo();
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     
     let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
     let x = generate_random(seed,1);
-    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let y = PubKeyTrait::from_secret(x);
 
     let empty = dispatcher.get_audit(y);
     assert!(empty ==((0,0),(0,0)) , "wrong");
@@ -72,18 +65,17 @@ fn audit_withdraw_all() {
 fn audit_transfer() {
     let seed = 1273198273;
     let (_address,dispatcher) = setup_tongo();
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     
     let x = generate_random(seed,1);
-    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let y = PubKeyTrait::from_secret(x);
+
     let empty = dispatcher.get_audit(y);
     assert!(empty ==((0,0),(0,0)) , "wrong");
 
 
     let x_bar = generate_random(seed,2);
-    let y_bar:NonZeroEcPoint = g.mul(x_bar).try_into().unwrap();
-    let y_bar:PubKey = PubKey {x: y_bar.x(), y: y_bar.y()};
+    let y_bar = PubKeyTrait::from_secret(x_bar);
+
     let empty = dispatcher.get_audit(y_bar);
     assert!(empty ==((0,0),(0,0)) , "wrong");
     let nonce = dispatcher.get_nonce(y);

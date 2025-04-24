@@ -1,10 +1,8 @@
 use crate::tongo::setup::{setup_tongo};
-use core::ec::stark_curve::{GEN_X,GEN_Y};
 use tongo::prover::prover::{prove_fund};
 use tongo::prover::utils::{generate_random};
-use core::ec::{EcPointTrait, NonZeroEcPoint};
 use tongo::main::ITongoDispatcherTrait;
-use tongo::verifier::structs::PubKey;
+use tongo::verifier::structs::{PubKeyTrait};
 
 #[test]
 fn test_fund(){
@@ -13,9 +11,7 @@ fn test_fund(){
     let (_address,dispatcher) = setup_tongo();
 
     let x = generate_random(seed,1);
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()}; 
+    let y = PubKeyTrait::from_secret(x);
 
     let nonce = dispatcher.get_nonce(y);
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
@@ -38,9 +34,7 @@ fn test_fund_failed(){
     let (_address,dispatcher) = setup_tongo();
 
     let x = generate_random(seed,1);
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let y = PubKeyTrait::from_secret(x);
 
     let nonce = dispatcher.get_nonce(y);
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));

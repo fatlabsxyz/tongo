@@ -3,7 +3,7 @@ use crate::verifier::structs::{ProofOfWithdraw};
 use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
 use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 use crate::verifier::structs::{ InputsFund,ProofOfFund};
-use crate::verifier::structs::{PubKey};
+use crate::verifier::structs::{PubKey, PubKeyTrait};
 
 use crate::verifier::utils::{compute_prefix, challenge_commits2};
 
@@ -57,9 +57,9 @@ pub fn prove_withdraw_all(
         s_x: s,
     };
 
-    let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(),x).try_into().unwrap();
+    let y = PubKeyTrait::from_secret(x);
     let inputs: InputsWithdraw = InputsWithdraw {
-        y: [y.x(), y.y()],
+        y: y,
         amount: amount,
         to:to,
         nonce: nonce,
@@ -105,7 +105,7 @@ pub fn prove_withdraw(
         seed:felt252
 ) -> (InputsWithdraw, ProofOfWithdraw) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let y = g.try_into().unwrap().mul(x).try_into().unwrap();
+    let y = PubKeyTrait::from_secret(x);
     let R = EcPointTrait::new_nz(*CR.span()[0], *CR.span()[1]).unwrap();
     let L = EcPointTrait::new_nz(*CL.span()[0], *CL.span()[1]).unwrap();
     let [hx,hy] = generator_h();
@@ -133,8 +133,8 @@ pub fn prove_withdraw(
 
     let mut seq: Array<felt252> = array![
         'withdraw',
-        y.x(),
-        y.y(),
+        y.x,
+        y.y,
         to.into(),
         nonce.into(),
     ];
@@ -156,7 +156,7 @@ pub fn prove_withdraw(
     };
 
     let inputs: InputsWithdraw = InputsWithdraw {
-        y: [y.x(), y.y()],
+        y: y,
         amount: amount,
         L: [L.x(),L.y()],
         R: [R.x(),R.y()],

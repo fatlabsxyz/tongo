@@ -2,21 +2,16 @@ use tongo::prover::utils::{cipher_balance,generate_random};
 use starknet::ContractAddress;
 use tongo::prover::prover::{prove_withdraw, prove_withdraw_all};
 use tongo::verifier::verifier::{verify_withdraw, verify_withdraw_all};
-use core::ec::stark_curve::{GEN_X, GEN_Y};
-use core::ec::NonZeroEcPoint;
-use core::ec::EcPointTrait;
-use tongo::verifier::structs::PubKey;
+use tongo::verifier::structs::PubKeyTrait;
 
 
 #[test]
 fn test_withdraw(){
     let seed = 21389321;
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
 
     let x = generate_random(seed,1);
-    let y:NonZeroEcPoint = EcPointTrait::mul(g, x).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let y = PubKeyTrait::from_secret(x);
     
     // balance stored
     let initial_balance = 100;
@@ -35,13 +30,11 @@ fn test_withdraw(){
 #[test]
 fn test_withdraw_all(){
     let seed = 21389321;
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
 
     let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
 
     let x = generate_random(seed,1);
-    let y:NonZeroEcPoint = EcPointTrait::mul(g, x).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let y = PubKeyTrait::from_secret(x);
     
     // balance stored
     let initial_balance = 100;

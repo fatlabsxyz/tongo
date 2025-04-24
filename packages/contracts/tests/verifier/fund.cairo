@@ -2,10 +2,8 @@ use tongo::prover::utils::{generate_random};
 use tongo::prover::prover::{prove_fund};
 use tongo::verifier::verifier::{verify_fund};
 use tongo::verifier::structs::{InputsFund};
-use core::ec::stark_curve::{GEN_X, GEN_Y};
-use core::ec::{EcPointTrait, NonZeroEcPoint};
 
-use tongo::verifier::structs::PubKey;
+use tongo::verifier::structs::PubKeyTrait;
 
 #[test]
 fn test_fund() {
@@ -31,9 +29,7 @@ fn test_fund_fail() {
     //prover
     let (_inputs,proof) = prove_fund(x,nonce, seed);
 
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let y:NonZeroEcPoint = g.mul(123).try_into().unwrap();
-    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let y = PubKeyTrait::from_secret(1293);
     let inputs: InputsFund = InputsFund{y:y,nonce:123};
 
     //Verifier
