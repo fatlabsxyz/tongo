@@ -7,6 +7,7 @@ use tongo::prover::utils::{generate_random, decipher_balance};
 use tongo::prover::prover::prove_withdraw_all;
 use tongo::prover::prover::prove_transfer;
 use tongo::prover::prover::prove_fund;
+use tongo::verifier::structs::PubKey;
 
 use tongo::main::ITongoDispatcherTrait;
 
@@ -18,17 +19,18 @@ fn audit_fund() {
     
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+    let y:PubKey = PubKey {x: y.x(), y: y.y()};
     
-    let empty = dispatcher.get_audit([y.x(),y.y()]);
+    let empty = dispatcher.get_audit(y);
     assert!(empty ==((0,0),(0,0)) , "wrong");
-    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+    let nonce = dispatcher.get_nonce(y);
 
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
 
     let b0 = 3124;
-    dispatcher.fund([y.x(),y.y()], b0, fund_proof);
+    dispatcher.fund(y, b0, fund_proof);
 
-    let audit = dispatcher.get_audit([y.x(),y.y()]);
+    let audit = dispatcher.get_audit(y);
     decipher_balance(b0, 'CURIOSITY', audit);
 }
 
@@ -41,27 +43,28 @@ fn audit_withdraw_all() {
     let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+    let y:PubKey = PubKey {x: y.x(), y: y.y()};
 
-    let empty = dispatcher.get_audit([y.x(),y.y()]);
+    let empty = dispatcher.get_audit(y);
     assert!(empty ==((0,0),(0,0)) , "wrong");
-    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+    let nonce = dispatcher.get_nonce(y);
 
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
 
     let b = 250;
-    dispatcher.fund([y.x(), y.y()], b, fund_proof);
+    dispatcher.fund(y, b, fund_proof);
 
-    let audit = dispatcher.get_audit([y.x(),y.y()]);
+    let audit = dispatcher.get_audit(y);
     decipher_balance(b, 'CURIOSITY',audit);
 
 
-    let ((Lx,Ly), (Rx,Ry)) = dispatcher.get_balance([y.x(),y.y()]);
-    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+    let ((Lx,Ly), (Rx,Ry)) = dispatcher.get_balance(y);
+    let nonce = dispatcher.get_nonce(y);
 
     let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,[Lx,Ly],[Rx,Ry],nonce,seed);
     
-    dispatcher.withdraw_all([y.x(),y.y()],b,tranfer_address, proof);
-    let audit = dispatcher.get_audit([y.x(),y.y()]);
+    dispatcher.withdraw_all(y,b,tranfer_address, proof);
+    let audit = dispatcher.get_audit(y);
     decipher_balance(0, 'CURIOSITY', audit);
 }
 
@@ -73,29 +76,31 @@ fn audit_transfer() {
     
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let empty = dispatcher.get_audit([y.x(),y.y()]);
+    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let empty = dispatcher.get_audit(y);
     assert!(empty ==((0,0),(0,0)) , "wrong");
 
 
     let x_bar = generate_random(seed,2);
     let y_bar:NonZeroEcPoint = g.mul(x_bar).try_into().unwrap();
-    let empty = dispatcher.get_audit([y_bar.x(),y_bar.y()]);
+    let y_bar:PubKey = PubKey {x: y_bar.x(), y: y_bar.y()};
+    let empty = dispatcher.get_audit(y_bar);
     assert!(empty ==((0,0),(0,0)) , "wrong");
-    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+    let nonce = dispatcher.get_nonce(y);
 
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
     
     let b0 = 3124;
-    dispatcher.fund([y.x(),y.y()], b0, fund_proof);
-    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+    dispatcher.fund(y, b0, fund_proof);
+    let nonce = dispatcher.get_nonce(y);
 
-    let audit = dispatcher.get_audit([y.x(),y.y()]);
+    let audit = dispatcher.get_audit(y);
     decipher_balance(b0, 'CURIOSITY', audit);
 
-    let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance([y.x(), y.y()]);
+    let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance(y);
     
     let b = 100; 
-    let (inputs, proof) = prove_transfer(x, [y_bar.x(),y_bar.y()], b0,b, [CLx,CLy], [CRx,CRy],nonce,  seed + 1);
+    let (inputs, proof) = prove_transfer(x, y_bar, b0,b, [CLx,CLy], [CRx,CRy],nonce,  seed + 1);
     dispatcher.transfer(
         inputs.y,
         inputs.y_bar,
@@ -106,9 +111,9 @@ fn audit_transfer() {
         proof,
     );
 
-    let audit = dispatcher.get_audit([y.x(),y.y()]);
+    let audit = dispatcher.get_audit(y);
     decipher_balance(b0-b, 'CURIOSITY', audit);
 
-    let audit = dispatcher.get_audit([y_bar.x(),y_bar.y()]);
+    let audit = dispatcher.get_audit(y_bar);
     decipher_balance(b, 'CURIOSITY',audit);
 }

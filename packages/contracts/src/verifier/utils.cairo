@@ -3,6 +3,7 @@ use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
 use core::ec::EcPointTrait;
 use core::ec::stark_curve::{GEN_X,GEN_Y};
+use tongo::verifier::structs::PubKey;
 
 // 2**32
 const MAX: u128 = 4294967296;
@@ -117,9 +118,9 @@ pub fn generator_h() -> [felt252;2] {
 
 /// This return the key y from the auditor.
 /// TODO: This sould change to a constat point whit the exponent only known for the auditor
-pub fn view_key() -> [felt252;2] {
+pub fn view_key() -> PubKey {
     let ultra_secret:felt252 = 'CURIOSITY';
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let h = g.mul(ultra_secret).try_into().unwrap();
-    [h.x(), h.y()]
+    PubKey{x: h.x(), y:h.y()}
 }

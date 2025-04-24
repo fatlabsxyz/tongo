@@ -65,15 +65,15 @@ pub fn poe2(y: [felt252;2], g1: [felt252;2],g2:[felt252;2], A: [felt252;2], c:fe
 pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund){
     let mut seq: Array<felt252> = array![
         'fund',
-        *inputs.y.span()[0],
-        *inputs.y.span()[1],
+        inputs.y.x,
+        inputs.y.y,
         inputs.nonce.into(),
     ];
     let prefix = compute_prefix(ref seq);
     let mut commits = array![proof.Ax];
     let c = challenge_commits2(prefix, ref commits);
 
-    let res = poe(inputs.y, [GEN_X,GEN_Y],proof.Ax,c, proof.sx);
+    let res = poe([inputs.y.x, inputs.y.y], [GEN_X,GEN_Y],proof.Ax,c, proof.sx);
     assert(res, FUND::F100);
 }
 
@@ -169,10 +169,10 @@ pub fn verify_withdraw(inputs:InputsWithdraw, proof: ProofOfWithdraw) {
 pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let mut seq: Array<felt252> = array![
         'transfer',
-        *inputs.y.span()[0],
-        *inputs.y.span()[1],
-        *inputs.y_bar.span()[0],
-        *inputs.y_bar.span()[1],
+        inputs.y.x,
+        inputs.y.y,
+        inputs.y_bar.x,
+        inputs.y_bar.y,
         *inputs.L.span()[0],
         *inputs.L.span()[1],
         *inputs.R.span()[0],
@@ -194,7 +194,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let c = challenge_commits2(prefix, ref commits);
 
     // This is for asserting knowledge of x
-    let res = poe(inputs.y, [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
+    let res = poe([inputs.y.x, inputs.y.y], [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
     assert(res, TRANSFER::T100);
     
     // This is for asserting R = g**r
@@ -202,15 +202,15 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     assert(res, TRANSFER::T101);
     
     //This is for asserting L = g**b y**r
-    let res = poe2(inputs.L, [GEN_X,GEN_Y], inputs.y, proof.A_b, c, proof.s_b,proof.s_r);
+    let res = poe2(inputs.L, [GEN_X,GEN_Y], [inputs.y.x, inputs.y.y], proof.A_b, c, proof.s_b,proof.s_r);
     assert(res, TRANSFER::T102);
 
     //This is for asserting L_bar = g**b y_bar**r
-    let res = poe2(inputs.L_bar, [GEN_X,GEN_Y], inputs.y_bar, proof.A_bar, c, proof.s_b,proof.s_r);
+    let res = poe2(inputs.L_bar, [GEN_X,GEN_Y], [inputs.y_bar.x, inputs.y_bar.y], proof.A_bar, c, proof.s_b,proof.s_r);
     assert(res, TRANSFER::T103);
 
     //This is for asserting L_audit= g**b y_audit*r
-    let res = poe2(inputs.L_audit, [GEN_X,GEN_Y], view_key(), proof.A_audit, c, proof.s_b,proof.s_r);
+    let res = poe2(inputs.L_audit, [GEN_X,GEN_Y], [view_key().x, view_key().y], proof.A_audit, c, proof.s_b,proof.s_r);
     assert(res, TRANSFER::T104);
 
     // Now we need to show that V = g**b h**r with the same b and r.

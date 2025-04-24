@@ -3,6 +3,7 @@ use crate::verifier::structs::{ProofOfWithdraw};
 use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
 use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 use crate::verifier::structs::{ InputsFund,ProofOfFund};
+use crate::verifier::structs::{PubKey};
 
 use crate::verifier::utils::{compute_prefix, challenge_commits2};
 
@@ -71,11 +72,12 @@ pub fn prove_withdraw_all(
 pub fn prove_fund(x:felt252,nonce:u64, seed: felt252) -> (InputsFund, ProofOfFund) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let inputs : InputsFund = InputsFund {y:[y.x(), y.y()], nonce: nonce};
+    let y = PubKey{x: y.x(), y: y.y()};
+    let inputs : InputsFund = InputsFund {y:y , nonce: nonce};
     let mut seq: Array<felt252> = array![
         'fund',
-        *inputs.y.span()[0],
-        *inputs.y.span()[1],
+        inputs.y.x,
+        inputs.y.y,
         inputs.nonce.into(),
     ];
     let prefix = compute_prefix(ref seq);
@@ -166,7 +168,7 @@ pub fn prove_withdraw(
 
 pub fn prove_transfer(
     x:felt252,
-    y_bar:[felt252;2],
+    y_bar:PubKey,
     b0:felt252,
     b:felt252,
     CL:[felt252;2],
@@ -175,16 +177,17 @@ pub fn prove_transfer(
     seed:felt252
 ) -> (InputsTransfer, ProofOfTransfer ) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let y = g.try_into().unwrap().mul(x).try_into().unwrap();
+    let y_ec = g.try_into().unwrap().mul(x).try_into().unwrap();
+    let y = PubKey{x: y_ec.x(), y: y_ec.y()};
     let [h_x,h_y] = generator_h();
-    let [view_x,view_y] = view_key();
+    let view = view_key();
     let h = EcPointTrait::new_nz(h_x,h_y).unwrap();
     
     
     let (r, proof ) = prove_range(b.try_into().unwrap(), generate_random(seed+1, 1));
-    let (L,R) = cipher_balance(b, [y.x(), y.y()], r);
+    let (L,R) = cipher_balance(b, y, r);
     let (L_bar,_R_bar) = cipher_balance(b, y_bar, r);
-    let (L_audit,_R_audit) = cipher_balance(b, view_key() , r);
+    let (L_audit,_R_audit) = cipher_balance(b, view , r);
 
     let b_left = b0-b;
     let (r2, proof2 ) = prove_range(b_left.try_into().unwrap(), generate_random(seed+2, 1));
@@ -205,17 +208,17 @@ pub fn prove_transfer(
 
     let mut state = EcStateTrait::init();
         state.add_mul(kb, g);
-        state.add_mul(kr, y);
+        state.add_mul(kr, y_ec);
     let A_b = state.finalize_nz().unwrap();
 
     let mut state = EcStateTrait::init();
         state.add_mul(kb, g);
-        state.add_mul(kr, EcPointTrait::new_nz(*y_bar.span()[0], *y_bar.span()[1]).unwrap());
+        state.add_mul(kr, EcPointTrait::new_nz(y_bar.x, y_bar.y).unwrap());
     let A_bar = state.finalize_nz().unwrap();
 
     let mut state = EcStateTrait::init();
         state.add_mul(kb, g);
-        state.add_mul(kr, EcPointTrait::new_nz(view_x,view_y).unwrap());
+        state.add_mul(kr, EcPointTrait::new_nz(view.x,view.y).unwrap());
     let A_audit = state.finalize_nz().unwrap();
     
     let mut state = EcStateTrait::init();
@@ -246,10 +249,10 @@ pub fn prove_transfer(
 
     let mut seq: Array<felt252> = array![
         'transfer',
-        y.x(),
-        y.y(),
-        *y_bar.span()[0],
-        *y_bar.span()[1],
+        y.x,
+        y.y,
+        y_bar.x,
+        y_bar.y,
         *L.span()[0],
         *L.span()[1],
         R.try_into().unwrap().x(),
@@ -266,7 +269,7 @@ pub fn prove_transfer(
     let s_r2 = compute_s(c,r2, kr2);
 
     let inputs: InputsTransfer = InputsTransfer {
-        y:[y.x(), y.y()],
+        y:y,
         y_bar:y_bar,
         CR:[CR.try_into().unwrap().x(), CR.try_into().unwrap().y()],
         CL:CL,

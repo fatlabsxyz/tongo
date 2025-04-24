@@ -5,6 +5,8 @@ use tongo::verifier::structs::{InputsFund};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use core::ec::{EcPointTrait, NonZeroEcPoint};
 
+use tongo::verifier::structs::PubKey;
+
 #[test]
 fn test_fund() {
     let seed = 2194032843;    
@@ -31,7 +33,8 @@ fn test_fund_fail() {
 
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let y:NonZeroEcPoint = g.mul(123).try_into().unwrap();
-    let inputs: InputsFund = InputsFund{y:[y.x(), y.y()],nonce:123};
+    let y:PubKey = PubKey {x: y.x(), y: y.y()};
+    let inputs: InputsFund = InputsFund{y:y,nonce:123};
 
     //Verifier
     verify_fund(inputs, proof)

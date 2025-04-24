@@ -1,20 +1,14 @@
 use core::starknet::ContractAddress;
 
 #[derive(Serde, Drop, Debug, Copy)]
-/// Proof that V = g**b h**r with b either one or zero is well formed. The proof use a OR protocol to assert 
-/// that one of the two is valid without revealing which one.
-pub struct ProofOfBit {
-    pub V:[felt252;2],
-    pub A0:[felt252;2],
-    pub A1:[felt252;2],
-    pub c0:felt252,
-    pub s0: felt252,
-    pub s1: felt252,
+pub struct PubKey {
+    pub x: felt252,
+    pub y: felt252,
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct InputsFund {
-    pub y:[felt252;2],
+    pub y:PubKey,
     pub nonce: u64,
 }
 
@@ -66,8 +60,8 @@ pub struct ProofOfWithdraw {
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct InputsTransfer {
     pub nonce:u64,
-    pub y: [felt252;2],
-    pub y_bar: [felt252;2],
+    pub y: PubKey,
+    pub y_bar: PubKey,
     pub CL:[felt252;2], 
     pub CR:[felt252;2], 
     pub R:[felt252;2], 
@@ -76,6 +70,17 @@ pub struct InputsTransfer {
     pub L_audit:[felt252;2],
 }
 
+#[derive(Serde, Drop, Debug, Copy)]
+/// Proof that V = g**b h**r with b either one or zero is well formed. The proof use a OR protocol to assert 
+/// that one of the two is valid without revealing which one.
+pub struct ProofOfBit {
+    pub V:[felt252;2],
+    pub A0:[felt252;2],
+    pub A1:[felt252;2],
+    pub c0:felt252,
+    pub s0: felt252,
+    pub s1: felt252,
+}
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfTransfer {
     pub A_x: [felt252;2], 

@@ -5,6 +5,7 @@ use core::ec::stark_curve::{GEN_X,GEN_Y};
 use crate::tongo::setup::{setup_tongo};
 use tongo::prover::prover::{prove_transfer, prove_fund, prove_withdraw};
 use starknet::ContractAddress;
+use tongo::verifier::structs::PubKey;
 
 use tongo::main::ITongoDispatcherTrait;
 
@@ -17,11 +18,11 @@ fn full(){
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let x = generate_random(seed,1);
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+    let y:PubKey = PubKey {x: y.x(), y: y.y()};
     let x_bar = generate_random(seed,2);
-    let y_bar:NonZeroEcPoint = g.mul(x_bar).try_into().unwrap();
 
-    let y = [y.x(), y.y()];
-    let y_bar = [y_bar.x(), y_bar.y()];
+    let y_bar:NonZeroEcPoint = g.mul(x_bar).try_into().unwrap();
+    let y_bar:PubKey = PubKey {x: y_bar.x(), y: y_bar.y()};
 
     // The initial buffers, balance, and audits should be 0
         let buffer = dispatcher.get_buffer(y);
@@ -142,7 +143,6 @@ fn full(){
         decipher_balance(transfer_amount - amount, 'CURIOSITY', audit);
 
         let buffer = dispatcher.get_buffer(y_bar);
-        println!("{:?}", buffer);
         assert!(buffer == ((0,0),(0,0)), "Buffer is not 0");
 
         let balance = dispatcher.get_balance(y_bar);

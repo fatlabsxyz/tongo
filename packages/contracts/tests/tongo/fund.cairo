@@ -4,6 +4,7 @@ use tongo::prover::prover::{prove_fund};
 use tongo::prover::utils::{generate_random};
 use core::ec::{EcPointTrait, NonZeroEcPoint};
 use tongo::main::ITongoDispatcherTrait;
+use tongo::verifier::structs::PubKey;
 
 #[test]
 fn test_fund(){
@@ -14,18 +15,19 @@ fn test_fund(){
     let x = generate_random(seed,1);
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+    let y:PubKey = PubKey {x: y.x(), y: y.y()}; 
 
-    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+    let nonce = dispatcher.get_nonce(y);
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
 
     let b1 = 250;
-    dispatcher.fund([y.x(), y.y()], b1, fund_proof);
+    dispatcher.fund(y, b1, fund_proof);
 
 
-    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+    let nonce = dispatcher.get_nonce(y);
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
     let b2 = 50;
-    dispatcher.fund([y.x(), y.y()], b2, fund_proof);
+    dispatcher.fund(y, b2, fund_proof);
 }
 
 #[test]
@@ -38,11 +40,12 @@ fn test_fund_failed(){
     let x = generate_random(seed,1);
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+    let y:PubKey = PubKey {x: y.x(), y: y.y()};
 
-    let nonce = dispatcher.get_nonce([y.x(),y.y()]);
+    let nonce = dispatcher.get_nonce(y);
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
 
     let b1 = 250;
-    dispatcher.fund([y.x(), y.y()], b1, fund_proof);
-    dispatcher.fund([y.x(), y.y()], b1, fund_proof);
+    dispatcher.fund(y, b1, fund_proof);
+    dispatcher.fund(y, b1, fund_proof);
 }

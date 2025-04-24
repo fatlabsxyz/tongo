@@ -5,6 +5,7 @@ use core::pedersen::PedersenTrait;
 use core::hash::{HashStateTrait};
 use tongo::verifier::utils::in_order;
 use tongo::verifier::utils::in_range;
+use tongo::verifier::structs::PubKey;
 
 use core::circuit::{
     CircuitElement, CircuitInput, circuit_add, circuit_mul,
@@ -133,9 +134,9 @@ pub fn simPOE(y:[felt252;2], gen:[felt252;2], seed:felt252) -> ([felt252;2], fel
 }
 
 /// Generates the ciphertext of the balace in the form  (L,R) = (g**b y **r , g**r)
-pub fn cipher_balance(b:felt252, y:[felt252;2], random:felt252) -> ([felt252;2], [felt252;2]) {
+pub fn cipher_balance(b:felt252, y:PubKey, random:felt252) -> ([felt252;2], [felt252;2]) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let y = EcPointTrait::new_nz(*y.span()[0], *y.span()[1]).unwrap();
+    let y = EcPointTrait::new_nz(y.x, y.y).unwrap();
     let mut state = EcStateTrait::init();
         state.add_mul(b,g);
         state.add_mul(random,y);
