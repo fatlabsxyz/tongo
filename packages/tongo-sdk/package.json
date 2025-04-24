@@ -1,7 +1,7 @@
 {
-  "name": "jslib",
+  "name": "tongo-sdk",
   "version": "1.0.0",
-  "description": "",
+  "description": "An SDK for interacting with Tongo contracts",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
