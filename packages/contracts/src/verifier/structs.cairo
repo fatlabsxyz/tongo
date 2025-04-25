@@ -1,5 +1,5 @@
 use core::starknet::ContractAddress;
-use core::ec::{EcPointTrait, NonZeroEcPoint};
+use core::ec::{EcPointTrait, NonZeroEcPoint, EcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 
 
@@ -36,6 +36,55 @@ pub impl PubKeyImpl of PubKeyTrait {
     }
 }
 
+
+#[derive(Serde, Drop, Debug, Copy, starknet::Store, Default)]
+pub struct StarkPoint {
+    pub x: felt252,
+    pub y: felt252,
+}
+
+
+#[derive(Serde, Drop, Debug, Copy, starknet::Store, Default)]
+pub struct CipherBalance {
+    pub CL: StarkPoint,
+    pub CR: StarkPoint,
+}
+
+#[generate_trait]
+pub impl CipherBalanceImpl of CipherBalanceTrait {
+    fn is_zero(self:CipherBalance) -> bool {
+        let coords = (self.CL.x, self.CL.y, self.CR.x,self.CR.y);
+        coords == (0,0,0,0)
+    }
+
+    fn points(self: CipherBalance) -> (EcPoint, EcPoint) {
+        let L = EcPointTrait::new(self.CL.x, self.CL.y).unwrap();
+        let R = EcPointTrait::new(self.CR.x, self.CR.y).unwrap();
+        return (L,R);
+    }
+
+    fn add(self: CipherBalance, cipher: CipherBalance) -> CipherBalance {
+        let (L_old, R_old) = self.points();
+        let (L, R) = cipher.points();
+        let L = (L + L_old).try_into().unwrap();
+        let R = (R + R_old).try_into().unwrap();
+        CipherBalance {
+            CL: StarkPoint {x:L.x(), y:L.y()},
+            CR: StarkPoint {x:R.x(), y:R.y()},
+        }
+    }
+
+    fn remove(self: CipherBalance, cipher: CipherBalance) -> CipherBalance {
+        let (L_old, R_old) = self.points();
+        let (L, R) = cipher.points();
+        let L = (-L + L_old).try_into().unwrap();
+        let R = (-R + R_old).try_into().unwrap();
+        CipherBalance {
+            CL: StarkPoint {x:L.x(), y:L.y()},
+            CR: StarkPoint {x:R.x(), y:R.y()},
+        }
+    }
+}
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct InputsFund {

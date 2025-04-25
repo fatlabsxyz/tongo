@@ -4,7 +4,7 @@ use tongo::prover::utils::{generate_random, decipher_balance};
 use tongo::prover::prover::prove_withdraw_all;
 use tongo::prover::prover::prove_transfer;
 use tongo::prover::prover::prove_fund;
-use tongo::verifier::structs::{PubKeyTrait};
+use tongo::verifier::structs::{PubKeyTrait,CipherBalanceTrait};
 
 use tongo::main::ITongoDispatcherTrait;
 
@@ -17,7 +17,7 @@ fn audit_fund() {
     let y = PubKeyTrait::from_secret(x);
     
     let empty = dispatcher.get_audit(y);
-    assert!(empty ==((0,0),(0,0)) , "wrong");
+    assert!(empty.is_zero()  , "wrong");
     let nonce = dispatcher.get_nonce(y);
 
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
@@ -39,7 +39,7 @@ fn audit_withdraw_all() {
     let y = PubKeyTrait::from_secret(x);
 
     let empty = dispatcher.get_audit(y);
-    assert!(empty ==((0,0),(0,0)) , "wrong");
+    assert!(empty.is_zero()  , "wrong");
     let nonce = dispatcher.get_nonce(y);
 
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
@@ -51,7 +51,9 @@ fn audit_withdraw_all() {
     decipher_balance(b, 'CURIOSITY',audit);
 
 
-    let ((Lx,Ly), (Rx,Ry)) = dispatcher.get_balance(y);
+    let balance = dispatcher.get_balance(y);
+    let [Lx,Ly] = [balance.CL.x, balance.CL.y];
+    let [Rx,Ry] = [balance.CR.x, balance.CR.y];
     let nonce = dispatcher.get_nonce(y);
 
     let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,[Lx,Ly],[Rx,Ry],nonce,seed);
@@ -70,14 +72,14 @@ fn audit_transfer() {
     let y = PubKeyTrait::from_secret(x);
 
     let empty = dispatcher.get_audit(y);
-    assert!(empty ==((0,0),(0,0)) , "wrong");
+    assert!(empty.is_zero()  , "wrong");
 
 
     let x_bar = generate_random(seed,2);
     let y_bar = PubKeyTrait::from_secret(x_bar);
 
     let empty = dispatcher.get_audit(y_bar);
-    assert!(empty ==((0,0),(0,0)) , "wrong");
+    assert!(empty.is_zero()  , "wrong");
     let nonce = dispatcher.get_nonce(y);
 
     let (_fund_inputs, fund_proof ) = prove_fund(x, nonce, generate_random(seed+1,1));
@@ -89,7 +91,9 @@ fn audit_transfer() {
     let audit = dispatcher.get_audit(y);
     decipher_balance(b0, 'CURIOSITY', audit);
 
-    let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance(y);
+    let balance = dispatcher.get_balance(y);
+    let [CLx,CLy] = [balance.CL.x, balance.CL.y];
+    let [CRx,CRy] = [balance.CR.x, balance.CR.y];
     
     let b = 100; 
     let (inputs, proof) = prove_transfer(x, y_bar, b0,b, [CLx,CLy], [CRx,CRy],nonce,  seed + 1);

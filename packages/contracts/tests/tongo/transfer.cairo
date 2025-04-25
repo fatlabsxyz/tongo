@@ -21,7 +21,9 @@ fn test_transfer() {
     let b0 = 3124;
     dispatcher.fund(y, b0, fund_proof);
 
-    let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance(y);
+    let balance = dispatcher.get_balance(y);
+    let [CLx,CLy] = [balance.CL.x, balance.CL.y];
+    let [CRx,CRy] = [balance.CR.x, balance.CR.y];
     let nonce = dispatcher.get_nonce(y);
     
     let b = 100; 
@@ -54,7 +56,9 @@ fn test_benchmark_prover() {
     let b0 = 3124;
     dispatcher.fund(y, b0, fund_proof);
 
-    let ((CLx,CLy),(CRx,CRy)) = dispatcher.get_balance(y);
+    let balance = dispatcher.get_balance(y);
+    let [CLx,CLy] = [balance.CL.x, balance.CL.y];
+    let [CRx,CRy] = [balance.CR.x, balance.CR.y];
     let nonce = dispatcher.get_nonce(y);
     
     let b = 100; 

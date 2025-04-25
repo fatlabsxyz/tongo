@@ -6,6 +6,7 @@ use core::hash::{HashStateTrait};
 use tongo::verifier::utils::in_order;
 use tongo::verifier::utils::in_range;
 use tongo::verifier::structs::PubKey;
+use tongo::verifier::structs::{CipherBalanceTrait,CipherBalance};
 
 use core::circuit::{
     CircuitElement, CircuitInput, circuit_add, circuit_mul,
@@ -148,10 +149,8 @@ pub fn cipher_balance(b:felt252, y:PubKey, random:felt252) -> ([felt252;2], [fel
 /// Asserts that g**b == L/R**x. This show that the given balance b is encoded in the cipher
 /// balance (L,R) = (g**b y**r, g**r). 
 /// This function DOES NOT bruteforces b and is intended only for testing purposes
-pub fn decipher_balance(b: felt252, x:felt252, cipher:((felt252,felt252),(felt252,felt252))) {
-    let ((Lx,Ly),(Rx,Ry)) = cipher;
-    let L = EcPointTrait::new(Lx,Ly).unwrap();
-    let R = EcPointTrait::new(Rx,Ry).unwrap();
+pub fn decipher_balance(b: felt252, x:felt252, cipher:CipherBalance) {
+    let (L,R) = cipher.points();
     if b != 0{
         let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
         let RHS:NonZeroEcPoint = (L - R.mul(x)).try_into().unwrap();

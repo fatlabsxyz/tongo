@@ -6,6 +6,7 @@ use tongo::prover::utils::generate_random;
 use tongo::main::ITongoDispatcherTrait;
 
 use tongo::verifier::structs::{PubKeyTrait};
+use tongo::verifier::structs::{CipherBalanceTrait};
 
 
 #[test]
@@ -22,16 +23,19 @@ fn test_withdraw_all() {
     let b = 250;
     dispatcher.fund(y, b, fund_proof);
 
-    let ((Lx,Ly), (Rx,Ry)) = dispatcher.get_balance(y);
+    let balance = dispatcher.get_balance(y);
+    let [Lx,Ly] = [balance.CL.x, balance.CL.y];
+    let [Rx,Ry] = [balance.CR.x, balance.CR.y];
     let nonce = dispatcher.get_nonce(y);
 
     let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,[Lx,Ly],[Rx,Ry],nonce,seed);
     
     dispatcher.withdraw_all(y,b,tranfer_address, proof);
     let balance = dispatcher.get_balance(y);
-    assert!(balance == ((0,0),(0,0)),"fail" );
+    assert!(balance.is_zero(),"fail" );
+
     let buffer = dispatcher.get_buffer(y);
-    assert!(buffer == ((0,0),(0,0)),"fail" )
+    assert!(buffer.is_zero(),"fail" )
 }
 
 #[test]
@@ -50,7 +54,9 @@ fn test_withdraw() {
     let amount = 50;
     dispatcher.fund(y, initial_balance, fund_proof);
 
-    let ((Lx,Ly), (Rx,Ry)) = dispatcher.get_balance(y);
+    let balance = dispatcher.get_balance(y);
+    let [Lx,Ly] = [balance.CL.x, balance.CL.y];
+    let [Rx,Ry] = [balance.CR.x, balance.CR.y];
     let nonce = dispatcher.get_nonce(y);
 
     let (_inputs,proof)= prove_withdraw(x,initial_balance, amount,tranfer_address,[Lx,Ly],[Rx,Ry],nonce,seed);

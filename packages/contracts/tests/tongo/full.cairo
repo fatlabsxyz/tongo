@@ -2,7 +2,7 @@ use tongo::prover::utils::{generate_random, decipher_balance};
 use crate::tongo::setup::{setup_tongo};
 use tongo::prover::prover::{prove_transfer, prove_fund, prove_withdraw};
 use starknet::ContractAddress;
-use tongo::verifier::structs::{PubKeyTrait};
+use tongo::verifier::structs::{PubKeyTrait, CipherBalanceTrait};
 
 use tongo::main::ITongoDispatcherTrait;
 
@@ -21,22 +21,22 @@ fn full(){
 
     // The initial buffers, balance, and audits should be 0
         let buffer = dispatcher.get_buffer(y);
-        assert!(buffer == ((0,0),(0,0)), "Initial buffer not 0");
+        assert!(buffer.is_zero(), "Initial buffer not 0");
 
         let balance = dispatcher.get_balance(y);
-        assert!(balance == ((0,0),(0,0)), "Initial balance not 0");
+        assert!(balance.is_zero(), "Initial balance not 0");
 
         let audit = dispatcher.get_audit(y);
-        assert!(audit == ((0,0),(0,0)), "Initial audit not 0");
+        assert!(audit.is_zero(), "Initial audit not 0");
 
         let buffer = dispatcher.get_buffer(y_bar);
-        assert!(buffer == ((0,0),(0,0)), "Initial buffer not 0");
+        assert!(buffer.is_zero(), "Initial buffer not 0");
 
         let balance = dispatcher.get_balance(y_bar);
-        assert!(balance == ((0,0),(0,0)), "Initial balance not 0");
+        assert!(balance.is_zero(), "Initial balance not 0");
 
         let audit = dispatcher.get_audit(y_bar);
-        assert!(audit == ((0,0),(0,0)), "Initial audit not 0");
+        assert!(audit.is_zero(), "Initial audit not 0");
 
         // The initial nonces should be 0
         let nonce = dispatcher.get_nonce(y_bar);
@@ -52,7 +52,7 @@ fn full(){
 
         //Bufer should be 0, balance initial_balance and audit initial_balance
         let buffer = dispatcher.get_buffer(y);
-        assert!(buffer == ((0,0),(0,0)), "Initial buffer not 0");
+        assert!(buffer.is_zero(), "Initial buffer not 0");
 
         let audit = dispatcher.get_audit(y);
         decipher_balance(initial_balance, 'CURIOSITY', audit);
@@ -60,7 +60,9 @@ fn full(){
         let balance = dispatcher.get_balance(y);
         decipher_balance(initial_balance, x, balance);
 
-    let ((CLx,CLy),(CRx,CRy)) = balance; 
+    let balance = dispatcher.get_balance(y);
+    let [CLx,CLy] = [balance.CL.x, balance.CL.y];
+    let [CRx,CRy] = [balance.CR.x, balance.CR.y];
     let nonce = dispatcher.get_nonce(y);
     assert!(nonce ==1, "Nonce is not 1");
     
@@ -82,7 +84,7 @@ fn full(){
 
     //For y balance and audit  should be initial-transfer, buffer 0
         let buffer = dispatcher.get_buffer(y);
-        assert!(buffer == ((0,0),(0,0)), "Buffer is not 0");
+        assert!(buffer.is_zero(), "Buffer is not 0");
 
         let audit = dispatcher.get_audit(y);
         decipher_balance(initial_balance - transfer_amount, 'CURIOSITY', audit);
@@ -98,7 +100,7 @@ fn full(){
         decipher_balance(transfer_amount, 'CURIOSITY', audit);
 
         let balance = dispatcher.get_balance(y_bar);
-        assert!(balance == ((0,0),(0,0)), "Balance is not 0");
+        assert!(balance.is_zero(), "Balance is not 0");
 
 
     //We are going to rollover for y_bar
@@ -115,13 +117,15 @@ fn full(){
         decipher_balance(transfer_amount, 'CURIOSITY', audit);
 
         let buffer = dispatcher.get_buffer(y_bar);
-        assert!(buffer == ((0,0),(0,0)), "Buffer is not 0");
+        assert!(buffer.is_zero(), "Buffer is not 0");
 
         let balance = dispatcher.get_balance(y_bar);
         decipher_balance(transfer_amount, x_bar, balance);
 
     //y_bar will withdraw amount
-    let ((Lx,Ly), (Rx,Ry)) = balance;
+    let balance = dispatcher.get_balance(y_bar);
+    let [Lx,Ly] = [balance.CL.x, balance.CL.y];
+    let [Rx,Ry] = [balance.CR.x, balance.CR.y];
     let amount = 10;
     let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
     let nonce = dispatcher.get_nonce(y_bar);
@@ -138,7 +142,7 @@ fn full(){
         decipher_balance(transfer_amount - amount, 'CURIOSITY', audit);
 
         let buffer = dispatcher.get_buffer(y_bar);
-        assert!(buffer == ((0,0),(0,0)), "Buffer is not 0");
+        assert!(buffer.is_zero(), "Buffer is not 0");
 
         let balance = dispatcher.get_balance(y_bar);
         decipher_balance( transfer_amount-amount , x_bar, balance);
