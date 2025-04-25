@@ -27,7 +27,7 @@ pub fn prove_withdraw_all(
         seed:felt252
 ) -> (InputsWithdraw, ProofOfWitdhrawAll) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let y = g.mul(x).try_into().unwrap();
+    let y = PubKeyTrait::from_secret(x);
     let R = EcPointTrait::new(*CR.span()[0],  *CR.span()[1]).unwrap();
 
     //poe for y = g**x and L/g**b = R**x
@@ -37,8 +37,8 @@ pub fn prove_withdraw_all(
 
     let mut seq: Array<felt252> = array![
         'withdraw_all',
-        y.x(),
-        y.y(),
+        y.x,
+        y.y,
         to.into(),
         nonce.into(),
     ];
@@ -71,8 +71,7 @@ pub fn prove_withdraw_all(
 
 pub fn prove_fund(x:felt252,nonce:u64, seed: felt252) -> (InputsFund, ProofOfFund) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
-    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-    let y = PubKey{x: y.x(), y: y.y()};
+    let y = PubKeyTrait::from_secret(x);
     let inputs : InputsFund = InputsFund {y:y , nonce: nonce};
     let mut seq: Array<felt252> = array![
         'fund',
@@ -177,8 +176,8 @@ pub fn prove_transfer(
     seed:felt252
 ) -> (InputsTransfer, ProofOfTransfer ) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let y_ec = g.try_into().unwrap().mul(x).try_into().unwrap();
-    let y = PubKey{x: y_ec.x(), y: y_ec.y()};
+    let y = PubKeyTrait::from_secret(x);
+    let y_ec = y.point();
     let [h_x,h_y] = generator_h();
     let view = view_key();
     let h = EcPointTrait::new_nz(h_x,h_y).unwrap();
