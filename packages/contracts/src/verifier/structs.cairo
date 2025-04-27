@@ -1,6 +1,7 @@
 use core::starknet::ContractAddress;
 use core::ec::{EcPointTrait, NonZeroEcPoint, EcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
+use core::traits::{Into, TryInto};
 
 
 /// Represent the public key y = g ** x of a user. 
@@ -42,6 +43,32 @@ pub struct StarkPoint {
     pub x: felt252,
     pub y: felt252,
 }
+
+impl NonZeroEcPointToStarkPoint of Into<NonZeroEcPoint, StarkPoint> {
+    fn into(self: NonZeroEcPoint) -> StarkPoint {
+        StarkPoint {x: self.x(), y:self.y()}
+    }
+}
+
+impl EcPointToStarkPoint of Into<EcPoint, StarkPoint> {
+    fn into(self: EcPoint) -> StarkPoint {
+        let point:NonZeroEcPoint = self.try_into().unwrap();
+        StarkPoint {x: point.x(), y: point.y()}
+    }
+}
+
+impl StarkPointTryIntoNonZeroEcPoint of TryInto<StarkPoint, NonZeroEcPoint> {
+    fn try_into(self: StarkPoint) -> Option<NonZeroEcPoint> {
+        EcPointTrait::new_nz(self.x, self.y)
+    }
+}
+
+impl StarkPointTryIntoEcPoint of TryInto<StarkPoint, EcPoint> {
+    fn try_into(self: StarkPoint) -> Option<EcPoint> {
+        EcPointTrait::new(self.x, self.y)
+    }
+}
+
 
 
 #[derive(Serde, Drop, Debug, Copy, starknet::Store, Default)]
@@ -94,9 +121,10 @@ pub struct InputsFund {
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfFund {
-    pub Ax:[felt252;2],
+    pub Ax:StarkPoint,
     pub sx: felt252,
 }
+
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfBit2 {
@@ -114,23 +142,23 @@ pub struct InputsWithdraw {
     pub nonce: u64,
     pub to: ContractAddress,
     pub amount: felt252,
-    pub L:[felt252;2], 
-    pub R:[felt252;2], 
+    pub L:StarkPoint, 
+    pub R:StarkPoint, 
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfWitdhrawAll {
-    pub A_x:[felt252;2] , 
-    pub A_cr:[felt252;2] , 
-    pub s_x:felt252 ,
+    pub A_x: StarkPoint,
+    pub A_cr: StarkPoint,
+    pub s_x:felt252,
 }
 
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfWithdraw {
-    pub A_x:[felt252;2] , 
-    pub A:[felt252;2] , 
-    pub A_v:[felt252;2] , 
+    pub A_x: StarkPoint , 
+    pub A: StarkPoint , 
+    pub A_v: StarkPoint , 
     pub sx: felt252,
     pub sb: felt252,
     pub sr: felt252,
@@ -142,12 +170,12 @@ pub struct InputsTransfer {
     pub nonce:u64,
     pub y: PubKey,
     pub y_bar: PubKey,
-    pub CL:[felt252;2], 
-    pub CR:[felt252;2], 
-    pub R:[felt252;2], 
-    pub L:[felt252;2], 
-    pub L_bar:[felt252;2], 
-    pub L_audit:[felt252;2],
+    pub CL:StarkPoint, 
+    pub CR:StarkPoint,
+    pub R:StarkPoint,
+    pub L:StarkPoint,
+    pub L_bar:StarkPoint,
+    pub L_audit:StarkPoint,
 }
 
 #[derive(Serde, Drop, Debug, Copy)]

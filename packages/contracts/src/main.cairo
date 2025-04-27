@@ -2,6 +2,7 @@ use core::starknet::ContractAddress;
 use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw, ProofOfFund};
 use crate::verifier::structs::{PubKey};
 use crate::verifier::structs::{CipherBalance};
+use crate::verifier::structs::{StarkPoint};
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary, replay_protection.
 
 #[starknet::interface]
@@ -17,10 +18,10 @@ pub trait ITongo<TContractState> {
     fn transfer(ref self: TContractState,
         from:PubKey,
         to: PubKey,
-        L:[felt252;2],
-        L_bar:[felt252;2],
-        L_audit:[felt252;2],
-        R: [felt252;2],
+        L:StarkPoint,
+        L_bar:StarkPoint,
+        L_audit:StarkPoint,
+        R: StarkPoint,
         proof: ProofOfTransfer,
     );
 }
@@ -97,11 +98,9 @@ pub mod Tongo {
     fn withdraw(ref self: ContractState, from: PubKey, amount: felt252, to: ContractAddress, proof:  ProofOfWithdraw) {
 //        //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
         let balance = self.get_balance(from);
-        let [Lx,Ly] = [balance.CL.x, balance.CL.y];
-        let [Rx,Ry] = [balance.CR.x, balance.CR.y];
 
         let nonce = self.get_nonce(from);
-        let inputs: InputsWithdraw = InputsWithdraw{ y : from , amount,nonce,to, L:[Lx,Ly], R: [Rx,Ry]};
+        let inputs: InputsWithdraw = InputsWithdraw{ y : from , amount,nonce,to, L:balance.CL, R: balance.CR};
         verify_withdraw(inputs, proof);
 
 //        let amount: u256 = amount.try_into().unwrap();
@@ -128,10 +127,8 @@ pub mod Tongo {
     fn withdraw_all(ref self: ContractState, from: PubKey, amount: felt252, to: ContractAddress, proof:  ProofOfWitdhrawAll) {
         //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
         let balance = self.get_balance(from);
-        let [Lx,Ly] = [balance.CL.x, balance.CL.y];
-        let [Rx,Ry] = [balance.CR.x, balance.CR.y];
         let nonce = self.get_nonce(from);
-        let inputs:InputsWithdraw = InputsWithdraw {y : from, amount,to, nonce, L:[Lx,Ly], R: [Rx,Ry]};
+        let inputs: InputsWithdraw = InputsWithdraw{ y : from , amount,nonce,to, L:balance.CL, R: balance.CR};
         verify_withdraw_all(inputs, proof);
 
 //        let amount: u256 = amount.try_into().unwrap();
@@ -160,26 +157,24 @@ pub mod Tongo {
     fn transfer(ref self: ContractState,
         from:PubKey,
         to: PubKey,
-        L:[felt252;2],
-        L_bar:[felt252;2],
-        L_audit:[felt252;2],
-        R: [felt252;2],
+        L:StarkPoint,
+        L_bar:StarkPoint,
+        L_audit:StarkPoint,
+        R: StarkPoint,
         proof: ProofOfTransfer,
     ) {
         let balance = self.get_balance(from);
-        let [CLx,CLy] = [balance.CL.x, balance.CL.y];
-        let [CRx,CRy] = [balance.CR.x, balance.CR.y];
         let nonce = self.get_nonce(from);
         
         let inputs:InputsTransfer = InputsTransfer {
             y: from,
             y_bar: to,
             nonce: nonce,
-            CL: [CLx,CLy],
-            CR: [CRx,CRy],
+            CL: balance.CL,
+            CR: balance.CR,
             R: R,
             L: L,
-            L_bar:L_bar,
+            L_bar: L_bar,
             L_audit: L_audit,
         };
         
@@ -187,11 +182,6 @@ pub mod Tongo {
 
 
         // verificar la prueva with respect to balance + pending
-
-        let L = StarkPoint {x: *L.span()[0], y: *L.span()[1]};
-        let R = StarkPoint {x: *R.span()[0], y: *R.span()[1]};
-        let L_bar = StarkPoint {x: *L_bar.span()[0], y: *L_bar.span()[1]};
-        let L_audit = StarkPoint {x: *L_audit.span()[0], y: *L_audit.span()[1]};
 
 
         self.remove_balance(from, CipherBalance{CL: L, CR:R});

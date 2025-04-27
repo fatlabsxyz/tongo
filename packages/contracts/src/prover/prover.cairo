@@ -4,6 +4,7 @@ use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer };
 use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 use crate::verifier::structs::{ InputsFund,ProofOfFund};
 use crate::verifier::structs::{PubKey, PubKeyTrait};
+use crate::verifier::structs::{StarkPoint};
 
 use crate::verifier::utils::{compute_prefix, challenge_commits2};
 
@@ -52,8 +53,8 @@ pub fn prove_withdraw_all(
     let s = compute_s(c, x, k);
 
     let proof: ProofOfWitdhrawAll = ProofOfWitdhrawAll {
-        A_x: [A_x.x(), A_x.y()],
-        A_cr: [A_cr.x(), A_cr.y()],
+        A_x: A_x.into(),
+        A_cr: A_cr.into(),
         s_x: s,
     };
 
@@ -63,8 +64,8 @@ pub fn prove_withdraw_all(
         amount: amount,
         to:to,
         nonce: nonce,
-        L: CL,
-        R: CR,
+        L: StarkPoint {x: *CL.span()[0], y: *CL.span()[1]},
+        R: StarkPoint {x: *CR.span()[0], y: *CR.span()[1]},
     };
     return (inputs,proof);
 }
@@ -89,7 +90,7 @@ pub fn prove_fund(x:felt252,nonce:u64, seed: felt252) -> (InputsFund, ProofOfFun
     let c = challenge_commits2(prefix, ref commits);
     let s = compute_s(c, x, k);
 
-    let proof: ProofOfFund = ProofOfFund {Ax: [Ax.x(), Ax.y()], sx: s};
+    let proof: ProofOfFund = ProofOfFund {Ax: Ax.into(), sx: s};
     return (inputs,proof);
 }
 
@@ -145,9 +146,9 @@ pub fn prove_withdraw(
     let sr = compute_s(c,r,kr);
 
     let proof: ProofOfWithdraw = ProofOfWithdraw {
-        A_x: [A_x.x(),A_x.y()],
-        A: [A.x(),A.y()],
-        A_v: [A_v.x(),A_v.y()],
+        A_x: A_x.into(),
+        A: A.into(),
+        A_v: A_v.into(),
         sx: sx,
         sb: sb,
         sr: sr,
@@ -157,8 +158,8 @@ pub fn prove_withdraw(
     let inputs: InputsWithdraw = InputsWithdraw {
         y: y,
         amount: amount,
-        L: [L.x(),L.y()],
-        R: [R.x(),R.y()],
+        L: L.into(),
+        R: R.into(),
         nonce: nonce,
         to:to,
     };
@@ -270,12 +271,12 @@ pub fn prove_transfer(
     let inputs: InputsTransfer = InputsTransfer {
         y:y,
         y_bar:y_bar,
-        CR:[CR.try_into().unwrap().x(), CR.try_into().unwrap().y()],
-        CL:CL,
-        R:[R.try_into().unwrap().x(), R.try_into().unwrap().y()],
-        L:L,
-        L_bar,
-        L_audit,
+        CR:CR.into(),
+        CL: StarkPoint{x: *CL.span()[0], y: *CL.span()[1]},
+        R: R.try_into().unwrap(),
+        L: StarkPoint{x: *L.span()[0], y: *L.span()[1]},
+        L_bar: StarkPoint{x: *L_bar.span()[0], y: *L_bar.span()[1]},
+        L_audit: StarkPoint{x: *L_audit.span()[0], y: *L_audit.span()[1]},
         nonce: nonce,
     };
 

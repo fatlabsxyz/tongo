@@ -1,4 +1,4 @@
-use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint};
+use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint, EcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use crate::verifier::utils::{in_order, on_curve};
 use crate::verifier::utils::{ generator_h, view_key};
@@ -71,10 +71,10 @@ pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund){
         inputs.nonce.into(),
     ];
     let prefix = compute_prefix(ref seq);
-    let mut commits = array![proof.Ax];
+    let mut commits = array![[proof.Ax.x, proof.Ax.y]];
     let c = challenge_commits2(prefix, ref commits);
 
-    let res = poe([inputs.y.x, inputs.y.y], [GEN_X,GEN_Y],proof.Ax,c, proof.sx);
+    let res = poe([inputs.y.x, inputs.y.y], [GEN_X,GEN_Y],[proof.Ax.x, proof.Ax.y],c, proof.sx);
     assert(res, FUND::F100);
 }
 
@@ -91,19 +91,19 @@ pub fn verify_withdraw_all(inputs:InputsWithdraw, proof:ProofOfWitdhrawAll) {
         inputs.nonce.into(),
     ];
     let prefix = compute_prefix(ref seq);
-    let mut commits = array![proof.A_x,proof.A_cr];
+    let mut commits = array![[proof.A_x.x, proof.A_x.y],[proof.A_cr.x, proof.A_cr.y]];
     let c = challenge_commits2(prefix, ref commits);
 
-    let res = poe([inputs.y.x, inputs.y.y], [GEN_X,GEN_Y], proof.A_x, c, proof.s_x);
+    let res = poe([inputs.y.x, inputs.y.y], [GEN_X,GEN_Y], [proof.A_x.x, proof.A_x.y], c, proof.s_x);
     assert(res, WITHDRAW::W100);
 
-    let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
+    let L:EcPoint = inputs.L.try_into().unwrap();
 
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let g_b = EcPointTrait::mul(g,inputs.amount);
     let Y: NonZeroEcPoint = (L - g_b.try_into().unwrap()).try_into().unwrap();
 
-    let res = poe([Y.x(), Y.y()], [*inputs.R.span()[0], *inputs.R.span()[1]], proof.A_cr,c ,proof.s_x);
+    let res = poe([Y.x(), Y.y()], [inputs.R.x, inputs.R.y], [proof.A_cr.x, proof.A_cr.y],c ,proof.s_x);
     assert(res, WITHDRAW::W101);
 }
 
@@ -118,21 +118,25 @@ pub fn verify_withdraw(inputs:InputsWithdraw, proof: ProofOfWithdraw) {
     ];
     let prefix = compute_prefix(ref seq);
 
-    let mut commits = array![proof.A_x, proof.A, proof.A_v];
+    let mut commits = array![
+        [proof.A_x.x, proof.A_x.y],
+        [proof.A.x, proof.A.y],
+        [proof.A_v.x, proof.A_v.y],
+    ];
     let c = challenge_commits2(prefix,ref commits);
 
-    let res = poe([inputs.y.x, inputs.y.y], [GEN_X, GEN_Y], proof.A_x, c, proof.sx);
+    let res = poe([inputs.y.x, inputs.y.y], [GEN_X, GEN_Y], [proof.A_x.x, proof.A_x.y], c, proof.sx);
     assert(res, WITHDRAW::W100);
 
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let g_b  = EcPointTrait::mul(g,inputs.amount).try_into().unwrap();
-    let L = EcPointTrait::new(*inputs.L.span()[0],*inputs.L.span()[1]).unwrap();
+    let L:EcPoint = inputs.L.try_into().unwrap();
     let L: NonZeroEcPoint = (L - g_b).try_into().unwrap();
     let res =poe2(
         [L.x(),L.y()],
         [GEN_X, GEN_Y],
-        [*inputs.R.span()[0], *inputs.R.span()[1]],
-        [*proof.A.span()[0], *proof.A.span()[1]],
+        [inputs.R.x, inputs.R.y],
+        [proof.A.x, proof.A.y],
         c,
         proof.sb,
         proof.sx
@@ -146,7 +150,7 @@ pub fn verify_withdraw(inputs:InputsWithdraw, proof: ProofOfWithdraw) {
         V,
         [GEN_X, GEN_Y],
         generator_h(),
-        [*proof.A_v.span()[0],*proof.A_v.span()[1]],
+        [proof.A_v.x,proof.A_v.y],
         c,
         proof.sb,
         proof.sr
@@ -174,10 +178,10 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
         inputs.y.y,
         inputs.y_bar.x,
         inputs.y_bar.y,
-        *inputs.L.span()[0],
-        *inputs.L.span()[1],
-        *inputs.R.span()[0],
-        *inputs.R.span()[1],
+        inputs.L.x,
+        inputs.L.y,
+        inputs.R.x,
+        inputs.R.y,
         inputs.nonce.into(),
     ];
     let prefix = compute_prefix(ref seq);
@@ -199,19 +203,19 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     assert(res, TRANSFER::T100);
     
     // This is for asserting R = g**r
-    let res = poe(inputs.R, [GEN_X,GEN_Y], proof.A_r, c, proof.s_r );
+    let res = poe([inputs.R.x, inputs.R.y], [GEN_X,GEN_Y], proof.A_r, c, proof.s_r );
     assert(res, TRANSFER::T101);
     
     //This is for asserting L = g**b y**r
-    let res = poe2(inputs.L, [GEN_X,GEN_Y], [inputs.y.x, inputs.y.y], proof.A_b, c, proof.s_b,proof.s_r);
+    let res = poe2([inputs.L.x, inputs.L.y], [GEN_X,GEN_Y], [inputs.y.x, inputs.y.y], proof.A_b, c, proof.s_b,proof.s_r);
     assert(res, TRANSFER::T102);
 
     //This is for asserting L_bar = g**b y_bar**r
-    let res = poe2(inputs.L_bar, [GEN_X,GEN_Y], [inputs.y_bar.x, inputs.y_bar.y], proof.A_bar, c, proof.s_b,proof.s_r);
+    let res = poe2([inputs.L_bar.x, inputs.L_bar.y], [GEN_X,GEN_Y], [inputs.y_bar.x, inputs.y_bar.y], proof.A_bar, c, proof.s_b,proof.s_r);
     assert(res, TRANSFER::T103);
 
     //This is for asserting L_audit= g**b y_audit*r
-    let res = poe2(inputs.L_audit, [GEN_X,GEN_Y], [view_key().x, view_key().y], proof.A_audit, c, proof.s_b,proof.s_r);
+    let res = poe2([inputs.L_audit.x,inputs.L_audit.y], [GEN_X,GEN_Y], [view_key().x, view_key().y], proof.A_audit, c, proof.s_b,proof.s_r);
     assert(res, TRANSFER::T104);
 
     // Now we need to show that V = g**b h**r with the same b and r.
@@ -219,12 +223,12 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let res = poe2(V, [GEN_X,GEN_Y], generator_h(), proof.A_v, c, proof.s_b,proof.s_r);
     assert(res, TRANSFER::T105);
 
-    let CL = EcPointTrait::new(*inputs.CL.span()[0], *inputs.CL.span()[1]).unwrap();
-    let L = EcPointTrait::new(*inputs.L.span()[0], *inputs.L.span()[1]).unwrap();
+    let CL:EcPoint = inputs.CL.try_into().unwrap();
+    let L:EcPoint = inputs.L.try_into().unwrap();
     let Y:NonZeroEcPoint = (CL - L).try_into().unwrap();
 
-    let CR = EcPointTrait::new(*inputs.CR.span()[0], *inputs.CR.span()[1]).unwrap();
-    let R = EcPointTrait::new(*inputs.R.span()[0], *inputs.R.span()[1]).unwrap();
+    let CR:EcPoint = inputs.CR.try_into().unwrap();
+    let R:EcPoint = inputs.R.try_into().unwrap();
     let G:NonZeroEcPoint = (CR - R).try_into().unwrap();
     let res = poe2([Y.x(), Y.y()], [GEN_X, GEN_Y], [G.x(), G.y()], proof.A_b2,c, proof.s_b2, proof.s_x );
     assert(res, TRANSFER::T106);
