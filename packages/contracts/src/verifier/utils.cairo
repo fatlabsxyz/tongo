@@ -4,6 +4,7 @@ use core::hash::HashStateTrait;
 use core::ec::EcPointTrait;
 use core::ec::stark_curve::{GEN_X,GEN_Y};
 use tongo::verifier::structs::PubKey;
+use tongo::verifier::structs::StarkPoint;
 
 // 2**32
 const MAX: u128 = 4294967296;
@@ -62,13 +63,13 @@ pub fn compute_prefix(ref seq: Array<felt252>) -> felt252{
     state.finalize()
 }
 
-pub fn challenge_commits2(prefix: felt252, ref commits: Array<[felt252;2]>) -> felt252 {
+pub fn challenge_commits2(prefix: felt252, ref commits: Array<StarkPoint>) -> felt252 {
     let mut state = PedersenTrait::new(prefix);
     let mut commit = commits.pop_front();
     while commit.is_some() {
-        let [x,y] = commit.unwrap();
-        state = state.update(x); 
-        state = state.update(y); 
+        let unwrap = commit.unwrap();
+        state = state.update(unwrap.x); 
+        state = state.update(unwrap.y); 
         commit = commits.pop_front();
     };
     let base = state.finalize();

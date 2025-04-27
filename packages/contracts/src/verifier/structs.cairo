@@ -191,14 +191,14 @@ pub struct ProofOfBit {
 }
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfTransfer {
-    pub A_x: [felt252;2], 
-    pub A_r: [felt252;2], 
-    pub A_b: [felt252;2],
-    pub A_b2: [felt252;2],
-    pub A_v: [felt252;2],
-    pub A_v2:[felt252;2],
-    pub A_bar: [felt252;2],
-    pub A_audit: [felt252;2],
+    pub A_x: StarkPoint, 
+    pub A_r: StarkPoint, 
+    pub A_b: StarkPoint,
+    pub A_b2: StarkPoint,
+    pub A_v: StarkPoint,
+    pub A_v2:StarkPoint,
+    pub A_bar: StarkPoint,
+    pub A_audit: StarkPoint,
     pub s_x: felt252,
     pub s_r: felt252,
     pub s_b: felt252,

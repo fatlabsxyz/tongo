@@ -44,10 +44,7 @@ pub fn prove_withdraw_all(
         nonce.into(),
     ];
     let prefix = compute_prefix(ref seq);
-    let mut commits = array![
-        [A_x.x(),A_x.y()],
-        [A_cr.x(),A_cr.y()],
-    ];
+    let mut commits: Array<StarkPoint> = array![A_x.into(),A_cr.into()];
 
     let c = challenge_commits2(prefix,ref commits);
     let s = compute_s(c, x, k);
@@ -86,7 +83,7 @@ pub fn prove_fund(x:felt252,nonce:u64, seed: felt252) -> (InputsFund, ProofOfFun
     let k = generate_random(seed,2);
     let Ax:NonZeroEcPoint = g.mul(k).try_into().unwrap();
 
-    let mut commits = array![[Ax.x(), Ax.y()]];
+    let mut commits: Array<StarkPoint> = array![Ax.into()];
     let c = challenge_commits2(prefix, ref commits);
     let s = compute_s(c, x, k);
 
@@ -139,7 +136,7 @@ pub fn prove_withdraw(
         nonce.into(),
     ];
     let prefix = compute_prefix(ref seq);
-    let mut commits = array![[A_x.x(), A_x.y()], [A.x(), A.y()], [A_v.x(),A_v.y()]];
+    let mut commits: Array<StarkPoint> = array![A_x.into(), A.into(), A_v.into()];
     let c = challenge_commits2(prefix,ref commits);
     let sb = compute_s(c,left,kb);
     let sx = compute_s(c,x,kx);
@@ -236,15 +233,15 @@ pub fn prove_transfer(
         state.add_mul(kr2, h);
     let A_v2 = state.finalize_nz().unwrap();
 
-    let mut commits = array![
-         [A_x.x() , A_x.y()],
-         [A_r.x() , A_r.y()],
-         [A_b.x() , A_b.y()],
-         [A_b2.x() , A_b2.y()],
-         [A_v.x() , A_v.y()],
-         [A_v2.x() , A_v2.y()],
-         [A_bar.x() , A_bar.y()],
-         [A_audit.x() , A_audit.y()],
+    let mut commits: Array<StarkPoint> = array![
+         A_x.into(),
+         A_r.into(),
+         A_b.into(),
+         A_b2.into(),
+         A_v.into(),
+         A_v2.into(),
+         A_bar.into(),
+         A_audit.into(),
     ];
 
     let mut seq: Array<felt252> = array![
@@ -281,14 +278,14 @@ pub fn prove_transfer(
     };
 
     let proof: ProofOfTransfer = ProofOfTransfer {
-        A_x:[A_x.x() , A_x.y()],
-        A_r:[A_r.x() , A_r.y()],
-        A_b:[A_b.x() , A_b.y()],
-        A_b2:[A_b2.x() , A_b2.y()],
-        A_v:[A_v.x() , A_v.y()],
-        A_v2:[A_v2.x() , A_v2.y()],
-        A_bar:[A_bar.x() , A_bar.y()],
-        A_audit:[A_audit.x(), A_audit.y()],
+        A_x:A_x.into(),
+        A_r:A_r.into(),
+        A_b:A_b.into(),
+        A_b2:A_b2.into(),
+        A_v:A_v.into(),
+        A_v2:A_v2.into(),
+        A_bar:A_bar.into(),
+        A_audit:A_audit.into(),
         s_x,
         s_r,
         s_b,
