@@ -15,7 +15,7 @@ fn test_transfer() {
     // balance stored
     let b0 = 100;
     let r0 = generate_random(seed,3);
-    let (CL, CR) = cipher_balance(b0, y, r0);
+    let balance = cipher_balance(b0, y, r0);
     // end of setup
 
     let b = 12; 
@@ -23,7 +23,7 @@ fn test_transfer() {
     let x_bar = generate_random(seed,2);
     let y_bar = PubKeyTrait::from_secret(x_bar);
     
-    let (inputs, proof ) = prove_transfer(x, y_bar,b0, b,CL,CR,nonce, generate_random(seed,4));
+    let (inputs, proof ) = prove_transfer(x, y_bar,b0, b,balance.CL,balance.CR,nonce, generate_random(seed,4));
 
     verify_transfer(inputs,proof);
 }

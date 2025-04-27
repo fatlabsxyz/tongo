@@ -24,11 +24,9 @@ fn test_withdraw_all() {
     dispatcher.fund(y, b, fund_proof);
 
     let balance = dispatcher.get_balance(y);
-    let [Lx,Ly] = [balance.CL.x, balance.CL.y];
-    let [Rx,Ry] = [balance.CR.x, balance.CR.y];
     let nonce = dispatcher.get_nonce(y);
 
-    let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,[Lx,Ly],[Rx,Ry],nonce,seed);
+    let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,balance.CL,balance.CR,nonce,seed);
     
     dispatcher.withdraw_all(y,b,tranfer_address, proof);
     let balance = dispatcher.get_balance(y);
@@ -55,11 +53,9 @@ fn test_withdraw() {
     dispatcher.fund(y, initial_balance, fund_proof);
 
     let balance = dispatcher.get_balance(y);
-    let [Lx,Ly] = [balance.CL.x, balance.CL.y];
-    let [Rx,Ry] = [balance.CR.x, balance.CR.y];
     let nonce = dispatcher.get_nonce(y);
 
-    let (_inputs,proof)= prove_withdraw(x,initial_balance, amount,tranfer_address,[Lx,Ly],[Rx,Ry],nonce,seed);
+    let (_inputs,proof)= prove_withdraw(x,initial_balance, amount,tranfer_address,balance.CL,balance.CR,nonce,seed);
     
     dispatcher.withdraw(y,amount,tranfer_address, proof);
 }

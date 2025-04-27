@@ -135,7 +135,7 @@ pub fn simPOE(y:[felt252;2], gen:[felt252;2], seed:felt252) -> ([felt252;2], fel
 }
 
 /// Generates the ciphertext of the balace in the form  (L,R) = (g**b y **r , g**r)
-pub fn cipher_balance(b:felt252, y:PubKey, random:felt252) -> ([felt252;2], [felt252;2]) {
+pub fn cipher_balance(b:felt252, y:PubKey, random:felt252) -> CipherBalance {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y = EcPointTrait::new_nz(y.x, y.y).unwrap();
     let mut state = EcStateTrait::init();
@@ -143,7 +143,7 @@ pub fn cipher_balance(b:felt252, y:PubKey, random:felt252) -> ([felt252;2], [fel
         state.add_mul(random,y);
     let L = state.finalize_nz().unwrap();
     let R:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), random).try_into().unwrap();
-    return ([L.x(),L.y()], [R.x(), R.y()]);
+    return CipherBalance {CL: L.into(), CR: R.into()};
 }
 
 /// Asserts that g**b == L/R**x. This show that the given balance b is encoded in the cipher

@@ -13,7 +13,7 @@ use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_bin
 
 use core::starknet::ContractAddress;
 use core::ec::stark_curve::{GEN_X,GEN_Y};
-use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait};
+use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait, EcPoint};
 
 
 /// Generate the prove necesary to make a withdraw transaction. In this version the withdraw is for all the balance
@@ -22,19 +22,19 @@ pub fn prove_withdraw_all(
         x:felt252,
         amount:felt252,
         to:ContractAddress,
-        CL:[felt252;2],
-        CR:[felt252;2],
+        CL:StarkPoint,
+        CR:StarkPoint,
         nonce:u64,
         seed:felt252
 ) -> (InputsWithdraw, ProofOfWitdhrawAll) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let y = PubKeyTrait::from_secret(x);
-    let R = EcPointTrait::new(*CR.span()[0],  *CR.span()[1]).unwrap();
+    let R:NonZeroEcPoint = CR.try_into().unwrap();
 
     //poe for y = g**x and L/g**b = R**x
     let k = generate_random(seed+1,1);
     let A_x: NonZeroEcPoint = EcPointTrait::mul(g, k).try_into().unwrap();
-    let A_cr: NonZeroEcPoint = EcPointTrait::mul(R, k).try_into().unwrap();
+    let A_cr: NonZeroEcPoint = EcPointTrait::mul(R.try_into().unwrap(), k).try_into().unwrap();
 
     let mut seq: Array<felt252> = array![
         'withdraw_all',
@@ -61,8 +61,8 @@ pub fn prove_withdraw_all(
         amount: amount,
         to:to,
         nonce: nonce,
-        L: StarkPoint {x: *CL.span()[0], y: *CL.span()[1]},
-        R: StarkPoint {x: *CR.span()[0], y: *CR.span()[1]},
+        L: CL,
+        R: CR,
     };
     return (inputs,proof);
 }
@@ -96,15 +96,15 @@ pub fn prove_withdraw(
         initial_balance: felt252,
         amount:felt252,
         to:ContractAddress,
-        CL:[felt252;2],
-        CR:[felt252;2],
+        CL:StarkPoint,
+        CR:StarkPoint,
         nonce:u64,
         seed:felt252
 ) -> (InputsWithdraw, ProofOfWithdraw) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y = PubKeyTrait::from_secret(x);
-    let R = EcPointTrait::new_nz(*CR.span()[0], *CR.span()[1]).unwrap();
-    let L = EcPointTrait::new_nz(*CL.span()[0], *CL.span()[1]).unwrap();
+    let R:NonZeroEcPoint = CR.try_into().unwrap();
+    let L:NonZeroEcPoint = CL.try_into().unwrap();
     let [hx,hy] = generator_h();
     let h = EcPointTrait::new_nz(hx,hy).unwrap();
 
@@ -168,8 +168,8 @@ pub fn prove_transfer(
     y_bar:PubKey,
     b0:felt252,
     b:felt252,
-    CL:[felt252;2],
-    CR:[felt252;2],
+    CL:StarkPoint,
+    CR:StarkPoint,
     nonce:u64,
     seed:felt252
 ) -> (InputsTransfer, ProofOfTransfer ) {
@@ -182,17 +182,21 @@ pub fn prove_transfer(
     
     
     let (r, proof ) = prove_range(b.try_into().unwrap(), generate_random(seed+1, 1));
-    let (L,R) = cipher_balance(b, y, r);
-    let (L_bar,_R_bar) = cipher_balance(b, y_bar, r);
-    let (L_audit,_R_audit) = cipher_balance(b, view , r);
+    let balance = cipher_balance(b,y,r);
+    let (L,R) = (balance.CL, balance.CR);
+    let L_bar = cipher_balance(b, y_bar, r).CL;
+    let L_audit = cipher_balance(b, view , r).CL;
 
     let b_left = b0-b;
     let (r2, proof2 ) = prove_range(b_left.try_into().unwrap(), generate_random(seed+2, 1));
 
 
-    let CR = EcPointTrait::new(*CR.span()[0], *CR.span()[1]).unwrap();
-    let R = EcPointTrait::new(*R.span()[0], *R.span()[1]).unwrap();
-    let G:NonZeroEcPoint = (CR - R).try_into().unwrap();
+//    let CR = EcPointTrait::new(*CR.span()[0], *CR.span()[1]).unwrap();
+    let CR:NonZeroEcPoint = CR.try_into().unwrap();
+    //TODO: Corregir
+    let CR: EcPoint = CR.into();
+    let R:NonZeroEcPoint = R.try_into().unwrap();
+    let G:NonZeroEcPoint = (CR - R.into()).try_into().unwrap();
 
     let kx = generate_random(seed+1 ,0);
     let kb = generate_random(seed+1 ,1);
@@ -250,8 +254,8 @@ pub fn prove_transfer(
         y.y,
         y_bar.x,
         y_bar.y,
-        *L.span()[0],
-        *L.span()[1],
+        L.x,
+        L.y,
         R.try_into().unwrap().x(),
         R.try_into().unwrap().y(),
         nonce.into(),
@@ -269,11 +273,11 @@ pub fn prove_transfer(
         y:y,
         y_bar:y_bar,
         CR:CR.into(),
-        CL: StarkPoint{x: *CL.span()[0], y: *CL.span()[1]},
+        CL: CL,
         R: R.try_into().unwrap(),
-        L: StarkPoint{x: *L.span()[0], y: *L.span()[1]},
-        L_bar: StarkPoint{x: *L_bar.span()[0], y: *L_bar.span()[1]},
-        L_audit: StarkPoint{x: *L_audit.span()[0], y: *L_audit.span()[1]},
+        L: L,
+        L_bar: L_bar,
+        L_audit: L_audit,
         nonce: nonce,
     };
 

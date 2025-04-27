@@ -61,13 +61,11 @@ fn full(){
         decipher_balance(initial_balance, x, balance);
 
     let balance = dispatcher.get_balance(y);
-    let [CLx,CLy] = [balance.CL.x, balance.CL.y];
-    let [CRx,CRy] = [balance.CR.x, balance.CR.y];
     let nonce = dispatcher.get_nonce(y);
     assert!(nonce ==1, "Nonce is not 1");
     
     let transfer_amount = 100; 
-    let (inputs, proof) = prove_transfer(x, y_bar, initial_balance, transfer_amount, [CLx,CLy], [CRx,CRy],nonce, seed + 1);
+    let (inputs, proof) = prove_transfer(x, y_bar, initial_balance, transfer_amount, balance.CL, balance.CR,nonce, seed + 1);
     dispatcher.transfer(
         inputs.y,
         inputs.y_bar,
@@ -124,12 +122,10 @@ fn full(){
 
     //y_bar will withdraw amount
     let balance = dispatcher.get_balance(y_bar);
-    let [Lx,Ly] = [balance.CL.x, balance.CL.y];
-    let [Rx,Ry] = [balance.CR.x, balance.CR.y];
     let amount = 10;
     let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
     let nonce = dispatcher.get_nonce(y_bar);
-    let (_inputs,proof)= prove_withdraw(x_bar,transfer_amount, amount,tranfer_address,[Lx,Ly],[Rx,Ry],nonce,seed+2);
+    let (_inputs,proof)= prove_withdraw(x_bar,transfer_amount, amount,tranfer_address,balance.CL,balance.CR,nonce,seed+2);
     
     dispatcher.withdraw(y_bar,amount,tranfer_address, proof);
 

@@ -52,11 +52,9 @@ fn audit_withdraw_all() {
 
 
     let balance = dispatcher.get_balance(y);
-    let [Lx,Ly] = [balance.CL.x, balance.CL.y];
-    let [Rx,Ry] = [balance.CR.x, balance.CR.y];
     let nonce = dispatcher.get_nonce(y);
 
-    let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,[Lx,Ly],[Rx,Ry],nonce,seed);
+    let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,balance.CL,balance.CL,nonce,seed);
     
     dispatcher.withdraw_all(y,b,tranfer_address, proof);
     let audit = dispatcher.get_audit(y);
@@ -92,11 +90,9 @@ fn audit_transfer() {
     decipher_balance(b0, 'CURIOSITY', audit);
 
     let balance = dispatcher.get_balance(y);
-    let [CLx,CLy] = [balance.CL.x, balance.CL.y];
-    let [CRx,CRy] = [balance.CR.x, balance.CR.y];
     
     let b = 100; 
-    let (inputs, proof) = prove_transfer(x, y_bar, b0,b, [CLx,CLy], [CRx,CRy],nonce,  seed + 1);
+    let (inputs, proof) = prove_transfer(x, y_bar, b0,b, balance.CL,balance.CR,nonce,  seed + 1);
     dispatcher.transfer(
         inputs.y,
         inputs.y_bar,
