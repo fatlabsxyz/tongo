@@ -23,7 +23,7 @@ fn test_poe(){
     let c = challenge_commits(ref commit);
     let s = compute_s(c, x, k);
     //Verify
-    poe([y.x(), y.y()], [g.x(),g.y()], [A_x.x(), A_x.y()], c, s);
+    poe(y, g, A_x, c, s);
 }
 
 #[test]
@@ -33,8 +33,8 @@ fn test_simulatePOE() {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x).try_into().unwrap();
 
-    let (A_x, c, s) = simPOE([y.x(), y.y()], [g.x(), g.y()],37192873);
-    poe([y.x(), y.y()], [g.x(),g.y()], [A_x.x,A_x.y], c, s);
+   let (A_x, c, s) = simPOE(y.into(), g,37192873);
+    poe(y.into(), g, A_x.try_into().unwrap(), c, s);
 }
 
 

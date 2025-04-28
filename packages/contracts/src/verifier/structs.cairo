@@ -27,12 +27,11 @@ pub impl PubKeyImpl of PubKeyTrait {
         let point = EcPointTrait::new_nz(self.x, self.y);
         assert!(point.is_some(),"PK not a curve point");
     }
+}
 
-    /// Returns the NonZeroEcPoint (if any) with coordinates stored in PubKey
-    fn point(self: PubKey) -> NonZeroEcPoint {
-        let point = EcPointTrait::new_nz(self.x, self.y);
-        assert!(point.is_some(),"PK not a curve point");
-        point.unwrap()
+impl PubKeyTryIntoNonZeroEcPoint of TryInto<PubKey, NonZeroEcPoint> {
+    fn try_into(self: PubKey) -> Option<NonZeroEcPoint> {
+        EcPointTrait::new_nz(self.x, self.y)
     }
 }
 
@@ -87,10 +86,9 @@ pub impl CipherBalanceImpl of CipherBalanceTrait {
         let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
         let mut R: NonZeroEcPoint = g.mul(randomness).try_into().unwrap();
         
-        let y:NonZeroEcPoint = key.point();
         let mut state = EcStateTrait::init();
             state.add_mul(amount, g.try_into().unwrap());
-            state.add_mul(randomness, y);
+            state.add_mul(randomness, key.try_into().unwrap());
         let mut L = state.finalize_nz().unwrap();
 
         CipherBalance {CL: L.into(), CR: R.into()}

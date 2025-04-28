@@ -106,8 +106,7 @@ pub fn prove_withdraw(
     let y = PubKeyTrait::from_secret(x);
     let R:NonZeroEcPoint = CR.try_into().unwrap();
     let L:NonZeroEcPoint = CL.try_into().unwrap();
-    let [hx,hy] = generator_h();
-    let h = EcPointTrait::new_nz(hx,hy).unwrap();
+    let h = generator_h();
 
     let left = initial_balance-amount;
 
@@ -176,10 +175,8 @@ pub fn prove_transfer(
 ) -> (InputsTransfer, ProofOfTransfer ) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y = PubKeyTrait::from_secret(x);
-    let y_ec = y.point();
-    let [h_x,h_y] = generator_h();
+    let h = generator_h();
     let view = view_key();
-    let h = EcPointTrait::new_nz(h_x,h_y).unwrap();
     
     
     let (r, proof ) = prove_range(b.try_into().unwrap(), generate_random(seed+1, 1));
@@ -210,7 +207,7 @@ pub fn prove_transfer(
 
     let mut state = EcStateTrait::init();
         state.add_mul(kb, g);
-        state.add_mul(kr, y_ec);
+        state.add_mul(kr, y.try_into().unwrap());
     let A_b = state.finalize_nz().unwrap();
 
     let mut state = EcStateTrait::init();
@@ -308,16 +305,15 @@ pub fn prove_transfer(
 /// the standar sigma proving protocol for the correct one and simultate the proof for the other one
 pub fn prove_bit(b:u8, r:felt252) -> ProofOfBit {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let [hx,hy] = generator_h();
-    let h = EcPointTrait::new(hx,hy).unwrap();
+    let h = generator_h();
     //if b == 0 we follow the standar poe for 0 and simulate for 1
     if b== 0 {
-        let V = h.mul(r);
+        let V = h.into().mul(r);
         let V_1:NonZeroEcPoint = (V - g).try_into().unwrap();
         let k : felt252 = generate_random(r,1);
-        let A0:NonZeroEcPoint = h.mul(k).try_into().unwrap();
+        let A0:NonZeroEcPoint = h.into().mul(k).try_into().unwrap();
 
-        let (A1, c_1, s_1) = simPOE([V_1.x(), V_1.y()], [hx,hy], r);
+        let (A1, c_1, s_1) = simPOE(V_1.into(), h, r);
         let mut commits = array![[A0.x(), A0.y()],[A1.x, A1.y]];
         let c = challenge_commits(ref commits);
         let c_0 = feltXOR(c, c_1);
@@ -334,12 +330,12 @@ pub fn prove_bit(b:u8, r:felt252) -> ProofOfBit {
     // if b == 1 we follow the standar poe for 1 and simulate for 0
     } else {
         //TODO: throw an error if b is not 0 nor 1.
-        let V:NonZeroEcPoint = (g + h.mul(r)).try_into().unwrap();
-        let (A0,c_0,s_0) = simPOE([V.x(), V.y()],generator_h(),r);
+        let V:NonZeroEcPoint = (g + h.into().mul(r)).try_into().unwrap();
+        let (A0,c_0,s_0) = simPOE(V.into(),generator_h(),r);
 
 //        let V_1 = V - g;
         let k = generate_random(r,2);
-        let A1:NonZeroEcPoint = h.mul(k).try_into().unwrap();
+        let A1:NonZeroEcPoint = h.into().mul(k).try_into().unwrap();
         let mut commits = array![[A0.x, A0.y], [A1.x(), A1.y()]];
         let c = challenge_commits(ref commits);
         let c_1 = feltXOR(c, c_0);
@@ -387,17 +383,16 @@ pub fn alternative_prove_bit(b:u8, r:felt252) -> ProofOfBit2 {
     let seed = 1293812;
     let b:felt252 = b.try_into().unwrap();
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let [h_x, h_y] = generator_h();
-    let h = EcPointTrait::new(h_x,h_y).unwrap();
+    let h = generator_h();
 
-    let V:NonZeroEcPoint = (g.mul(b) + h.mul(r)).try_into().unwrap();
+    let V:NonZeroEcPoint = (g.mul(b) + h.into().mul(r)).try_into().unwrap();
 
     let kb = generate_random(seed,2);
     let kr = generate_random(seed,3);
     let t = generate_random(seed,4);
     
-    let A:NonZeroEcPoint = (g.mul(kb) + h.mul(kr)).try_into().unwrap();
-    let B:NonZeroEcPoint = (g.mul(b*kb) + h.mul(t)).try_into().unwrap();
+    let A:NonZeroEcPoint = (g.mul(kb) + h.into().mul(kr)).try_into().unwrap();
+    let B:NonZeroEcPoint = (g.mul(b*kb) + h.into().mul(t)).try_into().unwrap();
     
     let mut commits = array![[A.x(), A.y()],[B.x(),B.y()]];
     let c = challenge_commits(ref commits);

@@ -1,7 +1,7 @@
 use core::ec::stark_curve::{ORDER};
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
-use core::ec::EcPointTrait;
+use core::ec::{EcPointTrait, NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X,GEN_Y};
 use tongo::verifier::structs::PubKey;
 use tongo::verifier::structs::StarkPoint;
@@ -109,11 +109,11 @@ pub fn challenge_commits(ref commits: Array<[felt252;2]>) -> felt252 {
 /// TODO: Generate one at random an store the cooridnates, generate the proof
 /// that there are not magic numbers under the sleve
 /// ULTRA WARNING: DO NOT FORGET TO DO THIS
-pub fn generator_h() -> [felt252;2] {
+pub fn generator_h() -> NonZeroEcPoint {
     let ultra_secret:felt252 = 'TONGO';
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let h = g.mul(ultra_secret).try_into().unwrap();
-    [h.x(), h.y()]
+    let h:NonZeroEcPoint = g.mul(ultra_secret).try_into().unwrap();
+    return h;
 }
 
 
