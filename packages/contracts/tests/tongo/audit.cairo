@@ -54,7 +54,7 @@ fn audit_withdraw_all() {
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);
 
-    let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,balance.CL,balance.CL,nonce,seed);
+    let (_inputs,proof)= prove_withdraw_all(x,b,tranfer_address,balance.CL,balance.CR,nonce,seed);
     
     dispatcher.withdraw_all(y,b,tranfer_address, proof);
     let audit = dispatcher.get_audit(y);
