@@ -1,45 +1,65 @@
-use core::ec::{EcPointTrait};
-use core::ec::{NonZeroEcPoint};
-use core::ec::stark_curve::{GEN_X,GEN_Y};
+use starknet::ContractAddress;
 use crate::tongo::setup::{setup_tongo};
 
-use tongo::verifier::structs::{InputsWithdraw, ProofOfWithdraw};
-use tongo::prover::prover::prove_withdraw;
+use tongo::prover::prover::{prove_withdraw_all, prove_withdraw, prove_fund};
 use tongo::prover::utils::generate_random;
 use tongo::main::ITongoDispatcherTrait;
-use snforge_std::{start_cheat_block_number};
+
+use tongo::verifier::structs::{PubKeyTrait};
+use tongo::verifier::structs::{CipherBalanceTrait};
 
 
 #[test]
-fn test_withdraw() {
+fn test_withdraw_all() {
     let seed = 12931238;
-    let (address,dispatcher) = setup_tongo();
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    
-    let x = generate_random(seed,1);
-    let y:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+    let (_address, dispatcher) = setup_tongo();
+    let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
 
+    let x = generate_random(seed, 1);
+    let y = PubKeyTrait::from_secret(x);
+    let nonce = dispatcher.get_nonce(y);
+
+    let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
     let b = 250;
-    start_cheat_block_number(address,2000);
-    dispatcher.fund([y.x(), y.y()], b);
+    dispatcher.fund(y, b, fund_proof);
 
-    start_cheat_block_number(address, 2200);
-    let epoch = dispatcher.current_epoch();
+    let balance = dispatcher.get_balance(y);
+    let nonce = dispatcher.get_nonce(y);
 
-    let ((Lx,Ly), (Rx,Ry), _last_epoch) = dispatcher.get_buffer([y.x(),y.y()]);
+    let (_inputs, proof) = prove_withdraw_all(
+        x, b, tranfer_address, balance.CL, balance.CR, nonce, seed
+    );
 
-    let inputs: InputsWithdraw = InputsWithdraw {
-        y: [y.x(),y.y()],
-        epoch,
-        amount: b,
-        L: [Lx,Ly],
-        R: [Rx,Ry],
-    };
-    let proof: ProofOfWithdraw = prove_withdraw(inputs,x, seed);
-    
-    dispatcher.withdraw([y.x(),y.y()],b,address, proof);
-    let balance = dispatcher.get_balance([y.x(),y.y()]);
-    assert!(balance == ((0,0),(0,0)),"fail" );
-    let buffer = dispatcher.get_buffer([y.x(),y.y()]);
-    assert!(buffer == ((0,0),(0,0), epoch.try_into().unwrap()),"fail" )
+    dispatcher.withdraw_all(y, b, tranfer_address, proof);
+    let balance = dispatcher.get_balance(y);
+    assert!(balance.is_zero(), "fail");
+
+    let buffer = dispatcher.get_buffer(y);
+    assert!(buffer.is_zero(), "fail")
+}
+
+#[test]
+fn test_withdraw() {
+    let seed = 8309218;
+    let (_address, dispatcher) = setup_tongo();
+    let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
+
+    let x = generate_random(seed, 1);
+    let y = PubKeyTrait::from_secret(x);
+    let nonce = dispatcher.get_nonce(y);
+
+    let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
+
+    let initial_balance = 250;
+    let amount = 50;
+    dispatcher.fund(y, initial_balance, fund_proof);
+
+    let balance = dispatcher.get_balance(y);
+    let nonce = dispatcher.get_nonce(y);
+
+    let (_inputs, proof) = prove_withdraw(
+        x, initial_balance, amount, tranfer_address, balance.CL, balance.CR, nonce, seed
+    );
+
+    dispatcher.withdraw(y, amount, tranfer_address, proof);
 }

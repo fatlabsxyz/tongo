@@ -1,280 +1,332 @@
 use core::starknet::ContractAddress;
-use crate::verifier::structs::{ProofOfTransfer, ProofOfWithdraw};
-// the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary, replay_protection.
-// the replay_protection should have the epoch in which the tx was generated (it is the same to the epoch in which the
-// tx is expected to pass) signed by the private key x of y = g**x, with  the selector_calldata and posiblly the proof itself.
+use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw, ProofOfFund};
+use crate::verifier::structs::{PubKey};
+use crate::verifier::structs::{CipherBalance};
+use crate::verifier::structs::{StarkPoint};
+// the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary,
+// replay_protection.
 
 #[starknet::interface]
 pub trait ITongo<TContractState> {
-    fn fund(ref self: TContractState, to: [felt252;2],  amount: felt252); 
-    fn current_epoch(ref self: TContractState) -> u64;
-    fn get_balance(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252));
-    fn get_buffer(self: @TContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252);
-    fn withdraw(ref self: TContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof: ProofOfWithdraw);
-    fn transfer(ref self: TContractState,
-        from:[felt252;2],
-        to: [felt252;2],
-        L:[felt252;2],
-        L_bar:[felt252;2],
-        R: [felt252;2],
+    fn fund(ref self: TContractState, to: PubKey, amount: felt252, proof: ProofOfFund);
+    fn rollover(ref self: TContractState, to: PubKey, proof: ProofOfFund);
+    fn get_balance(self: @TContractState, y: PubKey) -> CipherBalance;
+    fn get_audit(self: @TContractState, y: PubKey) -> CipherBalance;
+    fn get_buffer(self: @TContractState, y: PubKey) -> CipherBalance;
+    fn get_nonce(self: @TContractState, y: PubKey) -> u64;
+    fn withdraw_all(
+        ref self: TContractState,
+        from: PubKey,
+        amount: felt252,
+        to: ContractAddress,
+        proof: ProofOfWitdhrawAll
+    );
+    fn withdraw(
+        ref self: TContractState,
+        from: PubKey,
+        amount: felt252,
+        to: ContractAddress,
+        proof: ProofOfWithdraw
+    );
+    fn transfer(
+        ref self: TContractState,
+        from: PubKey,
+        to: PubKey,
+        L: StarkPoint,
+        L_bar: StarkPoint,
+        L_audit: StarkPoint,
+        R: StarkPoint,
         proof: ProofOfTransfer,
     );
 }
 
 #[starknet::contract]
 pub mod Tongo {
-    use core::ec::{EcPoint, EcPointTrait,  EcStateTrait};
-    use core::ec::stark_curve::{GEN_X, GEN_Y};
     use core::starknet::{
-        storage::StoragePointerReadAccess,
-        storage::StoragePointerWriteAccess,
-        storage::StoragePathEntry,
-        storage::Map,
-        syscalls,
-        SyscallResultTrait,
-        ContractAddress,
-        get_caller_address,
-        get_contract_address,
-        get_block_number,
+        storage::StoragePointerReadAccess, storage::StoragePointerWriteAccess,
+        storage::StoragePathEntry, storage::Map, syscalls, SyscallResultTrait, ContractAddress,
+        get_caller_address, get_contract_address,
     };
-    
-    use crate::verifier::structs::{ InputsTransfer, ProofOfTransfer, InputsWithdraw, ProofOfWithdraw};
-    use crate::verifier::verifier::{verify_withdraw, verify_transfer};
-    use crate::verifier::utils::{in_range};
-    use crate::constants::{STRK_ADDRESS, BLOCKS_IN_EPOCH};
+
+    use crate::verifier::structs::{
+        InputsTransfer, ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw, InputsFund,
+        ProofOfFund, InputsWithdraw, CipherBalance, CipherBalanceTrait, StarkPoint,
+    };
+    use crate::verifier::structs::PubKey;
+    use crate::verifier::verifier::{
+        verify_withdraw, verify_withdraw_all, verify_transfer, verify_fund
+    };
+    use crate::verifier::utils::{in_range, view_key};
+    use crate::constants::{STRK_ADDRESS};
 
     #[storage]
-    // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are stored
-    // in the form (x,y). Reading an empty y gives a default value of ((0,0), (0,0)) wich are not curve points
-    // TODO: it would be nice to set te default value to curve points like  (y,g)
+    // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
+    // stored in the form (x,y). Reading an empty y gives a default value of ((0,0), (0,0)) wich are
+    // not curve points TODO: it would be nice to set te default value to curve points like  (y,g)
     struct Storage {
-        balance: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
-        buffer: Map<(felt252,felt252), ((felt252,felt252) , (felt252, felt252)) >,
-        buffer_epoch: Map<(felt252,felt252), u64 >,
-        nonce: Map<felt252, bool>,
+        balance: Map<(felt252, felt252), CipherBalance>,
+        audit_balance: Map<(felt252, felt252), CipherBalance>,
+        buffer: Map<(felt252, felt252), CipherBalance>,
+        nonce: Map<(felt252, felt252), u64>,
     }
 
 
     #[abi(embed_v0)]
     impl TongoImpl of super::ITongo<ContractState> {
-    
+        fn rollover(ref self: ContractState, to: PubKey, proof: ProofOfFund) {
+            let nonce = self.get_nonce(to);
+            let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
+            verify_fund(inputs, proof);
+            self.buffer_to_balance(to);
+            self.increase_nonce(to);
+        }
 
-    /// Transfer some STARK to Tongo contract and assing some Tongo to account y
-    fn fund(ref self: ContractState, to: [felt252;2], amount: felt252) {
-        in_range(amount);
-//        self.get_transfer(amount);
+        /// Transfer some STARK to Tongo contract and assing some Tongo to account y
+        fn fund(ref self: ContractState, to: PubKey, amount: felt252, proof: ProofOfFund) {
+            in_range(amount);
+            let nonce = self.get_nonce(to);
+            //        self.get_transfer(amount);
 
-        let Cipher = self.cipher(amount, to);
-        self.to_buffer(to, Cipher);
-        let this_epoch = self.current_epoch();
-        self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
-    } 
+            let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
+            verify_fund(inputs, proof);
 
-    /// Withdraw ALL tongo from acount and send the stark to the recipient
-    fn withdraw(ref self: ContractState, from: [felt252;2], amount: felt252, to: ContractAddress, proof:  ProofOfWithdraw) {
-        //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be frontruned.
-        self.rollover(from);
-        let this_epoch = self.current_epoch();
-        let ((Lx,Ly), (Rx,Ry)) = self.get_balance(from);
-        let inputs:InputsWithdraw = InputsWithdraw { y : from , epoch: this_epoch, amount, L:[Lx,Ly], R: [Rx,Ry]};
-        self.validate_nonce(proof.nonce);
-        verify_withdraw(inputs, proof);
+            let cipher = CipherBalanceTrait::new(to, amount, 'fund');
+            self.add_balance(to, cipher);
 
-//        let amount: u256 = amount.try_into().unwrap();
-//        let calldata = array![
-//            to.into(),
-//            amount.low.into(),
-//            amount.high.into(),];
-//        syscalls::call_contract_syscall(
-//           STRK_ADDRESS.try_into().unwrap(),
-//           selector!("transfer"),
-//           calldata.span()
-//        ).unwrap_syscall();
+            let cipher_audit = CipherBalanceTrait::new(view_key(), amount, 'fund');
+            self.add_audit(to, cipher_audit);
+            self.increase_nonce(to);
+        }
 
+        /// Withdraw some tongo from acount and send the stark to the recipient
+        fn withdraw(
+            ref self: ContractState,
+            from: PubKey,
+            amount: felt252,
+            to: ContractAddress,
+            proof: ProofOfWithdraw
+        ) {
+            //        //TODO: The recipient ContractAddress has to be signed by x otherwhise the
+            //        proof can be frontruned.
+            let balance = self.get_balance(from);
 
-        self.balance.entry((*from.span()[0], *from.span()[1])).write(((0,0), (0,0)));
-        self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
-        self.update_nonce(proof.nonce)
-    }
+            let nonce = self.get_nonce(from);
+            let inputs: InputsWithdraw = InputsWithdraw {
+                y: from, amount, nonce, to, L: balance.CL, R: balance.CR
+            };
+            verify_withdraw(inputs, proof);
 
-    /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done w.r.t the
-    /// balance stored in Balance plus Pending and to the nonce stored in the contract. 
-    fn transfer(ref self: ContractState,
-        from:[felt252;2],
-        to: [felt252;2],
-        L:[felt252;2],
-        L_bar:[felt252;2],
-        R: [felt252;2],
-        proof: ProofOfTransfer,
-    ) {
-        self.rollover(from);
-        let ((CLx,CLy), (CRx,CRy)) = self.get_balance(from);
-        
-        let this_epoch = self.current_epoch();
-        let inputs:InputsTransfer = InputsTransfer {
-            y: from ,
-            y_bar: to,
-            epoch: this_epoch,
-            CL: [CLx,CLy],
-            CR: [CRx,CRy],
-            R: R,
-            L: L,
-            L_bar:L_bar,
-        };
-        
-        self.validate_nonce(proof.nonce);
-        verify_transfer(inputs, proof);
+            //        let amount: u256 = amount.try_into().unwrap();
+            //        let calldata = array![
+            //            to.into(),
+            //            amount.low.into(),
+            //            amount.high.into(),];
+            //        syscalls::call_contract_syscall(
+            //           STRK_ADDRESS.try_into().unwrap(),
+            //           selector!("transfer"),
+            //           calldata.span()
+            //        ).unwrap_syscall();
 
+            //TODO: mejorar el audit_balance
+            let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
+            self.remove_balance(from, cipher);
 
-        // verificar la prueva with respect to balance + pending
+            let cipher = CipherBalanceTrait::new(view_key(), amount, 'withdraw');
+            self.remove_audit(from, cipher);
+            self.increase_nonce(from);
+        }
 
-        let L = EcPointTrait::new(*L.span()[0],*L.span()[1]).unwrap();
-        let R = EcPointTrait::new(*R.span()[0],*R.span()[1]).unwrap();
-        let L_bar = EcPointTrait::new(*L_bar.span()[0],*L_bar.span()[1]).unwrap();
-        self.to_buffer(from,(L,R));
-        self.to_buffer(to, (-L_bar,-R));
+        /// Withdraw ALL tongo from acount and send the stark to the recipient
+        fn withdraw_all(
+            ref self: ContractState,
+            from: PubKey,
+            amount: felt252,
+            to: ContractAddress,
+            proof: ProofOfWitdhrawAll
+        ) {
+            //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be
+            //frontruned.
+            let balance = self.get_balance(from);
+            let nonce = self.get_nonce(from);
+            let inputs: InputsWithdraw = InputsWithdraw {
+                y: from, amount, nonce, to, L: balance.CL, R: balance.CR
+            };
+            verify_withdraw_all(inputs, proof);
 
-        self.buffer_epoch.entry((*to.span()[0], *to.span()[1])).write(this_epoch);
-        self.buffer_epoch.entry((*from.span()[0], *from.span()[1])).write(this_epoch);
-        self.update_nonce(proof.nonce)
-    }
-    
-    /// Returns the cipher balance of the given public key y. The cipher balance consist in two points
-    /// of the stark curve. (L,R) = ((Lx, Ly), (Rx, Ry )) = (g**b y**r , g**r) for some random r.
-    /// TODO: return also the buffer balance if correspond to an old epoch
-    fn get_balance(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252)) {
-        self.balance.entry((*y.span()[0], *y.span()[1])).read()
-    }
-    
+            //        let amount: u256 = amount.try_into().unwrap();
+            //        let calldata = array![
+            //            to.into(),
+            //            amount.low.into(),
+            //            amount.high.into(),];
+            //        syscalls::call_contract_syscall(
+            //           STRK_ADDRESS.try_into().unwrap(),
+            //           selector!("transfer"),
+            //           calldata.span()
+            //        ).unwrap_syscall();
 
-    fn get_buffer(self: @ContractState, y: [felt252;2]) -> ((felt252,felt252), (felt252,felt252), felt252) {
-        let (L,R) = self.buffer.entry((*y.span()[0], *y.span()[1])).read();
-        let last_epoch:felt252 = self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).read().try_into().unwrap();
-        return (L,R, last_epoch);
-    }
-    
-    fn current_epoch(ref self: ContractState) -> u64 {
-        let this_epoch = get_block_number() / BLOCKS_IN_EPOCH;
-        return this_epoch;
-    }
+            //        self.balance.entry((from.x, from.y)).write(((0,0), (0,0)));
+            let cipher = CipherBalanceTrait::new(view_key(), amount, 'withdraw');
+            self.remove_audit(from, cipher);
+            self.increase_nonce(from);
 
+            //TODO: Revisar esto
+            self
+                .balance
+                .entry((from.x, from.y))
+                .write(
+                    CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }
+                );
+        }
+
+        /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done
+        /// w.r.t the balance stored in Balance plus Pending and to the nonce stored in the
+        /// contract.
+        fn transfer(
+            ref self: ContractState,
+            from: PubKey,
+            to: PubKey,
+            L: StarkPoint,
+            L_bar: StarkPoint,
+            L_audit: StarkPoint,
+            R: StarkPoint,
+            proof: ProofOfTransfer,
+        ) {
+            let balance = self.get_balance(from);
+            let nonce = self.get_nonce(from);
+
+            let inputs: InputsTransfer = InputsTransfer {
+                y: from,
+                y_bar: to,
+                nonce: nonce,
+                CL: balance.CL,
+                CR: balance.CR,
+                R: R,
+                L: L,
+                L_bar: L_bar,
+                L_audit: L_audit,
+            };
+
+            verify_transfer(inputs, proof);
+
+            // verificar la prueva with respect to balance + pending
+
+            self.remove_balance(from, CipherBalance { CL: L, CR: R });
+
+            //TODO: Acomodar el audit
+            self.remove_audit(from, CipherBalance { CL: L_audit, CR: R });
+
+            self.add_buffer(to, CipherBalance { CL: L_bar, CR: R });
+            //TODO: Acomodar el audit
+            self.add_audit(to, CipherBalance { CL: L_audit, CR: R });
+            self.increase_nonce(from);
+        }
+
+        fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
+            self.nonce.entry((y.x, y.y)).read()
+        }
+
+        /// Returns the cipher balance of the given public key y. The cipher balance consist in two
+        /// points of the stark curve. (L,R) = ((Lx, Ly), (Rx, Ry )) = (g**b y**r , g**r) for some
+        /// random r.
+        fn get_balance(self: @ContractState, y: PubKey) -> CipherBalance {
+            self.balance.entry((y.x, y.y)).read()
+        }
+
+        fn get_audit(self: @ContractState, y: PubKey) -> CipherBalance {
+            self.audit_balance.entry((y.x, y.y)).read()
+        }
+
+        fn get_buffer(self: @ContractState, y: PubKey) -> CipherBalance {
+            self.buffer.entry((y.x, y.y)).read()
+        }
     }
 
     #[generate_trait]
     pub impl PrivateImpl of IPrivate {
-    /// Cipher the balance b under the y key with a fixed randomnes. The fixed randomness should
-    /// not be a problem because b is known here. This only is performed on fund transactions
-    fn cipher(self: @ContractState, b:felt252, y:[felt252;2]) -> (EcPoint, EcPoint) {
-        let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-        let y = EcPointTrait::new_nz(*y.span()[0],*y.span()[1]).unwrap();
-        
-        let mut state1 = EcStateTrait::init();
-            state1.add_mul(b, g.try_into().unwrap());
-            state1.add_mul(1, y);
-        let CL = state1.finalize();
-        return (CL,g);
-    }
-    
-    fn to_buffer(ref self: ContractState, y:[felt252;2], Cipher: (EcPoint,EcPoint)) {
-        let buffer = self.read_buffer(y);
-        if buffer.is_none() {
-            self.write_buffer(y, Cipher);
-        } else {
-            let (L_buffer,R_buffer) = buffer.unwrap();
-            let (CL,CR) = Cipher;
-            let L = CL + L_buffer;
-            let R = CR + R_buffer;
-            self.write_balance(y,(L,R));
-        };
-    }
+        fn add_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
+            let old_balance = self.balance.entry((y.x, y.y)).read();
+            if old_balance.is_zero() {
+                self.balance.entry((y.x, y.y)).write(new_balance);
+            } else {
+                let sum = old_balance.add(new_balance);
+                self.balance.entry((y.x, y.y)).write(sum);
+            }
+        }
 
-    fn buffer_to_balance(ref self: ContractState, y:[felt252;2]) {
-        let buffer = self.read_buffer(y);
-        if buffer.is_none() { return ;}
-        let balance = self.read_balance(y);
-        if balance.is_none() {
-            self.write_balance(y, buffer.unwrap());
-        } else {
-            let (L_buffer,R_buffer) = buffer.unwrap();
-            let (L_balance,R_balance) = balance.unwrap();
-            let L = L_buffer + L_balance;
-            let R = R_buffer + R_balance;
-            self.write_buffer(y,(L,R));
-        };
-    }
+        fn remove_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
+            let old_balance = self.balance.entry((y.x, y.y)).read();
+            if old_balance.is_zero() {
+                self.balance.entry((y.x, y.y)).write(new_balance);
+            } else {
+                let sum = old_balance.remove(new_balance);
+                self.balance.entry((y.x, y.y)).write(sum);
+            }
+        }
 
-    fn read_balance(ref self: ContractState, y:[felt252;2])  -> Option<(EcPoint, EcPoint)> {
-        let balance = self.balance.entry((*y.span()[0], *y.span()[1])).read();
-        if balance == ((0,0),(0,0)) { return Option::None ; }
+        fn add_buffer(ref self: ContractState, y: PubKey, new_buffer: CipherBalance) {
+            let old_buffer = self.buffer.entry((y.x, y.y)).read();
+            if old_buffer.is_zero() {
+                self.buffer.entry((y.x, y.y)).write(new_buffer);
+            } else {
+                let sum = old_buffer.add(new_buffer);
+                self.buffer.entry((y.x, y.y)).write(sum);
+            }
+        }
 
-        let ((Lx, Ly), (Rx,Ry)) = balance;
-        let L = EcPointTrait::new(Lx,Ly).unwrap();
-        let R = EcPointTrait::new(Rx,Ry).unwrap();
-        return Option::Some((L,R));
-    }
+        fn buffer_to_balance(ref self: ContractState, y: PubKey) {
+            let buffer = self.buffer.entry((y.x, y.y)).read();
+            if buffer.is_zero() {
+                return;
+            }
+            self.add_balance(y, buffer);
+            self
+                .buffer
+                .entry((y.x, y.y))
+                .write(
+                    CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }
+                );
+        }
 
-    fn read_buffer(ref self: ContractState, y:[felt252;2])  -> Option<(EcPoint, EcPoint)> {
-        let balance = self.buffer.entry((*y.span()[0], *y.span()[1])).read();
-        if balance == ((0,0),(0,0)) { return Option::None; }
 
-        let ((Lx, Ly), (Rx,Ry)) = balance;
-        let L = EcPointTrait::new(Lx,Ly).unwrap();
-        let R = EcPointTrait::new(Rx,Ry).unwrap();
-        return Option::Some((L,R));
-    }
+        fn add_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
+            let old_audit = self.audit_balance.entry((y.x, y.y)).read();
+            if old_audit.is_zero() {
+                self.audit_balance.entry((y.x, y.y)).write(new_audit);
+            } else {
+                let sum = old_audit.add(new_audit);
+                self.audit_balance.entry((y.x, y.y)).write(sum);
+            }
+        }
 
-    fn write_balance(ref self: ContractState, y:[felt252;2], Cipher:(EcPoint,EcPoint)){
-        let (L,R) = Cipher;
-        //TODO: Unwrap to NonZero and handle the Zero case
-        self.balance.entry((*y.span()[0], *y.span()[1])).write((
-            L.try_into().unwrap().coordinates(),
-            R.try_into().unwrap().coordinates(),
-        ));
-    }
+        fn remove_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
+            let old_audit = self.audit_balance.entry((y.x, y.y)).read();
+            if old_audit.is_zero() {
+                self.audit_balance.entry((y.x, y.y)).write(new_audit);
+            } else {
+                let sum = old_audit.remove(new_audit);
+                self.audit_balance.entry((y.x, y.y)).write(sum);
+            }
+        }
 
-    fn write_buffer(ref self: ContractState, y:[felt252;2], Cipher:(EcPoint,EcPoint)){
-        let (L,R) = Cipher;
-        //TODO: Unwrap to NonZero and handle the Zero case
-        self.buffer.entry((*y.span()[0], *y.span()[1])).write((
-            L.try_into().unwrap().coordinates(),
-            R.try_into().unwrap().coordinates(),
-        ));
-    }
+        fn get_transfer(self: @ContractState, amount: felt252) {
+            let amount: u256 = amount.try_into().unwrap();
+            let calldata: Array<felt252> = array![
+                get_caller_address().try_into().unwrap(),
+                get_contract_address().try_into().unwrap(),
+                amount.low.into(),
+                amount.high.into(),
+            ];
 
-    fn rollover(ref self: ContractState, y:[felt252;2]) {
-        let this_epoch = self.current_epoch();
-        let buffer_epoch = self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).read();
+            syscalls::call_contract_syscall(
+                STRK_ADDRESS.try_into().unwrap(), selector!("transfer_from"), calldata.span()
+            )
+                .unwrap_syscall();
+        }
 
-        if buffer_epoch == this_epoch {return ;}; 
-        self.buffer_to_balance(y);
-
-        //TODO: These write is reduntand in the transfer and withdraw
-        self.buffer.entry((*y.span()[0],  *y.span()[1])).write( ((0,0),(0,0)) );
-        self.buffer_epoch.entry((*y.span()[0], *y.span()[1])).write(this_epoch);
-    }
-
-    fn get_transfer(self: @ContractState, amount: felt252) {
-        let amount: u256 = amount.try_into().unwrap();
-        let calldata: Array<felt252> = array![
-            get_caller_address().try_into().unwrap(),
-            get_contract_address().try_into().unwrap(),
-            amount.low.into(),
-            amount.high.into(),];
-
-        syscalls::call_contract_syscall(
-           STRK_ADDRESS.try_into().unwrap(),
-           selector!("transfer_from"),
-           calldata.span()
-        ).unwrap_syscall();
-    }
-
-    fn validate_nonce(ref self: ContractState, nonce: [felt252;2]) {
-        assert(self.nonce.entry(*nonce.span()[0]).read() == false, 'Tx already used in epoch');
-    }
-
-    fn update_nonce(ref self: ContractState, nonce: [felt252;2]) {
-        self.nonce.entry(*nonce.span()[0]).write(true);
-    }
-
+        fn increase_nonce(ref self: ContractState, y: PubKey) {
+            let mut nonce = self.nonce.entry((y.x, y.y)).read();
+            nonce = nonce + 1;
+            self.nonce.entry((y.x, y.y)).write(nonce);
+        }
     }
 }
