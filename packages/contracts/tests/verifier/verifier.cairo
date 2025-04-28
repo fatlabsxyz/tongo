@@ -3,8 +3,8 @@ use core::ec::{EcPointTrait, NonZeroEcPoint};
 use tongo::verifier::verifier::{poe, verify_range, oneORzero};
 use tongo::verifier::utils::{challenge_commits};
 
-use tongo::prover::utils::{compute_s, generate_random, simPOE};
-use tongo::prover::prover::{prove_bit, prove_range};
+use crate::prover::utils::{compute_s, generate_random, simPOE};
+use crate::prover::functions::{prove_bit, prove_range};
 
 
 #[test]
@@ -71,7 +71,7 @@ fn test_range() {
 }
 
 use tongo::verifier::verifier::alternative_oneORzero;
-use tongo::prover::prover::alternative_prove_bit;
+use crate::prover::functions::alternative_prove_bit;
 #[test]
 fn alternative_OR1() {
     let seed = 1293812;

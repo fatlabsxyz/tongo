@@ -1,6 +1,6 @@
-use tongo::prover::utils::{generate_random, decipher_balance};
+use crate::prover::utils::{generate_random, decipher_balance};
 use crate::tongo::setup::{setup_tongo};
-use tongo::prover::prover::{prove_transfer, prove_fund, prove_withdraw};
+use crate::prover::functions::{prove_transfer, prove_fund, prove_withdraw};
 use starknet::ContractAddress;
 use tongo::verifier::structs::{PubKeyTrait, CipherBalanceTrait};
 

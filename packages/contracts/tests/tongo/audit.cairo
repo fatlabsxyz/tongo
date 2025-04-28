@@ -1,9 +1,9 @@
 use starknet::ContractAddress;
 use crate::tongo::setup::{setup_tongo};
-use tongo::prover::utils::{generate_random, decipher_balance};
-use tongo::prover::prover::prove_withdraw_all;
-use tongo::prover::prover::prove_transfer;
-use tongo::prover::prover::prove_fund;
+use crate::prover::utils::{generate_random, decipher_balance};
+use crate::prover::functions::prove_withdraw_all;
+use crate::prover::functions::prove_transfer;
+use crate::prover::functions::prove_fund;
 use tongo::verifier::structs::{PubKeyTrait, CipherBalanceTrait};
 
 use tongo::main::ITongoDispatcherTrait;

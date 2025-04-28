@@ -1,15 +1,15 @@
-use crate::verifier::structs::{ProofOfWitdhrawAll, InputsWithdraw};
-use crate::verifier::structs::{ProofOfWithdraw};
-use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
-use crate::verifier::structs::{ProofOfBit, ProofOfBit2};
-use crate::verifier::structs::{InputsFund, ProofOfFund};
-use crate::verifier::structs::{PubKey, PubKeyTrait};
-use crate::verifier::structs::{StarkPoint};
-use crate::verifier::structs::{CipherBalanceTrait};
+use tongo::verifier::structs::{ProofOfWitdhrawAll, InputsWithdraw};
+use tongo::verifier::structs::{ProofOfWithdraw};
+use tongo::verifier::structs::{InputsTransfer, ProofOfTransfer};
+use tongo::verifier::structs::{ProofOfBit, ProofOfBit2};
+use tongo::verifier::structs::{InputsFund, ProofOfFund};
+use tongo::verifier::structs::{PubKey, PubKeyTrait};
+use tongo::verifier::structs::{StarkPoint};
+use tongo::verifier::structs::{CipherBalanceTrait};
 
-use crate::verifier::utils::{compute_prefix, challenge_commits2};
+use tongo::verifier::utils::{compute_prefix, challenge_commits2};
 
-use crate::verifier::utils::{challenge_commits, generator_h, feltXOR, view_key};
+use tongo::verifier::utils::{challenge_commits, generator_h, feltXOR, view_key};
 use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_binary};
 
 use core::starknet::ContractAddress;
