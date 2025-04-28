@@ -163,8 +163,8 @@ function prove_bit(bit: number,random: bigint) {
 
         let {A:A1,c:c_1,s:s_1} = simPOE(V_1, H)
 //      let c = H(A0.x, A0.y, A1.y, A1.y)
-//      let c_0 = feltXOR(c, c_1)
-        let c_0 = 98312n //remove
+        let c = 92103n
+        let c_0 = c^c_1 //bitwisexor
         let s_0 = (k + c_0 * random ) % CURVE_ORDER
 
         return {V, A0,A1,c_0,s_0,s_1}
@@ -175,8 +175,8 @@ function prove_bit(bit: number,random: bigint) {
         let k = 7721n //random_here
         let A1 = H.multiplyUnsafe(k)
 //      let c = H(A0.x, A0.y, A1.y, A1.y)
-//      let c_1 = feltXOR(c, c_0)
-        let c_1 = 12983n //remove
+        let c = 92103n
+        let c_1 = c^c_0 //bitwisexor
         let s_1 = (k + c_1 * random) % CURVE_ORDER
 
         return {V, A0, A1, c_0, s_0, s_1}
