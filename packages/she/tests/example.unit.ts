@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
-import { encrypt } from "../src";
+import {provePOE,verifyPOE, encrypt, g} from "../src";
 
 describe("Example test suit", () => {
   it("encrypts the number 2**239", () => {
@@ -11,3 +11,10 @@ describe("Example test suit", () => {
     })
   })
 })
+
+let x = 123n
+const y = g.multiplyUnsafe(x)
+const {A, s} = provePOE(x)
+let res = verifyPOE(y, A, s)
+console.log("Verify POE: ", res)
+
