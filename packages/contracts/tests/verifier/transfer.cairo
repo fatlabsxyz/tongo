@@ -1,5 +1,5 @@
-use tongo::prover::utils::{generate_random};
-use tongo::prover::prover::{prove_transfer};
+use crate::prover::utils::{generate_random};
+use crate::prover::functions::{prove_transfer};
 use tongo::verifier::verifier::verify_transfer;
 
 use tongo::verifier::structs::PubKeyTrait;

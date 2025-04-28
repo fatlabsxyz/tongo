@@ -1,5 +1,5 @@
-use tongo::prover::utils::{generate_random};
-use tongo::prover::prover::{prove_fund};
+use crate::prover::utils::{generate_random};
+use crate::prover::functions::{prove_fund};
 use tongo::verifier::verifier::{verify_fund};
 use tongo::verifier::structs::{InputsFund};
 

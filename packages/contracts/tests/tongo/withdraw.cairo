@@ -1,8 +1,8 @@
 use starknet::ContractAddress;
 use crate::tongo::setup::{setup_tongo};
 
-use tongo::prover::prover::{prove_withdraw_all, prove_withdraw, prove_fund};
-use tongo::prover::utils::generate_random;
+use crate::prover::functions::{prove_withdraw_all, prove_withdraw, prove_fund};
+use crate::prover::utils::generate_random;
 use tongo::main::ITongoDispatcherTrait;
 
 use tongo::verifier::structs::{PubKeyTrait};
