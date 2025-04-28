@@ -28,8 +28,6 @@ pub trait ITongo<TContractState> {
 
 #[starknet::contract]
 pub mod Tongo {
-    use core::ec::{EcPointTrait,  EcStateTrait};
-    use core::ec::stark_curve::{GEN_X, GEN_Y};
     use core::starknet::{
         storage::StoragePointerReadAccess,
         storage::StoragePointerWriteAccess,
@@ -46,7 +44,7 @@ pub mod Tongo {
         InputsTransfer, ProofOfTransfer,
         ProofOfWitdhrawAll, ProofOfWithdraw,
         InputsFund, ProofOfFund, InputsWithdraw,
-        CipherBalance, CipherBalanceImpl,
+        CipherBalance, CipherBalanceTrait,
         StarkPoint,
     };
     use crate::verifier::structs::PubKey;
@@ -86,11 +84,11 @@ pub mod Tongo {
         let inputs: InputsFund = InputsFund{y:to, nonce: nonce};
         verify_fund(inputs, proof);
 
-        let Cipher = self.cipher(amount, to, 'fund');
-        self.add_balance(to, Cipher);
+        let cipher = CipherBalanceTrait::new(to, amount, 'fund');
+        self.add_balance(to, cipher);
 
-        let Cipher_audit = self.cipher(amount, view_key(), 'fund');
-        self.add_audit(to, Cipher_audit);
+        let cipher_audit = CipherBalanceTrait::new(view_key(), amount, 'fund');
+        self.add_audit(to, cipher_audit);
         self.increase_nonce(to);
     } 
 
@@ -115,10 +113,10 @@ pub mod Tongo {
 //        ).unwrap_syscall();
 
         //TODO: mejorar el audit_balance
-        let cipher = self.cipher(amount, from, 'withdraw');
+        let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
         self.remove_balance(from, cipher);
 
-        let cipher = self.cipher(amount, view_key(), 'withdraw');
+        let cipher = CipherBalanceTrait::new(view_key(), amount, 'withdraw');
         self.remove_audit(from, cipher);
         self.increase_nonce(from);
     }
@@ -144,11 +142,11 @@ pub mod Tongo {
 
 
 //        self.balance.entry((from.x, from.y)).write(((0,0), (0,0)));
-        //TODO: mejorar el audit_balance
-        let cipher = self.cipher(amount, view_key(),'withdraw');
+        let cipher = CipherBalanceTrait::new(view_key(), amount, 'withdraw');
         self.remove_audit(from, cipher);
         self.increase_nonce(from);
 
+        //TODO: Revisar esto
         self.balance.entry((from.x, from.y)).write(CipherBalance {CL:StarkPoint{x:0, y:0}, CR:StarkPoint{x:0, y:0}});
     }
 
@@ -218,25 +216,6 @@ pub mod Tongo {
 
     #[generate_trait]
     pub impl PrivateImpl of IPrivate {
-    /// Cipher the balance b under the y key with a fixed randomnes. The fixed randomness should
-    /// not be a problem because b is known here. This only is performed on fund transactions or
-    /// withdraw all
-    /// TODO: think what to do with the randomness to avoid end up un a ZeroPoint
-    fn cipher(self: @ContractState, b:felt252, y:PubKey, r: felt252) -> CipherBalance {
-        let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-        let mut R = g.mul(r);
-        
-        let y = EcPointTrait::new_nz(y.x, y.y).unwrap();
-        let mut state = EcStateTrait::init();
-            state.add_mul(b, g.try_into().unwrap());
-            state.add_mul(r, y);
-        let mut L = state.finalize();
-
-        CipherBalance {
-            CL: StarkPoint {x: L.try_into().unwrap().x(), y: L.try_into().unwrap().y()},
-            CR: StarkPoint {x: R.try_into().unwrap().x(), y: R.try_into().unwrap().y()}
-        }
-    }
     
     fn add_balance(ref self: ContractState, y:PubKey, new_balance: CipherBalance) {
         let old_balance = self.balance.entry((y.x, y.y)).read();

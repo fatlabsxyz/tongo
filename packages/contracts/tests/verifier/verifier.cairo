@@ -34,7 +34,7 @@ fn test_simulatePOE() {
     let y:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x).try_into().unwrap();
 
     let (A_x, c, s) = simPOE([y.x(), y.y()], [g.x(), g.y()],37192873);
-    poe([y.x(), y.y()], [g.x(),g.y()], A_x, c, s);
+    poe([y.x(), y.y()], [g.x(),g.y()], [A_x.x,A_x.y], c, s);
 }
 
 

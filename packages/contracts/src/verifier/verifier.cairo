@@ -8,6 +8,7 @@ use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWitdhrawAll, P
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
 use crate::verifier::structs::{ProofOfWithdraw};
 use crate::verifier::structs::{InputsFund,ProofOfFund};
+use crate::verifier::structs::{StarkPoint};
 use crate::errors::{FUND, WITHDRAW, TRANSFER};
 
 
@@ -143,7 +144,7 @@ pub fn verify_withdraw(inputs:InputsWithdraw, proof: ProofOfWithdraw) {
 
     let V = verify_range(proof.range);
     let res = poe2(
-        V,
+        [V.x, V.y],
         [GEN_X, GEN_Y],
         generator_h(),
         [proof.A_v.x,proof.A_v.y],
@@ -216,7 +217,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
     // Now we need to show that V = g**b h**r with the same b and r.
     let V =  verify_range(proof.range);
-    let res = poe2(V, [GEN_X,GEN_Y], generator_h(), [proof.A_v.x, proof.A_v.y], c, proof.s_b,proof.s_r);
+    let res = poe2([V.x,V.y], [GEN_X,GEN_Y], generator_h(), [proof.A_v.x, proof.A_v.y], c, proof.s_b,proof.s_r);
     assert(res, TRANSFER::T105);
 
     let CL:EcPoint = inputs.CL.try_into().unwrap();
@@ -233,7 +234,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     // Now we need to show that V = g**b h**r2 with the same b2
     // This is for asserting that b2 is in range 
     let V2 = verify_range(proof.range2);
-    let res = poe2(V2, [GEN_X,GEN_Y], generator_h(), [proof.A_v2.x, proof.A_v2.y], c, proof.s_b2, proof.s_r2);
+    let res = poe2([V2.x, V2.y], [GEN_X,GEN_Y], generator_h(), [proof.A_v2.x, proof.A_v2.y], c, proof.s_b2, proof.s_r2);
     assert(res, TRANSFER::T107);
 }
 
@@ -243,39 +244,39 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 /// proven with a poe. This is combined in a OR statement and the protocol can valitates that one of the cases is
 /// valid without leak which one is valid.
 pub fn oneORzero(pi: ProofOfBit) {
-    let mut commits = array![pi.A0, pi.A1];
+    let mut commits = array![[pi.A0.x,pi.A0.y], [pi.A1.x, pi.A1.y]];
     let c = challenge_commits(ref commits);
     //TODO: update this challenge
     let c1 = feltXOR(c,pi.c0);
     
-    poe(pi.V,generator_h(),pi.A0,pi.c0,pi.s0);
+    poe([pi.V.x, pi.V.y],generator_h(),[pi.A0.x, pi.A0.y],pi.c0,pi.s0);
 
     let gen = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     //TODO: Precompute -gen
-    let V_0 = EcPointTrait::new(*pi.V.span()[0], *pi.V.span()[1]).unwrap();
+    let V_0:EcPoint = pi.V.try_into().unwrap();
     let V1: NonZeroEcPoint = (V_0 - gen).try_into().unwrap();
     
-    poe([V1.x(), V1.y()],generator_h(),pi.A1,c1,pi.s1);
+    poe([V1.x(), V1.y()],generator_h(),[pi.A1.x, pi.A1.y],c1,pi.s1);
 }
 
 /// Verify that a span of Vi = g**b_i h**r_i are encoding either b=1 or b=0 and that
 /// those bi are indeed the binary decomposition b = sum_i b_i 2**i. With the b that
 /// is encoded in V = g**b h**r. (Note that r = sim_i r_i 2**i)
 /// TODO: This could (and probably should) be change to bulletproof.
-pub fn verify_range(proof: Span<ProofOfBit>) -> [felt252;2] {
+pub fn verify_range(proof: Span<ProofOfBit>) -> StarkPoint {
     let mut i:u32 = 0;
     let mut state = EcStateTrait::init();
     let mut pow: felt252 = 1;
     while i < 32 {
         let pi = *proof[i];
         oneORzero(pi) ;
-        let vi = EcPointTrait::new_nz(*pi.V.span()[0], *pi.V.span()[1]).unwrap();
+        let vi:NonZeroEcPoint = pi.V.try_into().unwrap();
         state.add_mul(pow,vi);
         pow = 2*pow;
         i = i + 1; 
     };
     let V = state.finalize_nz().unwrap();
-    return [V.x(), V.y()];
+    return V.into();
 }
 
 /// Alternative proof of commit a bit or one or zero. It seems it is not as efficient
@@ -285,14 +286,14 @@ pub fn verify_range(proof: Span<ProofOfBit>) -> [felt252;2] {
 pub fn alternative_oneORzero(proof:ProofOfBit2) {
     let [h_x, h_y] = generator_h();
     
-    let mut commits = array![proof.A, proof.B];
+    let mut commits = array![[proof.A.x, proof.A.y], [proof.B.x, proof.B.y]];
     let c = challenge_commits(ref commits);
 
-    poe2(proof.V, [GEN_X,GEN_Y], generator_h(),proof.A,c ,proof.sb, proof.sr );
+    poe2([proof.V.x, proof.V.y], [GEN_X,GEN_Y], generator_h(),[proof.A.x, proof.A.y],c ,proof.sb, proof.sr );
 
     let h = EcPointTrait::new(h_x,h_y).unwrap();
-    let V = EcPointTrait::new(*proof.V.span()[0],*proof.V.span()[1]).unwrap();
-    let B = EcPointTrait::new(*proof.B.span()[0],*proof.B.span()[1]).unwrap();
+    let V:EcPoint = proof.V.try_into().unwrap();
+    let B:EcPoint = proof.B.try_into().unwrap();
     let LHS = h.mul(proof.z);
     let RHS = V.mul(c) - V.mul(proof.sb) + B;
     assert!(LHS.try_into().unwrap().coordinates() == RHS.try_into().unwrap().coordinates(), "asd2");

@@ -5,11 +5,12 @@ use crate::verifier::structs::{ ProofOfBit, ProofOfBit2 };
 use crate::verifier::structs::{ InputsFund,ProofOfFund};
 use crate::verifier::structs::{PubKey, PubKeyTrait};
 use crate::verifier::structs::{StarkPoint};
+use crate::verifier::structs::{CipherBalanceTrait};
 
 use crate::verifier::utils::{compute_prefix, challenge_commits2};
 
 use crate::verifier::utils::{ challenge_commits, generator_h, feltXOR, view_key};
-use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_binary, cipher_balance};
+use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_binary};
 
 use core::starknet::ContractAddress;
 use core::ec::stark_curve::{GEN_X,GEN_Y};
@@ -182,10 +183,10 @@ pub fn prove_transfer(
     
     
     let (r, proof ) = prove_range(b.try_into().unwrap(), generate_random(seed+1, 1));
-    let balance = cipher_balance(b,y,r);
+    let balance = CipherBalanceTrait::new(y,b,r);
     let (L,R) = (balance.CL, balance.CR);
-    let L_bar = cipher_balance(b, y_bar, r).CL;
-    let L_audit = cipher_balance(b, view , r).CL;
+    let L_bar = CipherBalanceTrait::new(y_bar,b,r).CL;
+    let L_audit = CipherBalanceTrait::new(view,b,r).CL;
 
     let b_left = b0-b;
     let (r2, proof2 ) = prove_range(b_left.try_into().unwrap(), generate_random(seed+2, 1));
@@ -317,13 +318,13 @@ pub fn prove_bit(b:u8, r:felt252) -> ProofOfBit {
         let A0:NonZeroEcPoint = h.mul(k).try_into().unwrap();
 
         let (A1, c_1, s_1) = simPOE([V_1.x(), V_1.y()], [hx,hy], r);
-        let mut commits = array![[A0.x(), A0.y()],A1];
+        let mut commits = array![[A0.x(), A0.y()],[A1.x, A1.y]];
         let c = challenge_commits(ref commits);
         let c_0 = feltXOR(c, c_1);
         let s_0 = compute_s(c_0, r, k);
         let pi: ProofOfBit = ProofOfBit {
-            V:[V.try_into().unwrap().x(),V.try_into().unwrap().y()],
-            A0: [A0.x(), A0.y()],
+            V:V.try_into().unwrap(),
+            A0: A0.into(),
             A1,
             c0:c_0,
             s0:s_0,
@@ -339,14 +340,14 @@ pub fn prove_bit(b:u8, r:felt252) -> ProofOfBit {
 //        let V_1 = V - g;
         let k = generate_random(r,2);
         let A1:NonZeroEcPoint = h.mul(k).try_into().unwrap();
-        let mut commits = array![A0, [A1.x(), A1.y()]];
+        let mut commits = array![[A0.x, A0.y], [A1.x(), A1.y()]];
         let c = challenge_commits(ref commits);
         let c_1 = feltXOR(c, c_0);
         let s_1 = compute_s(c_1, r, k);
         let pi: ProofOfBit = ProofOfBit {
-            V:[V.try_into().unwrap().x(),V.try_into().unwrap().y()],
+            V:V.into(),
             A0,
-            A1:[A1.x(),A1.y()],
+            A1:A1.into(),
             c0:c_0,
             s0:s_0,
             s1:s_1};
@@ -406,9 +407,9 @@ pub fn alternative_prove_bit(b:u8, r:felt252) -> ProofOfBit2 {
     let z = compute_z(c,r,sb,t);
 
     ProofOfBit2 {
-        V: [V.x(), V.y()],
-        A: [A.x(), A.y()],
-        B: [B.x(), B.y()],
+        V: V.into(),
+        A: A.into(),
+        B: B.into(),
         sb: sb,
         sr: sr,
         z:z,

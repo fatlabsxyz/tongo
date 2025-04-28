@@ -1,5 +1,5 @@
 use core::starknet::ContractAddress;
-use core::ec::{EcPointTrait, NonZeroEcPoint, EcPoint};
+use core::ec::{EcPointTrait, NonZeroEcPoint, EcPoint, EcStateTrait};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use core::traits::{Into, TryInto};
 
@@ -33,7 +33,6 @@ pub impl PubKeyImpl of PubKeyTrait {
         let point = EcPointTrait::new_nz(self.x, self.y);
         assert!(point.is_some(),"PK not a curve point");
         point.unwrap()
-        
     }
 }
 
@@ -79,6 +78,24 @@ pub struct CipherBalance {
 
 #[generate_trait]
 pub impl CipherBalanceImpl of CipherBalanceTrait {
+
+    /// Cipher the balance b under the y key with a fixed randomnes. The fixed randomness should
+    /// not be a problem because b is known here. This only is performed on fund transactions or
+    /// withdraw all
+    /// TODO: think what to do with the randomness to avoid end up un a ZeroPoint
+    fn new(key:PubKey, amount:felt252, randomness:felt252) -> CipherBalance{
+        let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+        let mut R: NonZeroEcPoint = g.mul(randomness).try_into().unwrap();
+        
+        let y:NonZeroEcPoint = key.point();
+        let mut state = EcStateTrait::init();
+            state.add_mul(amount, g.try_into().unwrap());
+            state.add_mul(randomness, y);
+        let mut L = state.finalize_nz().unwrap();
+
+        CipherBalance {CL: L.into(), CR: R.into()}
+    }
+
     fn is_zero(self:CipherBalance) -> bool {
         let coords = (self.CL.x, self.CL.y, self.CR.x,self.CR.y);
         coords == (0,0,0,0)
@@ -128,9 +145,9 @@ pub struct ProofOfFund {
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfBit2 {
-    pub V:[felt252;2],
-    pub A:[felt252;2],
-    pub B:[felt252;2],
+    pub V:StarkPoint,
+    pub A:StarkPoint,
+    pub B:StarkPoint,
     pub sb: felt252,
     pub sr: felt252,
     pub z: felt252,
@@ -182,9 +199,9 @@ pub struct InputsTransfer {
 /// Proof that V = g**b h**r with b either one or zero is well formed. The proof use a OR protocol to assert 
 /// that one of the two is valid without revealing which one.
 pub struct ProofOfBit {
-    pub V:[felt252;2],
-    pub A0:[felt252;2],
-    pub A1:[felt252;2],
+    pub V:StarkPoint,
+    pub A0:StarkPoint,
+    pub A1:StarkPoint,
     pub c0:felt252,
     pub s0: felt252,
     pub s1: felt252,

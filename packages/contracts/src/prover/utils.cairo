@@ -1,12 +1,12 @@
 use core::ec::stark_curve::{GEN_X, GEN_Y, ORDER};
-use core::ec::{EcPointTrait, EcStateTrait};
+use core::ec::{EcPointTrait};
 use core::ec::NonZeroEcPoint;
 use core::pedersen::PedersenTrait;
 use core::hash::{HashStateTrait};
 use tongo::verifier::utils::in_order;
 use tongo::verifier::utils::in_range;
-use tongo::verifier::structs::PubKey;
 use tongo::verifier::structs::{CipherBalanceTrait,CipherBalance};
+use tongo::verifier::structs::{StarkPoint};
 
 use core::circuit::{
     CircuitElement, CircuitInput, circuit_add, circuit_mul,
@@ -120,10 +120,9 @@ pub fn to_binary(number: u32) -> Array<u8> {
     arr
 }
 
-
 /// Simulate a valid transcript (A_x, c, s) for a proof of exponent y = gen**x.
 /// Output: A_x:[felt252;2], challenge: felt252, s: felt252
-pub fn simPOE(y:[felt252;2], gen:[felt252;2], seed:felt252) -> ([felt252;2], felt252,felt252) {
+pub fn simPOE(y:[felt252;2], gen:[felt252;2], seed:felt252) -> (StarkPoint, felt252,felt252) {
     let gen = EcPointTrait::new(*gen.span()[0], *gen.span()[1]).unwrap();
     let y = EcPointTrait::new(*y.span()[0], *y.span()[1]).unwrap();
     let s = generate_random(seed,1);
@@ -131,19 +130,7 @@ pub fn simPOE(y:[felt252;2], gen:[felt252;2], seed:felt252) -> ([felt252;2], fel
     let temp1 = EcPointTrait::mul(gen, s);
     let temp2 = EcPointTrait::mul(y, c.try_into().unwrap());
     let A:NonZeroEcPoint = (temp1 - temp2).try_into().unwrap();
-    return ([A.x(),A.y()],c,s);
-}
-
-/// Generates the ciphertext of the balace in the form  (L,R) = (g**b y **r , g**r)
-pub fn cipher_balance(b:felt252, y:PubKey, random:felt252) -> CipherBalance {
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let y = EcPointTrait::new_nz(y.x, y.y).unwrap();
-    let mut state = EcStateTrait::init();
-        state.add_mul(b,g);
-        state.add_mul(random,y);
-    let L = state.finalize_nz().unwrap();
-    let R:NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), random).try_into().unwrap();
-    return CipherBalance {CL: L.into(), CR: R.into()};
+    return (A.into(),c,s);
 }
 
 /// Asserts that g**b == L/R**x. This show that the given balance b is encoded in the cipher

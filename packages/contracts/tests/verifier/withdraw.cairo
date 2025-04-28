@@ -1,8 +1,9 @@
-use tongo::prover::utils::{cipher_balance,generate_random};
+use tongo::prover::utils::{generate_random};
 use starknet::ContractAddress;
 use tongo::prover::prover::{prove_withdraw, prove_withdraw_all};
 use tongo::verifier::verifier::{verify_withdraw, verify_withdraw_all};
 use tongo::verifier::structs::PubKeyTrait;
+use tongo::verifier::structs::{CipherBalanceTrait};
 
 
 #[test]
@@ -16,7 +17,7 @@ fn test_withdraw(){
     // balance stored
     let initial_balance = 100;
     let r0 = generate_random(seed,2);
-    let balance = cipher_balance(initial_balance, y, r0);
+    let balance = CipherBalanceTrait::new(y,initial_balance,r0);
     // end of setup
 
     let amount = 10;
@@ -39,7 +40,8 @@ fn test_withdraw_all(){
     // balance stored
     let initial_balance = 100;
     let r0 = generate_random(seed,2);
-    let balance = cipher_balance(initial_balance, y, r0);
+    let balance = CipherBalanceTrait::new(y,initial_balance,r0);
+    // end of setup
     // end of setup
 
     let amount = 100;

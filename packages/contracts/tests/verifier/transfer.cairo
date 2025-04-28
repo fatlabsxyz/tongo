@@ -1,8 +1,9 @@
-use tongo::prover::utils::{cipher_balance, generate_random};
+use tongo::prover::utils::{generate_random};
 use tongo::prover::prover::{ prove_transfer};
 use tongo::verifier::verifier::verify_transfer;
 
 use tongo::verifier::structs::PubKeyTrait;
+use tongo::verifier::structs::{CipherBalanceTrait};
 
 #[test]
 fn test_transfer() {
@@ -15,7 +16,7 @@ fn test_transfer() {
     // balance stored
     let b0 = 100;
     let r0 = generate_random(seed,3);
-    let balance = cipher_balance(b0, y, r0);
+    let balance = CipherBalanceTrait::new(y,b0,r0);
     // end of setup
 
     let b = 12; 
