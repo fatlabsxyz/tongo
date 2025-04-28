@@ -7,13 +7,13 @@ use tongo::verifier::structs::PubKeyTrait;
 
 #[test]
 fn test_fund() {
-    let seed = 2194032843;    
-    let x = generate_random(seed,1);
+    let seed = 2194032843;
+    let x = generate_random(seed, 1);
     let nonce = 123;
 
     //prover
-    let (inputs,proof) = prove_fund(x,nonce, seed);
-    
+    let (inputs, proof) = prove_fund(x, nonce, seed);
+
     //Verifier
     verify_fund(inputs, proof)
 }
@@ -22,15 +22,15 @@ fn test_fund() {
 #[test]
 #[should_panic(expected: 'ERROR F100')]
 fn test_fund_fail() {
-    let seed = 2194032843;    
-    let x = generate_random(seed,1);
+    let seed = 2194032843;
+    let x = generate_random(seed, 1);
     let nonce = 123;
 
     //prover
-    let (_inputs,proof) = prove_fund(x,nonce, seed);
+    let (_inputs, proof) = prove_fund(x, nonce, seed);
 
     let y = PubKeyTrait::from_secret(1293);
-    let inputs: InputsFund = InputsFund{y:y,nonce:123};
+    let inputs: InputsFund = InputsFund { y: y, nonce: 123 };
 
     //Verifier
     verify_fund(inputs, proof)

@@ -1,17 +1,16 @@
 use core::ec::stark_curve::{GEN_X, GEN_Y, ORDER};
 use core::ec::{EcPointTrait};
-use core::ec::{NonZeroEcPoint,EcPoint};
+use core::ec::{NonZeroEcPoint, EcPoint};
 use core::pedersen::PedersenTrait;
 use core::hash::{HashStateTrait};
 use tongo::verifier::utils::in_order;
 use tongo::verifier::utils::in_range;
-use tongo::verifier::structs::{CipherBalanceTrait,CipherBalance};
+use tongo::verifier::structs::{CipherBalanceTrait, CipherBalance};
 use tongo::verifier::structs::{StarkPoint};
 
 use core::circuit::{
-    CircuitElement, CircuitInput, circuit_add, circuit_mul,
-    EvalCircuitTrait, u384, CircuitOutputsTrait, CircuitModulus,
-    AddInputResultTrait, CircuitInputs
+    CircuitElement, CircuitInput, circuit_add, circuit_mul, EvalCircuitTrait, u384,
+    CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs
 };
 
 
@@ -21,8 +20,8 @@ pub fn compute_s(c: felt252, x: felt252, k: felt252) -> felt252 {
     let k: u384 = k.try_into().unwrap();
     let x: u384 = x.try_into().unwrap();
     let so: u384 = ORDER.try_into().unwrap();
-    let modulus = TryInto::< _, CircuitModulus, >::try_into([so.limb0, so.limb1, so.limb2, so.limb3]) .unwrap();
-
+    let modulus = TryInto::<_, CircuitModulus,>::try_into([so.limb0, so.limb1, so.limb2, so.limb3])
+        .unwrap();
 
     // INPUT stack
     let in0 = CircuitElement::<CircuitInput<0>> {}; // c
@@ -52,14 +51,14 @@ pub fn compute_s(c: felt252, x: felt252, k: felt252) -> felt252 {
 
 use core::circuit::circuit_sub;
 /// Computes r (c - sb) + t
-pub fn compute_z(c: felt252, r: felt252, sb: felt252, t:felt252) -> felt252 {
+pub fn compute_z(c: felt252, r: felt252, sb: felt252, t: felt252) -> felt252 {
     let r: u384 = r.try_into().unwrap();
     let sb: u384 = sb.try_into().unwrap();
     let c: u384 = c.try_into().unwrap();
     let t: u384 = t.try_into().unwrap();
     let so: u384 = ORDER.try_into().unwrap();
-    let modulus = TryInto::< _, CircuitModulus, >::try_into([so.limb0, so.limb1, so.limb2, so.limb3]) .unwrap();
-
+    let modulus = TryInto::<_, CircuitModulus,>::try_into([so.limb0, so.limb1, so.limb2, so.limb3])
+        .unwrap();
 
     // INPUT stack
     let in0 = CircuitElement::<CircuitInput<0>> {}; // x
@@ -89,15 +88,12 @@ pub fn compute_z(c: felt252, r: felt252, sb: felt252, t:felt252) -> felt252 {
     temp.try_into().unwrap()
 }
 
-/// Generates a "random" number in the curve order. 
-pub fn generate_random(seed: felt252, multiplicity:felt252) -> felt252 {
+/// Generates a "random" number in the curve order.
+pub fn generate_random(seed: felt252, multiplicity: felt252) -> felt252 {
     let mut salt = 1;
     let mut c = ORDER + 1;
     while !in_order(c) {
-        c = PedersenTrait::new(seed)
-            .update(multiplicity)
-            .update(salt)
-        .finalize();
+        c = PedersenTrait::new(seed).update(multiplicity).update(salt).finalize();
         salt = salt + 1;
     };
     return c;
@@ -109,12 +105,15 @@ pub fn to_binary(number: u32) -> Array<u8> {
     assert!(in_range(number.try_into().unwrap()), "Number is not in range");
     let number: u64 = number.try_into().unwrap();
     let mut arr = array![];
-    let mut i:u8 = 0;
-    let mut pow:u64 = 1 ;
+    let mut i: u8 = 0;
+    let mut pow: u64 = 1;
     while i < 32 {
-        if number & pow == 0 { arr.append(0) }
-        else { arr.append(1) };
-        i = i + 1; 
+        if number & pow == 0 {
+            arr.append(0)
+        } else {
+            arr.append(1)
+        };
+        i = i + 1;
         pow = 2 * pow;
     };
     arr
@@ -122,32 +121,30 @@ pub fn to_binary(number: u32) -> Array<u8> {
 
 /// Simulate a valid transcript (A_x, c, s) for a proof of exponent y = gen**x.
 /// Output: A_x: StarkPoint, challenge: felt252, s: felt252
-pub fn simPOE(y:StarkPoint, gen:NonZeroEcPoint, seed:felt252) -> (StarkPoint, felt252,felt252) {
-    let gen:EcPoint = gen.try_into().unwrap();
-    let y:EcPoint= y.try_into().unwrap();
-    let s = generate_random(seed,1);
-    let c = generate_random(seed,2);
+pub fn simPOE(y: StarkPoint, gen: NonZeroEcPoint, seed: felt252) -> (StarkPoint, felt252, felt252) {
+    let gen: EcPoint = gen.try_into().unwrap();
+    let y: EcPoint = y.try_into().unwrap();
+    let s = generate_random(seed, 1);
+    let c = generate_random(seed, 2);
     let temp1 = EcPointTrait::mul(gen, s);
     let temp2 = EcPointTrait::mul(y, c.try_into().unwrap());
-    let A:NonZeroEcPoint = (temp1 - temp2).try_into().unwrap();
-    return (A.into(),c,s);
+    let A: NonZeroEcPoint = (temp1 - temp2).try_into().unwrap();
+    return (A.into(), c, s);
 }
 
 /// Asserts that g**b == L/R**x. This show that the given balance b is encoded in the cipher
-/// balance (L,R) = (g**b y**r, g**r). 
+/// balance (L,R) = (g**b y**r, g**r).
 /// This function DOES NOT bruteforces b and is intended only for testing purposes
-pub fn decipher_balance(b: felt252, x:felt252, cipher:CipherBalance) {
-    let (L,R) = cipher.points();
-    if b != 0{
+pub fn decipher_balance(b: felt252, x: felt252, cipher: CipherBalance) {
+    let (L, R) = cipher.points();
+    if b != 0 {
         let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-        let RHS:NonZeroEcPoint = (L - R.mul(x)).try_into().unwrap();
-        let LHS:NonZeroEcPoint = g.mul(b).try_into().unwrap();
-        assert!(LHS.coordinates() == RHS.coordinates(),"decipher failed");
+        let RHS: NonZeroEcPoint = (L - R.mul(x)).try_into().unwrap();
+        let LHS: NonZeroEcPoint = g.mul(b).try_into().unwrap();
+        assert!(LHS.coordinates() == RHS.coordinates(), "decipher failed");
     } else {
-        let LHS:NonZeroEcPoint = L.try_into().unwrap();
-        let RHS:NonZeroEcPoint = R.mul(x).try_into().unwrap();
-        assert!(LHS.coordinates() == RHS.coordinates(),"decipher failed for b 0");
+        let LHS: NonZeroEcPoint = L.try_into().unwrap();
+        let RHS: NonZeroEcPoint = R.mul(x).try_into().unwrap();
+        assert!(LHS.coordinates() == RHS.coordinates(), "decipher failed for b 0");
     }
-
-
 }
