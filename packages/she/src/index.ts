@@ -1,5 +1,6 @@
 import { AffinePoint } from "@noble/curves/abstract/curve";
-import { CURVE, ProjectivePoint } from "@scure/starknet"
+import { CURVE, ProjectivePoint, computeHashOnElements, pedersen} from "@scure/starknet"
+import type { Hex } from '@noble/curves/abstract/utils';
 
 export type Affine = AffinePoint<bigint>
 
@@ -42,34 +43,41 @@ function cipher_balance(y:ProjectivePoint, amount:bigint, random: bigint){
 }
 
 function prove_fund(x: bigint, nonce: bigint){
-//  let y = g.multiplyUnsafe(x)
-//  let prefix = H('fund', y.x, y.y, nonce)  (Affine)
+    let fund_selector = 1718972004n
+    let y = g.multiplyUnsafe(x).toAffine()
+    let seq: bigint[] = [fund_selector,  y.x, y.y, nonce]
+    let prefix = compute_prefix(seq)
     
     let k = 1234n //random_here
     const A = g.multiplyUnsafe(k)
-//  let c = H(prefix, A.x, A.y)  (Affine)
-    let c = 100n //remove
+    let c = challenge_commits2(prefix, [A])
     let s = (k + x*c)%CURVE_ORDER
     return {A, s}
 }
 
-function prove_withdraw_all(x:bigint, CL:ProjectivePoint,CR:ProjectivePoint, nonce: bigint){
-//  let y = g.multiplyUnsafe(x)
-//  prefix = H('withdraw_all', y.x,y.y,to:ContractAddress,nonce) (Affine)
+function prove_withdraw_all(x:bigint, CL:ProjectivePoint,CR:ProjectivePoint, nonce: bigint, to:bigint){
+    let withdraw_all_selector = 36956203100010950502698282092n
+    let y = g.multiplyUnsafe(x)
+    //to: ContractAddress
+    let seq: bigint[] = [withdraw_all_selector,  y.toAffine().x, y.toAffine().y,to, nonce] 
+    let prefix = compute_prefix(seq)
 
     let k = 1234n //random_here
     const R = CR
     const Ax = g.multiplyUnsafe(k)
     const Acr = R.multiplyUnsafe(k)
-//  let c = H(prefix, A.x, A.y, Acr.x, Acr.y) (Affine)
-    let c = 100n //remove
+
+    let c = challenge_commits2(prefix, [Ax,Acr])
     let s = (k + x*c)%CURVE_ORDER
     return {Ax, Acr, s}
 }
 
-function prove_withdraw(x:bigint,initial_balance:bigint, amount:bigint, CL:ProjectivePoint, CR: ProjectivePoint, nonce:bigint) {
-//  let y = g.multiplyUnsafe(x)
-//  prefix = H('withdraw', y.x,y.y,to:ContractAddress,nonce) (Affine)
+function prove_withdraw(x:bigint,initial_balance:bigint, amount:bigint, CL:ProjectivePoint, CR: ProjectivePoint,to:bigint, nonce:bigint) {
+    let withdraw_selector = 8604536554778681719n
+    let y = g.multiplyUnsafe(x)
+    //to: ContractAddress
+    let seq: bigint[] = [withdraw_selector,  y.toAffine().x, y.toAffine().y,to, nonce] 
+    let prefix = compute_prefix(seq)
 
     const left = initial_balance - amount
 //  let {r, rangeproof} = prove_range(for: initial_balance - amount)
@@ -86,8 +94,9 @@ function prove_withdraw(x:bigint,initial_balance:bigint, amount:bigint, CL:Proje
     const Ax = g.multiplyUnsafe(kx)
     const A = (g.multiplyUnsafe(kb)).add(R.multiplyUnsafe(kx))
     const Av = (g.multiplyUnsafe(kb)).add(H.multiplyUnsafe(kr))
-//  let c = H(prefix, Ax.x, Ax.y, A.x, A.y, Av.x, Av.y) (Affine)
-    let c = 100n //remove
+
+    let c = challenge_commits2(prefix, [Ax,A,Av])
+
     let sb = (kb + left*c)%CURVE_ORDER
     let sx = (kx + x*c)%CURVE_ORDER
     let sr = (kr + r*c)%CURVE_ORDER
@@ -96,8 +105,21 @@ function prove_withdraw(x:bigint,initial_balance:bigint, amount:bigint, CL:Proje
 }
 
 function prove_transfer(x: bigint, y_bar: ProjectivePoint, initial_balance: bigint, amount: bigint, CL:ProjectivePoint, CR: ProjectivePoint, nonce: bigint) {
+    let transfer_selector = 8390876182755042674n
     let y = g.multiplyUnsafe(x)
-//  prefix = H('transfer', y.x,y.y,y_bar.x, y_bar.y,CL.x,CL.y,CR.x,CR.y,nonce) (Affine)
+    let seq: bigint[] = [
+        transfer_selector,
+        y.toAffine().x,
+        y.toAffine().y,
+        y_bar.toAffine().x,
+        y_bar.toAffine().y,
+        CL.toAffine().x,
+        CL.toAffine().y,
+        CR.toAffine().x,
+        CR.toAffine().y,
+        nonce
+    ]
+    let prefix = compute_prefix(seq)
 
 
 //  const H = otro generador
@@ -131,8 +153,7 @@ function prove_transfer(x: bigint, y_bar: ProjectivePoint, initial_balance: bigi
     const A_b2 = (g.multiplyUnsafe(kb2)).add(G.multiplyUnsafe(kx))
     const A_v2 = (g.multiplyUnsafe(kb2)).add(H.multiplyUnsafe(kr2))
     
-//  let c = H(prefix, Ax.x, Ax.y, Ar.x, Ar.y, A_b.x,A_b.y, A_b2.x, A_b2.y, A_v.x, A_v.y, A_v2.x, A_v2.y, A_bar.x, A_bar.y, A_audit.x, A_audit.y)
-    let c = 1451n //remove
+    let c = challenge_commits2(prefix, [Ax, Ar, A_b, A_b2, A_v, A_v2, A_bar, A_audit])
 
     let s_x = (kx + x*c)%CURVE_ORDER
     let s_b = (kb + initial_balance*c)%CURVE_ORDER
@@ -151,7 +172,7 @@ function simPOE(y:ProjectivePoint, gen: ProjectivePoint ) {
     return {A,c,s}
 }
 
-function prove_bit(bit: number,random: bigint) {
+function prove_bit(bit: number ,random: bigint) {
 //  const H = otro generador
     const H = g
     if (bit == 0) {
@@ -168,7 +189,8 @@ function prove_bit(bit: number,random: bigint) {
         let s_0 = (k + c_0 * random ) % CURVE_ORDER
 
         return {V, A0,A1,c_0,s_0,s_1}
-    } if (bit == 1 ) {
+    // 0|1
+    } else {
         let V = g.add(H.multiplyUnsafe(random))
         let {A:A0,c:c_0,s:s_0} = simPOE(V, H)
 
@@ -185,13 +207,13 @@ function prove_bit(bit: number,random: bigint) {
 
 function prove_range(b: bigint) {
 //     let b_bin = to_binary(b)
-    let b_bin: Array<number> = [1,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    let b_bin: number[] = [1,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
     let proof: Array<number> = []
     let R: Array<bigint> = []
     let i = 0;
     while (i < 32) { 
         let r = 89371n
-        let pi = prove_bit(b_bin[i], r)
+//         let pi = prove_bit(b_bin[i], r)
 //         proof.append(pi)
         proof.push(i)
         R.push(r)
@@ -208,4 +230,42 @@ function prove_range(b: bigint) {
     }
 
     return {r, proof}
+}
+
+
+type PedersenArg = Hex | bigint | number;
+/// Remember: hashing an array [Xn] has to be compared in cairo with the hash of H(0,X,1)
+export function PED(elements: bigint[]) {
+    return computeHashOnElements(elements)
+}
+
+
+/// This hash does not prepend the 0 and does not finalized with length
+export const PED2 = (data: bigint[], fn = pedersen) =>
+  data.reduce((x, y) => BigInt(fn(x, y)));
+
+// This function coincides with cairo challenge_commits2
+export function challenge_commits2(prefix:bigint,commits: ProjectivePoint[]){
+    let data: bigint[] = [prefix];
+    commits.forEach((commit,_index) => {
+        let temp = commit.toAffine()
+        data.push(temp.x)
+        data.push(temp.y)
+    }
+    )
+
+    let base = PED2(data)
+    let salt = 1n
+    let c = CURVE_ORDER + 1n
+    while (c >= CURVE_ORDER) {
+        c = PED2([base,salt])
+        salt = salt + 1n
+    }
+    return c
+}
+
+//This function coincides with cairo compure_prefix
+export function compute_prefix(seq: bigint[]) {
+    return PED2([0n,...seq])
+
 }
