@@ -34,6 +34,11 @@ impl PubKeyTryIntoNonZeroEcPoint of TryInto<PubKey, NonZeroEcPoint> {
         EcPointTrait::new_nz(self.x, self.y)
     }
 }
+impl PubKeyTryIntoEcPoint of TryInto<PubKey, EcPoint> {
+    fn try_into(self: PubKey) -> Option<EcPoint> {
+        EcPointTrait::new(self.x, self.y)
+    }
+}
 
 
 #[derive(Serde, Drop, Debug, Copy, starknet::Store, Default)]

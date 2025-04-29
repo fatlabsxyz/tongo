@@ -124,8 +124,8 @@ pub fn to_binary(number: u32) -> Array<u8> {
 pub fn simPOE(y: StarkPoint, gen: NonZeroEcPoint, seed: felt252) -> (StarkPoint, felt252, felt252) {
     let gen: EcPoint = gen.try_into().unwrap();
     let y: EcPoint = y.try_into().unwrap();
-    let s = generate_random(seed, 1);
-    let c = generate_random(seed, 2);
+    let s = generate_random(seed+1, 1);
+    let c = generate_random(seed+1, 2);
     let temp1 = EcPointTrait::mul(gen, s);
     let temp2 = EcPointTrait::mul(y, c.try_into().unwrap());
     let A: NonZeroEcPoint = (temp1 - temp2).try_into().unwrap();

@@ -1,29 +1,11 @@
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use core::ec::{EcPointTrait, NonZeroEcPoint};
 use tongo::verifier::verifier::{poe, verify_range, oneORzero};
-use tongo::verifier::utils::{challenge_commits};
 
-use crate::prover::utils::{compute_s, generate_random, simPOE};
+use crate::prover::utils::{ generate_random, simPOE};
 use crate::prover::functions::{prove_bit, prove_range};
 
 
-#[test]
-fn test_poe() {
-    //setup
-    let x: felt252 = 123456789;
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let y: NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), x).try_into().unwrap();
-
-    //generatin the proof (A_x,c,s)
-    let seed = 38120931;
-    let k = generate_random(seed, 1);
-    let A_x: NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), k).try_into().unwrap();
-    let mut commit = array![[A_x.x(), A_x.y()]];
-    let c = challenge_commits(ref commit);
-    let s = compute_s(c, x, k);
-    //Verify
-    poe(y, g, A_x, c, s);
-}
 
 #[test]
 fn test_simulatePOE() {

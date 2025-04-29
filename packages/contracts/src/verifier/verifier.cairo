@@ -2,7 +2,7 @@ use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint, EcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use crate::verifier::utils::{in_order};
 use crate::verifier::utils::{generator_h, view_key};
-use crate::verifier::utils::{feltXOR, challenge_commits};
+use crate::verifier::utils::{feltXOR};
 use crate::verifier::utils::{compute_prefix, challenge_commits2};
 use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWitdhrawAll, ProofOfBit2};
 use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
@@ -115,11 +115,10 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
 
     let g_b = EcPointTrait::mul(g.into(), inputs.amount).try_into().unwrap();
     let L: EcPoint = inputs.L.try_into().unwrap();
-    let L: NonZeroEcPoint = (L - g_b).try_into().unwrap();
+    let Y: NonZeroEcPoint = (L - g_b).try_into().unwrap();
     let res = poe2(
-        L, g, inputs.R.try_into().unwrap(), proof.A.try_into().unwrap(), c, proof.sb, proof.sx
+        Y, g, inputs.R.try_into().unwrap(), proof.A.try_into().unwrap(), c, proof.sb, proof.sx
     );
-    assert(res, 'POE2');
     assert(res, WITHDRAW::W103);
 
     let V = verify_range(proof.range);
@@ -264,8 +263,8 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 /// also proven with a poe. This is combined in a OR statement and the protocol can valitates that
 /// one of the cases is valid without leak which one is valid.
 pub fn oneORzero(pi: ProofOfBit) {
-    let mut commits = array![[pi.A0.x, pi.A0.y], [pi.A1.x, pi.A1.y]];
-    let c = challenge_commits(ref commits);
+    let mut commits = array![pi.A0, pi.A1];
+    let c = challenge_commits2(0,ref commits);
     //TODO: update this challenge
     let c1 = feltXOR(c, pi.c0);
 
@@ -306,8 +305,8 @@ pub fn verify_range(proof: Span<ProofOfBit>) -> StarkPoint {
 pub fn alternative_oneORzero(proof: ProofOfBit2) {
     let h = generator_h();
 
-    let mut commits = array![[proof.A.x, proof.A.y], [proof.B.x, proof.B.y]];
-    let c = challenge_commits(ref commits);
+    let mut commits = array![proof.A, proof.B];
+    let c = challenge_commits2(0,ref commits);
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
     poe2(proof.V.try_into().unwrap(), g, h, proof.A.try_into().unwrap(), c, proof.sb, proof.sr);
