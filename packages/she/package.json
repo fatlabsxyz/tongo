@@ -14,9 +14,9 @@
     "build": "tsc -p ./tsconfig.json --outDir lib",
     "test": "vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
     "lint": "eslint \"{src,test}/**/*.{js,ts,json}\"",
-    "lint:fix": "eslint \"{src,test}/**/*.{js,ts,json}\" --fix",
+    "lint:fix": "eslint \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
     "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
-    "format:fix": "prettier --write \"{src,test}/**/*.{js,ts,json}\""
+    "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
   },
   "dependencies": {
     "@noble/curves": "1.7.0",
