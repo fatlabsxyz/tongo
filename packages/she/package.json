@@ -12,14 +12,20 @@
   "scripts": {
     "clean": "rm -rf lib",
     "build": "tsc -p ./tsconfig.json --outDir lib",
-    "test": "vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests"
+    "test": "vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
+    "lint": "eslint \"{src,test}/**/*.{js,ts,json}\"",
+    "lint:fix": "eslint \"{src,test}/**/*.{js,ts,json}\" --fix",
+    "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
+    "format:fix": "prettier --write \"{src,test}/**/*.{js,ts,json}\""
   },
   "dependencies": {
-    "@scure/starknet": "^1.1.0",
-    "@noble/curves": "1.7.0"
+    "@noble/curves": "1.7.0",
+    "@scure/starknet": "^1.1.0"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.4.1"
+  "packageManager": "pnpm@10.4.1",
+  "devDependencies": {
+  }
 }
