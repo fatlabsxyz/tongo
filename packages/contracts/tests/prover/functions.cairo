@@ -9,7 +9,7 @@ use tongo::verifier::structs::{CipherBalanceTrait};
 
 use tongo::verifier::utils::{compute_prefix, challenge_commits2};
 
-use tongo::verifier::utils::{challenge_commits, generator_h, feltXOR, view_key};
+use tongo::verifier::utils::{generator_h, feltXOR, view_key};
 use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_binary};
 
 use core::starknet::ContractAddress;
@@ -33,7 +33,7 @@ pub fn prove_withdraw_all(
     let R: NonZeroEcPoint = CR.try_into().unwrap();
 
     //poe for y = g**x and L/g**b = R**x
-    let k = generate_random(seed + 1, 1);
+    let k = generate_random(seed, 1);
     let A_x: NonZeroEcPoint = EcPointTrait::mul(g, k).try_into().unwrap();
     let A_cr: NonZeroEcPoint = EcPointTrait::mul(R.try_into().unwrap(), k).try_into().unwrap();
 
@@ -63,7 +63,7 @@ pub fn prove_fund(x: felt252, nonce: u64, seed: felt252) -> (InputsFund, ProofOf
     let prefix = compute_prefix(ref seq);
 
     //prover
-    let k = generate_random(seed, 2);
+    let k = generate_random(seed, 1);
     let Ax: NonZeroEcPoint = g.mul(k).try_into().unwrap();
 
     let mut commits: Array<StarkPoint> = array![Ax.into()];
@@ -92,11 +92,11 @@ pub fn prove_withdraw(
 
     let left = initial_balance - amount;
 
-    let (r, RangeProof) = prove_range(left.try_into().unwrap(), generate_random(seed + 1, 0));
+    let (r, RangeProof) = prove_range(left.try_into().unwrap(), generate_random(seed + 1, 1));
 
-    let kb = generate_random(seed, 3);
-    let kx = generate_random(seed, 4);
-    let kr = generate_random(seed, 5);
+    let kb = generate_random(seed, 1);
+    let kx = generate_random(seed, 2);
+    let kr = generate_random(seed, 3);
 
     let A_x: NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), kx).try_into().unwrap();
 
@@ -277,8 +277,8 @@ pub fn prove_bit(b: u8, r: felt252) -> ProofOfBit {
         let A0: NonZeroEcPoint = h.into().mul(k).try_into().unwrap();
 
         let (A1, c_1, s_1) = simPOE(V_1.into(), h, r);
-        let mut commits = array![[A0.x(), A0.y()], [A1.x, A1.y]];
-        let c = challenge_commits(ref commits);
+        let mut commits = array![A0.into(),A1];
+        let c = challenge_commits2(0,ref commits);
         let c_0 = feltXOR(c, c_1);
         let s_0 = compute_s(c_0, r, k);
         let pi: ProofOfBit = ProofOfBit {
@@ -294,8 +294,8 @@ pub fn prove_bit(b: u8, r: felt252) -> ProofOfBit {
         //        let V_1 = V - g;
         let k = generate_random(r, 2);
         let A1: NonZeroEcPoint = h.into().mul(k).try_into().unwrap();
-        let mut commits = array![[A0.x, A0.y], [A1.x(), A1.y()]];
-        let c = challenge_commits(ref commits);
+        let mut commits = array![A0, A1.into()];
+        let c = challenge_commits2(0,ref commits);
         let c_1 = feltXOR(c, c_0);
         let s_1 = compute_s(c_1, r, k);
         let pi: ProofOfBit = ProofOfBit {
@@ -308,7 +308,6 @@ pub fn prove_bit(b: u8, r: felt252) -> ProofOfBit {
 /// Generate a element V = g**b h**r with a proof that b belongs to a range.
 pub fn prove_range(b: u32, seed: felt252) -> (felt252, Span<ProofOfBit>) {
     let b_bin = to_binary(b);
-
     let mut proof = array![];
     let mut R = array![];
     let mut i: u32 = 0;
@@ -348,8 +347,8 @@ pub fn alternative_prove_bit(b: u8, r: felt252) -> ProofOfBit2 {
     let A: NonZeroEcPoint = (g.mul(kb) + h.into().mul(kr)).try_into().unwrap();
     let B: NonZeroEcPoint = (g.mul(b * kb) + h.into().mul(t)).try_into().unwrap();
 
-    let mut commits = array![[A.x(), A.y()], [B.x(), B.y()]];
-    let c = challenge_commits(ref commits);
+    let mut commits = array![A.into(), B.into()];
+    let c = challenge_commits2(0, ref commits);
 
     let sb = compute_s(c, b, kb);
     let sr = compute_s(c, r, kr);
