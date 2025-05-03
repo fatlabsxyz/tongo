@@ -4,10 +4,20 @@
   "description": "An SDK for interacting with Tongo contracts",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "rm -rf dist",
+    "build": "tsc -p ./tsconfig.json --outDir dist",
+    "test": "vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
+    "lint": "eslint \"{src,test}/**/*.{js,ts,json}\"",
+    "lint:fix": "eslint \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
+    "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
+    "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.4.1"
+  "packageManager": "pnpm@10.4.1",
+  "dependencies": {
+    "starknet": "^6.24.1",
+    "she-js": "workspace:*"
+  }
 }
