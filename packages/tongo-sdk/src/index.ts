@@ -1,21 +1,28 @@
-import { Account, CairoFixedArray, CallData, Contract, RpcProvider } from "starknet";
+import { Account, Contract, RpcProvider, constants, BigNumberish } from "starknet";
 import { tongoAbi } from "./tongoAbi";
 import { prove_fund, g } from "she-js"
 
-
-export function deployerWallet(provider: RpcProvider): Account {
-  // OZ localnet account
-  const address = "0x075662cc8b986d55d709d58f698bbb47090e2474918343b010192f487e30c23f";
-  const privateKey = "0x000000000000000000000000000000008d6bfaf9d111629e78aec17af5917076";
-  return new Account(provider, address, privateKey);
-}
 
 const provider = new RpcProvider({
   nodeUrl: 'http://127.0.0.1:5050'
 });
 
+export function deployerWallet(provider: RpcProvider): Account {
+  // OZ localnet account
+  const address = "0x075662cc8b986d55d709d58f698bbb47090e2474918343b010192f487e30c23f";
+  const privateKey = "0x000000000000000000000000000000008d6bfaf9d111629e78aec17af5917076";
+    return  new Account(
+      provider,
+      address,
+      privateKey,
+      undefined,
+      constants.TRANSACTION_VERSION.V3
+    );
+}
+
+
 const wallet = deployerWallet(provider);
-const tongoAddress = "0x0368cb9b99f5ae5a9234a58cbd955f8850fd654decf42e80f1cf28c8265940e7";
+const tongoAddress = "0x048220cdfbae2ac4cf9b73cb8d41d7c12cbb1698cb9466afee88a7f505b1259d";
 
 
 const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoAbi);
@@ -25,26 +32,22 @@ const TongoAccountReceiver = [21024350561677602532861804658494775996986817092421
 
 ;(async () => {
     const x = 111n
-    let y = g.multiplyUnsafe(x).toAffine()
+    const y = g.multiplyUnsafe(x).toAffine()
 
-    let nonce = await Tongo.get_nonce({x:y.x, y:y.y})
-    console.log("nonce: ",nonce)
+    const call = Tongo.populate("get_nonce", {x:0n, y:0n})
+    console.log("Call: ",call)
+    
+//     let nonce = wallet.callContract(call)
+//     let nonce = wallet.execute(call)
 
-    const {inputs, proof} = prove_fund(x,BigInt(nonce),4234n)
-    const result = Tongo.fund({x:inputs.y.x, y:inputs.y.y}, 5, {Ax:{x:proof.Ax.x, y: proof.Ax.y},sx:proof.sx})
-    console.log(result)
+//     let nonce = await Tongo.get_nonce({x:y.x, y:y.y})
+//     console.log("nonce: ",nonce)
 
-//     console.log(callData)
+//     const {inputs, proof} = prove_fund(x,0n,4234n)
+//     const result = Tongo.fund({x:inputs.y.x, y:inputs.y.y}, 5n, {Ax:{x:proof.Ax.x, y: proof.Ax.y},sx:proof.sx})
+//     console.log(result)
+
 // 
-//     // XXX: this signature is wrong
-//     const callData2 = new CallData(Tongo.abi).compile('transfer', [
-//       CairoFixedArray.compile(TongoAccount),
-//     ])
-//     console.log(callData2)
-// 
-//     // XXX: bad signature
-//     const r = await Tongo.get_buffer();
-//     console.log(r)
   })()
 
 
