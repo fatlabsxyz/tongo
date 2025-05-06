@@ -103,8 +103,6 @@ fn ts_withdraw() {
     verify_withdraw(inputs, proof);
 }
 
-
-
 #[test]
 fn test_transfer_ts() {
     let x = 4444;
@@ -122,7 +120,7 @@ fn test_transfer_ts() {
     let nonce = 82;
 
     let seed = 5;
-    let (_inputs, _proof) = prove_transfer( x, y_bar, b0, b, balance.CL, balance.CR, nonce,seed);
+    let (inputs, proof) = prove_transfer( x, y_bar, b0, b, balance.CL, balance.CR, nonce,seed);
 
     verify_transfer(inputs, proof);
 }
