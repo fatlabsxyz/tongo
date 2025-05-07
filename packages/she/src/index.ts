@@ -612,9 +612,9 @@ interface ProofOfBit {
   V: ProjectivePoint;
   A0: ProjectivePoint;
   A1: ProjectivePoint;
-  c_0: bigint;
-  s_0: bigint;
-  s_1: bigint;
+  c0: bigint;
+  s0: bigint;
+  s1: bigint;
 }
 
 function simPOE(y: ProjectivePoint, gen: ProjectivePoint, seed: bigint) {
@@ -632,36 +632,36 @@ function prove_bit(bit: number, random: bigint): ProofOfBit {
     let k = generate_cairo_random(random, 1n);
     const A0 = h.multiplyUnsafe(k);
 
-    let { A: A1, c: c_1, s: s_1 } = simPOE(V_1, h, random);
+    let { A: A1, c: c1, s: s1 } = simPOE(V_1, h, random);
     let c = challenge_commits2(0n, [A0, A1]);
-    let c_0 = c ^ c_1; //bitwisexor
-    let s_0 = (k + c_0 * random) % CURVE_ORDER;
+    let c0 = c ^ c1; //bitwisexor
+    let s0 = (k + c0 * random) % CURVE_ORDER;
 
-    return { V, A0, A1, c_0, s_0, s_1 };
+    return { V, A0, A1, c0, s0, s1 };
   } else {
     let V = g.add(h.multiplyUnsafe(random));
-    let { A: A0, c: c_0, s: s_0 } = simPOE(V, h, random);
+    let { A: A0, c: c0, s: s0 } = simPOE(V, h, random);
 
     let k = generate_cairo_random(random, 2n);
     let A1 = h.multiplyUnsafe(k);
     let c = challenge_commits2(0n, [A0, A1]);
-    let c_1 = c ^ c_0; //bitwisexor
-    let s_1 = (k + c_1 * random) % CURVE_ORDER;
+    let c1 = c ^ c0; //bitwisexor
+    let s1 = (k + c1 * random) % CURVE_ORDER;
 
-    return { V, A0, A1, c_0, s_0, s_1 };
+    return { V, A0, A1, c0, s0, s1 };
   }
 }
 
 function oneOrZero(pi: ProofOfBit) {
   const c = challenge_commits2(0n, [pi.A0, pi.A1]);
-  const c_1 = c ^ pi.c_0;
-  let res = poe(pi.V, h, pi.A0, pi.c_0, pi.s_0);
+  const c1 = c ^ pi.c0;
+  let res = poe(pi.V, h, pi.A0, pi.c0, pi.s0);
   if (res == false) {
     throw new Error("Failed 0 in proof of bit");
   }
 
   const V1 = pi.V.subtract(g);
-  res = poe(V1, h, pi.A1, c_1, pi.s_1);
+  res = poe(V1, h, pi.A1, c1, pi.s1);
   if (res == false) {
     throw new Error("Failed 1 in proof of bit");
   }
