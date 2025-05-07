@@ -770,7 +770,7 @@ export function decipher_balance(
   x: bigint,
   L: ProjectivePoint,
   R: ProjectivePoint,
-): bigint {
+): bigint {  
   let Rx = R.multiplyUnsafe(x);
   let g_b = L.subtract(Rx);
 

@@ -56,6 +56,9 @@ importers:
 
   packages/tongo-sdk:
     dependencies:
+      '@scure/starknet':
+        specifier: ^1.1.0
+        version: 1.1.0
       she-js:
         specifier: workspace:*
         version: link:../she
