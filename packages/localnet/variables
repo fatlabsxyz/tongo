@@ -1,0 +1,16 @@
+#!/bin/bash
+export ACCOUNTS=1
+export SEED=100
+export GAS_PRICE=1
+export GAS_PRICE_FRI=1
+export DATA_GAS_PRICE=1
+export DATA_GAS_PRICE_FRI=1
+export L2_GAS_PRICE=1
+export L2_GAS_PRICE_FRI=1
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export STARKNET_ACCOUNT="$DIR/account.json"
+export STARKNET_PRIVATE_KEY="0x000000000000000000000000000000008d6bfaf9d111629e78aec17af5917076"
+export STARKNET_RPC="http://127.0.0.1:5050"
+
+
