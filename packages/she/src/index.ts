@@ -499,9 +499,7 @@ export function prove_transfer(
   let s_b = (kb + amount * c) % CURVE_ORDER;
   let s_r = (kr + r * c) % CURVE_ORDER;
   let s_b2 = (kb2 + b_left * c) % CURVE_ORDER;
-  console.log("s_b2:", s_b2);
   let s_r2 = (kr2 + r2 * c) % CURVE_ORDER;
-  console.log("s_r2:", s_r2);
 
   let proof: ProofOfTransfer = {
     A_x: Ax,
