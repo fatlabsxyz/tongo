@@ -51,9 +51,9 @@ export function poe(
   return LHS.equals(RHS);
 }
 
-export function prove_poe(x: bigint, g: ProjectivePoint, seed: bigint) {
+export function prove_poe(x: bigint, g: ProjectivePoint) {
   let y = g.multiplyUnsafe(x);
-  let k = generate_cairo_random(seed, 1n);
+  let k = generate_random()
   const A = g.multiplyUnsafe(k);
   let c = challenge_commits2(0n, [A]);
   let s = (k + x * c) % CURVE_ORDER;
@@ -94,11 +94,10 @@ export function prove_poe2(
   x2: bigint,
   g1: ProjectivePoint,
   g2: ProjectivePoint,
-  seed: bigint,
 ) {
   const y = g1.multiplyUnsafe(x1).add(g2.multiplyUnsafe(x2));
-  const k1 = generate_cairo_random(seed, 1n);
-  const k2 = generate_cairo_random(seed, 2n);
+  const k1 = generate_random()
+  const k2 = generate_random()
   const A = g1.multiplyUnsafe(k1).add(g2.multiplyUnsafe(k2));
   const c = challenge_commits2(0n, [A]);
   const s1 = (k1 + x1 * c) % CURVE_ORDER;
@@ -146,7 +145,6 @@ export interface ProofOfFund {
 export function prove_fund(
   x: bigint,
   nonce: bigint,
-  seed: bigint,
 ): { inputs: InputsFund; proof: ProofOfFund } {
   const fund_selector = 1718972004n;
   const y = g.multiplyUnsafe(x);
@@ -155,7 +153,7 @@ export function prove_fund(
   const seq: bigint[] = [fund_selector, y.toAffine().x, y.toAffine().y, nonce];
   const prefix = compute_prefix(seq);
 
-  const k = generate_cairo_random(seed, 1n);
+  const k = generate_random()
   const Ax = g.multiplyUnsafe(k);
   const c = challenge_commits2(prefix, [Ax]);
   const sx = (k + x * c) % CURVE_ORDER;
@@ -204,7 +202,6 @@ export function prove_withdraw_all(
   nonce: bigint,
   to: bigint,
   amount: bigint,
-  seed: bigint,
 ): { inputs: InputsWithdraw; proof: ProofOfWithdrawAll } {
   const withdraw_all_selector = 36956203100010950502698282092n;
   const y = g.multiplyUnsafe(x);
@@ -226,7 +223,7 @@ export function prove_withdraw_all(
   ];
   let prefix = compute_prefix(seq);
 
-  let k = generate_cairo_random(seed, 1n);
+  let k = generate_random()
   const R = CR;
   const A_x = g.multiplyUnsafe(k);
   const A_cr = R.multiplyUnsafe(k);
@@ -287,7 +284,6 @@ export function prove_withdraw(
   CR: ProjectivePoint,
   to: bigint,
   nonce: bigint,
-  seed: bigint,
 ): { inputs: InputsWithdraw; proof: ProofOfWithdraw } {
   const withdraw_selector = 8604536554778681719n;
   const y = g.multiplyUnsafe(x);
@@ -311,15 +307,11 @@ export function prove_withdraw(
   const prefix = compute_prefix(seq);
 
   const left = initial_balance - amount;
-  const { r, proof: range } = prove_range(
-    left,
-    32,
-    generate_cairo_random(seed + 1n, 1n),
-  );
+  const { r, proof: range } = prove_range(left,32);
 
-  const kb = generate_cairo_random(seed, 1n);
-  const kx = generate_cairo_random(seed, 2n);
-  const kr = generate_cairo_random(seed, 3n);
+  const kb = generate_random()
+  const kx = generate_random()
+  const kr = generate_random()
 
   const R = CR;
   const Ax = g.multiplyUnsafe(kx);
@@ -421,16 +413,11 @@ export function prove_transfer(
   CL: ProjectivePoint,
   CR: ProjectivePoint,
   nonce: bigint,
-  seed: bigint,
 ): { inputs: InputsTransfer; proof: ProofOfTransfer } {
   let transfer_selector = 8390876182755042674n;
   let y = g.multiplyUnsafe(x);
 
-  let { r, proof: range } = prove_range(
-    amount,
-    32,
-    generate_cairo_random(seed + 1n, 1n),
-  );
+  let { r, proof: range } = prove_range(amount, 32);
   let { L, R } = cipher_balance(y, amount, r);
   let L_bar = cipher_balance(y_bar, amount, r).L;
   let L_audit = cipher_balance(view, amount, r).L;
@@ -462,18 +449,14 @@ export function prove_transfer(
   };
 
   let b_left = initial_balance - amount;
-  let { r: r2, proof: range2 } = prove_range(
-    b_left,
-    32,
-    generate_cairo_random(seed + 2n, 1n),
-  );
+  let { r: r2, proof: range2 } = prove_range( b_left, 32);
   let G = CR.subtract(R);
 
-  let kx = generate_cairo_random(seed + 1n, 0n);
-  let kb = generate_cairo_random(seed + 1n, 1n);
-  let kr = generate_cairo_random(seed + 1n, 2n);
-  let kb2 = generate_cairo_random(seed + 1n, 3n);
-  let kr2 = generate_cairo_random(seed + 1n, 4n);
+  let kx = generate_random()
+  let kb = generate_random()
+  let kr = generate_random()
+  let kb2 = generate_random()
+  let kr2 = generate_random()
 
   const Ax = g.multiplyUnsafe(kx);
   const Ar = g.multiplyUnsafe(kr);
@@ -615,9 +598,9 @@ interface ProofOfBit {
   s1: bigint;
 }
 
-function simPOE(y: ProjectivePoint, gen: ProjectivePoint, seed: bigint) {
-  const s = generate_cairo_random(seed + 1n, 1n);
-  const c = generate_cairo_random(seed + 1n, 2n);
+function simPOE(y: ProjectivePoint, gen: ProjectivePoint) {
+  const s = generate_random()
+  const c = generate_random()
   const A = gen.multiplyUnsafe(s).subtract(y.multiplyUnsafe(c));
   return { A, c, s };
 }
@@ -627,10 +610,10 @@ function prove_bit(bit: number, random: bigint): ProofOfBit {
     let V = h.multiplyUnsafe(random);
     let V_1 = V.subtract(g);
 
-    let k = generate_cairo_random(random, 1n);
+    let k = generate_random()
     const A0 = h.multiplyUnsafe(k);
 
-    let { A: A1, c: c1, s: s1 } = simPOE(V_1, h, random);
+    let { A: A1, c: c1, s: s1 } = simPOE(V_1, h);
     let c = challenge_commits2(0n, [A0, A1]);
     let c0 = c ^ c1; //bitwisexor
     let s0 = (k + c0 * random) % CURVE_ORDER;
@@ -638,9 +621,9 @@ function prove_bit(bit: number, random: bigint): ProofOfBit {
     return { V, A0, A1, c0, s0, s1 };
   } else {
     let V = g.add(h.multiplyUnsafe(random));
-    let { A: A0, c: c0, s: s0 } = simPOE(V, h, random);
+    let { A: A0, c: c0, s: s0 } = simPOE(V, h);
 
-    let k = generate_cairo_random(random, 2n);
+    let k = generate_random()
     let A1 = h.multiplyUnsafe(k);
     let c = challenge_commits2(0n, [A0, A1]);
     let c1 = c ^ c0; //bitwisexor
@@ -670,7 +653,6 @@ function oneOrZero(pi: ProofOfBit) {
 function prove_range(
   b: bigint,
   bits: number,
-  seed: bigint,
 ): { r: bigint; proof: ProofOfBit[] } {
   if (b >= 2 ** bits) {
     throw new Error("number not in range");
@@ -686,7 +668,7 @@ function prove_range(
   let r = 0n;
   let i = 0;
   while (i < bits) {
-    let r_inn = generate_cairo_random(seed, BigInt(i + 1));
+    let r_inn = generate_random()
     let pi = prove_bit(b_bin[i]!, r_inn);
     proof.push(pi);
     r = (r + r_inn * pow) % CURVE_ORDER;
@@ -746,7 +728,7 @@ export function compute_prefix(seq: bigint[]) {
   return PED2([0n, ...seq]);
 }
 
-export function generate_random() {
+export function generate_random(): bigint {
   let random_bytes = utils.randomPrivateKey();
   return utils.normPrivateKeyToScalar(random_bytes);
 }
