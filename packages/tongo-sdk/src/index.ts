@@ -6,14 +6,15 @@ import { ProjectivePoint } from "@scure/starknet";
 
 
 const provider = new RpcProvider({
-    nodeUrl: 'http://127.0.0.1:5050/rpc',
-   specVersion: "0.8"
+//     nodeUrl: 'http://127.0.0.1:5050/rpc',
+    specVersion: "0.8"
 });
 
 export function deployerWallet(provider: RpcProvider): Account {
   // OZ localnet account
   const address = "0x075662cc8b986d55d709d58f698bbb47090e2474918343b010192f487e30c23f";
   const privateKey = "0x000000000000000000000000000000008d6bfaf9d111629e78aec17af5917076";
+    // OZ sepolia
     return  new Account(
       provider,
       address,
@@ -54,7 +55,7 @@ function decipher(x:bigint, CL:{x:BigNumberish, y:BigNumberish}, CR:{x:BigNumber
 }
 
 const wallet = deployerWallet(provider);
-const tongoAddress = "0x02d4d96ed79c0c4bd62b76462c8a1e10120a0b0cae6af05c7170b654172b12b8";
+const tongoAddress = "0x0217b6931c726077c5f9f86a2c7c2784ac8697c31dd1a0368d026fab9f2a026d";
 const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoAbi);
 
 
@@ -74,7 +75,8 @@ async function fund(x:bigint, amount: bigint) {
     const {inputs, proof} = prove_fund(User_sk,nonce,amount)
 
     const call = Tongo.populate("fund",[inputs.y,amount,proof])
-    const {transaction_hash: result} = await wallet.execute(call,tx_context)
+//     let out = await wallet.estimateInvokeFee(call)
+    const {transaction_hash: result} = await wallet.execute(call)
     console.log(result)
 
     nonce = await Tongo.get_nonce({x:User_pk.x, y:User_pk.y})
@@ -178,7 +180,7 @@ async function transfer(x: bigint,to:ProjectivePoint,amount:bigint ) {
         213091283n
     )
     const call = Tongo.populate("transfer",[inputs.y,inputs.y_bar,inputs.L, inputs.L_bar, inputs.L_audit,inputs.R, proof])
-    const {transaction_hash: result} = await wallet.execute(call,tx_context)
+    const {transaction_hash: result} = await wallet.execute(call)
     console.log(result)
 
     nonce = await Tongo.get_nonce({x:User_pk.x, y:User_pk.y})
@@ -198,7 +200,7 @@ const User_sk2 = 82312n
 const User_pk2 = g.multiplyUnsafe(User_sk2)
 ;(async () => {
 
-    await fund(User_sk,30n)
+//     await fund(User_sk,30n)
     await transfer(User_sk,User_pk2, 20n)
 
   })()
