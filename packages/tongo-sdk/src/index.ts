@@ -1,6 +1,6 @@
 import { Account, Contract, RpcProvider, constants,  num, RPC, BigNumberish} from "starknet";
 import { tongoAbi } from "./tongoAbi";
-import { prove_fund, g ,decipher_balance, prove_withdraw_all, prove_withdraw, verify_withdraw} from "she-js"
+import { prove_fund, g ,decipher_balance, prove_withdraw_all, prove_withdraw, cipher_balance, prove_transfer} from "she-js"
 import { ProjectivePoint } from "@scure/starknet";
 
 
@@ -54,7 +54,7 @@ function decipher(x:bigint, CL:{x:BigNumberish, y:BigNumberish}, CR:{x:BigNumber
 }
 
 const wallet = deployerWallet(provider);
-const tongoAddress = "0x013c8b937932149b4efdd52bdb02037611606699a4430d99813cf38c9ded692b";
+const tongoAddress = "0x02d4d96ed79c0c4bd62b76462c8a1e10120a0b0cae6af05c7170b654172b12b8";
 const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoAbi);
 
 
@@ -88,13 +88,14 @@ async function fund(x:bigint, amount: bigint) {
 }
 
 async function withdraw_all(x: bigint, to:bigint ) {
+    console.log("----------------- Withdrawing all ----------------")
     const User_pk = g.multiplyUnsafe(x)
     let nonce = await Tongo.get_nonce({x:User_pk.x, y:User_pk.y})
     if (typeof nonce === "number") { nonce = BigInt(nonce)}
-    console.log("The new nonce is: ",nonce);
+    console.log("The initial nonce is: ",nonce);
     let {CL, CR} = await Tongo.get_balance({x:User_pk.x, y:User_pk.y})
     let balance = decipher(User_sk, {x:CL.x, y:CL.y}, {x:CR.x, y:CR.y})
-    console.log("withdrawing all")
+    console.log("The initial balance is: ", balance)
 
     let {inputs: inputs_withdraw_all, proof: proof_withdraw_all} = prove_withdraw_all(
         User_sk,
@@ -116,25 +117,21 @@ async function withdraw_all(x: bigint, to:bigint ) {
 
     let {CL: CL_withdraw, CR: CR_withdraw} = await Tongo.get_balance({x:User_pk.x, y:User_pk.y})
     balance = decipher(User_sk, {x:CL_withdraw.x, y:CL_withdraw.y}, {x:CR_withdraw.x, y:CR_withdraw.y})
-    console.log("The las balance is: ", balance)
+    console.log("The new balance is: ", balance)
+    console.log("----------------- Withdrawing complete ----------------")
 }
 
 
-const User_sk = 1999n
-const User_pk = g.multiplyUnsafe(User_sk)
-;(async () => {
-//     await fund(User_sk,30n)
-//     await fund(User_sk,20n)
-//     withdraw_all(User_sk,84n)
-//
+async function withdraw(x: bigint,amount:bigint, to:bigint ) {
+    console.log("----------------- Withdrawing ----------------")
+    const User_pk = g.multiplyUnsafe(x)
     let nonce = await Tongo.get_nonce({x:User_pk.x, y:User_pk.y})
     if (typeof nonce === "number") { nonce = BigInt(nonce)}
     console.log("The new nonce is: ",nonce);
     let {CL, CR} = await Tongo.get_balance({x:User_pk.x, y:User_pk.y})
     let balance = decipher(User_sk, {x:CL.x, y:CL.y}, {x:CR.x, y:CR.y})
+    console.log("The initial balance is: ", balance)
 
-    let amount = 10n
-    let to = 19283n
     let {inputs, proof} = prove_withdraw(
         User_sk,
         balance,
@@ -143,12 +140,66 @@ const User_pk = g.multiplyUnsafe(User_sk)
         new ProjectivePoint(BigInt(CR.x), BigInt(CR.y),1n),
         to,
         nonce,
-        219308213n
+         219308213n
     )
-//     verify_withdraw(inputs, proof)
-    const call = Tongo.populate("withdraw", [inputs.y, amount,"0x9", proof])
-//     const {transaction_hash: result_withdraw} = await wallet.execute(call,tx_context)
-//     console.log(result_withdraw)
+    const call = Tongo.populate("withdraw", [inputs.y, amount,"0x"+to.toString(16), proof])
+    const {transaction_hash: result_withdraw} = await wallet.execute(call,tx_context)
+    console.log(result_withdraw)
+
+    nonce = await Tongo.get_nonce({x:User_pk.x, y:User_pk.y})
+    if (typeof nonce === "number") { nonce = BigInt(nonce)}
+    console.log("The new nonce is: ",nonce);
+
+    let {CL: CL_withdraw, CR: CR_withdraw} = await Tongo.get_balance({x:User_pk.x, y:User_pk.y})
+    balance = decipher(User_sk, {x:CL_withdraw.x, y:CL_withdraw.y}, {x:CR_withdraw.x, y:CR_withdraw.y})
+    console.log("The new balance is: ", balance)
+    console.log("----------------- Withdrawing complete ----------------")
+}
+
+
+async function transfer(x: bigint,to:ProjectivePoint,amount:bigint ) {
+    console.log("----------------- Transfering ----------------")
+    const User_pk = g.multiplyUnsafe(x)
+    let nonce = await Tongo.get_nonce({x:User_pk.x, y:User_pk.y})
+    if (typeof nonce === "number") { nonce = BigInt(nonce)}
+    console.log("The new nonce is: ",nonce);
+    let {CL, CR} = await Tongo.get_balance({x:User_pk.x, y:User_pk.y})
+    let initial_balance = decipher(User_sk, {x:CL.x, y:CL.y}, {x:CR.x, y:CR.y})
+    console.log("The initial balance is: ", initial_balance)
+
+    let {inputs, proof} = prove_transfer(
+        User_sk,
+        to,
+        initial_balance,
+        amount,
+        new ProjectivePoint(BigInt(CL.x), BigInt(CL.y),1n),
+        new ProjectivePoint(BigInt(CR.x), BigInt(CR.y),1n),
+        nonce,
+        213091283n
+    )
+    const call = Tongo.populate("transfer",[inputs.y,inputs.y_bar,inputs.L, inputs.L_bar, inputs.L_audit,inputs.R, proof])
+    const {transaction_hash: result} = await wallet.execute(call,tx_context)
+    console.log(result)
+
+    nonce = await Tongo.get_nonce({x:User_pk.x, y:User_pk.y})
+    if (typeof nonce === "number") { nonce = BigInt(nonce)}
+    console.log("The new nonce is: ",nonce);
+
+    let {CL: CL_withdraw, CR: CR_withdraw} = await Tongo.get_balance({x:User_pk.x, y:User_pk.y})
+    let balance = decipher(User_sk, {x:CL_withdraw.x, y:CL_withdraw.y}, {x:CR_withdraw.x, y:CR_withdraw.y})
+    console.log("The new balance is: ", balance)
+    console.log("----------------- Transfering complete ----------------")
+}
+
+const User_sk = 1999n
+const User_pk = g.multiplyUnsafe(User_sk)
+
+const User_sk2 = 82312n
+const User_pk2 = g.multiplyUnsafe(User_sk2)
+;(async () => {
+
+    await fund(User_sk,30n)
+    await transfer(User_sk,User_pk2, 20n)
 
   })()
 
