@@ -752,8 +752,9 @@ export function decipher_balance(
   R: ProjectivePoint,
 ): bigint {  
   let Rx = R.multiplyUnsafe(x);
-  let g_b = L.subtract(Rx);
+    if (Rx.equals(L)) {return 0n}
 
+  let g_b = L.subtract(Rx);
   let b = 1n;
   let temp = g;
   if (temp.equals(g_b)) {
