@@ -17,6 +17,7 @@ import { decipher_balance } from "../src";
 import { prove_poe, verify_poe } from "../src";
 import { prove_poe2, verify_poe2 } from "../src";
 import { prove_transfer, verify_transfer } from "../src";
+import { prove_expost , verify_expost} from "../src"
 
 describe("Example test suit", () => {
   it("encrypts the number 2**239", () => {
@@ -109,7 +110,7 @@ describe("Example test suit", () => {
 
   it("bechmark_decipher", () => {
     const x = 1234n;
-    const amount = 1_000n;
+    const amount = 12n;
     const random = 111111n;
     let y = g.multiplyUnsafe(x);
     let { L, R } = cipher_balance(y, amount, random);
@@ -128,5 +129,20 @@ describe("Example test suit", () => {
     const x2 = 12412n;
     const { y, A, s1, s2 } = prove_poe2(x1, x2, g, h);
     verify_poe2(y, g, h, A, s1, s2);
+  });
+
+  it("expost", () => {
+    const x = 3809213n
+    const x_bar = 3809213n
+    const y = g.multiplyUnsafe(x);
+    const y_bar = g.multiplyUnsafe(x_bar);
+    const b = 65n
+    const r = 2930213809218n
+    const {L:TL, R:TR} = cipher_balance(y,b,r)
+    
+    const {inputs, proof} = prove_expost(x, y_bar, TL, TR)
+    verify_expost(inputs,proof)
+    const b_bar = decipher_balance(x_bar, inputs.L_bar, inputs.R)
+    expect(b).toEqual(b_bar)
   });
 });

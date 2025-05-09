@@ -697,6 +697,77 @@ function verify_range(proof: ProofOfBit[], bits: number): ProjectivePoint {
 }
 // --------------------------------------- RANGE ------------------------------------------------
 
+// --------------------------------------- AUDIT EX POST ------------------------------------------------
+interface ProofExPost {
+    Ax: ProjectivePoint,
+    Ar: ProjectivePoint,
+    At: ProjectivePoint,
+    A: ProjectivePoint,
+    A_bar: ProjectivePoint,
+    sx: bigint,
+    sb: bigint,
+    sr: bigint,
+}
+interface InputsExPost {
+    y: ProjectivePoint,
+    y_bar: ProjectivePoint,
+    L: ProjectivePoint,
+    L_bar: ProjectivePoint
+    R: ProjectivePoint,
+    TL: ProjectivePoint,
+    TR: ProjectivePoint,
+}
+
+export function prove_expost(
+    x:bigint,
+    y_bar:ProjectivePoint,
+    TL:ProjectivePoint,
+    TR:ProjectivePoint
+): {inputs: InputsExPost, proof:ProofExPost} {
+    const y = g.multiplyUnsafe(x)
+    const b = decipher_balance(x, TL,TR)
+    const r = generate_random()
+    const {L,R} = cipher_balance(y,b,r)
+    const {L:L_bar,R: R_bar} = cipher_balance(y_bar,b,r)
+
+    const inputs: InputsExPost = {y, y_bar, L, L_bar, R, TL,TR}
+    
+    const kx = generate_random()
+    const kr = generate_random()
+    const kb = generate_random()
+
+    const Ax = g.multiplyUnsafe(kx)
+    const Ar = g.multiplyUnsafe(kr)
+
+    const A = g.multiplyUnsafe(kb).add(y.multiplyUnsafe(kr));
+    const A_bar = g.multiplyUnsafe(kb).add(y_bar.multiplyUnsafe(kr));
+
+    const G = TR.subtract(R);
+    const At = G.multiplyUnsafe(kx)
+
+    const c = challenge_commits2(0n,[Ax,Ar,At,A,A_bar])
+
+    const sx = (kx + x * c) % CURVE_ORDER;
+    const sr = (kr + x * c) % CURVE_ORDER;
+    const sb = (kb + x * c) % CURVE_ORDER;
+
+    const proof: ProofExPost = {Ax, Ar, At, A, A_bar, sx,sr,sb}
+    return {inputs, proof}
+}
+
+export function verify_expost(inputs:InputsExPost, proof: ProofExPost) {
+    const c = challenge_commits2(0n,[proof.Ax,proof.Ar,proof.At,proof.A,proof.A_bar])
+    poe(inputs.y, g, proof.Ax, c, proof.sx)
+    poe(inputs.R, g, proof.Ar, c, proof.sr)
+    const Y = inputs.TL.subtract(inputs.L);
+    const G = inputs.TR.subtract(inputs.R);
+    poe(Y, G, proof.At, c, proof.sx)
+    poe2(inputs.L,g,inputs.y,proof.A, c, proof.sb,proof.sr)
+    poe2(inputs.L_bar,g,inputs.y_bar,proof.A, c, proof.sb,proof.sr)
+}
+
+// --------------------------------------- AUDIT EX POST ------------------------------------------------
+
 /// Remember: hashing an array [Xn] has to be compared in cairo with the hash of H(0,X,1)
 export function PED(elements: bigint[]) {
   return computeHashOnElements(elements);
