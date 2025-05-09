@@ -1,6 +1,6 @@
 import { Account, Call,  Contract, RpcProvider, constants,  num, RPC, BigNumberish} from "starknet";
 import { tongoAbi } from "./tongoAbi";
-import { prove_fund, g ,decipher_balance, prove_withdraw_all, prove_withdraw, prove_transfer} from "she-js"
+import { prove_fund, g ,decipher_balance, prove_withdraw_all, prove_withdraw, prove_transfer, auditor_key} from "she-js"
 import { ProjectivePoint } from "@scure/starknet";
 
 
@@ -42,19 +42,8 @@ const tx_context = {
     }
 }
 
-function decipher(x:bigint, CL:{x:BigNumberish, y:BigNumberish}, CR:{x:BigNumberish, y:BigNumberish}): bigint {
-    if ((CL.x == 0n) && (CL.y == 0n)) { return 0n }
-    if ((CR.x == 0n) && (CR.y == 0n)) { return 0n }
-    else {
-        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
-        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
-        return decipher_balance(x, L,R)
-    }
-
-}
-
 const wallet = deployerWallet(provider);
-const tongoAddress = "0x05997125a902f0a4e71697bfe72faab63f57195fb7b39643cb759c2115f9f200";
+const tongoAddress = "0x04159dac7fea40a2ff98174cfbb7cf84fe87b944973a87b8c408489cd6b78c7b";
 const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoAbi);
 
 async function get_nonce(PubKey: ProjectivePoint): Promise<bigint> {
@@ -63,18 +52,64 @@ async function get_nonce(PubKey: ProjectivePoint): Promise<bigint> {
     return nonce
 }
 
-async function get_and_decipher_balance(x: bigint): Promise<{L:ProjectivePoint | null, R:ProjectivePoint | null , balance:bigint}> {
+interface CipherBalance {
+    amount: bigint,
+    L:ProjectivePoint | null,
+    R:ProjectivePoint | null,
+}
+interface FullState {
+    balance: CipherBalance,
+    pending: CipherBalance,
+    audit: CipherBalance,
+}
+
+async function get_and_decipher_balance(x: bigint): Promise<CipherBalance> {
     const PubKey = g.multiplyUnsafe(x)
     let {CL, CR} = await Tongo.get_balance({x:PubKey.x, y:PubKey.y})
-    if ((CL.x == 0n) && (CL.y == 0n)) { return {L:null, R:null, balance:0n }}
-    if ((CR.x == 0n) && (CR.y == 0n)) { return {L:null, R:null, balance:0n }}
+    if ((CL.x == 0n) && (CL.y == 0n)) { return {L:null, R:null, amount:0n }}
+    if ((CR.x == 0n) && (CR.y == 0n)) { return {L:null, R:null, amount:0n }}
     else {
         const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
         const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
-        const balance =  decipher_balance(x,L,R)
-        return {L,R,balance}
+        const amount =  decipher_balance(x,L,R)
+        return {L,R,amount}
     }
 }
+
+async function get_and_decipher_pending(x: bigint): Promise<CipherBalance> {
+    const PubKey = g.multiplyUnsafe(x)
+    let {CL, CR} = await Tongo.get_buffer({x:PubKey.x, y:PubKey.y})
+    if ((CL.x == 0n) && (CL.y == 0n)) { return {L:null, R:null, amount:0n }}
+    if ((CR.x == 0n) && (CR.y == 0n)) { return {L:null, R:null, amount:0n }}
+    else {
+        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
+        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
+        const amount =  decipher_balance(x,L,R)
+        return {L,R,amount}
+    }
+}
+
+async function get_and_decipher_audit(x:bigint): Promise<CipherBalance> {
+    const PubKey = g.multiplyUnsafe(x)
+    let {CL, CR} = await Tongo.get_audit({x:PubKey.x, y:PubKey.y})
+    if ((CL.x == 0n) && (CL.y == 0n)) { return {L:null, R:null, amount:0n }}
+    if ((CR.x == 0n) && (CR.y == 0n)) { return {L:null, R:null, amount:0n }}
+    else {
+        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
+        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
+        const amount =  decipher_balance(auditor_key,L,R)
+        return {L,R,amount}
+    }
+}
+
+//TODO: This function shoul change. A enpoint in the contract should be added to get allmos all the data in one call
+async function get_full_state(x:bigint): Promise<FullState> { 
+    let balance = await get_and_decipher_balance(x)
+    let pending = await get_and_decipher_pending(x)
+    let audit   = await get_and_decipher_audit(x)
+    return {balance, pending, audit}
+}
+
 
 async function generate_call_fund(x:bigint, amount: bigint): Promise<Call> {
     const y= g.multiplyUnsafe(x)
@@ -85,14 +120,25 @@ async function generate_call_fund(x:bigint, amount: bigint): Promise<Call> {
     return call
 }
 
+async function generate_call_rollover(x:bigint) {
+    let pending = await get_and_decipher_pending(x)
+    if (pending.amount == 0n) { throw new Error("Your pending ammount is 0") }
+
+    const y= g.multiplyUnsafe(x)
+    let nonce = await get_nonce(y)
+    const {inputs, proof} = prove_fund(x,nonce)
+    const call = Tongo.populate("rollover",[inputs.y,proof])
+    return call
+}
+
 async function generate_call_withdraw_all(x: bigint, to:bigint ): Promise<Call>{
-    const y = g.multiplyUnsafe(x)
-    const nonce = await get_nonce(y)
-    let {L,R,balance} = await get_and_decipher_balance(x)
+    let {L,R,amount:balance} = await get_and_decipher_balance(x)
     if (L == null) { throw new Error("You dont have balance")}
     if (R == null) { throw new Error("You dont have balance")}
     if (balance == 0n) { throw new Error("You dont have balance")}
 
+    const y = g.multiplyUnsafe(x)
+    const nonce = await get_nonce(y)
     let {inputs: inputs_withdraw_all, proof: proof_withdraw_all} = prove_withdraw_all(
         x,
         L,
@@ -108,13 +154,13 @@ async function generate_call_withdraw_all(x: bigint, to:bigint ): Promise<Call>{
 
 
 async function generate_call_withdraw(x: bigint, amount:bigint, to:bigint ) {
-    const y = g.multiplyUnsafe(x)
-    const nonce = await get_nonce(y)
-    let {L,R,balance} = await get_and_decipher_balance(x)
+    let {L,R,amount:balance} = await get_and_decipher_balance(x)
     if (L == null) { throw new Error("You dont have balance")}
     if (R == null) { throw new Error("You dont have balance")}
     if (balance < amount) { throw new Error("You dont have enought balance")}
 
+    const y = g.multiplyUnsafe(x)
+    const nonce = await get_nonce(y)
     let {inputs, proof} = prove_withdraw(
         x,
         balance,
@@ -130,13 +176,13 @@ async function generate_call_withdraw(x: bigint, amount:bigint, to:bigint ) {
 
 
 async function generate_call_transfer(x: bigint, amount:bigint, to:ProjectivePoint): Promise<Call> {
-    const y = g.multiplyUnsafe(x)
-    const nonce = await get_nonce(y)
-    let {L,R,balance} = await get_and_decipher_balance(x)
+    let {L,R,amount:balance} = await get_and_decipher_balance(x)
     if (L == null) { throw new Error("You dont have balance")}
     if (R == null) { throw new Error("You dont have balance")}
     if (balance < amount) { throw new Error("You dont have enought balance")}
 
+    const y = g.multiplyUnsafe(x)
+    const nonce = await get_nonce(y)
     let {inputs, proof} = prove_transfer(
         x,
         to,
@@ -150,36 +196,51 @@ async function generate_call_transfer(x: bigint, amount:bigint, to:ProjectivePoi
     return call
 }
 
-;(async () => {
-    const sk = 31892n
 
-    let call = await generate_call_fund(sk,30n)
+;(async () => {
+    const sk = 319289312n
+    const sk2 = 216831423n
+    let to = g.multiplyUnsafe(sk2)
+
+    let state = await get_full_state(sk)
+    console.log("State user 1: ",state)
+
+    state = await get_full_state(sk2)
+    console.log("State user 2: ",state)
+
+    console.log("------------------------ Funding user 1 --------------------------------")
+    let call = await generate_call_fund(sk,100n)
     let response = await wallet.execute(call,tx_context)
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash)
     let res =  await provider.waitForTransaction(response.transaction_hash)
-    console.log(res)
 
-    call = await generate_call_withdraw(sk, 10n, 9382n)
+    state = await get_full_state(sk)
+    console.log("State user 1: ",state)
+
+    state = await get_full_state(sk2)
+    console.log("State user 2: ",state)
+
+    console.log("------------------------ Trasnfering to user 2 --------------------------------")
+    call = await generate_call_transfer(sk, 30n, to)
     response = await wallet.execute(call,tx_context)
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash)
     res =  await provider.waitForTransaction(response.transaction_hash)
-    console.log(res)
 
-    const sk2 = 20983123n
-    let to = g.multiplyUnsafe(sk2)
+    state = await get_full_state(sk)
+    console.log("State user 1: ",state)
 
-    call = await generate_call_transfer(sk,10n,to)
+    state = await get_full_state(sk2)
+    console.log("State user 2: ",state)
+
+
+    console.log("------------------------ RollOver of user 2 --------------------------------")
+    call = await generate_call_rollover(sk2)
     response = await wallet.execute(call,tx_context)
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash)
     res =  await provider.waitForTransaction(response.transaction_hash)
-    console.log(res)
 
-    call = await generate_call_withdraw_all(sk,83912n)
-    response = await wallet.execute(call,tx_context)
-    console.log("Awaiting for confirmation on tx: ", response.transaction_hash)
-    res =  await provider.waitForTransaction(response.transaction_hash)
-    console.log(res)
-
-  })()
+    state = await get_full_state(sk2)
+    console.log("State user 2: ",state)
+})()
 
 
