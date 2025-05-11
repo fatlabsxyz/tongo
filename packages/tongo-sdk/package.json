@@ -7,8 +7,8 @@
     "clean": "rm -rf dist",
     "build": "tsc -p ./tsconfig.json --outDir dist",
     "test": "vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
-    "lint": "eslint \"{src,test}/**/*.{js,ts,json}\"",
-    "lint:fix": "eslint \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
+    "lint": "eslint --config ../../eslint.config.mjs \"{src,test}/**/*.{js,ts,json}\"",
+    "lint:fix": "eslint --config ../../eslint.config.mjs \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
     "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
     "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
   },
