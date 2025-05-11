@@ -65,10 +65,10 @@ pub mod Tongo {
     // stored in the form (x,y). Reading an empty y gives a default value of ((0,0), (0,0)) wich are
     // not curve points TODO: it would be nice to set te default value to curve points like  (y,g)
     struct Storage {
-        balance: Map<(felt252, felt252), CipherBalance>,
-        audit_balance: Map<(felt252, felt252), CipherBalance>,
-        buffer: Map<(felt252, felt252), CipherBalance>,
-        nonce: Map<(felt252, felt252), u64>,
+        balance: Map<PubKey, CipherBalance>,
+        audit_balance: Map<PubKey, CipherBalance>,
+        buffer: Map<PubKey, CipherBalance>,
+        nonce: Map<PubKey, u64>,
     }
 
 
@@ -174,7 +174,7 @@ pub mod Tongo {
             //TODO: Revisar esto
             self
                 .balance
-                .entry((from.x, from.y))
+                .entry(from)
                 .write(
                     CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }
                 );
@@ -225,66 +225,66 @@ pub mod Tongo {
 
         fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
             y.assert_on_curve();
-            self.nonce.entry((y.x, y.y)).read()
+            self.nonce.entry(y).read()
         }
 
         /// Returns the cipher balance of the given public key y. The cipher balance consist in two
         /// points of the stark curve. (L,R) = ((Lx, Ly), (Rx, Ry )) = (g**b y**r , g**r) for some
         /// random r.
         fn get_balance(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.balance.entry((y.x, y.y)).read()
+            self.balance.entry(y).read()
         }
 
         fn get_audit(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.audit_balance.entry((y.x, y.y)).read()
+            self.audit_balance.entry(y).read()
         }
 
         fn get_buffer(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.buffer.entry((y.x, y.y)).read()
+            self.buffer.entry(y).read()
         }
     }
 
     #[generate_trait]
     pub impl PrivateImpl of IPrivate {
         fn add_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
-            let old_balance = self.balance.entry((y.x, y.y)).read();
+            let old_balance = self.balance.entry(y).read();
             if old_balance.is_zero() {
-                self.balance.entry((y.x, y.y)).write(new_balance);
+                self.balance.entry(y).write(new_balance);
             } else {
                 let sum = old_balance.add(new_balance);
-                self.balance.entry((y.x, y.y)).write(sum);
+                self.balance.entry(y).write(sum);
             }
         }
 
         fn remove_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
-            let old_balance = self.balance.entry((y.x, y.y)).read();
+            let old_balance = self.balance.entry(y).read();
             if old_balance.is_zero() {
-                self.balance.entry((y.x, y.y)).write(new_balance);
+                self.balance.entry(y).write(new_balance);
             } else {
                 let sum = old_balance.remove(new_balance);
-                self.balance.entry((y.x, y.y)).write(sum);
+                self.balance.entry(y).write(sum);
             }
         }
 
         fn add_buffer(ref self: ContractState, y: PubKey, new_buffer: CipherBalance) {
-            let old_buffer = self.buffer.entry((y.x, y.y)).read();
+            let old_buffer = self.buffer.entry(y).read();
             if old_buffer.is_zero() {
-                self.buffer.entry((y.x, y.y)).write(new_buffer);
+                self.buffer.entry(y).write(new_buffer);
             } else {
                 let sum = old_buffer.add(new_buffer);
-                self.buffer.entry((y.x, y.y)).write(sum);
+                self.buffer.entry(y).write(sum);
             }
         }
 
         fn buffer_to_balance(ref self: ContractState, y: PubKey) {
-            let buffer = self.buffer.entry((y.x, y.y)).read();
+            let buffer = self.buffer.entry(y).read();
             if buffer.is_zero() {
                 return;
             }
             self.add_balance(y, buffer);
             self
                 .buffer
-                .entry((y.x, y.y))
+                .entry(y)
                 .write(
                     CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }
                 );
@@ -292,22 +292,22 @@ pub mod Tongo {
 
 
         fn add_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
-            let old_audit = self.audit_balance.entry((y.x, y.y)).read();
+            let old_audit = self.audit_balance.entry(y).read();
             if old_audit.is_zero() {
-                self.audit_balance.entry((y.x, y.y)).write(new_audit);
+                self.audit_balance.entry(y).write(new_audit);
             } else {
                 let sum = old_audit.add(new_audit);
-                self.audit_balance.entry((y.x, y.y)).write(sum);
+                self.audit_balance.entry(y).write(sum);
             }
         }
 
         fn remove_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
-            let old_audit = self.audit_balance.entry((y.x, y.y)).read();
+            let old_audit = self.audit_balance.entry(y).read();
             if old_audit.is_zero() {
-                self.audit_balance.entry((y.x, y.y)).write(new_audit);
+                self.audit_balance.entry(y).write(new_audit);
             } else {
                 let sum = old_audit.remove(new_audit);
-                self.audit_balance.entry((y.x, y.y)).write(sum);
+                self.audit_balance.entry(y).write(sum);
             }
         }
 
@@ -327,9 +327,9 @@ pub mod Tongo {
         }
 
         fn increase_nonce(ref self: ContractState, y: PubKey) {
-            let mut nonce = self.nonce.entry((y.x, y.y)).read();
+            let mut nonce = self.nonce.entry(y).read();
             nonce = nonce + 1;
-            self.nonce.entry((y.x, y.y)).write(nonce);
+            self.nonce.entry(y).write(nonce);
         }
     }
 }
