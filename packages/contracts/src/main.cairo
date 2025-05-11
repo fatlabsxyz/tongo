@@ -59,13 +59,13 @@ pub trait ITongo<TContractState> {
 pub mod Tongo {
     use core::starknet::{
         storage::StoragePointerReadAccess, storage::StoragePointerWriteAccess,
-        storage::StoragePathEntry, storage::Map, syscalls, SyscallResultTrait, ContractAddress,
+        storage::StoragePathEntry, storage::Map, syscalls, SyscallResultTrait,
         get_caller_address, get_contract_address,
     };
 
     use crate::verifier::structs::{
-        InputsTransfer, ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw, InputsFund,
-        ProofOfFund, InputsWithdraw, CipherBalance, CipherBalanceTrait, StarkPoint,
+        InputsTransfer, InputsFund, ProofOfFund, InputsWithdraw, CipherBalance, CipherBalanceTrait,
+        StarkPoint,
     };
     use crate::verifier::structs::PubKey;
     use crate::verifier::structs::PubKeyTrait;
