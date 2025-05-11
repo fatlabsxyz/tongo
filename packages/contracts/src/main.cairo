@@ -13,6 +13,11 @@ pub struct Fund {
     pub proof: ProofOfFund
 }
 
+#[derive(Drop, Destruct, Serde)]
+pub struct Rollover {
+    pub to: PubKey,
+    pub proof: ProofOfFund
+}
 
 #[derive(Drop, Destruct, Serde)]
 pub struct Withdraw {
@@ -45,7 +50,7 @@ pub struct Transfer {
 #[starknet::interface]
 pub trait ITongo<TContractState> {
     fn fund(ref self: TContractState, fund: Fund);
-    fn rollover(ref self: TContractState, to: PubKey, proof: ProofOfFund);
+    fn rollover(ref self: TContractState, rollover: Rollover);
     fn withdraw_all(ref self: TContractState, withdraw_all: WithdrawAll);
     fn withdraw(ref self: TContractState, withdraw: Withdraw);
     fn transfer(ref self: TContractState, transfer: Transfer);
@@ -64,7 +69,7 @@ pub mod Tongo {
     };
 
     use crate::verifier::structs::{
-        InputsTransfer, InputsFund, ProofOfFund, InputsWithdraw, CipherBalance, CipherBalanceTrait,
+        InputsTransfer, InputsFund, InputsWithdraw, CipherBalance, CipherBalanceTrait,
         StarkPoint,
     };
     use crate::verifier::structs::PubKey;
@@ -75,7 +80,7 @@ pub mod Tongo {
     use crate::verifier::utils::{in_range, view_key};
     use crate::constants::{STRK_ADDRESS};
 
-    use super::{Withdraw, WithdrawAll, Transfer, Fund};
+    use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover};
 
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
@@ -91,7 +96,8 @@ pub mod Tongo {
 
     #[abi(embed_v0)]
     impl TongoImpl of super::ITongo<ContractState> {
-        fn rollover(ref self: ContractState, to: PubKey, proof: ProofOfFund) {
+        fn rollover(ref self: ContractState, rollover: Rollover) {
+            let Rollover { to, proof } = rollover;
             let nonce = self.get_nonce(to);
             let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
             verify_fund(inputs, proof);
