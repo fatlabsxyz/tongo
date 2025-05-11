@@ -3,6 +3,7 @@ use crate::prover::utils::{generate_random};
 use crate::prover::functions::{prove_transfer, prove_fund};
 
 use tongo::main::ITongoDispatcherTrait;
+use tongo::main::{Fund, Transfer};
 use tongo::verifier::structs::{PubKeyTrait};
 
 #[test]
@@ -19,7 +20,7 @@ fn test_transfer() {
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
     let b0 = 3124;
-    dispatcher.fund(y, b0, fund_proof);
+    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof });
 
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);
@@ -27,7 +28,17 @@ fn test_transfer() {
     let b = 100;
     let (inputs, proof) = prove_transfer(x, y_bar, b0, b, balance.CL, balance.CR, nonce, seed + 1);
     dispatcher
-        .transfer(inputs.y, inputs.y_bar, inputs.L, inputs.L_bar, inputs.L_audit, inputs.R, proof,);
+        .transfer(
+            Transfer {
+                from: inputs.y,
+                to: inputs.y_bar,
+                L: inputs.L,
+                L_bar: inputs.L_bar,
+                L_audit: inputs.L_audit,
+                R: inputs.R,
+                proof
+            }
+        );
 }
 
 #[test]
@@ -44,7 +55,7 @@ fn test_benchmark_prover() {
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
     let b0 = 3124;
-    dispatcher.fund(y, b0, fund_proof);
+    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof });
 
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);

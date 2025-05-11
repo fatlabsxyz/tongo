@@ -1,7 +1,7 @@
 use crate::tongo::setup::{setup_tongo};
 use crate::prover::functions::{prove_fund};
 use crate::prover::utils::{generate_random};
-use tongo::main::ITongoDispatcherTrait;
+use tongo::main::{ITongoDispatcherTrait, Fund};
 use tongo::verifier::structs::{PubKeyTrait};
 
 #[test]
@@ -17,12 +17,16 @@ fn test_fund() {
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
     let b1 = 250;
-    dispatcher.fund(y, b1, fund_proof);
+    let fundPayload = Fund { to: y, amount: b1, proof: fund_proof };
+
+    dispatcher.fund(fundPayload);
 
     let nonce = dispatcher.get_nonce(y);
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
     let b2 = 50;
-    dispatcher.fund(y, b2, fund_proof);
+    let fundPayload = Fund { to: y, amount: b2, proof: fund_proof };
+
+    dispatcher.fund(fundPayload);
 }
 
 #[test]
@@ -39,6 +43,7 @@ fn test_fund_failed() {
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
     let b1 = 250;
-    dispatcher.fund(y, b1, fund_proof);
-    dispatcher.fund(y, b1, fund_proof);
+
+    dispatcher.fund(Fund { to: y, amount: b1, proof: fund_proof });
+    dispatcher.fund(Fund { to: y, amount: b1, proof: fund_proof });
 }

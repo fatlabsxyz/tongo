@@ -5,6 +5,7 @@ use starknet::ContractAddress;
 use tongo::verifier::structs::{PubKeyTrait, CipherBalanceTrait};
 
 use tongo::main::ITongoDispatcherTrait;
+use tongo::main::{Fund, Transfer, Withdraw, WithdrawAll};
 
 #[test]
 fn full() {
@@ -47,7 +48,7 @@ fn full() {
     // Funding the y account
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
     let initial_balance = 3124;
-    dispatcher.fund(y, initial_balance, fund_proof);
+    dispatcher.fund(Fund { to: y, amount: initial_balance, proof: fund_proof });
 
     //Bufer should be 0, balance initial_balance and audit initial_balance
     let buffer = dispatcher.get_buffer(y);
@@ -68,7 +69,17 @@ fn full() {
         x, y_bar, initial_balance, transfer_amount, balance.CL, balance.CR, nonce, seed + 1
     );
     dispatcher
-        .transfer(inputs.y, inputs.y_bar, inputs.L, inputs.L_bar, inputs.L_audit, inputs.R, proof,);
+        .transfer(
+            Transfer {
+                from: inputs.y,
+                to: inputs.y_bar,
+                L: inputs.L,
+                L_bar: inputs.L_bar,
+                L_audit: inputs.L_audit,
+                R: inputs.R,
+                proof
+            }
+        );
 
     // nonce for y should be 2
     let nonce = dispatcher.get_nonce(y);
@@ -122,7 +133,7 @@ fn full() {
         x_bar, transfer_amount, amount, tranfer_address, balance.CL, balance.CR, nonce, seed + 2
     );
 
-    dispatcher.withdraw(y_bar, amount, tranfer_address, proof);
+    dispatcher.withdraw(Withdraw { from: y_bar, amount, to: tranfer_address, proof });
 
     //now y_bar noce should be 2
     let nonce = dispatcher.get_nonce(y_bar);

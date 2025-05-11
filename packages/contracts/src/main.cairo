@@ -6,38 +6,53 @@ use crate::verifier::structs::{StarkPoint};
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary,
 // replay_protection.
 
+#[derive(Drop, Destruct, Serde)]
+pub struct Fund {
+    pub to: PubKey,
+    pub amount: felt252,
+    pub proof: ProofOfFund
+}
+
+
+#[derive(Drop, Destruct, Serde)]
+pub struct Withdraw {
+    pub from: PubKey,
+    pub amount: felt252,
+    pub to: ContractAddress,
+    pub proof: ProofOfWithdraw
+}
+
+#[derive(Drop, Destruct, Serde)]
+pub struct WithdrawAll {
+    pub from: PubKey,
+    pub amount: felt252,
+    pub to: ContractAddress,
+    pub proof: ProofOfWitdhrawAll
+}
+
+
+#[derive(Drop, Destruct, Serde)]
+pub struct Transfer {
+    pub from: PubKey,
+    pub to: PubKey,
+    pub L: StarkPoint,
+    pub L_bar: StarkPoint,
+    pub L_audit: StarkPoint,
+    pub R: StarkPoint,
+    pub proof: ProofOfTransfer,
+}
+
 #[starknet::interface]
 pub trait ITongo<TContractState> {
-    fn fund(ref self: TContractState, to: PubKey, amount: felt252, proof: ProofOfFund);
+    fn fund(ref self: TContractState, fund: Fund);
     fn rollover(ref self: TContractState, to: PubKey, proof: ProofOfFund);
+    fn withdraw_all(ref self: TContractState, withdraw_all: WithdrawAll);
+    fn withdraw(ref self: TContractState, withdraw: Withdraw);
+    fn transfer(ref self: TContractState, transfer: Transfer);
     fn get_balance(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_audit(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_buffer(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_nonce(self: @TContractState, y: PubKey) -> u64;
-    fn withdraw_all(
-        ref self: TContractState,
-        from: PubKey,
-        amount: felt252,
-        to: ContractAddress,
-        proof: ProofOfWitdhrawAll
-    );
-    fn withdraw(
-        ref self: TContractState,
-        from: PubKey,
-        amount: felt252,
-        to: ContractAddress,
-        proof: ProofOfWithdraw
-    );
-    fn transfer(
-        ref self: TContractState,
-        from: PubKey,
-        to: PubKey,
-        L: StarkPoint,
-        L_bar: StarkPoint,
-        L_audit: StarkPoint,
-        R: StarkPoint,
-        proof: ProofOfTransfer,
-    );
 }
 
 #[starknet::contract]
@@ -59,6 +74,8 @@ pub mod Tongo {
     };
     use crate::verifier::utils::{in_range, view_key};
     use crate::constants::{STRK_ADDRESS};
+
+    use super::{Withdraw, WithdrawAll, Transfer, Fund};
 
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
@@ -83,7 +100,8 @@ pub mod Tongo {
         }
 
         /// Transfer some STARK to Tongo contract and assing some Tongo to account y
-        fn fund(ref self: ContractState, to: PubKey, amount: felt252, proof: ProofOfFund) {
+        fn fund(ref self: ContractState, fund: Fund) {
+            let Fund { to, amount, proof } = fund;
             to.assert_on_curve();
             in_range(amount);
             let nonce = self.get_nonce(to);
@@ -101,13 +119,9 @@ pub mod Tongo {
         }
 
         /// Withdraw some tongo from acount and send the stark to the recipient
-        fn withdraw(
-            ref self: ContractState,
-            from: PubKey,
-            amount: felt252,
-            to: ContractAddress,
-            proof: ProofOfWithdraw
-        ) {
+        fn withdraw(ref self: ContractState, withdraw: Withdraw) {
+            let Withdraw { from, amount, to, proof } = withdraw;
+
             //        //TODO: The recipient ContractAddress has to be signed by x otherwhise the
             //        proof can be frontruned.
             let balance = self.get_balance(from);
@@ -139,13 +153,9 @@ pub mod Tongo {
         }
 
         /// Withdraw ALL tongo from acount and send the stark to the recipient
-        fn withdraw_all(
-            ref self: ContractState,
-            from: PubKey,
-            amount: felt252,
-            to: ContractAddress,
-            proof: ProofOfWitdhrawAll
-        ) {
+        fn withdraw_all(ref self: ContractState, withdraw_all: WithdrawAll) {
+            let WithdrawAll { from, amount, to, proof } = withdraw_all;
+
             //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be
             //frontruned.
             let balance = self.get_balance(from);
@@ -183,16 +193,9 @@ pub mod Tongo {
         /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done
         /// w.r.t the balance stored in Balance plus Pending and to the nonce stored in the
         /// contract.
-        fn transfer(
-            ref self: ContractState,
-            from: PubKey,
-            to: PubKey,
-            L: StarkPoint,
-            L_bar: StarkPoint,
-            L_audit: StarkPoint,
-            R: StarkPoint,
-            proof: ProofOfTransfer,
-        ) {
+        fn transfer(ref self: ContractState, transfer: Transfer) {
+            let Transfer { from, to, L, L_bar, L_audit, R, proof, } = transfer;
+
             let balance = self.get_balance(from);
             let nonce = self.get_nonce(from);
 
