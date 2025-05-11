@@ -53,6 +53,7 @@ pub mod Tongo {
         ProofOfFund, InputsWithdraw, CipherBalance, CipherBalanceTrait, StarkPoint,
     };
     use crate::verifier::structs::PubKey;
+    use crate::verifier::structs::PubKeyTrait;
     use crate::verifier::verifier::{
         verify_withdraw, verify_withdraw_all, verify_transfer, verify_fund
     };
@@ -83,6 +84,7 @@ pub mod Tongo {
 
         /// Transfer some STARK to Tongo contract and assing some Tongo to account y
         fn fund(ref self: ContractState, to: PubKey, amount: felt252, proof: ProofOfFund) {
+            to.assert_on_curve();
             in_range(amount);
             let nonce = self.get_nonce(to);
             //        self.get_transfer(amount);
@@ -222,6 +224,7 @@ pub mod Tongo {
         }
 
         fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
+            y.assert_on_curve();
             self.nonce.entry((y.x, y.y)).read()
         }
 
