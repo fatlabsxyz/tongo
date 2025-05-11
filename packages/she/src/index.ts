@@ -54,11 +54,11 @@ export function poe(
 }
 
 export function prove_poe(x: bigint, g: ProjectivePoint) {
-  let y = g.multiplyUnsafe(x);
-  let k = generate_random()
+  const y = g.multiplyUnsafe(x);
+  const k = generate_random()
   const A = g.multiplyUnsafe(k);
-  let c = challenge_commits2(0n, [A]);
-  let s = (k + x * c) % CURVE_ORDER;
+  const c = challenge_commits2(0n, [A]);
+  const s = (k + x * c) % CURVE_ORDER;
   return { y, A, s };
 }
 
@@ -216,24 +216,24 @@ export function prove_withdraw_all(
     R: CR,
   };
   //to: ContractAddress
-  let seq: bigint[] = [
+  const seq: bigint[] = [
     withdraw_all_selector,
     y.toAffine().x,
     y.toAffine().y,
     to,
     nonce,
   ];
-  let prefix = compute_prefix(seq);
+  const prefix = compute_prefix(seq);
 
-  let k = generate_random()
+  const k = generate_random()
   const R = CR;
   const A_x = g.multiplyUnsafe(k);
   const A_cr = R.multiplyUnsafe(k);
 
-  let c = challenge_commits2(prefix, [A_x, A_cr]);
-  let s_x = (k + x * c) % CURVE_ORDER;
+  const c = challenge_commits2(prefix, [A_x, A_cr]);
+  const s_x = (k + x * c) % CURVE_ORDER;
 
-  let proof: ProofOfWithdrawAll = { A_x: A_x, A_cr: A_cr, s_x: s_x };
+  const proof: ProofOfWithdrawAll = { A_x: A_x, A_cr: A_cr, s_x: s_x };
   return { inputs, proof };
 }
 
@@ -242,15 +242,15 @@ export function verify_withdraw_all(
   proof: ProofOfWithdrawAll,
 ) {
   const withdraw_all_selector = 36956203100010950502698282092n;
-  let seq: bigint[] = [
+  const seq: bigint[] = [
     withdraw_all_selector,
     inputs.y.toAffine().x,
     inputs.y.toAffine().y,
     inputs.to,
     inputs.nonce,
   ];
-  let prefix = compute_prefix(seq);
-  let c = challenge_commits2(prefix, [proof.A_x, proof.A_cr]);
+  const prefix = compute_prefix(seq);
+  const c = challenge_commits2(prefix, [proof.A_x, proof.A_cr]);
 
   let res = poe(inputs.y, g, proof.A_x, c, proof.s_x);
   if (res == false) {
@@ -416,15 +416,15 @@ export function prove_transfer(
   CR: ProjectivePoint,
   nonce: bigint,
 ): { inputs: InputsTransfer; proof: ProofOfTransfer } {
-  let transfer_selector = 8390876182755042674n;
-  let y = g.multiplyUnsafe(x);
+  const transfer_selector = 8390876182755042674n;
+  const y = g.multiplyUnsafe(x);
 
-  let { r, proof: range } = prove_range(amount, 32);
-  let { L, R } = cipher_balance(y, amount, r);
-  let L_bar = cipher_balance(y_bar, amount, r).L;
-  let L_audit = cipher_balance(view, amount, r).L;
+  const { r, proof: range } = prove_range(amount, 32);
+  const { L, R } = cipher_balance(y, amount, r);
+  const L_bar = cipher_balance(y_bar, amount, r).L;
+  const L_audit = cipher_balance(view, amount, r).L;
 
-  let seq: bigint[] = [
+  const seq: bigint[] = [
     transfer_selector,
     y.toAffine().x,
     y.toAffine().y,
@@ -436,9 +436,9 @@ export function prove_transfer(
     R.toAffine().y,
     nonce,
   ];
-  let prefix = compute_prefix(seq);
+  const prefix = compute_prefix(seq);
 
-  let inputs: InputsTransfer = {
+  const inputs: InputsTransfer = {
     y: y,
     y_bar: y_bar,
     CL: CL,
@@ -450,15 +450,15 @@ export function prove_transfer(
     L_audit: L_audit,
   };
 
-  let b_left = initial_balance - amount;
-  let { r: r2, proof: range2 } = prove_range( b_left, 32);
-  let G = CR.subtract(R);
+  const b_left = initial_balance - amount;
+  const { r: r2, proof: range2 } = prove_range( b_left, 32);
+  const G = CR.subtract(R);
 
-  let kx = generate_random()
-  let kb = generate_random()
-  let kr = generate_random()
-  let kb2 = generate_random()
-  let kr2 = generate_random()
+  const kx = generate_random()
+  const kb = generate_random()
+  const kr = generate_random()
+  const kb2 = generate_random()
+  const kr2 = generate_random()
 
   const Ax = g.multiplyUnsafe(kx);
   const Ar = g.multiplyUnsafe(kr);
@@ -469,7 +469,7 @@ export function prove_transfer(
   const A_b2 = g.multiplyUnsafe(kb2).add(G.multiplyUnsafe(kx));
   const A_v2 = g.multiplyUnsafe(kb2).add(h.multiplyUnsafe(kr2));
 
-  let c = challenge_commits2(prefix, [
+  const c = challenge_commits2(prefix, [
     Ax,
     Ar,
     A_b,
@@ -480,13 +480,13 @@ export function prove_transfer(
     A_audit,
   ]);
 
-  let s_x = (kx + x * c) % CURVE_ORDER;
-  let s_b = (kb + amount * c) % CURVE_ORDER;
-  let s_r = (kr + r * c) % CURVE_ORDER;
-  let s_b2 = (kb2 + b_left * c) % CURVE_ORDER;
-  let s_r2 = (kr2 + r2 * c) % CURVE_ORDER;
+  const s_x = (kx + x * c) % CURVE_ORDER;
+  const s_b = (kb + amount * c) % CURVE_ORDER;
+  const s_r = (kr + r * c) % CURVE_ORDER;
+  const s_b2 = (kb2 + b_left * c) % CURVE_ORDER;
+  const s_r2 = (kr2 + r2 * c) % CURVE_ORDER;
 
-  let proof: ProofOfTransfer = {
+  const proof: ProofOfTransfer = {
     A_x: Ax,
     A_r: Ar,
     A_b: A_b,
@@ -510,8 +510,8 @@ export function verify_transfer(
   inputs: InputsTransfer,
   proof: ProofOfTransfer,
 ) {
-  let transfer_selector = 8390876182755042674n;
-  let seq: bigint[] = [
+  const transfer_selector = 8390876182755042674n;
+  const seq: bigint[] = [
     transfer_selector,
     inputs.y.toAffine().x,
     inputs.y.toAffine().y,
@@ -523,8 +523,8 @@ export function verify_transfer(
     inputs.R.toAffine().y,
     inputs.nonce,
   ];
-  let prefix = compute_prefix(seq);
-  let c = challenge_commits2(prefix, [
+  const prefix = compute_prefix(seq);
+  const c = challenge_commits2(prefix, [
     proof.A_x,
     proof.A_r,
     proof.A_b,
@@ -609,27 +609,27 @@ function simPOE(y: ProjectivePoint, gen: ProjectivePoint) {
 
 function prove_bit(bit: number, random: bigint): ProofOfBit {
   if (bit == 0) {
-    let V = h.multiplyUnsafe(random);
-    let V_1 = V.subtract(g);
+    const V = h.multiplyUnsafe(random);
+    const V_1 = V.subtract(g);
 
-    let k = generate_random()
+    const k = generate_random()
     const A0 = h.multiplyUnsafe(k);
 
-    let { A: A1, c: c1, s: s1 } = simPOE(V_1, h);
-    let c = challenge_commits2(0n, [A0, A1]);
-    let c0 = c ^ c1; //bitwisexor
-    let s0 = (k + c0 * random) % CURVE_ORDER;
+    const { A: A1, c: c1, s: s1 } = simPOE(V_1, h);
+    const c = challenge_commits2(0n, [A0, A1]);
+    const c0 = c ^ c1; //bitwisexor
+    const s0 = (k + c0 * random) % CURVE_ORDER;
 
     return { V, A0, A1, c0, s0, s1 };
   } else {
-    let V = g.add(h.multiplyUnsafe(random));
-    let { A: A0, c: c0, s: s0 } = simPOE(V, h);
+    const V = g.add(h.multiplyUnsafe(random));
+    const { A: A0, c: c0, s: s0 } = simPOE(V, h);
 
-    let k = generate_random()
-    let A1 = h.multiplyUnsafe(k);
-    let c = challenge_commits2(0n, [A0, A1]);
-    let c1 = c ^ c0; //bitwisexor
-    let s1 = (k + c1 * random) % CURVE_ORDER;
+    const k = generate_random()
+    const A1 = h.multiplyUnsafe(k);
+    const c = challenge_commits2(0n, [A0, A1]);
+    const c1 = c ^ c0; //bitwisexor
+    const s1 = (k + c1 * random) % CURVE_ORDER;
 
     return { V, A0, A1, c0, s0, s1 };
   }
@@ -670,8 +670,8 @@ function prove_range(
   let r = 0n;
   let i = 0;
   while (i < bits) {
-    let r_inn = generate_random()
-    let pi = prove_bit(b_bin[i]!, r_inn);
+    const r_inn = generate_random()
+    const pi = prove_bit(b_bin[i]!, r_inn);
     proof.push(pi);
     r = (r + r_inn * pow) % CURVE_ORDER;
     pow = 2n * pow;
@@ -779,14 +779,14 @@ export const PED2 = (data: bigint[], fn = pedersen) =>
 
 // This function coincides with cairo challenge_commits2
 export function challenge_commits2(prefix: bigint, commits: ProjectivePoint[]) {
-  let data: bigint[] = [prefix];
+  const data: bigint[] = [prefix];
   commits.forEach((commit, _index) => {
-    let temp = commit.toAffine();
+    const temp = commit.toAffine();
     data.push(temp.x);
     data.push(temp.y);
   });
 
-  let base = PED2(data);
+  const base = PED2(data);
   let salt = 1n;
   let c = CURVE_ORDER + 1n;
   while (c >= CURVE_ORDER) {
@@ -802,7 +802,7 @@ export function compute_prefix(seq: bigint[]) {
 }
 
 export function generate_random(): bigint {
-  let random_bytes = utils.randomPrivateKey();
+  const random_bytes = utils.randomPrivateKey();
   return utils.normPrivateKeyToScalar(random_bytes);
 }
 
@@ -824,10 +824,10 @@ export function decipher_balance(
   L: ProjectivePoint,
   R: ProjectivePoint,
 ): bigint {  
-  let Rx = R.multiplyUnsafe(x);
+  const Rx = R.multiplyUnsafe(x);
     if (Rx.equals(L)) {return 0n}
 
-  let g_b = L.subtract(Rx);
+  const g_b = L.subtract(Rx);
   let b = 1n;
   let temp = g;
   if (temp.equals(g_b)) {

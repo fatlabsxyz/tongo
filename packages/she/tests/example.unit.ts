@@ -31,7 +31,7 @@ describe("Example test suit", () => {
   it("Testing random generator", () => {
     let i = 0;
     while (i < 100) {
-      let r = generate_random();
+      const r = generate_random();
       expect(r).toBeLessThan(CURVE_ORDER);
       i = i + 1;
     }
@@ -50,8 +50,8 @@ describe("Example test suit", () => {
     const amount = 10n;
     const to = 116200n;
     const random = 111111n;
-    let y = g.multiplyUnsafe(x);
-    let { L, R } = cipher_balance(y, amount, random);
+    const y = g.multiplyUnsafe(x);
+    const { L, R } = cipher_balance(y, amount, random);
     const { inputs, proof } = prove_withdraw_all(
       x,
       L,
@@ -65,13 +65,13 @@ describe("Example test suit", () => {
 
   it("prove_withdrw vs verify_withdraw", () => {
     const x = 888n;
-    let y = g.multiplyUnsafe(x);
+    const y = g.multiplyUnsafe(x);
 
     const nonce = 2n;
     const initial_balance = 100n;
     const amount = 10n;
     const to = 555n;
-    let { L, R } = cipher_balance(y, initial_balance, 99n);
+    const { L, R } = cipher_balance(y, initial_balance, 99n);
     const { inputs, proof } = prove_withdraw(
       x,
       initial_balance,
@@ -86,15 +86,15 @@ describe("Example test suit", () => {
 
   it("prove_transfer vs verify_transfer", () => {
     const x = 4444n;
-    let y = g.multiplyUnsafe(x);
+    const y = g.multiplyUnsafe(x);
     const x_bar = 7777n;
-    let y_bar = g.multiplyUnsafe(x_bar);
+    const y_bar = g.multiplyUnsafe(x_bar);
 
     const nonce = 82n;
     const initial_balance = 100n;
     const amount = 10n;
     const random = 999n;
-    let { L, R } = cipher_balance(y, initial_balance, random);
+    const { L, R } = cipher_balance(y, initial_balance, random);
 
     const { inputs, proof } = prove_transfer(
       x,
@@ -112,8 +112,8 @@ describe("Example test suit", () => {
     const x = 1234n;
     const amount = 12n;
     const random = 111111n;
-    let y = g.multiplyUnsafe(x);
-    let { L, R } = cipher_balance(y, amount, random);
+    const y = g.multiplyUnsafe(x);
+    const { L, R } = cipher_balance(y, amount, random);
     const b = decipher_balance(x, L, R);
     expect(b).toEqual(amount);
   });
