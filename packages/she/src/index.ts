@@ -54,7 +54,7 @@ export function poe(
 }
 
 export function prove_poe(x: bigint, g: ProjectivePoint) {
-  const y = g.multiplyUnsafe(x);
+  const y = g.multiply(x);
   const k = generate_random()
   const A = g.multiplyUnsafe(k);
   const c = challenge_commits2(0n, [A]);
@@ -97,7 +97,7 @@ export function prove_poe2(
   g1: ProjectivePoint,
   g2: ProjectivePoint,
 ) {
-  const y = g1.multiplyUnsafe(x1).add(g2.multiplyUnsafe(x2));
+  const y = g1.multiply(x1).add(g2.multiply(x2));
   const k1 = generate_random()
   const k2 = generate_random()
   const A = g1.multiplyUnsafe(k1).add(g2.multiplyUnsafe(k2));
@@ -128,7 +128,7 @@ export function cipher_balance(
   amount: bigint,
   random: bigint,
 ) {
-  const L = g.multiplyUnsafe(amount).add(y.multiplyUnsafe(random));
+  const L = g.multiply(amount).add(y.multiplyUnsafe(random));
   const R = g.multiplyUnsafe(random);
   return { L, R };
 }
@@ -149,7 +149,7 @@ export function prove_fund(
   nonce: bigint,
 ): { inputs: InputsFund; proof: ProofOfFund } {
   const fund_selector = 1718972004n;
-  const y = g.multiplyUnsafe(x);
+  const y = g.multiply(x);
   const inputs: InputsFund = { y: y, nonce: nonce };
 
   const seq: bigint[] = [fund_selector, y.toAffine().x, y.toAffine().y, nonce];
@@ -206,7 +206,7 @@ export function prove_withdraw_all(
   amount: bigint,
 ): { inputs: InputsWithdraw; proof: ProofOfWithdrawAll } {
   const withdraw_all_selector = 36956203100010950502698282092n;
-  const y = g.multiplyUnsafe(x);
+  const y = g.multiply(x);
   const inputs: InputsWithdraw = {
     y: y,
     nonce: nonce,
@@ -288,7 +288,7 @@ export function prove_withdraw(
   nonce: bigint,
 ): { inputs: InputsWithdraw; proof: ProofOfWithdraw } {
   const withdraw_selector = 8604536554778681719n;
-  const y = g.multiplyUnsafe(x);
+  const y = g.multiply(x);
   const inputs: InputsWithdraw = {
     y: y,
     nonce: nonce,
@@ -417,7 +417,7 @@ export function prove_transfer(
   nonce: bigint,
 ): { inputs: InputsTransfer; proof: ProofOfTransfer } {
   const transfer_selector = 8390876182755042674n;
-  const y = g.multiplyUnsafe(x);
+  const y = g.multiply(x);
 
   const { r, proof: range } = prove_range(amount, 32);
   const { L, R } = cipher_balance(y, amount, r);
@@ -607,8 +607,7 @@ function simPOE(y: ProjectivePoint, gen: ProjectivePoint) {
   return { A, c, s };
 }
 
-function prove_bit(bit: number, random: bigint): ProofOfBit {
-  if (bit == 0) {
+function _prove_bit_0(random: bigint): ProofOfBit {
     const V = h.multiplyUnsafe(random);
     const V_1 = V.subtract(g);
 
@@ -621,7 +620,9 @@ function prove_bit(bit: number, random: bigint): ProofOfBit {
     const s0 = (k + c0 * random) % CURVE_ORDER;
 
     return { V, A0, A1, c0, s0, s1 };
-  } else {
+}
+
+function _prove_bit_1 (random: bigint): ProofOfBit {
     const V = g.add(h.multiplyUnsafe(random));
     const { A: A0, c: c0, s: s0 } = simPOE(V, h);
 
@@ -632,6 +633,13 @@ function prove_bit(bit: number, random: bigint): ProofOfBit {
     const s1 = (k + c1 * random) % CURVE_ORDER;
 
     return { V, A0, A1, c0, s0, s1 };
+}
+
+function prove_bit(bit: 0 | 1, random: bigint): ProofOfBit {
+  if (bit == 0) {
+    return _prove_bit_0(random)
+  } else {
+    return _prove_bit_1(random)
   }
 }
 
@@ -659,11 +667,12 @@ function prove_range(
   if (b >= 2 ** bits) {
     throw new Error("number not in range");
   }
-  const b_bin = b
+  const b_bin: (0|1)[] = b
     .toString(2)
     .padStart(bits, "0")
     .split("")
     .map(Number)
+    .map(x => x as (0|1))
     .reverse();
   const proof: ProofOfBit[] = [];
   let pow = 1n;
@@ -724,14 +733,14 @@ export function prove_expost(
     TL:ProjectivePoint,
     TR:ProjectivePoint
 ): {inputs: InputsExPost, proof:ProofExPost} {
-    const y = g.multiplyUnsafe(x)
+    const y = g.multiply(x)
     const b = decipher_balance(x, TL,TR)
     const r = generate_random()
     const {L,R} = cipher_balance(y,b,r)
     const {L:L_bar,R: R_bar} = cipher_balance(y_bar,b,r)
 
     const inputs: InputsExPost = {y, y_bar, L, L_bar, R, TL,TR}
-    
+
     const kx = generate_random()
     const kr = generate_random()
     const kb = generate_random()
@@ -824,7 +833,7 @@ export function decipher_balance(
   L: ProjectivePoint,
   R: ProjectivePoint,
 ): bigint {  
-  const Rx = R.multiplyUnsafe(x);
+  const Rx = R.multiply(x);
     if (Rx.equals(L)) {return 0n}
 
   const g_b = L.subtract(Rx);
