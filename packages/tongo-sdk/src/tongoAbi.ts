@@ -48,15 +48,19 @@ export const tongoAbi = [
   },
   {
     "type": "struct",
-    "name": "tongo::verifier::structs::CipherBalance",
+    "name": "tongo::main::Fund",
     "members": [
       {
-        "name": "CL",
-        "type": "tongo::verifier::structs::StarkPoint"
+        "name": "to",
+        "type": "tongo::verifier::structs::PubKey"
       },
       {
-        "name": "CR",
-        "type": "tongo::verifier::structs::StarkPoint"
+        "name": "amount",
+        "type": "core::felt252"
+      },
+      {
+        "name": "proof",
+        "type": "tongo::verifier::structs::ProofOfFund"
       }
     ]
   },
@@ -75,6 +79,28 @@ export const tongoAbi = [
       {
         "name": "s_x",
         "type": "core::felt252"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "tongo::main::WithdrawAll",
+    "members": [
+      {
+        "name": "from",
+        "type": "tongo::verifier::structs::PubKey"
+      },
+      {
+        "name": "amount",
+        "type": "core::felt252"
+      },
+      {
+        "name": "to",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "proof",
+        "type": "tongo::verifier::structs::ProofOfWitdhrawAll"
       }
     ]
   },
@@ -154,6 +180,28 @@ export const tongoAbi = [
   },
   {
     "type": "struct",
+    "name": "tongo::main::Withdraw",
+    "members": [
+      {
+        "name": "from",
+        "type": "tongo::verifier::structs::PubKey"
+      },
+      {
+        "name": "amount",
+        "type": "core::felt252"
+      },
+      {
+        "name": "to",
+        "type": "core::starknet::contract_address::ContractAddress"
+      },
+      {
+        "name": "proof",
+        "type": "tongo::verifier::structs::ProofOfWithdraw"
+      }
+    ]
+  },
+  {
+    "type": "struct",
     "name": "tongo::verifier::structs::ProofOfTransfer",
     "members": [
       {
@@ -219,6 +267,54 @@ export const tongoAbi = [
     ]
   },
   {
+    "type": "struct",
+    "name": "tongo::main::Transfer",
+    "members": [
+      {
+        "name": "from",
+        "type": "tongo::verifier::structs::PubKey"
+      },
+      {
+        "name": "to",
+        "type": "tongo::verifier::structs::PubKey"
+      },
+      {
+        "name": "L",
+        "type": "tongo::verifier::structs::StarkPoint"
+      },
+      {
+        "name": "L_bar",
+        "type": "tongo::verifier::structs::StarkPoint"
+      },
+      {
+        "name": "L_audit",
+        "type": "tongo::verifier::structs::StarkPoint"
+      },
+      {
+        "name": "R",
+        "type": "tongo::verifier::structs::StarkPoint"
+      },
+      {
+        "name": "proof",
+        "type": "tongo::verifier::structs::ProofOfTransfer"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "tongo::verifier::structs::CipherBalance",
+    "members": [
+      {
+        "name": "CL",
+        "type": "tongo::verifier::structs::StarkPoint"
+      },
+      {
+        "name": "CR",
+        "type": "tongo::verifier::structs::StarkPoint"
+      }
+    ]
+  },
+  {
     "type": "interface",
     "name": "tongo::main::ITongo",
     "items": [
@@ -227,16 +323,8 @@ export const tongoAbi = [
         "name": "fund",
         "inputs": [
           {
-            "name": "to",
-            "type": "tongo::verifier::structs::PubKey"
-          },
-          {
-            "name": "amount",
-            "type": "core::felt252"
-          },
-          {
-            "name": "proof",
-            "type": "tongo::verifier::structs::ProofOfFund"
+            "name": "fund",
+            "type": "tongo::main::Fund"
           }
         ],
         "outputs": [],
@@ -253,6 +341,42 @@ export const tongoAbi = [
           {
             "name": "proof",
             "type": "tongo::verifier::structs::ProofOfFund"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "withdraw_all",
+        "inputs": [
+          {
+            "name": "withdraw_all",
+            "type": "tongo::main::WithdrawAll"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "withdraw",
+        "inputs": [
+          {
+            "name": "withdraw",
+            "type": "tongo::main::Withdraw"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "transfer",
+        "inputs": [
+          {
+            "name": "transfer",
+            "type": "tongo::main::Transfer"
           }
         ],
         "outputs": [],
@@ -321,90 +445,6 @@ export const tongoAbi = [
           }
         ],
         "state_mutability": "view"
-      },
-      {
-        "type": "function",
-        "name": "withdraw_all",
-        "inputs": [
-          {
-            "name": "from",
-            "type": "tongo::verifier::structs::PubKey"
-          },
-          {
-            "name": "amount",
-            "type": "core::felt252"
-          },
-          {
-            "name": "to",
-            "type": "core::starknet::contract_address::ContractAddress"
-          },
-          {
-            "name": "proof",
-            "type": "tongo::verifier::structs::ProofOfWitdhrawAll"
-          }
-        ],
-        "outputs": [],
-        "state_mutability": "external"
-      },
-      {
-        "type": "function",
-        "name": "withdraw",
-        "inputs": [
-          {
-            "name": "from",
-            "type": "tongo::verifier::structs::PubKey"
-          },
-          {
-            "name": "amount",
-            "type": "core::felt252"
-          },
-          {
-            "name": "to",
-            "type": "core::starknet::contract_address::ContractAddress"
-          },
-          {
-            "name": "proof",
-            "type": "tongo::verifier::structs::ProofOfWithdraw"
-          }
-        ],
-        "outputs": [],
-        "state_mutability": "external"
-      },
-      {
-        "type": "function",
-        "name": "transfer",
-        "inputs": [
-          {
-            "name": "from",
-            "type": "tongo::verifier::structs::PubKey"
-          },
-          {
-            "name": "to",
-            "type": "tongo::verifier::structs::PubKey"
-          },
-          {
-            "name": "L",
-            "type": "tongo::verifier::structs::StarkPoint"
-          },
-          {
-            "name": "L_bar",
-            "type": "tongo::verifier::structs::StarkPoint"
-          },
-          {
-            "name": "L_audit",
-            "type": "tongo::verifier::structs::StarkPoint"
-          },
-          {
-            "name": "R",
-            "type": "tongo::verifier::structs::StarkPoint"
-          },
-          {
-            "name": "proof",
-            "type": "tongo::verifier::structs::ProofOfTransfer"
-          }
-        ],
-        "outputs": [],
-        "state_mutability": "external"
       }
     ]
   },

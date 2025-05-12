@@ -5,7 +5,7 @@ use core::traits::{Into, TryInto};
 
 
 /// Represent the public key y = g ** x of a user.
-#[derive(Serde, Drop, Debug, Copy)]
+#[derive(Serde, Drop, Debug, Copy, Hash)]
 pub struct PubKey {
     pub x: felt252,
     pub y: felt252,

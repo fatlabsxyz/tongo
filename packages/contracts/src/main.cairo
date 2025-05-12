@@ -6,51 +6,71 @@ use crate::verifier::structs::{StarkPoint};
 // the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary,
 // replay_protection.
 
+#[derive(Drop, Destruct, Serde)]
+pub struct Fund {
+    pub to: PubKey,
+    pub amount: felt252,
+    pub proof: ProofOfFund
+}
+
+#[derive(Drop, Destruct, Serde)]
+pub struct Rollover {
+    pub to: PubKey,
+    pub proof: ProofOfFund
+}
+
+#[derive(Drop, Destruct, Serde)]
+pub struct Withdraw {
+    pub from: PubKey,
+    pub amount: felt252,
+    pub to: ContractAddress,
+    pub proof: ProofOfWithdraw
+}
+
+#[derive(Drop, Destruct, Serde)]
+pub struct WithdrawAll {
+    pub from: PubKey,
+    pub amount: felt252,
+    pub to: ContractAddress,
+    pub proof: ProofOfWitdhrawAll
+}
+
+
+#[derive(Drop, Destruct, Serde)]
+pub struct Transfer {
+    pub from: PubKey,
+    pub to: PubKey,
+    pub L: StarkPoint,
+    pub L_bar: StarkPoint,
+    pub L_audit: StarkPoint,
+    pub R: StarkPoint,
+    pub proof: ProofOfTransfer,
+}
+
 #[starknet::interface]
 pub trait ITongo<TContractState> {
-    fn fund(ref self: TContractState, to: PubKey, amount: felt252, proof: ProofOfFund);
-    fn rollover(ref self: TContractState, to: PubKey, proof: ProofOfFund);
+    fn fund(ref self: TContractState, fund: Fund);
+    fn rollover(ref self: TContractState, rollover: Rollover);
+    fn withdraw_all(ref self: TContractState, withdraw_all: WithdrawAll);
+    fn withdraw(ref self: TContractState, withdraw: Withdraw);
+    fn transfer(ref self: TContractState, transfer: Transfer);
     fn get_balance(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_audit(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_buffer(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_nonce(self: @TContractState, y: PubKey) -> u64;
-    fn withdraw_all(
-        ref self: TContractState,
-        from: PubKey,
-        amount: felt252,
-        to: ContractAddress,
-        proof: ProofOfWitdhrawAll
-    );
-    fn withdraw(
-        ref self: TContractState,
-        from: PubKey,
-        amount: felt252,
-        to: ContractAddress,
-        proof: ProofOfWithdraw
-    );
-    fn transfer(
-        ref self: TContractState,
-        from: PubKey,
-        to: PubKey,
-        L: StarkPoint,
-        L_bar: StarkPoint,
-        L_audit: StarkPoint,
-        R: StarkPoint,
-        proof: ProofOfTransfer,
-    );
 }
 
 #[starknet::contract]
 pub mod Tongo {
     use core::starknet::{
         storage::StoragePointerReadAccess, storage::StoragePointerWriteAccess,
-        storage::StoragePathEntry, storage::Map, syscalls, SyscallResultTrait, ContractAddress,
+        storage::StoragePathEntry, storage::Map, syscalls, SyscallResultTrait,
         get_caller_address, get_contract_address,
     };
 
     use crate::verifier::structs::{
-        InputsTransfer, ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw, InputsFund,
-        ProofOfFund, InputsWithdraw, CipherBalance, CipherBalanceTrait, StarkPoint,
+        InputsTransfer, InputsFund, InputsWithdraw, CipherBalance, CipherBalanceTrait,
+        StarkPoint,
     };
     use crate::verifier::structs::PubKey;
     use crate::verifier::structs::PubKeyTrait;
@@ -60,21 +80,24 @@ pub mod Tongo {
     use crate::verifier::utils::{in_range, view_key};
     use crate::constants::{STRK_ADDRESS};
 
+    use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover};
+
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
     // stored in the form (x,y). Reading an empty y gives a default value of ((0,0), (0,0)) wich are
     // not curve points TODO: it would be nice to set te default value to curve points like  (y,g)
     struct Storage {
-        balance: Map<(felt252, felt252), CipherBalance>,
-        audit_balance: Map<(felt252, felt252), CipherBalance>,
-        buffer: Map<(felt252, felt252), CipherBalance>,
-        nonce: Map<(felt252, felt252), u64>,
+        balance: Map<PubKey, CipherBalance>,
+        audit_balance: Map<PubKey, CipherBalance>,
+        buffer: Map<PubKey, CipherBalance>,
+        nonce: Map<PubKey, u64>,
     }
 
 
     #[abi(embed_v0)]
     impl TongoImpl of super::ITongo<ContractState> {
-        fn rollover(ref self: ContractState, to: PubKey, proof: ProofOfFund) {
+        fn rollover(ref self: ContractState, rollover: Rollover) {
+            let Rollover { to, proof } = rollover;
             let nonce = self.get_nonce(to);
             let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
             verify_fund(inputs, proof);
@@ -83,7 +106,8 @@ pub mod Tongo {
         }
 
         /// Transfer some STARK to Tongo contract and assing some Tongo to account y
-        fn fund(ref self: ContractState, to: PubKey, amount: felt252, proof: ProofOfFund) {
+        fn fund(ref self: ContractState, fund: Fund) {
+            let Fund { to, amount, proof } = fund;
             to.assert_on_curve();
             in_range(amount);
             let nonce = self.get_nonce(to);
@@ -101,13 +125,9 @@ pub mod Tongo {
         }
 
         /// Withdraw some tongo from acount and send the stark to the recipient
-        fn withdraw(
-            ref self: ContractState,
-            from: PubKey,
-            amount: felt252,
-            to: ContractAddress,
-            proof: ProofOfWithdraw
-        ) {
+        fn withdraw(ref self: ContractState, withdraw: Withdraw) {
+            let Withdraw { from, amount, to, proof } = withdraw;
+
             //        //TODO: The recipient ContractAddress has to be signed by x otherwhise the
             //        proof can be frontruned.
             let balance = self.get_balance(from);
@@ -139,13 +159,9 @@ pub mod Tongo {
         }
 
         /// Withdraw ALL tongo from acount and send the stark to the recipient
-        fn withdraw_all(
-            ref self: ContractState,
-            from: PubKey,
-            amount: felt252,
-            to: ContractAddress,
-            proof: ProofOfWitdhrawAll
-        ) {
+        fn withdraw_all(ref self: ContractState, withdraw_all: WithdrawAll) {
+            let WithdrawAll { from, amount, to, proof } = withdraw_all;
+
             //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be
             //frontruned.
             let balance = self.get_balance(from);
@@ -174,7 +190,7 @@ pub mod Tongo {
             //TODO: Revisar esto
             self
                 .balance
-                .entry((from.x, from.y))
+                .entry(from)
                 .write(
                     CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }
                 );
@@ -183,16 +199,9 @@ pub mod Tongo {
         /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done
         /// w.r.t the balance stored in Balance plus Pending and to the nonce stored in the
         /// contract.
-        fn transfer(
-            ref self: ContractState,
-            from: PubKey,
-            to: PubKey,
-            L: StarkPoint,
-            L_bar: StarkPoint,
-            L_audit: StarkPoint,
-            R: StarkPoint,
-            proof: ProofOfTransfer,
-        ) {
+        fn transfer(ref self: ContractState, transfer: Transfer) {
+            let Transfer { from, to, L, L_bar, L_audit, R, proof, } = transfer;
+
             let balance = self.get_balance(from);
             let nonce = self.get_nonce(from);
 
@@ -225,66 +234,66 @@ pub mod Tongo {
 
         fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
             y.assert_on_curve();
-            self.nonce.entry((y.x, y.y)).read()
+            self.nonce.entry(y).read()
         }
 
         /// Returns the cipher balance of the given public key y. The cipher balance consist in two
         /// points of the stark curve. (L,R) = ((Lx, Ly), (Rx, Ry )) = (g**b y**r , g**r) for some
         /// random r.
         fn get_balance(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.balance.entry((y.x, y.y)).read()
+            self.balance.entry(y).read()
         }
 
         fn get_audit(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.audit_balance.entry((y.x, y.y)).read()
+            self.audit_balance.entry(y).read()
         }
 
         fn get_buffer(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.buffer.entry((y.x, y.y)).read()
+            self.buffer.entry(y).read()
         }
     }
 
     #[generate_trait]
     pub impl PrivateImpl of IPrivate {
         fn add_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
-            let old_balance = self.balance.entry((y.x, y.y)).read();
+            let old_balance = self.balance.entry(y).read();
             if old_balance.is_zero() {
-                self.balance.entry((y.x, y.y)).write(new_balance);
+                self.balance.entry(y).write(new_balance);
             } else {
                 let sum = old_balance.add(new_balance);
-                self.balance.entry((y.x, y.y)).write(sum);
+                self.balance.entry(y).write(sum);
             }
         }
 
         fn remove_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
-            let old_balance = self.balance.entry((y.x, y.y)).read();
+            let old_balance = self.balance.entry(y).read();
             if old_balance.is_zero() {
-                self.balance.entry((y.x, y.y)).write(new_balance);
+                self.balance.entry(y).write(new_balance);
             } else {
                 let sum = old_balance.remove(new_balance);
-                self.balance.entry((y.x, y.y)).write(sum);
+                self.balance.entry(y).write(sum);
             }
         }
 
         fn add_buffer(ref self: ContractState, y: PubKey, new_buffer: CipherBalance) {
-            let old_buffer = self.buffer.entry((y.x, y.y)).read();
+            let old_buffer = self.buffer.entry(y).read();
             if old_buffer.is_zero() {
-                self.buffer.entry((y.x, y.y)).write(new_buffer);
+                self.buffer.entry(y).write(new_buffer);
             } else {
                 let sum = old_buffer.add(new_buffer);
-                self.buffer.entry((y.x, y.y)).write(sum);
+                self.buffer.entry(y).write(sum);
             }
         }
 
         fn buffer_to_balance(ref self: ContractState, y: PubKey) {
-            let buffer = self.buffer.entry((y.x, y.y)).read();
+            let buffer = self.buffer.entry(y).read();
             if buffer.is_zero() {
                 return;
             }
             self.add_balance(y, buffer);
             self
                 .buffer
-                .entry((y.x, y.y))
+                .entry(y)
                 .write(
                     CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }
                 );
@@ -292,22 +301,22 @@ pub mod Tongo {
 
 
         fn add_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
-            let old_audit = self.audit_balance.entry((y.x, y.y)).read();
+            let old_audit = self.audit_balance.entry(y).read();
             if old_audit.is_zero() {
-                self.audit_balance.entry((y.x, y.y)).write(new_audit);
+                self.audit_balance.entry(y).write(new_audit);
             } else {
                 let sum = old_audit.add(new_audit);
-                self.audit_balance.entry((y.x, y.y)).write(sum);
+                self.audit_balance.entry(y).write(sum);
             }
         }
 
         fn remove_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
-            let old_audit = self.audit_balance.entry((y.x, y.y)).read();
+            let old_audit = self.audit_balance.entry(y).read();
             if old_audit.is_zero() {
-                self.audit_balance.entry((y.x, y.y)).write(new_audit);
+                self.audit_balance.entry(y).write(new_audit);
             } else {
                 let sum = old_audit.remove(new_audit);
-                self.audit_balance.entry((y.x, y.y)).write(sum);
+                self.audit_balance.entry(y).write(sum);
             }
         }
 
@@ -327,9 +336,9 @@ pub mod Tongo {
         }
 
         fn increase_nonce(ref self: ContractState, y: PubKey) {
-            let mut nonce = self.nonce.entry((y.x, y.y)).read();
+            let mut nonce = self.nonce.entry(y).read();
             nonce = nonce + 1;
-            self.nonce.entry((y.x, y.y)).write(nonce);
+            self.nonce.entry(y).write(nonce);
         }
     }
 }

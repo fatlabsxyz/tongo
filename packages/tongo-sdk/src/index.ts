@@ -116,7 +116,7 @@ async function generate_call_fund(x: bigint, amount: bigint): Promise<Call> {
     const nonce = await get_nonce(y);
 
     const { inputs, proof } = prove_fund(x, nonce);
-    const call = Tongo.populate("fund", [inputs.y, amount, proof]);
+    const call = Tongo.populate("fund", [{ to: inputs.y, amount, proof }]);
     return call;
 }
 
@@ -127,7 +127,7 @@ async function generate_call_rollover(x: bigint) {
     const y = g.multiplyUnsafe(x);
     const nonce = await get_nonce(y);
     const { inputs, proof } = prove_fund(x, nonce);
-    const call = Tongo.populate("rollover", [inputs.y, proof]);
+    const call = Tongo.populate("rollover", [{ to: inputs.y, proof }]);
     return call;
 }
 
@@ -148,7 +148,12 @@ async function generate_call_withdraw_all(x: bigint, to: bigint): Promise<Call> 
         balance,
     );
 
-    const call = Tongo.populate("withdraw_all", [inputs_withdraw_all.y, balance, '0x' + to.toString(16), proof_withdraw_all]);
+    const call = Tongo.populate("withdraw_all", [{
+      from: inputs_withdraw_all.y,
+      amount: balance,
+      to: '0x' + to.toString(16),
+      proof: proof_withdraw_all
+    }]);
     return call;
 }
 
@@ -192,7 +197,15 @@ async function generate_call_transfer(x: bigint, amount: bigint, to: ProjectiveP
         R,
         nonce,
     );
-    const call = Tongo.populate("transfer", [inputs.y, inputs.y_bar, inputs.L, inputs.L_bar, inputs.L_audit, inputs.R, proof]);
+    const call = Tongo.populate("transfer", [{
+      from: inputs.y,
+      to: inputs.y_bar,
+      L: inputs.L,
+      L_bar: inputs.L_bar,
+      L_audit: inputs.L_audit,
+      R: inputs.R,
+      proof
+    }]);
     return call;
 }
 

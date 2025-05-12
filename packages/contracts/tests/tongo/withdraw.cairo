@@ -4,6 +4,7 @@ use crate::tongo::setup::{setup_tongo};
 use crate::prover::functions::{prove_withdraw_all, prove_withdraw, prove_fund};
 use crate::prover::utils::generate_random;
 use tongo::main::ITongoDispatcherTrait;
+use tongo::main::{Fund, Withdraw, WithdrawAll};
 
 use tongo::verifier::structs::{PubKeyTrait};
 use tongo::verifier::structs::{CipherBalanceTrait};
@@ -21,7 +22,7 @@ fn test_withdraw_all() {
 
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
     let b = 250;
-    dispatcher.fund(y, b, fund_proof);
+    dispatcher.fund(Fund { to: y, amount: b, proof: fund_proof });
 
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);
@@ -30,7 +31,7 @@ fn test_withdraw_all() {
         x, b, tranfer_address, balance.CL, balance.CR, nonce, seed
     );
 
-    dispatcher.withdraw_all(y, b, tranfer_address, proof);
+    dispatcher.withdraw_all(WithdrawAll { from: y, amount: b, to: tranfer_address, proof });
     let balance = dispatcher.get_balance(y);
     assert!(balance.is_zero(), "fail");
 
@@ -52,7 +53,7 @@ fn test_withdraw() {
 
     let initial_balance = 250;
     let amount = 50;
-    dispatcher.fund(y, initial_balance, fund_proof);
+    dispatcher.fund(Fund { to: y, amount: initial_balance, proof: fund_proof });
 
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);
@@ -61,5 +62,5 @@ fn test_withdraw() {
         x, initial_balance, amount, tranfer_address, balance.CL, balance.CR, nonce, seed
     );
 
-    dispatcher.withdraw(y, amount, tranfer_address, proof);
+    dispatcher.withdraw(Withdraw { from: y, amount, to: tranfer_address, proof });
 }
