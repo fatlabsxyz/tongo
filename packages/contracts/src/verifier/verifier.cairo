@@ -12,11 +12,13 @@ use crate::verifier::structs::{StarkPoint};
 use crate::errors::{FUND, WITHDRAW, TRANSFER};
 
 
-/// Proof of Exponent: validate a proof of knowledge of the exponent y = g ** x. The sigma protocols
-/// runs V:  k <-- R        sends    A = g ** k
-/// P:  c <-- R        sends    c
-/// V:  s = k + c*x    sends    s
-/// The verifier asserts  g**s == A * (y**c)
+/// Proof of Exponent: validate a proof of knowledge of the exponent y = g ** x. The sigma protocol
+/// runs as follow: 
+/// P:  k <-- R        sends    A = g ** k
+/// V:  c <-- R        sends    c
+/// P:  s = k + c*x    sends    s
+/// The verifier asserts:
+/// - g**s == A * (y**c)
 pub fn poe(
     y: NonZeroEcPoint, g: NonZeroEcPoint, A: NonZeroEcPoint, c: felt252, s: felt252
 ) -> bool {
@@ -34,11 +36,13 @@ pub fn poe(
 
 
 /// Proof of Exponent 2: validate a proof of knowledge of the exponent y = g1**x1 g2**x2. The sigma
-/// protocols runs V:  k1,k2 <-- R        sends    A = g1**k1 g2**k2
-/// P:  c <-- R            sends    c
-/// V:  s1 = k1 + c*x1
-/// V:  s2 = k2 + c*x1      send s1, s1
-/// The verifier asserts  g1**s1 g2**s2 == A * (y**c)
+/// protocol runs as follows:
+/// P:  k1,k2 <-- R        sends    A = g1**k1 g2**k2
+/// V:  c <-- R            sends    c
+/// P:  s1 = k1 + c*x1
+/// P:  s2 = k2 + c*x1      send s1, s1
+/// The verifier asserts:
+/// - g1**s1 g2**s2 == A * (y**c)
 pub fn poe2(
     y: NonZeroEcPoint,
     g1: NonZeroEcPoint,
@@ -74,10 +78,16 @@ pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund) {
 }
 
 
-/// Proof of Withdraw: validate the proof needed for withdraw all balance b. The cipher balance is
+/// Proof of Withdraw All: validate the proof needed for withdraw all balance b. The cipher balance is
 /// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the
 /// correct balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r =
-/// R.
+/// R. The protocol runs as follow:
+/// P:  k <-- R        sends    Ax = g**k, Acr = R**k
+/// V:  c <-- R        sends    c
+/// P:  s = k + c*x    sends    s
+/// The verifier asserts:
+/// - g**s == Ax * (y**c)
+/// - R**s == Acr * (L/g**b)**c
 pub fn verify_withdraw_all(inputs: InputsWithdraw, proof: ProofOfWitdhrawAll) {
     let mut seq: Array<felt252> = array![
         'withdraw_all', inputs.y.x, inputs.y.y, inputs.to.into(), inputs.nonce.into(),
