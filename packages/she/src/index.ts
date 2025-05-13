@@ -206,7 +206,7 @@ export interface InputsWithdraw {
   R: ProjectivePoint;
 }
 
-interface ProofOfWithdrawAll {
+export interface ProofOfWithdrawAll {
   A_x: ProjectivePoint;
   A_cr: ProjectivePoint;
   s_x: bigint;
@@ -295,7 +295,7 @@ export function verify_withdraw_all(
 // -----------------------------  WITHDRAW_ALL -------------------------------------------------------
 
 // -----------------------------  WITHDRAW -------------------------------------------------------
-interface ProofOfWithdraw {
+export interface ProofOfWithdraw {
   A_x: ProjectivePoint;
   A: ProjectivePoint;
   A_v: ProjectivePoint;
@@ -416,7 +416,7 @@ export interface InputsTransfer {
   nonce: bigint;
 }
 
-interface ProofOfTransfer {
+export interface ProofOfTransfer {
   A_x: ProjectivePoint;
   A_r: ProjectivePoint;
   A_b: ProjectivePoint;
