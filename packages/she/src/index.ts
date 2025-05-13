@@ -41,6 +41,13 @@ export function encrypt(sc: bigint): Affine {
 }
 
 // ----------------------------------- POE -------------------------------------------------
+/// Proof of Exponent: validate a proof of knowledge of the exponent y = g ** x. The sigma protocol
+/// runs as follow: 
+/// P:  k <-- R        sends    A = g ** k
+/// V:  c <-- R        sends    c
+/// P:  s = k + c*x    sends    s
+/// The verifier asserts:
+/// - g**s == A * (y**c)
 export function poe(
   y: ProjectivePoint,
   g: ProjectivePoint,
@@ -77,6 +84,14 @@ export function verify_poe(
 // ----------------------------------- POE -------------------------------------------------
 
 // ----------------------------------- POE2 -------------------------------------------------
+/// Proof of Exponent 2: validate a proof of knowledge of the exponent y = g1**x1 g2**x2. The sigma
+/// protocol runs as follows:
+/// P:  k1,k2 <-- R        sends    A = g1**k1 g2**k2
+/// V:  c <-- R            sends    c
+/// P:  s1 = k1 + c*x1
+/// P:  s2 = k2 + c*x1      send s1, s1
+/// The verifier asserts:
+/// - g1**s1 g2**s2 == A * (y**c)
 function poe2(
   y: ProjectivePoint,
   g1: ProjectivePoint,
@@ -191,11 +206,12 @@ export interface InputsWithdraw {
   R: ProjectivePoint;
 }
 
-interface ProofOfWithdrawAll {
+export interface ProofOfWithdrawAll {
   A_x: ProjectivePoint;
   A_cr: ProjectivePoint;
   s_x: bigint;
 }
+
 
 export function prove_withdraw_all(
   x: bigint,
@@ -237,6 +253,17 @@ export function prove_withdraw_all(
   return { inputs, proof };
 }
 
+
+/// Proof of Withdraw All: validate the proof needed for withdraw all balance b. The cipher balance is
+/// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the
+/// correct balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r =
+/// R. The protocol runs as follow:
+/// P:  k <-- R        sends    Ax = g**k, Acr = R**k
+/// V:  c <-- R        sends    c
+/// P:  s = k + c*x    sends    s
+/// The verifier asserts:
+/// - g**s == Ax * (y**c)
+/// - R**s == Acr * (L/g**b)**c
 export function verify_withdraw_all(
   inputs: InputsWithdraw,
   proof: ProofOfWithdrawAll,
@@ -268,7 +295,7 @@ export function verify_withdraw_all(
 // -----------------------------  WITHDRAW_ALL -------------------------------------------------------
 
 // -----------------------------  WITHDRAW -------------------------------------------------------
-interface ProofOfWithdraw {
+export interface ProofOfWithdraw {
   A_x: ProjectivePoint;
   A: ProjectivePoint;
   A_v: ProjectivePoint;
@@ -389,7 +416,7 @@ export interface InputsTransfer {
   nonce: bigint;
 }
 
-interface ProofOfTransfer {
+export interface ProofOfTransfer {
   A_x: ProjectivePoint;
   A_r: ProjectivePoint;
   A_b: ProjectivePoint;
@@ -506,6 +533,20 @@ export function prove_transfer(
   return { inputs, proof };
 }
 
+
+/// Transfer b from y = g**x to y_bar.  Public inputs: y, y_bar L = g**b y**r, L_bar = g**b
+/// y_bar**r, R = g**r.
+/// We need to prove:
+/// 1) knowlede of x in y = g**x.
+/// 2) knowlede of r in R = g**r.
+/// 3) knowlede of b and r in L = g**b y**r with the same r that 2)
+/// 4) knowlede of b and r in L_bar = g**b y_bar**r with the same r that 2) and same b that 3)
+/// 4b) knowlede of b and r in L_audit = g**b y_audit**r with the same r that 2) and same b that 3)
+/// 5) b is in range [0,2**n-1]. For this we commit V = g**b h**r and an array of n  V_i = g**bi
+/// h**ri. r = sum 2**i r_i 5b) proof that bi are either 0 or 1.
+/// 5c) knowledge of b and r in V = g**b y**r with the same r that 2) and b that 3)
+/// 6) The proof neceary to show that the remaining balance is in range.
+/// TODO: finish the doc
 export function verify_transfer(
   inputs: InputsTransfer,
   proof: ProofOfTransfer,
@@ -610,11 +651,11 @@ function simPOE(y: ProjectivePoint, gen: ProjectivePoint) {
 function _prove_bit_0(random: bigint): ProofOfBit {
     const V = h.multiplyUnsafe(random);
     const V_1 = V.subtract(g);
+    const { A: A1, c: c1, s: s1 } = simPOE(V_1, h);
 
     const k = generate_random()
     const A0 = h.multiplyUnsafe(k);
 
-    const { A: A1, c: c1, s: s1 } = simPOE(V_1, h);
     const c = challenge_commits2(0n, [A0, A1]);
     const c0 = c ^ c1; //bitwisexor
     const s0 = (k + c0 * random) % CURVE_ORDER;
@@ -624,7 +665,8 @@ function _prove_bit_0(random: bigint): ProofOfBit {
 
 function _prove_bit_1 (random: bigint): ProofOfBit {
     const V = g.add(h.multiplyUnsafe(random));
-    const { A: A0, c: c0, s: s0 } = simPOE(V, h);
+    const V0 = V;
+    const { A: A0, c: c0, s: s0 } = simPOE(V0, h);
 
     const k = generate_random()
     const A1 = h.multiplyUnsafe(k);
@@ -635,6 +677,7 @@ function _prove_bit_1 (random: bigint): ProofOfBit {
     return { V, A0, A1, c0, s0, s1 };
 }
 
+
 function prove_bit(bit: 0 | 1, random: bigint): ProofOfBit {
   if (bit == 0) {
     return _prove_bit_0(random)
@@ -643,6 +686,11 @@ function prove_bit(bit: 0 | 1, random: bigint): ProofOfBit {
   }
 }
 
+
+/// Proof of Bit: validate that a commited V = g**b h**r is the ciphertext of  either b=0 OR b=1.
+/// If b = 0 then V = h**r and a proof of exponet for r is enought. If b=1 then V/g = h**r could be
+/// also proven with a poe. This is combined in a OR statement and the protocol can valitates that
+/// one of the cases is valid without leak which one is valid.
 function oneOrZero(pi: ProofOfBit) {
   const c = challenge_commits2(0n, [pi.A0, pi.A1]);
   const c1 = c ^ pi.c0;
@@ -689,6 +737,10 @@ function prove_range(
   return { r, proof };
 }
 
+/// Verify that a span of Vi = g**b_i h**r_i are encoding either b=1 or b=0 and that
+/// those bi are indeed the binary decomposition b = sum_i b_i 2**i. With the b that
+/// is encoded in V = g**b h**r. (Note that r = sim_i r_i 2**i)
+/// TODO: This could (and probably should) be change to bulletproof.
 function verify_range(proof: ProofOfBit[], bits: number): ProjectivePoint {
   let pi = proof[0]!;
   oneOrZero(pi);
