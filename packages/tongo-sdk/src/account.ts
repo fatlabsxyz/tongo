@@ -13,11 +13,12 @@ function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
     }
 }
 
+interface IOperation {
+    toCalldata(): Call
+}
 
 interface FundDetails { amount: bigint }
-interface IFundOperation {
-   toCalldata() : Call
-}
+interface IFundOperation extends IOperation { }
 class FundOperation implements IFundOperation {
     Tongo: any;
     to: ProjectivePoint;
@@ -37,9 +38,7 @@ class FundOperation implements IFundOperation {
 }
 
 interface TransferDetails { amount: bigint , to: [bigint, bigint]}
-interface ITransferOperation {
-    toCalldata(): Call
-}
+interface ITransferOperation extends IOperation { }
 class TransferOperation implements ITransferOperation {
     Tongo: any;
     from: ProjectivePoint;
@@ -89,9 +88,7 @@ interface TransferWithFeeOperation { }
 
 
 interface WithdrawAllDetails { to: bigint }
-interface IWithdrawAllOperation {
-    toCalldata(): Call     
-}
+interface IWithdrawAllOperation extends IOperation { }
 class WithdrawAllOperation implements IWithdrawAllOperation {
     from: ProjectivePoint;
     to: bigint;
@@ -118,9 +115,7 @@ class WithdrawAllOperation implements IWithdrawAllOperation {
 }
 
 interface WithdrawDetails { to: bigint, amount: bigint }
-interface IWithdrawOperation {
-    toCalldata(): Call
-}
+interface IWithdrawOperation extends IOperation { }
 class WithdrawOperation implements IWithdrawOperation {
     from: ProjectivePoint;
     to: bigint;
@@ -146,9 +141,7 @@ class WithdrawOperation implements IWithdrawOperation {
     }
 }
 
-interface IRollOverOperation {
-    toCalldata(): Call
-}
+interface IRollOverOperation extends IOperation { }
 
 class RollOverOperation implements IRollOverOperation {
     to: ProjectivePoint;
