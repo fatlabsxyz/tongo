@@ -1,12 +1,10 @@
-import { Account, Call, Contract, RpcProvider, constants, num, RPC, BigNumberish } from "starknet";
+import { Account, Contract, RpcProvider, constants, num, RPC } from "starknet";
 import { tongoAbi } from "./tongoAbi";
-import {  g,  auditor_key } from "she-js";
-import { ProjectivePoint } from "@scure/starknet";
 import { Account as TongoAccount } from "./account"
 
 
 
-const provider = new RpcProvider({
+export const provider = new RpcProvider({
     nodeUrl: 'http://127.0.0.1:5050/rpc',
     specVersion: "0.8"
 });
@@ -44,17 +42,17 @@ const tx_context = {
 };
 
 const wallet = deployerWallet(provider);
-const tongoAddress = "0x078a817fa56f96dd8f6ac3cc5fd4e5de487ae549f88749d1a661570b710d25b8";
+const tongoAddress = "0x0723f69d33c680d5084229103c2fcde0d5d1f6955a725247048410fdd17c81cf";
 export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoAbi);
 
 
 
 ; (async () => {
-    const sk = 8213021983n;
-    const account = new TongoAccount(sk, tongoAddress)
+    const sk = 82130983n;
+    const account = new TongoAccount(sk, tongoAddress, provider)
 
-    const sk2 = 1293810923n
-    const account2 = new TongoAccount(sk2, tongoAddress)
+    const sk2 = 12930923n
+    const account2 = new TongoAccount(sk2, tongoAddress, provider)
 
 
     let state = await account.state()
@@ -64,8 +62,8 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     console.log("State user 2: ", state);
 
     console.log("------------------------ Funding user 1 --------------------------------");
-    let {call} = await account.fund({amount: 100n})
-    let response = await wallet.execute(call, tx_context);
+    let operation = await account.fund({amount: 100n})
+    let response = await wallet.execute(operation.toCalldata(), tx_context);
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     let res = await provider.waitForTransaction(response.transaction_hash);
 
@@ -76,8 +74,8 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     console.log("State user 2: ", state);
 
     console.log("------------------------ Trasnfering to user 2 --------------------------------");
-    ({call} = await account.transfer({amount:23n, to: account2.publicKey()}))
-    response = await wallet.execute(call, tx_context);
+    let operation_transfer = await account.transfer({amount:23n, to: account2.publicKey()})
+    response = await wallet.execute(operation_transfer.toCalldata(), tx_context);
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     res = await provider.waitForTransaction(response.transaction_hash);
 
@@ -88,8 +86,8 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     console.log("State user 2: ", state);
 
     console.log("------------------------ RollOver of user 2 --------------------------------");
-    ({call} = await account2.rollover())
-    response = await wallet.execute(call, tx_context);
+    let rollover_operation = await account2.rollover()
+    response = await wallet.execute(rollover_operation.toCalldata(), tx_context);
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     res = await provider.waitForTransaction(response.transaction_hash);
 
@@ -97,8 +95,8 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     console.log("State user 2: ", state);
 
     console.log("------------------------ withdraw some of  of user 1 --------------------------------");
-    ({call} = await account.withdraw({amount:1n, to: 839131273n}))
-    response = await wallet.execute(call, tx_context);
+    let withdraw_operation = await account.withdraw({amount:1n, to: 839131273n})
+    response = await wallet.execute(withdraw_operation.toCalldata(), tx_context);
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     res = await provider.waitForTransaction(response.transaction_hash);
 
@@ -107,9 +105,9 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     console.log("State user 1: ", state);
 
     console.log("------------------------ withdraw all of  of user 2 --------------------------------");
-    ({call} = await account2.withdraw_all({ to: 839131273n}))
+    let withdraw_all_operation = await account2.withdraw_all({ to: 839131273n})
 
-    response = await wallet.execute(call, tx_context);
+    response = await wallet.execute(withdraw_all_operation.toCalldata(), tx_context);
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     res = await provider.waitForTransaction(response.transaction_hash);
 
