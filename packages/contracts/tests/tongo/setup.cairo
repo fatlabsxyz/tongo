@@ -9,7 +9,7 @@ use core::starknet::{
 };
 
 
-use snforge_std::{declare, ContractClassTrait, DeclareResultTrait, ContractClass, start_cheat_caller_address, stop_cheat_caller_address};
+use snforge_std::{declare, ContractClassTrait, DeclareResultTrait, ContractClass };
 
 pub const TONGO_ADDRESS: felt252 = 'TONGO';
 
