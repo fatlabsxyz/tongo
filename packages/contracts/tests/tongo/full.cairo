@@ -5,7 +5,7 @@ use starknet::ContractAddress;
 use tongo::verifier::structs::{PubKeyTrait, CipherBalanceTrait};
 
 use tongo::main::ITongoDispatcherTrait;
-use tongo::main::{Fund, Transfer, Withdraw, WithdrawAll};
+use tongo::main::{Fund, Transfer, Withdraw, Rollover};
 
 #[test]
 fn full() {
@@ -108,7 +108,7 @@ fn full() {
     //We are going to rollover for y_bar
     let nonce = dispatcher.get_nonce(y_bar);
     let (_fund_inputs, fund_proof) = prove_fund(x_bar, nonce, generate_random(seed + 1, 1));
-    dispatcher.rollover(y_bar, fund_proof);
+    dispatcher.rollover( Rollover{to:y_bar, proof: fund_proof} );
 
     //now nonce for y_bar should be 1
     let nonce = dispatcher.get_nonce(y_bar);
