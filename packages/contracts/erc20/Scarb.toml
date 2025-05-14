@@ -1,0 +1,16 @@
+[package]
+name = "erc20"
+version = "0.1.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = "2.8.2"
+
+[lib]
+
+[cairo]
+sierra-replace-ids = false
+
+[[target.starknet-contract]]
+casm = true
+casm-add-pythonic-hints = true
