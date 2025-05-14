@@ -1,7 +1,7 @@
 import { bytesToHex, } from "@noble/hashes/utils";
 
 import { ProjectivePoint } from "@scure/starknet";
-import { decipher_balance, g, ProofOfFund, ProofOfTransfer, ProofOfWithdraw, ProofOfWithdrawAll, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all } from "she-js";
+import { decipher_balance, g, ProofOfFund, ProofOfTransfer, ProofOfWithdraw, ProofOfWithdrawAll,ProofExPost, InputsExPost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, prove_expost, verify_expost} from "she-js";
 import { BigNumberish, Call, Contract, num, RpcProvider } from "starknet";
 import { tongoAbi } from "./tongo.abi.js";
 import { pubKeyAffineToBase58 } from "./utils.js";
@@ -187,6 +187,11 @@ interface CipherBalance {
     R: ProjectivePoint | null;
 }
 
+interface ExPost {
+    inputs: InputsExPost;
+    proof: ProofExPost;
+}
+
 interface IAccount {
     publicKey(): { x: bigint, y: bigint; };
     prettyPublicKey(): string;
@@ -202,6 +207,8 @@ interface IAccount {
     state(): Promise<State>;
     decryptBalance(cipher: CipherBalance): bigint;
     decryptPending(cipher: CipherBalance): bigint;
+    generateExPost(from: ProjectivePoint, cipher:CipherBalance): ExPost
+    verifyExPost(expost: ExPost): bigint
 }
 
 export class Account implements IAccount {
@@ -383,5 +390,23 @@ export class Account implements IAccount {
         }
         const amount = decipher_balance(this.pk, cipher.L, cipher.R);
         return amount;
+    }
+
+    generateExPost(from: ProjectivePoint, cipher: CipherBalance): ExPost {
+        if (cipher.L == null) {
+            throw new Error('L is null')
+        }
+        if (cipher.R == null) {
+            throw new Error('R is null')
+        }
+        
+        const  {inputs, proof} = prove_expost(this.pk, from, cipher.L, cipher.R)
+        return {inputs, proof}
+    }
+
+    verifyExPost(expost: ExPost): bigint {
+        verify_expost(expost.inputs, expost.proof)        
+        let amount = this.decryptBalance({L: expost.inputs.L, R: expost.inputs.R })
+        return amount
     }
 }
