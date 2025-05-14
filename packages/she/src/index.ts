@@ -11,6 +11,8 @@ export type Affine = AffinePoint<bigint>;
 
 export const CURVE_ORDER = CURVE.n;
 
+CURVE.fromBytes(new Uint8Array([]))
+
 export const g = new ProjectivePoint(CURVE.Gx, CURVE.Gy, 1n);
 // It is critical to ensure that h has been generated in a way
 // that nobody knows the discrete logarithm.

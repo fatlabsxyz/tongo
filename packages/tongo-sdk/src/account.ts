@@ -1,9 +1,10 @@
-import { bytesToHex } from "@noble/hashes/utils";
+import { bytesToHex, } from "@noble/hashes/utils";
+
 import { ProjectivePoint } from "@scure/starknet";
-import { BigNumberish, num, Call, Contract, RpcProvider } from "starknet";
-import { g, prove_fund, prove_withdraw_all, prove_withdraw, prove_transfer, decipher_balance } from "she-js";
-import { ProofOfFund, ProofOfTransfer, ProofOfWithdraw, ProofOfWithdrawAll } from "she-js";
+import { decipher_balance, g, ProofOfFund, ProofOfTransfer, ProofOfWithdraw, ProofOfWithdrawAll, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all } from "she-js";
+import { BigNumberish, Call, Contract, num, RpcProvider } from "starknet";
 import { tongoAbi } from "./tongo.abi.js";
+import { pubKeyAffineToBase58 } from "./utils.js";
 
 function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
     if (x instanceof Uint8Array) {
@@ -41,7 +42,7 @@ class FundOperation implements IFundOperation {
 
 interface TransferDetails {
     amount: bigint;
-    to: [bigint, bigint];
+    to: { x: bigint, y: bigint; };
 }
 interface ITransferOperation extends IOperation { }
 class TransferOperation implements ITransferOperation {
@@ -148,7 +149,7 @@ class WithdrawOperation implements IWithdrawOperation {
             {
                 from: this.from,
                 amount: this.amount,
-                to: "0x" + this.to.toString(16),
+                to: num.toHex(this.to),
                 proof: this.proof,
             },
         ]);
@@ -187,7 +188,7 @@ interface CipherBalance {
 }
 
 interface IAccount {
-    publicKey(): [bigint, bigint];
+    publicKey(): { x: bigint, y: bigint; };
     prettyPublicKey(): string;
     fund(fundDetails: FundDetails): Promise<FundOperation>;
     transfer(transferDetails: TransferDetails): Promise<TransferOperation>;
@@ -212,13 +213,14 @@ export class Account implements IAccount {
         this.Tongo = new Contract(tongoAbi, contractAddress, provider).typedv2(tongoAbi);
     }
 
-    publicKey(): [bigint, bigint] {
+    publicKey(): { x: bigint, y: bigint; } {
         const y = g.multiply(this.pk);
-        return [y.x, y.y];
+        return y;
     }
 
     prettyPublicKey(): string {
-        throw new Error("Method not implemented.");
+        const pub = g.multiply(this.pk);
+        return pubKeyAffineToBase58(pub);
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
@@ -241,7 +243,7 @@ export class Account implements IAccount {
             throw new Error("You dont have enought balance");
         }
 
-        const to = new ProjectivePoint(transferDetails.to[0], transferDetails.to[1], 1n);
+        const to = new ProjectivePoint(transferDetails.to.x, transferDetails.to.y, 1n);
         const nonce = await this.nonce();
         const { inputs, proof } = prove_transfer(this.pk, to, balance, transferDetails.amount, L, R, nonce);
 
@@ -306,7 +308,7 @@ export class Account implements IAccount {
     }
 
     async nonce(): Promise<bigint> {
-        const [x, y] = this.publicKey();
+        const { x, y } = this.publicKey();
         const nonce = await this.Tongo.get_nonce({ x, y });
         return BigInt(nonce);
     }
@@ -324,7 +326,7 @@ export class Account implements IAccount {
     }
 
     async balance(): Promise<CipherBalance> {
-        const [x, y] = this.publicKey();
+        const { x, y } = this.publicKey();
         const { CL, CR } = await this.Tongo.get_balance({ x, y });
         if (CL.x == 0n && CL.y == 0n) {
             return { L: null, R: null };
@@ -338,7 +340,7 @@ export class Account implements IAccount {
     }
 
     async pending(): Promise<CipherBalance> {
-        const [x, y] = this.publicKey();
+        const { x, y } = this.publicKey();
         const { CL, CR } = await this.Tongo.get_buffer({ x, y });
         if (CL.x == 0n && CL.y == 0n) {
             return { L: null, R: null };
