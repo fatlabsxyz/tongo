@@ -58,7 +58,7 @@ pub trait ITongo<TContractState> {
     fn get_audit(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_buffer(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_nonce(self: @TContractState, y: PubKey) -> u64;
-    fn get_erc20_address(self: @TContractState) -> ContractAddress;
+    fn ERC20(self: @TContractState) -> ContractAddress;
 }
 
 #[starknet::contract]
@@ -117,6 +117,7 @@ pub mod Tongo {
             verify_fund(inputs, proof);
 
             //get the transfer amount from the sender
+            //TODO: Check Allowance
             self.get_transfer(amount);
 
             let cipher = CipherBalanceTrait::new(to, amount, 'fund');
@@ -214,7 +215,7 @@ pub mod Tongo {
             self.increase_nonce(from);
         }
 
-        fn get_erc20_address(self: @ContractState) -> ContractAddress {
+        fn ERC20(self: @ContractState) -> ContractAddress {
             return STRK_ADDRESS.try_into().unwrap();
         }
 
