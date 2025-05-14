@@ -17,6 +17,9 @@ cairo_test = "2.8.4"
 sierra = true
 casm = true
 
+[scripts]
+deploy_local = "sncast --profile localnet script run --no-state-file deploy_local"
+
 [[target.starknet-contract]]
 build-external-contracts = [
     "tongo::main::Tongo"
