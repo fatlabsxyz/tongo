@@ -2,7 +2,7 @@ import { bytesToHex, } from "@noble/hashes/utils";
 
 import { ProjectivePoint } from "@scure/starknet";
 import { decipher_balance, g, ProofOfFund, ProofOfTransfer, ProofOfWithdraw, ProofOfWithdrawAll,ProofExPost, InputsExPost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, prove_expost, verify_expost} from "she-js";
-import { BigNumberish, Call, Contract, num, RpcProvider } from "starknet";
+import { BigNumberish, Call, Contract, num, RpcProvider, CallData, cairo} from "starknet";
 import { tongoAbi } from "./tongo.abi.js";
 import { pubKeyAffineToBase58 } from "./utils.js";
 
@@ -18,15 +18,21 @@ interface IOperation {
     toCalldata(): Call;
 }
 
+
 interface FundDetails {
     amount: bigint;
 }
-interface IFundOperation extends IOperation { }
+
+interface IFundOperation extends IOperation {
+    populateApprove(): Promise<void>;
+}
+
 class FundOperation implements IFundOperation {
     Tongo: Contract;
     to: ProjectivePoint;
     amount: bigint;
     proof: ProofOfFund;
+    approve?: Call;
 
     constructor(to: ProjectivePoint, amount: bigint, proof: ProofOfFund, Tongo: Contract) {
         this.to = to;
@@ -37,6 +43,15 @@ class FundOperation implements IFundOperation {
 
     toCalldata(): Call {
         return this.Tongo.populate("fund", [{ to: this.to, amount: this.amount, proof: this.proof }]);
+    }
+
+    async populateApprove() {
+       const erc20 = await this.Tongo.ERC20(); 
+       const erc20_addres = num.toHex(erc20)
+       const tongo_address = this.Tongo.address;
+       const amount = cairo.uint256(this.amount)
+       let calldata = CallData.compile({"spender": tongo_address, "amount": amount})
+       this.approve = {contractAddress: erc20_addres, entrypoint: "approve", calldata}
     }
 }
 
@@ -233,13 +248,15 @@ export class Account implements IAccount {
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
         const nonce = await this.nonce();
         const { inputs, proof } = prove_fund(this.pk, nonce);
-
-        return new FundOperation(inputs.y, fundDetails.amount, proof, this.Tongo);
+        const operation = new FundOperation(inputs.y, fundDetails.amount, proof, this.Tongo);
+        await operation.populateApprove()
+        return operation
     }
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
-        const { L, R } = await this.balance();
-        const balance = this.decryptBalance({ L, R });
+        const cipherbalance = await this.balance();
+        const { L, R } = cipherbalance;
+        const balance = cipherbalance.decrypt(this.pk)
         if (L == null) {
             throw new Error("You dont have balance");
         }

@@ -34,7 +34,7 @@ const tx_context = {
 };
 
 const wallet = deployerWallet(provider);
-const tongoAddress = "0x0723f69d33c680d5084229103c2fcde0d5d1f6955a725247048410fdd17c81cf";
+const tongoAddress = "0x04afb76696037392515a44aeba138d1afdf52da84e7cd660bc02b7c769a90028";
 export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoAbi);
 
 (async () => {
@@ -52,7 +52,7 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
 
     console.log("------------------------ Funding user 1 --------------------------------");
     const operation = await account.fund({ amount: 100n });
-    let response = await wallet.execute(operation.toCalldata(), tx_context);
+    let response = await wallet.execute([operation.approve!, operation.toCalldata()], tx_context);
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     let res = await provider.waitForTransaction(response.transaction_hash);
 
