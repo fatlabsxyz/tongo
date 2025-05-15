@@ -3,9 +3,9 @@ use crate::tongo::setup::{setup_tongo};
 use crate::prover::functions::{prove_transfer, prove_fund, prove_withdraw};
 use starknet::ContractAddress;
 use tongo::verifier::structs::{PubKeyTrait, CipherBalanceTrait};
+use tongo::verifier::structs::{Rollover, Fund, Transfer, Withdraw};
 
 use tongo::main::ITongoDispatcherTrait;
-use tongo::main::{Fund, Transfer, Withdraw, Rollover};
 
 #[test]
 fn full() {

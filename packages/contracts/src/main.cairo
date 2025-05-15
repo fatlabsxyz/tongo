@@ -1,50 +1,12 @@
 use core::starknet::ContractAddress;
-use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw, ProofOfFund};
-use crate::verifier::structs::{PubKey};
-use crate::verifier::structs::{CipherBalance};
-use crate::verifier::structs::{StarkPoint};
-// the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary,
-// replay_protection.
+use crate::verifier::structs::{Fund, WithdrawAll, Withdraw, PubKey, Transfer, Rollover, CipherBalance};
 
-#[derive(Drop, Destruct, Serde)]
-pub struct Fund {
-    pub to: PubKey,
-    pub amount: felt252,
-    pub proof: ProofOfFund
-}
-
-#[derive(Drop, Destruct, Serde)]
-pub struct Rollover {
-    pub to: PubKey,
-    pub proof: ProofOfFund
-}
-
-#[derive(Drop, Destruct, Serde)]
-pub struct Withdraw {
-    pub from: PubKey,
-    pub amount: felt252,
-    pub to: ContractAddress,
-    pub proof: ProofOfWithdraw
-}
-
-#[derive(Drop, Destruct, Serde)]
-pub struct WithdrawAll {
-    pub from: PubKey,
-    pub amount: felt252,
-    pub to: ContractAddress,
-    pub proof: ProofOfWitdhrawAll
-}
-
-
-#[derive(Drop, Destruct, Serde)]
-pub struct Transfer {
-    pub from: PubKey,
-    pub to: PubKey,
-    pub L: StarkPoint,
-    pub L_bar: StarkPoint,
-    pub L_audit: StarkPoint,
-    pub R: StarkPoint,
-    pub proof: ProofOfTransfer,
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct State {
+    balance: CipherBalance,
+    pending: CipherBalance,
+    audit: CipherBalance,
+    nonce: u64
 }
 
 #[starknet::interface]
@@ -59,6 +21,7 @@ pub trait ITongo<TContractState> {
     fn get_buffer(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_nonce(self: @TContractState, y: PubKey) -> u64;
     fn ERC20(self: @TContractState) -> ContractAddress;
+    fn get_state(self: @TContractState, y: PubKey) -> State;
 }
 
 #[starknet::contract]
@@ -81,7 +44,7 @@ pub mod Tongo {
     use crate::verifier::utils::{in_range, view_key};
     use crate::constants::{STRK_ADDRESS};
 
-    use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover};
+    use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover, State};
 
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
@@ -237,6 +200,14 @@ pub mod Tongo {
 
         fn get_buffer(self: @ContractState, y: PubKey) -> CipherBalance {
             self.buffer.entry(y).read()
+        }
+
+        fn get_state(self: @ContractState, y: PubKey) -> State {
+            let balance = self.balance.entry(y).read();
+            let pending = self.buffer.entry(y).read();
+            let audit = self.audit_balance.entry(y).read();
+            let nonce = self.nonce.entry(y).read();
+            return State { balance, pending, audit, nonce};
         }
     }
 

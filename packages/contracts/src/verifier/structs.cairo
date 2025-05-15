@@ -129,6 +129,48 @@ pub impl CipherBalanceImpl of CipherBalanceTrait {
     }
 }
 
+#[derive(Drop, Destruct, Serde)]
+pub struct Fund {
+    pub to: PubKey,
+    pub amount: felt252,
+    pub proof: ProofOfFund
+}
+
+#[derive(Drop, Destruct, Serde)]
+pub struct Rollover {
+    pub to: PubKey,
+    pub proof: ProofOfFund
+}
+
+#[derive(Drop, Destruct, Serde)]
+pub struct Withdraw {
+    pub from: PubKey,
+    pub amount: felt252,
+    pub to: ContractAddress,
+    pub proof: ProofOfWithdraw
+}
+
+#[derive(Drop, Destruct, Serde)]
+pub struct WithdrawAll {
+    pub from: PubKey,
+    pub amount: felt252,
+    pub to: ContractAddress,
+    pub proof: ProofOfWitdhrawAll
+}
+
+
+#[derive(Drop, Destruct, Serde)]
+pub struct Transfer {
+    pub from: PubKey,
+    pub to: PubKey,
+    pub L: StarkPoint,
+    pub L_bar: StarkPoint,
+    pub L_audit: StarkPoint,
+    pub R: StarkPoint,
+    pub proof: ProofOfTransfer,
+}
+
+
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct InputsFund {
     pub y: PubKey,

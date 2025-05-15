@@ -1,8 +1,8 @@
 use crate::tongo::setup::{setup_tongo};
 use crate::prover::functions::{prove_fund};
 use crate::prover::utils::{generate_random};
-use tongo::main::{ITongoDispatcherTrait, Fund};
-use tongo::verifier::structs::{PubKeyTrait};
+use tongo::main::{ITongoDispatcherTrait};
+use tongo::verifier::structs::{PubKeyTrait, Fund};
 
 #[test]
 fn test_fund() {
