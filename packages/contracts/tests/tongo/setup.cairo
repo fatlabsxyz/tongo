@@ -1,12 +1,10 @@
 use tongo::main::{ITongoDispatcher};
 use tongo::constants::STRK_ADDRESS;
 use erc20::IERC20Dispatcher;
+use erc20::IERC20DispatcherTrait;
+
 
 use core::starknet::{ContractAddress};
-use core::starknet::{
-    syscalls,
-    SyscallResultTrait,
-};
 
 
 use snforge_std::{declare, ContractClassTrait, DeclareResultTrait, ContractClass };
@@ -43,24 +41,14 @@ pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
 
 
 fn setup_erc20() -> (ContractAddress, IERC20Dispatcher) {
-    let (_erc20_contract, address ) = declare_class("ERC20Contract");
-    let _ = _erc20_contract
+    let (_erc20_contract, _erc20_class_hash ) = declare_class("ERC20Contract");
+    let (erc20_address, _) = _erc20_contract
         .deploy_at( @array![], STRK_ADDRESS.try_into().unwrap())
         .expect('Couldnt deploy');
-    let dispatcher = IERC20Dispatcher {contract_address: address.try_into().unwrap()};
+    let dispatcher = IERC20Dispatcher {contract_address: erc20_address.try_into().unwrap()};
     
-    syscalls::call_contract_syscall(
-       STRK_ADDRESS.try_into().unwrap(),
-       selector!("print"),
-       array![].span()
-    ).unwrap_syscall();
-
-    syscalls::call_contract_syscall(
-       STRK_ADDRESS.try_into().unwrap(),
-       selector!("approve"),
-       array![TONGO_ADDRESS, 1000000, 0].span()
-    ).unwrap_syscall();
-
-    return (address.try_into().unwrap(), dispatcher);
+    dispatcher.print();
+    dispatcher.approve(TONGO_ADDRESS.try_into().unwrap(), 10000000_u256);
+    return (erc20_address, dispatcher);
 }
 
