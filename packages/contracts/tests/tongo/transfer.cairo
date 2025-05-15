@@ -3,7 +3,7 @@ use crate::prover::utils::{generate_random};
 use crate::prover::functions::{prove_transfer, prove_fund};
 
 use tongo::main::ITongoDispatcherTrait;
-use tongo::main::{Fund, Transfer};
+use tongo::verifier::structs::{Fund, Transfer};
 use tongo::verifier::structs::{PubKeyTrait};
 
 #[test]

@@ -11,8 +11,6 @@ export type Affine = AffinePoint<bigint>;
 
 export const CURVE_ORDER = CURVE.n;
 
-CURVE.fromBytes(new Uint8Array([]))
-
 export const g = new ProjectivePoint(CURVE.Gx, CURVE.Gy, 1n);
 // It is critical to ensure that h has been generated in a way
 // that nobody knows the discrete logarithm.
@@ -761,7 +759,7 @@ function verify_range(proof: ProofOfBit[], bits: number): ProjectivePoint {
 // --------------------------------------- RANGE ------------------------------------------------
 
 // --------------------------------------- AUDIT EX POST ------------------------------------------------
-interface ProofExPost {
+export interface ProofExPost {
     Ax: ProjectivePoint,
     Ar: ProjectivePoint,
     At: ProjectivePoint,
@@ -771,7 +769,7 @@ interface ProofExPost {
     sb: bigint,
     sr: bigint,
 }
-interface InputsExPost {
+export interface InputsExPost {
     y: ProjectivePoint,
     y_bar: ProjectivePoint,
     L: ProjectivePoint,

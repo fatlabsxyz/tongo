@@ -7,7 +7,7 @@ use crate::prover::functions::prove_fund;
 use tongo::verifier::structs::{PubKeyTrait, CipherBalanceTrait};
 
 use tongo::main::ITongoDispatcherTrait;
-use tongo::main::{Fund, WithdrawAll, Transfer};
+use tongo::verifier::structs::{Fund, WithdrawAll, Transfer};
 
 #[test]
 fn audit_fund() {

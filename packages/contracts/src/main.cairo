@@ -1,50 +1,12 @@
 use core::starknet::ContractAddress;
-use crate::verifier::structs::{ProofOfTransfer, ProofOfWitdhrawAll, ProofOfWithdraw, ProofOfFund};
-use crate::verifier::structs::{PubKey};
-use crate::verifier::structs::{CipherBalance};
-use crate::verifier::structs::{StarkPoint};
-// the calldata for any transaction calling a selector should be: selector_calldata, proof_necesary,
-// replay_protection.
+use crate::verifier::structs::{Fund, WithdrawAll, Withdraw, PubKey, Transfer, Rollover, CipherBalance};
 
-#[derive(Drop, Destruct, Serde)]
-pub struct Fund {
-    pub to: PubKey,
-    pub amount: felt252,
-    pub proof: ProofOfFund
-}
-
-#[derive(Drop, Destruct, Serde)]
-pub struct Rollover {
-    pub to: PubKey,
-    pub proof: ProofOfFund
-}
-
-#[derive(Drop, Destruct, Serde)]
-pub struct Withdraw {
-    pub from: PubKey,
-    pub amount: felt252,
-    pub to: ContractAddress,
-    pub proof: ProofOfWithdraw
-}
-
-#[derive(Drop, Destruct, Serde)]
-pub struct WithdrawAll {
-    pub from: PubKey,
-    pub amount: felt252,
-    pub to: ContractAddress,
-    pub proof: ProofOfWitdhrawAll
-}
-
-
-#[derive(Drop, Destruct, Serde)]
-pub struct Transfer {
-    pub from: PubKey,
-    pub to: PubKey,
-    pub L: StarkPoint,
-    pub L_bar: StarkPoint,
-    pub L_audit: StarkPoint,
-    pub R: StarkPoint,
-    pub proof: ProofOfTransfer,
+#[derive(Serde, Drop, Debug, Copy)]
+pub struct State {
+    balance: CipherBalance,
+    pending: CipherBalance,
+    audit: CipherBalance,
+    nonce: u64
 }
 
 #[starknet::interface]
@@ -58,6 +20,8 @@ pub trait ITongo<TContractState> {
     fn get_audit(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_buffer(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_nonce(self: @TContractState, y: PubKey) -> u64;
+    fn ERC20(self: @TContractState) -> ContractAddress;
+    fn get_state(self: @TContractState, y: PubKey) -> State;
 }
 
 #[starknet::contract]
@@ -65,7 +29,7 @@ pub mod Tongo {
     use core::starknet::{
         storage::StoragePointerReadAccess, storage::StoragePointerWriteAccess,
         storage::StoragePathEntry, storage::Map, syscalls, SyscallResultTrait,
-        get_caller_address, get_contract_address,
+        get_caller_address, get_contract_address, ContractAddress
     };
 
     use crate::verifier::structs::{
@@ -80,7 +44,7 @@ pub mod Tongo {
     use crate::verifier::utils::{in_range, view_key};
     use crate::constants::{STRK_ADDRESS};
 
-    use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover};
+    use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover, State};
 
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
@@ -111,10 +75,13 @@ pub mod Tongo {
             to.assert_on_curve();
             in_range(amount);
             let nonce = self.get_nonce(to);
-            //        self.get_transfer(amount);
 
             let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
             verify_fund(inputs, proof);
+
+            //get the transfer amount from the sender
+            //TODO: Check Allowance
+            self.get_transfer(amount);
 
             let cipher = CipherBalanceTrait::new(to, amount, 'fund');
             self.add_balance(to, cipher);
@@ -128,8 +95,6 @@ pub mod Tongo {
         fn withdraw(ref self: ContractState, withdraw: Withdraw) {
             let Withdraw { from, amount, to, proof } = withdraw;
 
-            //        //TODO: The recipient ContractAddress has to be signed by x otherwhise the
-            //        proof can be frontruned.
             let balance = self.get_balance(from);
 
             let nonce = self.get_nonce(from);
@@ -138,24 +103,15 @@ pub mod Tongo {
             };
             verify_withdraw(inputs, proof);
 
-            //        let amount: u256 = amount.try_into().unwrap();
-            //        let calldata = array![
-            //            to.into(),
-            //            amount.low.into(),
-            //            amount.high.into(),];
-            //        syscalls::call_contract_syscall(
-            //           STRK_ADDRESS.try_into().unwrap(),
-            //           selector!("transfer"),
-            //           calldata.span()
-            //        ).unwrap_syscall();
 
-            //TODO: mejorar el audit_balance
             let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
             self.remove_balance(from, cipher);
 
             let cipher = CipherBalanceTrait::new(view_key(), amount, 'withdraw');
             self.remove_audit(from, cipher);
             self.increase_nonce(from);
+            
+            self.transfer_to(to, amount);
         }
 
         /// Withdraw ALL tongo from acount and send the stark to the recipient
@@ -171,18 +127,6 @@ pub mod Tongo {
             };
             verify_withdraw_all(inputs, proof);
 
-            //        let amount: u256 = amount.try_into().unwrap();
-            //        let calldata = array![
-            //            to.into(),
-            //            amount.low.into(),
-            //            amount.high.into(),];
-            //        syscalls::call_contract_syscall(
-            //           STRK_ADDRESS.try_into().unwrap(),
-            //           selector!("transfer"),
-            //           calldata.span()
-            //        ).unwrap_syscall();
-
-            //        self.balance.entry((from.x, from.y)).write(((0,0), (0,0)));
             let cipher = CipherBalanceTrait::new(view_key(), amount, 'withdraw');
             self.remove_audit(from, cipher);
             self.increase_nonce(from);
@@ -194,6 +138,8 @@ pub mod Tongo {
                 .write(
                     CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }
                 );
+
+            self.transfer_to(to, amount);
         }
 
         /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done
@@ -232,6 +178,10 @@ pub mod Tongo {
             self.increase_nonce(from);
         }
 
+        fn ERC20(self: @ContractState) -> ContractAddress {
+            return STRK_ADDRESS.try_into().unwrap();
+        }
+
         fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
             y.assert_on_curve();
             self.nonce.entry(y).read()
@@ -250,6 +200,14 @@ pub mod Tongo {
 
         fn get_buffer(self: @ContractState, y: PubKey) -> CipherBalance {
             self.buffer.entry(y).read()
+        }
+
+        fn get_state(self: @ContractState, y: PubKey) -> State {
+            let balance = self.balance.entry(y).read();
+            let pending = self.buffer.entry(y).read();
+            let audit = self.audit_balance.entry(y).read();
+            let nonce = self.nonce.entry(y).read();
+            return State { balance, pending, audit, nonce};
         }
     }
 
@@ -328,11 +286,23 @@ pub mod Tongo {
                 amount.low.into(),
                 amount.high.into(),
             ];
-
             syscalls::call_contract_syscall(
                 STRK_ADDRESS.try_into().unwrap(), selector!("transfer_from"), calldata.span()
             )
                 .unwrap_syscall();
+        }
+
+        fn transfer_to(self: @ContractState,to: ContractAddress, amount: felt252){
+            let amount: u256 = amount.try_into().unwrap();
+            let calldata = array![
+                to.into(),
+                amount.low.into(),
+                amount.high.into(),];
+            syscalls::call_contract_syscall(
+               STRK_ADDRESS.try_into().unwrap(),
+               selector!("transfer"),
+               calldata.span()
+            ).unwrap_syscall();
         }
 
         fn increase_nonce(ref self: ContractState, y: PubKey) {

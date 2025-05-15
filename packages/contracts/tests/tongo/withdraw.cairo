@@ -4,7 +4,7 @@ use crate::tongo::setup::{setup_tongo};
 use crate::prover::functions::{prove_withdraw_all, prove_withdraw, prove_fund};
 use crate::prover::utils::generate_random;
 use tongo::main::ITongoDispatcherTrait;
-use tongo::main::{Fund, Withdraw, WithdrawAll};
+use tongo::verifier::structs::{Fund, Withdraw, WithdrawAll};
 
 use tongo::verifier::structs::{PubKeyTrait};
 use tongo::verifier::structs::{CipherBalanceTrait};
