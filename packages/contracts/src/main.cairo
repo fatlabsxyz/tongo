@@ -36,12 +36,12 @@ pub mod Tongo {
         InputsTransfer, InputsFund, InputsWithdraw, CipherBalance, CipherBalanceTrait,
         StarkPoint,
     };
+    use crate::verifier::structs::Validate;
     use crate::verifier::structs::PubKey;
-    use crate::verifier::structs::PubKeyTrait;
     use crate::verifier::verifier::{
         verify_withdraw, verify_withdraw_all, verify_transfer, verify_fund
     };
-    use crate::verifier::utils::{in_range, view_key};
+    use crate::verifier::utils::{view_key};
     use crate::constants::{STRK_ADDRESS};
 
     use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover, State};
@@ -61,6 +61,7 @@ pub mod Tongo {
     #[abi(embed_v0)]
     impl TongoImpl of super::ITongo<ContractState> {
         fn rollover(ref self: ContractState, rollover: Rollover) {
+            rollover.validate();
             let Rollover { to, proof } = rollover;
             let nonce = self.get_nonce(to);
             let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
@@ -72,8 +73,7 @@ pub mod Tongo {
         /// Transfer some STARK to Tongo contract and assing some Tongo to account y
         fn fund(ref self: ContractState, fund: Fund) {
             let Fund { to, amount, proof } = fund;
-            to.assert_on_curve();
-            in_range(amount);
+            fund.validate();
             let nonce = self.get_nonce(to);
 
             let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
@@ -93,6 +93,7 @@ pub mod Tongo {
 
         /// Withdraw some tongo from acount and send the stark to the recipient
         fn withdraw(ref self: ContractState, withdraw: Withdraw) {
+            withdraw.validate();
             let Withdraw { from, amount, to, proof } = withdraw;
 
             let balance = self.get_balance(from);
@@ -116,6 +117,7 @@ pub mod Tongo {
 
         /// Withdraw ALL tongo from acount and send the stark to the recipient
         fn withdraw_all(ref self: ContractState, withdraw_all: WithdrawAll) {
+            withdraw_all.validate();
             let WithdrawAll { from, amount, to, proof } = withdraw_all;
 
             //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be
@@ -146,6 +148,7 @@ pub mod Tongo {
         /// w.r.t the balance stored in Balance plus Pending and to the nonce stored in the
         /// contract.
         fn transfer(ref self: ContractState, transfer: Transfer) {
+            transfer.validate();
             let Transfer { from, to, L, L_bar, L_audit, R, proof, } = transfer;
 
             let balance = self.get_balance(from);
@@ -183,7 +186,7 @@ pub mod Tongo {
         }
 
         fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
-            y.assert_on_curve();
+            y.validate();
             self.nonce.entry(y).read()
         }
 

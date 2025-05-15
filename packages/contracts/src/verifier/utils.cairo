@@ -20,6 +20,10 @@ pub fn in_order(number: felt252) -> bool {
     return false;
 }
 
+pub fn validate_felt(felt:felt252) {
+    assert!(in_order(felt), "felt not in curve order");
+}
+
 /// Checks if given number is in the range of the balance.
 /// Warning: be carefull if MAX is changed. It HAS to be 2**n
 pub fn in_range(number: felt252) -> bool {
@@ -28,6 +32,10 @@ pub fn in_range(number: felt252) -> bool {
         return true;
     }
     return false;
+}
+
+pub fn validate_range(felt:felt252) {
+    assert!(in_range(felt), "number not in balance range");
 }
 
 /// Computes the bitwise XOR between lhs and rhs.

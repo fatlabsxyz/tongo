@@ -2,6 +2,7 @@ use core::starknet::ContractAddress;
 use core::ec::{EcPointTrait, NonZeroEcPoint, EcPoint, EcStateTrait};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use core::traits::{Into, TryInto};
+use crate::verifier::utils::{validate_felt, validate_range};
 
 
 /// Represent the public key y = g ** x of a user.
@@ -10,6 +11,18 @@ pub struct PubKey {
     pub x: felt252,
     pub y: felt252,
 }
+
+pub trait Validate<T> {
+    fn validate(self: T);
+}
+
+pub impl ValidatePubKey of Validate<PubKey> {
+    fn validate(self: PubKey) {
+        let point = EcPointTrait::new_nz(self.x, self.y);
+        assert!(point.is_some(),"PK not in curve")
+    }
+}
+
 
 #[generate_trait]
 pub impl PubKeyImpl of PubKeyTrait {
@@ -21,12 +34,6 @@ pub impl PubKeyImpl of PubKeyTrait {
         let y: NonZeroEcPoint = g.mul(x).try_into().unwrap();
         PubKey { x: y.x(), y: y.y() }
     }
-
-    /// Asserts that the coordinates of PubKey correspond to a EC point on the STARKNET curve.
-    fn assert_on_curve(self: PubKey) {
-        let point = EcPointTrait::new_nz(self.x, self.y);
-        assert!(point.is_some(), "PK not a curve point");
-    }
 }
 
 impl PubKeyTryIntoNonZeroEcPoint of TryInto<PubKey, NonZeroEcPoint> {
@@ -34,6 +41,7 @@ impl PubKeyTryIntoNonZeroEcPoint of TryInto<PubKey, NonZeroEcPoint> {
         EcPointTrait::new_nz(self.x, self.y)
     }
 }
+
 impl PubKeyTryIntoEcPoint of TryInto<PubKey, EcPoint> {
     fn try_into(self: PubKey) -> Option<EcPoint> {
         EcPointTrait::new(self.x, self.y)
@@ -45,6 +53,15 @@ impl PubKeyTryIntoEcPoint of TryInto<PubKey, EcPoint> {
 pub struct StarkPoint {
     pub x: felt252,
     pub y: felt252,
+}
+
+
+pub impl ValidateStarkPoint of Validate<StarkPoint> {
+    /// Asserts that the coordinates of PubKey correspond to a EC point on the STARKNET curve.
+    fn validate(self: StarkPoint) {
+        let point = EcPointTrait::new_nz(self.x, self.y);
+        assert!(point.is_some(), "StarkPoint not in curve");
+    }
 }
 
 impl NonZeroEcPointToStarkPoint of Into<NonZeroEcPoint, StarkPoint> {
@@ -77,6 +94,13 @@ impl StarkPointTryIntoEcPoint of TryInto<StarkPoint, EcPoint> {
 pub struct CipherBalance {
     pub CL: StarkPoint,
     pub CR: StarkPoint,
+}
+
+pub impl ValidateCipherBalance of Validate<CipherBalance> {
+    fn validate(self: CipherBalance) {
+        self.CL.validate();
+        self.CR.validate();
+    }
 }
 
 #[generate_trait]
@@ -127,22 +151,42 @@ pub impl CipherBalanceImpl of CipherBalanceTrait {
             CL: StarkPoint { x: L.x(), y: L.y() }, CR: StarkPoint { x: R.x(), y: R.y() },
         }
     }
+
+    fn validate(self: CipherBalance) {
+        self.CL.validate();
+        self.CR.validate();
+    }
 }
 
-#[derive(Drop, Destruct, Serde)]
+#[derive(Drop, Destruct, Serde, Copy)]
 pub struct Fund {
     pub to: PubKey,
     pub amount: felt252,
     pub proof: ProofOfFund
 }
 
-#[derive(Drop, Destruct, Serde)]
+impl ValidateFund of Validate<Fund> {
+    fn validate(self: Fund) {
+        self.to.validate();
+        self.proof.validate();
+        validate_range(self.amount);
+    }
+}
+
+#[derive(Drop, Destruct, Serde, Copy)]
 pub struct Rollover {
     pub to: PubKey,
     pub proof: ProofOfFund
 }
 
-#[derive(Drop, Destruct, Serde)]
+impl ValidateRollover of Validate<Rollover> {
+    fn validate(self: Rollover) {
+        self.to.validate();
+        self.proof.validate();
+    }
+}
+
+#[derive(Drop, Destruct, Serde, Copy)]
 pub struct Withdraw {
     pub from: PubKey,
     pub amount: felt252,
@@ -150,7 +194,14 @@ pub struct Withdraw {
     pub proof: ProofOfWithdraw
 }
 
-#[derive(Drop, Destruct, Serde)]
+impl ValidateWithdraw of Validate<Withdraw> {
+    fn validate(self: Withdraw) {
+        self.from.validate();
+        self.proof.validate();
+    }
+}
+
+#[derive(Drop, Destruct, Serde, Copy)]
 pub struct WithdrawAll {
     pub from: PubKey,
     pub amount: felt252,
@@ -158,8 +209,15 @@ pub struct WithdrawAll {
     pub proof: ProofOfWitdhrawAll
 }
 
+impl ValidateWithdrawAll of Validate<WithdrawAll> {
+    fn validate(self: WithdrawAll) {
+        self.from.validate();
+        self.proof.validate();
+    }
+}
 
-#[derive(Drop, Destruct, Serde)]
+
+#[derive(Drop, Destruct, Serde, Copy)]
 pub struct Transfer {
     pub from: PubKey,
     pub to: PubKey,
@@ -168,6 +226,18 @@ pub struct Transfer {
     pub L_audit: StarkPoint,
     pub R: StarkPoint,
     pub proof: ProofOfTransfer,
+}
+
+impl ValidateTransfer of Validate<Transfer> {
+    fn validate(self: Transfer) {
+        self.from.validate();
+        self.to.validate();
+        self.L.validate();
+        self.L_bar.validate();
+        self.L_audit.validate();
+        self.R.validate();
+        self.proof.validate();
+    }
 }
 
 
@@ -181,6 +251,13 @@ pub struct InputsFund {
 pub struct ProofOfFund {
     pub Ax: StarkPoint,
     pub sx: felt252,
+}
+
+impl ValidateProofOfFund of Validate<ProofOfFund> {
+    fn validate(self: ProofOfFund) {
+        self.Ax.validate();
+        validate_felt(self.sx);
+    }
 }
 
 
@@ -211,6 +288,14 @@ pub struct ProofOfWitdhrawAll {
     pub s_x: felt252,
 }
 
+impl ValidateProofOfWitdhrawAll of Validate<ProofOfWitdhrawAll> {
+    fn validate(self: ProofOfWitdhrawAll) {
+        self.A_x.validate();
+        self.A_cr.validate();
+        validate_felt(self.s_x);
+    }
+}
+
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfWithdraw {
@@ -221,6 +306,22 @@ pub struct ProofOfWithdraw {
     pub sb: felt252,
     pub sr: felt252,
     pub range: Span<ProofOfBit>,
+}
+
+impl ValidateProofOfWithdraw of Validate<ProofOfWithdraw> {
+    fn validate(self: ProofOfWithdraw) {
+        self.A_x.validate();
+        self.A.validate();
+        self.A_v.validate();
+        validate_felt(self.sx);
+        validate_felt(self.sb);
+        validate_felt(self.sr);
+        let mut i: u32 = 0;
+        while i < 32 {
+            (*self.range[i]).validate();
+            i = i+1;
+        };
+    }
 }
 
 #[derive(Serde, Drop, Debug, Copy)]
@@ -247,6 +348,17 @@ pub struct ProofOfBit {
     pub s0: felt252,
     pub s1: felt252,
 }
+impl ValidateProofOfBit of Validate<ProofOfBit> {
+    fn validate(self: ProofOfBit) {
+        self.V.validate();
+        self.A0.validate();
+        self.A1.validate();
+        validate_felt(self.c0);
+        validate_felt(self.s0);
+        validate_felt(self.s1);
+    }
+}
+
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct ProofOfTransfer {
     pub A_x: StarkPoint,
@@ -264,5 +376,29 @@ pub struct ProofOfTransfer {
     pub s_r2: felt252,
     pub range: Span<ProofOfBit>,
     pub range2: Span<ProofOfBit>,
+}
+
+impl ValidateProofOfTranfser of Validate<ProofOfTransfer> {
+    fn validate(self: ProofOfTransfer) {
+        self.A_x.validate();
+        self.A_r.validate();
+        self.A_b.validate();
+        self.A_b2.validate();
+        self.A_v.validate();
+        self.A_v2.validate();
+        self.A_bar.validate();
+        self.A_audit.validate();
+        validate_felt(self.s_x);
+        validate_felt(self.s_r);
+        validate_felt(self.s_b);
+        validate_felt(self.s_b2);
+        validate_felt(self.s_r2);
+        let mut i:u32 = 0;
+        while i < 32 {
+            (*self.range[i]).validate();
+            (*self.range2[i]).validate();
+            i=i+1;
+        }
+    }
 }
 
