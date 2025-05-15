@@ -222,7 +222,7 @@ interface IAccount {
     state(): Promise<State>;
     decryptBalance(cipher: CipherBalance): bigint;
     decryptPending(cipher: CipherBalance): bigint;
-    generateExPost(from: ProjectivePoint, cipher:CipherBalance): ExPost
+    generateExPost(to: ProjectivePoint, cipher:CipherBalance): ExPost
     verifyExPost(expost: ExPost): bigint
 }
 
@@ -408,7 +408,7 @@ export class Account implements IAccount {
         return amount;
     }
 
-    generateExPost(from: ProjectivePoint, cipher: CipherBalance): ExPost {
+    generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost {
         if (cipher.L == null) {
             throw new Error('L is null')
         }
@@ -416,7 +416,7 @@ export class Account implements IAccount {
             throw new Error('R is null')
         }
         
-        const  {inputs, proof} = prove_expost(this.pk, from, cipher.L, cipher.R)
+        const  {inputs, proof} = prove_expost(this.pk, to, cipher.L, cipher.R)
         return {inputs, proof}
     }
 
