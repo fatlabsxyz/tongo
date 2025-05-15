@@ -48,7 +48,7 @@ export const tongoAbi =  [
     },
     {
       "type": "struct",
-      "name": "tongo::main::Fund",
+      "name": "tongo::verifier::structs::Fund",
       "members": [
         {
           "name": "to",
@@ -66,7 +66,7 @@ export const tongoAbi =  [
     },
     {
       "type": "struct",
-      "name": "tongo::main::Rollover",
+      "name": "tongo::verifier::structs::Rollover",
       "members": [
         {
           "name": "to",
@@ -98,7 +98,7 @@ export const tongoAbi =  [
     },
     {
       "type": "struct",
-      "name": "tongo::main::WithdrawAll",
+      "name": "tongo::verifier::structs::WithdrawAll",
       "members": [
         {
           "name": "from",
@@ -194,7 +194,7 @@ export const tongoAbi =  [
     },
     {
       "type": "struct",
-      "name": "tongo::main::Withdraw",
+      "name": "tongo::verifier::structs::Withdraw",
       "members": [
         {
           "name": "from",
@@ -282,7 +282,7 @@ export const tongoAbi =  [
     },
     {
       "type": "struct",
-      "name": "tongo::main::Transfer",
+      "name": "tongo::verifier::structs::Transfer",
       "members": [
         {
           "name": "from",
@@ -329,6 +329,28 @@ export const tongoAbi =  [
       ]
     },
     {
+      "type": "struct",
+      "name": "tongo::main::State",
+      "members": [
+        {
+          "name": "balance",
+          "type": "tongo::verifier::structs::CipherBalance"
+        },
+        {
+          "name": "pending",
+          "type": "tongo::verifier::structs::CipherBalance"
+        },
+        {
+          "name": "audit",
+          "type": "tongo::verifier::structs::CipherBalance"
+        },
+        {
+          "name": "nonce",
+          "type": "core::integer::u64"
+        }
+      ]
+    },
+    {
       "type": "interface",
       "name": "tongo::main::ITongo",
       "items": [
@@ -338,7 +360,7 @@ export const tongoAbi =  [
           "inputs": [
             {
               "name": "fund",
-              "type": "tongo::main::Fund"
+              "type": "tongo::verifier::structs::Fund"
             }
           ],
           "outputs": [],
@@ -350,7 +372,7 @@ export const tongoAbi =  [
           "inputs": [
             {
               "name": "rollover",
-              "type": "tongo::main::Rollover"
+              "type": "tongo::verifier::structs::Rollover"
             }
           ],
           "outputs": [],
@@ -362,7 +384,7 @@ export const tongoAbi =  [
           "inputs": [
             {
               "name": "withdraw_all",
-              "type": "tongo::main::WithdrawAll"
+              "type": "tongo::verifier::structs::WithdrawAll"
             }
           ],
           "outputs": [],
@@ -374,7 +396,7 @@ export const tongoAbi =  [
           "inputs": [
             {
               "name": "withdraw",
-              "type": "tongo::main::Withdraw"
+              "type": "tongo::verifier::structs::Withdraw"
             }
           ],
           "outputs": [],
@@ -386,7 +408,7 @@ export const tongoAbi =  [
           "inputs": [
             {
               "name": "transfer",
-              "type": "tongo::main::Transfer"
+              "type": "tongo::verifier::structs::Transfer"
             }
           ],
           "outputs": [],
@@ -452,6 +474,33 @@ export const tongoAbi =  [
           "outputs": [
             {
               "type": "core::integer::u64"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "ERC20",
+          "inputs": [],
+          "outputs": [
+            {
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ],
+          "state_mutability": "view"
+        },
+        {
+          "type": "function",
+          "name": "get_state",
+          "inputs": [
+            {
+              "name": "y",
+              "type": "tongo::verifier::structs::PubKey"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "tongo::main::State"
             }
           ],
           "state_mutability": "view"
