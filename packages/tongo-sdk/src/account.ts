@@ -254,9 +254,8 @@ export class Account implements IAccount {
     }
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
-        const cipherbalance = await this.balance();
-        const { L, R } = cipherbalance;
-        const balance = cipherbalance.decrypt(this.pk)
+        const { L, R } = await this.balance();
+        const balance = this.decryptBalance({ L, R });
         if (L == null) {
             throw new Error("You dont have balance");
         }
