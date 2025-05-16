@@ -72,6 +72,7 @@ pub mod Tongo {
         pub to: PubKey,
         #[key]
         pub from: PubKey,
+        #[key]
         pub nonce: u64,
         pub cipherbalance: CipherBalance,
     }
@@ -80,14 +81,16 @@ pub mod Tongo {
     pub struct FundEvent {
         #[key]
         pub to: PubKey,
+        #[key]
         pub nonce: u64,
-        amount: u64,
+        pub amount: u64,
     }
 
     #[derive(Drop, starknet::Event)]
     pub struct RolloverEvent {
         #[key]
         pub to: PubKey,
+        #[key]
         pub nonce: u64,
     }
 
@@ -95,6 +98,7 @@ pub mod Tongo {
     pub struct WithdrawEvent {
         #[key]
         pub from: PubKey,
+        #[key]
         pub nonce: u64,
         pub amount: u64,
         pub to: ContractAddress,

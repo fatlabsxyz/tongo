@@ -151,11 +151,6 @@ pub impl CipherBalanceImpl of CipherBalanceTrait {
             CL: StarkPoint { x: L.x(), y: L.y() }, CR: StarkPoint { x: R.x(), y: R.y() },
         }
     }
-
-    fn validate(self: CipherBalance) {
-        self.CL.validate();
-        self.CR.validate();
-    }
 }
 
 #[derive(Drop, Destruct, Serde, Copy)]
