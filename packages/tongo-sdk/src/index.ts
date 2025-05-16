@@ -63,7 +63,7 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     console.log("State user 2: ", state);
 
     console.log("------------------------ Trasnfering to user 2 --------------------------------");
-    const operation_transfer = await account.transfer({ amount: 23n, to: account2.publicKey() });
+    const operation_transfer = await account.transfer({ amount: 23n, to: account2.publicKey });
     response = await wallet.execute(operation_transfer.toCalldata(), tx_context);
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     res = await provider.waitForTransaction(response.transaction_hash);

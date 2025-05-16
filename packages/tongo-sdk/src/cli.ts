@@ -49,7 +49,7 @@ program
             ctx.tongoPrivateKey,
             gOpts.tongoAddress,
         );
-        console.log(account.prettyPublicKey());
+        console.log(account.tongoAddress());
     });
 
 program
