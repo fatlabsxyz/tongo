@@ -57,6 +57,50 @@ pub mod Tongo {
         nonce: Map<PubKey, u64>,
     }
 
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    pub enum Event {
+        TransferEvent: TransferEvent,
+        FundEvent: FundEvent,
+        RolloverEvent: RolloverEvent,
+        WithdrawEvent: WithdrawEvent,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct TransferEvent {
+        #[key]
+        pub to: PubKey,
+        #[key]
+        pub from: PubKey,
+        pub nonce: u64,
+        pub cipherbalance: CipherBalance,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct FundEvent {
+        #[key]
+        pub to: PubKey,
+        pub nonce: u64,
+        amount: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct RolloverEvent {
+        #[key]
+        pub to: PubKey,
+        pub nonce: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct WithdrawEvent {
+        #[key]
+        pub from: PubKey,
+        pub nonce: u64,
+        pub amount: u64,
+        pub to: ContractAddress,
+    }
+
+
 
     #[abi(embed_v0)]
     impl TongoImpl of super::ITongo<ContractState> {
@@ -68,6 +112,7 @@ pub mod Tongo {
             verify_fund(inputs, proof);
             self.buffer_to_balance(to);
             self.increase_nonce(to);
+            self.emit(RolloverEvent {to, nonce});
         }
 
         /// Transfer some STARK to Tongo contract and assing some Tongo to account y
@@ -89,6 +134,7 @@ pub mod Tongo {
             let cipher_audit = CipherBalanceTrait::new(view_key(), amount, 'fund');
             self.add_audit(to, cipher_audit);
             self.increase_nonce(to);
+            self.emit(FundEvent {to, amount: amount.try_into().unwrap(), nonce});
         }
 
         /// Withdraw some tongo from acount and send the stark to the recipient
@@ -113,6 +159,7 @@ pub mod Tongo {
             self.increase_nonce(from);
             
             self.transfer_to(to, amount);
+            self.emit(WithdrawEvent {from, amount: amount.try_into().unwrap(), to, nonce});
         }
 
         /// Withdraw ALL tongo from acount and send the stark to the recipient
@@ -142,6 +189,7 @@ pub mod Tongo {
                 );
 
             self.transfer_to(to, amount);
+            self.emit(WithdrawEvent {from, amount: amount.try_into().unwrap(), to, nonce});
         }
 
         /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done
@@ -179,6 +227,7 @@ pub mod Tongo {
             //TODO: Acomodar el audit
             self.add_audit(to, CipherBalance { CL: L_audit, CR: R });
             self.increase_nonce(from);
+            self.emit(TransferEvent {to, from, nonce, cipherbalance: CipherBalance {CL:L, CR:R} })
         }
 
         fn ERC20(self: @ContractState) -> ContractAddress {
