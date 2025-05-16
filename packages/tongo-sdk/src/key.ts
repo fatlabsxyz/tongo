@@ -12,7 +12,7 @@ export function ECDiffieHellman(secret: bigint, otherPublicKey: string) {
 export function buildInfo(tongoAddress: string): Uint8Array {
     // INFO:= TONGO_ASCII_BYTES | TONGO_ADDRESS | EXTRA_BYTES
     const tongoBytes = new Uint8Array([116, 111, 110, 103, 111]); // 5 B
-    const tongoAddresBytes = hexToBytes(tongoAddress);  // 32 B
+    const tongoAddresBytes = hexToBytes(tongoAddress.replace(/^0x/, "").padStart(64, "0"));  // 32 B
     const extraBytes = (new Uint8Array(27)).fill(0);  // 27 B
     const info = new Uint8Array(64);
     info.set(tongoBytes);
@@ -56,7 +56,7 @@ export async function deriveSymmetricEncryptionKey(deriveSymKeyParams: {
     the length to 256 bits which is the required key size for XChaCha20.
     */
     const derivedKeyType = { name: "HMAC", hash: 'SHA-256', length: 256 };
-    const derivedKey = await crypto.subtle.deriveKey(hkdfParams, key, derivedKeyType, false, []);
+    const derivedKey = await crypto.subtle.deriveKey(hkdfParams, key, derivedKeyType, true, ["sign"]);
     const rawKey = await crypto.subtle.exportKey("raw", derivedKey);
     const derivedKeyBytes = new Uint8Array(rawKey);
     return derivedKeyBytes;
