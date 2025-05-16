@@ -448,7 +448,7 @@ export const tongoAbi =  [
         },
         {
           "type": "function",
-          "name": "get_buffer",
+          "name": "get_pending",
           "inputs": [
             {
               "name": "y",
@@ -509,8 +509,122 @@ export const tongoAbi =  [
     },
     {
       "type": "event",
+      "name": "tongo::main::Tongo::TransferEvent",
+      "kind": "struct",
+      "members": [
+        {
+          "name": "to",
+          "type": "tongo::verifier::structs::PubKey",
+          "kind": "key"
+        },
+        {
+          "name": "from",
+          "type": "tongo::verifier::structs::PubKey",
+          "kind": "key"
+        },
+        {
+          "name": "nonce",
+          "type": "core::integer::u64",
+          "kind": "data"
+        },
+        {
+          "name": "cipherbalance",
+          "type": "tongo::verifier::structs::CipherBalance",
+          "kind": "data"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "tongo::main::Tongo::FundEvent",
+      "kind": "struct",
+      "members": [
+        {
+          "name": "to",
+          "type": "tongo::verifier::structs::PubKey",
+          "kind": "key"
+        },
+        {
+          "name": "nonce",
+          "type": "core::integer::u64",
+          "kind": "data"
+        },
+        {
+          "name": "amount",
+          "type": "core::integer::u64",
+          "kind": "data"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "tongo::main::Tongo::RolloverEvent",
+      "kind": "struct",
+      "members": [
+        {
+          "name": "to",
+          "type": "tongo::verifier::structs::PubKey",
+          "kind": "key"
+        },
+        {
+          "name": "nonce",
+          "type": "core::integer::u64",
+          "kind": "data"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "tongo::main::Tongo::WithdrawEvent",
+      "kind": "struct",
+      "members": [
+        {
+          "name": "from",
+          "type": "tongo::verifier::structs::PubKey",
+          "kind": "key"
+        },
+        {
+          "name": "nonce",
+          "type": "core::integer::u64",
+          "kind": "data"
+        },
+        {
+          "name": "amount",
+          "type": "core::integer::u64",
+          "kind": "data"
+        },
+        {
+          "name": "to",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "kind": "data"
+        }
+      ]
+    },
+    {
+      "type": "event",
       "name": "tongo::main::Tongo::Event",
       "kind": "enum",
-      "variants": []
+      "variants": [
+        {
+          "name": "TransferEvent",
+          "type": "tongo::main::Tongo::TransferEvent",
+          "kind": "nested"
+        },
+        {
+          "name": "FundEvent",
+          "type": "tongo::main::Tongo::FundEvent",
+          "kind": "nested"
+        },
+        {
+          "name": "RolloverEvent",
+          "type": "tongo::main::Tongo::RolloverEvent",
+          "kind": "nested"
+        },
+        {
+          "name": "WithdrawEvent",
+          "type": "tongo::main::Tongo::WithdrawEvent",
+          "kind": "nested"
+        }
+      ]
     }
   ] as const;

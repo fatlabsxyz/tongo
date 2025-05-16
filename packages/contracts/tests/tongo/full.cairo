@@ -19,9 +19,9 @@ fn full() {
     let x_bar = generate_random(seed, 2);
     let y_bar = PubKeyTrait::from_secret(x_bar);
 
-    // The initial buffers, balance, and audits should be 0
-    let buffer = dispatcher.get_buffer(y);
-    assert!(buffer.is_zero(), "Initial buffer not 0");
+    // The initial pendings, balance, and audits should be 0
+    let pending = dispatcher.get_pending(y);
+    assert!(pending.is_zero(), "Initial pending not 0");
 
     let balance = dispatcher.get_balance(y);
     assert!(balance.is_zero(), "Initial balance not 0");
@@ -29,8 +29,8 @@ fn full() {
     let audit = dispatcher.get_audit(y);
     assert!(audit.is_zero(), "Initial audit not 0");
 
-    let buffer = dispatcher.get_buffer(y_bar);
-    assert!(buffer.is_zero(), "Initial buffer not 0");
+    let pending = dispatcher.get_pending(y_bar);
+    assert!(pending.is_zero(), "Initial pending not 0");
 
     let balance = dispatcher.get_balance(y_bar);
     assert!(balance.is_zero(), "Initial balance not 0");
@@ -51,8 +51,8 @@ fn full() {
     dispatcher.fund(Fund { to: y, amount: initial_balance, proof: fund_proof });
 
     //Bufer should be 0, balance initial_balance and audit initial_balance
-    let buffer = dispatcher.get_buffer(y);
-    assert!(buffer.is_zero(), "Initial buffer not 0");
+    let pending = dispatcher.get_pending(y);
+    assert!(pending.is_zero(), "Initial pending not 0");
 
     let audit = dispatcher.get_audit(y);
     decipher_balance(initial_balance, 'CURIOSITY', audit);
@@ -85,9 +85,9 @@ fn full() {
     let nonce = dispatcher.get_nonce(y);
     assert!(nonce == 2, "Nonce is not 2");
 
-    //For y balance and audit  should be initial-transfer, buffer 0
-    let buffer = dispatcher.get_buffer(y);
-    assert!(buffer.is_zero(), "Buffer is not 0");
+    //For y balance and audit  should be initial-transfer, pending 0
+    let pending = dispatcher.get_pending(y);
+    assert!(pending.is_zero(), "Buffer is not 0");
 
     let audit = dispatcher.get_audit(y);
     decipher_balance(initial_balance - transfer_amount, 'CURIOSITY', audit);
@@ -95,9 +95,9 @@ fn full() {
     let balance = dispatcher.get_balance(y);
     decipher_balance(initial_balance - transfer_amount, x, balance);
 
-    //for y_bar balance should be 0, audit and buffer should be transfer_amount
-    let buffer = dispatcher.get_buffer(y_bar);
-    decipher_balance(transfer_amount, x_bar, buffer);
+    //for y_bar balance should be 0, audit and pending should be transfer_amount
+    let pending = dispatcher.get_pending(y_bar);
+    decipher_balance(transfer_amount, x_bar, pending);
 
     let audit = dispatcher.get_audit(y_bar);
     decipher_balance(transfer_amount, 'CURIOSITY', audit);
@@ -114,12 +114,12 @@ fn full() {
     let nonce = dispatcher.get_nonce(y_bar);
     assert!(nonce == 1, "Nonce is not 1");
 
-    //for y_bar buffer should be 0, audit and balance shoul be transfer_amount
+    //for y_bar pending should be 0, audit and balance shoul be transfer_amount
     let audit = dispatcher.get_audit(y_bar);
     decipher_balance(transfer_amount, 'CURIOSITY', audit);
 
-    let buffer = dispatcher.get_buffer(y_bar);
-    assert!(buffer.is_zero(), "Buffer is not 0");
+    let pending = dispatcher.get_pending(y_bar);
+    assert!(pending.is_zero(), "Buffer is not 0");
 
     let balance = dispatcher.get_balance(y_bar);
     decipher_balance(transfer_amount, x_bar, balance);
@@ -139,12 +139,12 @@ fn full() {
     let nonce = dispatcher.get_nonce(y_bar);
     assert!(nonce == 2, "Nonce is not 2");
 
-    //the balance and audit should be transfer_amount - amount and the buffer should be 0
+    //the balance and audit should be transfer_amount - amount and the pending should be 0
     let audit = dispatcher.get_audit(y_bar);
     decipher_balance(transfer_amount - amount, 'CURIOSITY', audit);
 
-    let buffer = dispatcher.get_buffer(y_bar);
-    assert!(buffer.is_zero(), "Buffer is not 0");
+    let pending = dispatcher.get_pending(y_bar);
+    assert!(pending.is_zero(), "Buffer is not 0");
 
     let balance = dispatcher.get_balance(y_bar);
     decipher_balance(transfer_amount - amount, x_bar, balance);

@@ -18,7 +18,7 @@ pub trait ITongo<TContractState> {
     fn transfer(ref self: TContractState, transfer: Transfer);
     fn get_balance(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_audit(self: @TContractState, y: PubKey) -> CipherBalance;
-    fn get_buffer(self: @TContractState, y: PubKey) -> CipherBalance;
+    fn get_pending(self: @TContractState, y: PubKey) -> CipherBalance;
     fn get_nonce(self: @TContractState, y: PubKey) -> u64;
     fn ERC20(self: @TContractState) -> ContractAddress;
     fn get_state(self: @TContractState, y: PubKey) -> State;
@@ -53,7 +53,7 @@ pub mod Tongo {
     struct Storage {
         balance: Map<PubKey, CipherBalance>,
         audit_balance: Map<PubKey, CipherBalance>,
-        buffer: Map<PubKey, CipherBalance>,
+        pending: Map<PubKey, CipherBalance>,
         nonce: Map<PubKey, u64>,
     }
 
@@ -110,7 +110,7 @@ pub mod Tongo {
             let nonce = self.get_nonce(to);
             let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
             verify_fund(inputs, proof);
-            self.buffer_to_balance(to);
+            self.pending_to_balance(to);
             self.increase_nonce(to);
             self.emit(RolloverEvent {to, nonce});
         }
@@ -223,7 +223,7 @@ pub mod Tongo {
             //TODO: Acomodar el audit
             self.remove_audit(from, CipherBalance { CL: L_audit, CR: R });
 
-            self.add_buffer(to, CipherBalance { CL: L_bar, CR: R });
+            self.add_pending(to, CipherBalance { CL: L_bar, CR: R });
             //TODO: Acomodar el audit
             self.add_audit(to, CipherBalance { CL: L_audit, CR: R });
             self.increase_nonce(from);
@@ -250,13 +250,13 @@ pub mod Tongo {
             self.audit_balance.entry(y).read()
         }
 
-        fn get_buffer(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.buffer.entry(y).read()
+        fn get_pending(self: @ContractState, y: PubKey) -> CipherBalance {
+            self.pending.entry(y).read()
         }
 
         fn get_state(self: @ContractState, y: PubKey) -> State {
             let balance = self.balance.entry(y).read();
-            let pending = self.buffer.entry(y).read();
+            let pending = self.pending.entry(y).read();
             let audit = self.audit_balance.entry(y).read();
             let nonce = self.nonce.entry(y).read();
             return State { balance, pending, audit, nonce};
@@ -285,24 +285,24 @@ pub mod Tongo {
             }
         }
 
-        fn add_buffer(ref self: ContractState, y: PubKey, new_buffer: CipherBalance) {
-            let old_buffer = self.buffer.entry(y).read();
-            if old_buffer.is_zero() {
-                self.buffer.entry(y).write(new_buffer);
+        fn add_pending(ref self: ContractState, y: PubKey, new_pending: CipherBalance) {
+            let old_pending = self.pending.entry(y).read();
+            if old_pending.is_zero() {
+                self.pending.entry(y).write(new_pending);
             } else {
-                let sum = old_buffer.add(new_buffer);
-                self.buffer.entry(y).write(sum);
+                let sum = old_pending.add(new_pending);
+                self.pending.entry(y).write(sum);
             }
         }
 
-        fn buffer_to_balance(ref self: ContractState, y: PubKey) {
-            let buffer = self.buffer.entry(y).read();
-            if buffer.is_zero() {
+        fn pending_to_balance(ref self: ContractState, y: PubKey) {
+            let pending = self.pending.entry(y).read();
+            if pending.is_zero() {
                 return;
             }
-            self.add_balance(y, buffer);
+            self.add_balance(y, pending);
             self
-                .buffer
+                .pending
                 .entry(y)
                 .write(
                     CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }

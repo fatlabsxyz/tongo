@@ -35,8 +35,8 @@ fn test_withdraw_all() {
     let balance = dispatcher.get_balance(y);
     assert!(balance.is_zero(), "fail");
 
-    let buffer = dispatcher.get_buffer(y);
-    assert!(buffer.is_zero(), "fail")
+   let pending = dispatcher.get_pending(y);
+    assert!(pending.is_zero(), "fail")
 }
 
 #[test]
