@@ -45,6 +45,7 @@ pub mod Tongo {
     use crate::constants::{STRK_ADDRESS};
 
     use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover, State};
+    use crate::ae_balance::{AEBalance};
 
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
@@ -53,58 +54,11 @@ pub mod Tongo {
     struct Storage {
         balance: Map<PubKey, CipherBalance>,
         audit_balance: Map<PubKey, CipherBalance>,
-        pending: Map<PubKey, CipherBalance>,
+        ae_balance: Map<PubKey, AEBalance>,
+        ae_audit_balance: Map<PubKey, AEBalance>,
+        buffer: Map<PubKey, CipherBalance>,
         nonce: Map<PubKey, u64>,
     }
-
-    #[event]
-    #[derive(Drop, starknet::Event)]
-    pub enum Event {
-        TransferEvent: TransferEvent,
-        FundEvent: FundEvent,
-        RolloverEvent: RolloverEvent,
-        WithdrawEvent: WithdrawEvent,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct TransferEvent {
-        #[key]
-        pub to: PubKey,
-        #[key]
-        pub from: PubKey,
-        #[key]
-        pub nonce: u64,
-        pub cipherbalance: CipherBalance,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct FundEvent {
-        #[key]
-        pub to: PubKey,
-        #[key]
-        pub nonce: u64,
-        pub amount: u64,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct RolloverEvent {
-        #[key]
-        pub to: PubKey,
-        #[key]
-        pub nonce: u64,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct WithdrawEvent {
-        #[key]
-        pub from: PubKey,
-        #[key]
-        pub nonce: u64,
-        pub amount: u64,
-        pub to: ContractAddress,
-    }
-
-
 
     #[abi(embed_v0)]
     impl TongoImpl of super::ITongo<ContractState> {
@@ -121,8 +75,8 @@ pub mod Tongo {
 
         /// Transfer some STARK to Tongo contract and assing some Tongo to account y
         fn fund(ref self: ContractState, fund: Fund) {
-            let Fund { to, amount, proof } = fund;
             fund.validate();
+            let Fund { to, amount, proof, ae_hints } = fund;
             let nonce = self.get_nonce(to);
 
             let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
@@ -144,7 +98,7 @@ pub mod Tongo {
         /// Withdraw some tongo from acount and send the stark to the recipient
         fn withdraw(ref self: ContractState, withdraw: Withdraw) {
             withdraw.validate();
-            let Withdraw { from, amount, to, proof } = withdraw;
+            let Withdraw { from, amount, to, proof, ae_hints } = withdraw;
 
             let balance = self.get_balance(from);
 
@@ -169,7 +123,7 @@ pub mod Tongo {
         /// Withdraw ALL tongo from acount and send the stark to the recipient
         fn withdraw_all(ref self: ContractState, withdraw_all: WithdrawAll) {
             withdraw_all.validate();
-            let WithdrawAll { from, amount, to, proof } = withdraw_all;
+            let WithdrawAll { from, amount, to, proof, ae_hints } = withdraw_all;
 
             //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be
             //frontruned.
@@ -201,7 +155,7 @@ pub mod Tongo {
         /// contract.
         fn transfer(ref self: ContractState, transfer: Transfer) {
             transfer.validate();
-            let Transfer { from, to, L, L_bar, L_audit, R, proof, } = transfer;
+            let Transfer { from, to, L, L_bar, L_audit, R, proof, ae_hints } = transfer;
 
             let balance = self.get_balance(from);
             let nonce = self.get_nonce(from);

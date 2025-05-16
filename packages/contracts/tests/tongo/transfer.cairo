@@ -1,4 +1,4 @@
-use crate::tongo::setup::{setup_tongo};
+use crate::tongo::setup::{setup_tongo, empty_ae_hint};
 use crate::prover::utils::{generate_random};
 use crate::prover::functions::{prove_transfer, prove_fund};
 
@@ -20,7 +20,7 @@ fn test_transfer() {
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
     let b0 = 3124;
-    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof });
+    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof, ae_hints: empty_ae_hint() });
 
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);
@@ -36,7 +36,8 @@ fn test_transfer() {
                 L_bar: inputs.L_bar,
                 L_audit: inputs.L_audit,
                 R: inputs.R,
-                proof
+                proof,
+                ae_hints: empty_ae_hint()
             }
         );
 }
@@ -55,7 +56,7 @@ fn test_benchmark_prover() {
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
     let b0 = 3124;
-    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof });
+    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof, ae_hints: empty_ae_hint() });
 
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);

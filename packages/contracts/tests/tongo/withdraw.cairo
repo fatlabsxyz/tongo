@@ -1,5 +1,5 @@
 use starknet::ContractAddress;
-use crate::tongo::setup::{setup_tongo};
+use crate::tongo::setup::{setup_tongo, empty_ae_hint};
 
 use crate::prover::functions::{prove_withdraw_all, prove_withdraw, prove_fund};
 use crate::prover::utils::generate_random;
@@ -22,7 +22,7 @@ fn test_withdraw_all() {
 
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
     let b = 250;
-    dispatcher.fund(Fund { to: y, amount: b, proof: fund_proof });
+    dispatcher.fund(Fund { to: y, amount: b, proof: fund_proof, ae_hints: empty_ae_hint() });
 
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);
@@ -31,7 +31,7 @@ fn test_withdraw_all() {
         x, b, tranfer_address, balance.CL, balance.CR, nonce, seed
     );
 
-    dispatcher.withdraw_all(WithdrawAll { from: y, amount: b, to: tranfer_address, proof });
+    dispatcher.withdraw_all(WithdrawAll { from: y, amount: b, to: tranfer_address, proof, ae_hints: empty_ae_hint() });
     let balance = dispatcher.get_balance(y);
     assert!(balance.is_zero(), "fail");
 
@@ -53,7 +53,7 @@ fn test_withdraw() {
 
     let initial_balance = 250;
     let amount = 50;
-    dispatcher.fund(Fund { to: y, amount: initial_balance, proof: fund_proof });
+    dispatcher.fund(Fund { to: y, amount: initial_balance, proof: fund_proof, ae_hints: empty_ae_hint() });
 
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);
@@ -62,5 +62,5 @@ fn test_withdraw() {
         x, initial_balance, amount, tranfer_address, balance.CL, balance.CR, nonce, seed
     );
 
-    dispatcher.withdraw(Withdraw { from: y, amount, to: tranfer_address, proof });
+    dispatcher.withdraw(Withdraw { from: y, amount, to: tranfer_address, proof, ae_hints: empty_ae_hint() });
 }

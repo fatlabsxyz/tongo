@@ -1,5 +1,5 @@
 use starknet::ContractAddress;
-use crate::tongo::setup::{setup_tongo};
+use crate::tongo::setup::{setup_tongo, empty_ae_hint};
 use crate::prover::utils::{generate_random, decipher_balance};
 use crate::prover::functions::prove_withdraw_all;
 use crate::prover::functions::prove_transfer;
@@ -24,7 +24,7 @@ fn audit_fund() {
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
     let b0 = 3124;
-    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof });
+    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof, ae_hints: empty_ae_hint() });
 
     let audit = dispatcher.get_audit(y);
     decipher_balance(b0, 'CURIOSITY', audit);
@@ -46,7 +46,7 @@ fn audit_withdraw_all() {
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
     let b = 250;
-    dispatcher.fund(Fund { to: y, amount: b, proof: fund_proof });
+    dispatcher.fund(Fund { to: y, amount: b, proof: fund_proof, ae_hints: empty_ae_hint() });
 
     let audit = dispatcher.get_audit(y);
     decipher_balance(b, 'CURIOSITY', audit);
@@ -58,7 +58,7 @@ fn audit_withdraw_all() {
         x, b, tranfer_address, balance.CL, balance.CR, nonce, seed
     );
 
-    dispatcher.withdraw_all(WithdrawAll { from: y, amount: b, to: tranfer_address, proof });
+    dispatcher.withdraw_all(WithdrawAll { from: y, amount: b, to: tranfer_address, proof, ae_hints: empty_ae_hint() });
     let audit = dispatcher.get_audit(y);
     decipher_balance(0, 'CURIOSITY', audit);
 }
@@ -84,7 +84,7 @@ fn audit_transfer() {
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
     let b0 = 3124;
-    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof });
+    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof, ae_hints: empty_ae_hint() });
     let nonce = dispatcher.get_nonce(y);
 
     let audit = dispatcher.get_audit(y);
@@ -103,7 +103,8 @@ fn audit_transfer() {
                 L_bar: inputs.L_bar,
                 L_audit: inputs.L_audit,
                 R: inputs.R,
-                proof
+                proof,
+                ae_hints: empty_ae_hint()
             }
         );
 

@@ -1,5 +1,6 @@
 use tongo::main::{ITongoDispatcher};
 use tongo::constants::STRK_ADDRESS;
+use tongo::verifier::structs::{AEHints};
 use erc20::IERC20Dispatcher;
 use erc20::IERC20DispatcherTrait;
 
@@ -10,6 +11,13 @@ use core::starknet::{ContractAddress};
 use snforge_std::{declare, ContractClassTrait, DeclareResultTrait, ContractClass };
 
 pub const TONGO_ADDRESS: felt252 = 'TONGO';
+
+pub fn empty_ae_hint() -> AEHints {
+    AEHints {
+        ae_balance: Default::default(),
+        ae_audit_balance: Default::default()
+    }
+}
 
 
 fn declare_class(contract_name: ByteArray) -> (ContractClass, felt252) {

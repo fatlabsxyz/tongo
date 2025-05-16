@@ -3,6 +3,7 @@ use core::ec::{EcPointTrait, NonZeroEcPoint, EcPoint, EcStateTrait};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use core::traits::{Into, TryInto};
 use crate::verifier::utils::{validate_felt, validate_range};
+use crate::ae_balance::AEBalance;
 
 
 /// Represent the public key y = g ** x of a user.
@@ -153,10 +154,17 @@ pub impl CipherBalanceImpl of CipherBalanceTrait {
     }
 }
 
-#[derive(Drop, Destruct, Serde, Copy)]
+#[derive(Drop, Serde)]
+pub struct AEHints {
+    pub ae_balance: AEBalance,
+    pub ae_audit_balance: AEBalance,
+}
+
+#[derive(Drop, Destruct, Serde)]
 pub struct Fund {
     pub to: PubKey,
     pub amount: felt252,
+    pub ae_hints: AEHints,
     pub proof: ProofOfFund
 }
 
@@ -186,6 +194,7 @@ pub struct Withdraw {
     pub from: PubKey,
     pub amount: felt252,
     pub to: ContractAddress,
+    pub ae_hints: AEHints,
     pub proof: ProofOfWithdraw
 }
 
@@ -201,6 +210,7 @@ pub struct WithdrawAll {
     pub from: PubKey,
     pub amount: felt252,
     pub to: ContractAddress,
+    pub ae_hints: AEHints,
     pub proof: ProofOfWitdhrawAll
 }
 
@@ -220,6 +230,7 @@ pub struct Transfer {
     pub L_bar: StarkPoint,
     pub L_audit: StarkPoint,
     pub R: StarkPoint,
+    pub ae_hints: AEHints,
     pub proof: ProofOfTransfer,
 }
 

@@ -1,4 +1,4 @@
-use crate::tongo::setup::{setup_tongo};
+use crate::tongo::setup::{setup_tongo, empty_ae_hint};
 use crate::prover::functions::{prove_fund};
 use crate::prover::utils::{generate_random};
 use tongo::main::{ITongoDispatcherTrait};
@@ -17,14 +17,14 @@ fn test_fund() {
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
     let b1 = 250;
-    let fundPayload = Fund { to: y, amount: b1, proof: fund_proof };
+    let fundPayload = Fund { to: y, amount: b1, proof: fund_proof, ae_hints: empty_ae_hint() };
 
     dispatcher.fund(fundPayload);
 
     let nonce = dispatcher.get_nonce(y);
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
     let b2 = 50;
-    let fundPayload = Fund { to: y, amount: b2, proof: fund_proof };
+    let fundPayload = Fund { to: y, amount: b2, proof: fund_proof, ae_hints: empty_ae_hint() };
 
     dispatcher.fund(fundPayload);
 }
@@ -43,6 +43,6 @@ fn test_fund_failed() {
 
     let b1 = 250;
 
-    dispatcher.fund(Fund { to: y, amount: b1, proof: fund_proof });
-    dispatcher.fund(Fund { to: y, amount: b1, proof: fund_proof });
+    dispatcher.fund(Fund { to: y, amount: b1, proof: fund_proof, ae_hints: empty_ae_hint() });
+    dispatcher.fund(Fund { to: y, amount: b1, proof: fund_proof, ae_hints: empty_ae_hint() });
 }
