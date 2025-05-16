@@ -104,7 +104,8 @@ program
         const fundOp = await account.fund({
             amount: opts.amount
         });
-        const tx = await signer.execute([fundOp.toCalldata()]);
+        await fundOp.populateApprove();
+        const tx = await signer.execute([fundOp.approve!, fundOp.toCalldata()]);
         console.log(tx.transaction_hash);
     });
 
