@@ -1,12 +1,17 @@
 import { bytesToHex } from "@noble/hashes/utils";
 
 import { ProjectivePoint } from "@scure/starknet";
-import { decipher_balance, g, InputsExPost, ProofExPost, ProofOfFund, ProofOfTransfer, ProofOfWithdraw, ProofOfWithdrawAll, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost } from "she-js";
-import { BigNumberish, cairo, Call, CallData, Contract, num, RpcProvider } from "starknet";
+import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost } from "she-js";
+import { BigNumberish, Contract, num, RpcProvider } from "starknet";
+import { AEBalance } from "./ae_balance.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
+import { FundOperation } from "./operations/fund.js";
+import { RollOverOperation } from "./operations/rollover.js";
+import { TransferOperation } from "./operations/transfer.js";
+import { WithdrawAllOperation, WithdrawOperation } from "./operations/withdraw.js";
 import { tongoAbi } from "./tongo.abi.js";
 import { TongoAddress } from "./types.js";
-import { pubKeyAffineToBase58, pubKeyBase58ToHex } from "./utils.js";
+import { pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex } from "./utils.js";
 
 interface PubKey {
     x: bigint,
@@ -21,95 +26,14 @@ function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
     }
 }
 
-interface IOperation {
-    toCalldata(): Call;
-}
-
 
 interface FundDetails {
     amount: bigint;
 }
 
-interface IFundOperation extends IOperation {
-    populateApprove(): Promise<void>;
-}
-
-class FundOperation implements IFundOperation {
-    Tongo: Contract;
-    to: ProjectivePoint;
-    amount: bigint;
-    proof: ProofOfFund;
-    approve?: Call;
-
-    constructor(to: ProjectivePoint, amount: bigint, proof: ProofOfFund, Tongo: Contract) {
-        this.to = to;
-        this.amount = amount;
-        this.proof = proof;
-        this.Tongo = Tongo;
-    }
-
-    toCalldata(): Call {
-        return this.Tongo.populate("fund", [{ to: this.to, amount: this.amount, proof: this.proof }]);
-    }
-
-    async populateApprove() {
-        const erc20 = await this.Tongo.ERC20();
-        const erc20_addres = num.toHex(erc20);
-        const tongo_address = this.Tongo.address;
-        const amount = cairo.uint256(this.amount);
-        let calldata = CallData.compile({ "spender": tongo_address, "amount": amount });
-        this.approve = { contractAddress: erc20_addres, entrypoint: "approve", calldata };
-    }
-}
-
 interface TransferDetails {
     amount: bigint;
     to: { x: bigint, y: bigint; };
-}
-interface ITransferOperation extends IOperation { }
-class TransferOperation implements ITransferOperation {
-    Tongo: Contract;
-    from: ProjectivePoint;
-    to: ProjectivePoint;
-    L: ProjectivePoint;
-    L_bar: ProjectivePoint;
-    L_audit: ProjectivePoint;
-    R: ProjectivePoint;
-    proof: ProofOfTransfer;
-
-    constructor(
-        from: ProjectivePoint,
-        to: ProjectivePoint,
-        L: ProjectivePoint,
-        L_bar: ProjectivePoint,
-        L_audit: ProjectivePoint,
-        R: ProjectivePoint,
-        proof: ProofOfTransfer,
-        Tongo: Contract
-    ) {
-        this.from = from;
-        this.to = to;
-        this.L = L;
-        this.L_bar = L_bar;
-        this.L_audit = L_audit;
-        this.R = R;
-        this.proof = proof;
-        this.Tongo = Tongo;
-    }
-
-    toCalldata(): Call {
-        return this.Tongo.populate("transfer", [
-            {
-                from: this.from,
-                to: this.to,
-                L: this.L,
-                L_bar: this.L_bar,
-                L_audit: this.L_audit,
-                R: this.R,
-                proof: this.proof,
-            },
-        ]);
-    }
 }
 
 interface TransferWithFeeDetails { }
@@ -118,82 +42,10 @@ interface TransferWithFeeOperation { }
 interface WithdrawAllDetails {
     to: bigint;
 }
-interface IWithdrawAllOperation extends IOperation { }
-class WithdrawAllOperation implements IWithdrawAllOperation {
-    from: ProjectivePoint;
-    to: bigint;
-    amount: bigint;
-    proof: ProofOfWithdrawAll;
-    Tongo: Contract;
-
-    constructor(from: ProjectivePoint, to: bigint, amount: bigint, proof: ProofOfWithdrawAll, Tongo: Contract) {
-        this.from = from;
-        this.to = to;
-        this.amount = amount;
-        this.proof = proof;
-        this.Tongo = Tongo;
-    }
-
-    toCalldata(): Call {
-        return this.Tongo.populate("withdraw_all", [
-            {
-                from: this.from,
-                amount: this.amount,
-                to: "0x" + this.to.toString(16),
-                proof: this.proof,
-            },
-        ]);
-    }
-}
 
 interface WithdrawDetails {
     to: bigint;
     amount: bigint;
-}
-interface IWithdrawOperation extends IOperation { }
-class WithdrawOperation implements IWithdrawOperation {
-    from: ProjectivePoint;
-    to: bigint;
-    amount: bigint;
-    proof: ProofOfWithdraw;
-    Tongo: Contract;
-
-    constructor(from: ProjectivePoint, to: bigint, amount: bigint, proof: ProofOfWithdraw, Tongo: Contract) {
-        this.from = from;
-        this.to = to;
-        this.amount = amount;
-        this.proof = proof;
-        this.Tongo = Tongo;
-    }
-
-    toCalldata(): Call {
-        return this.Tongo.populate("withdraw", [
-            {
-                from: this.from,
-                amount: this.amount,
-                to: num.toHex(this.to),
-                proof: this.proof,
-            },
-        ]);
-    }
-}
-
-interface IRollOverOperation extends IOperation { }
-
-class RollOverOperation implements IRollOverOperation {
-    to: ProjectivePoint;
-    proof: ProofOfFund;
-    Tongo: Contract;
-
-    constructor(to: ProjectivePoint, proof: ProofOfFund, Tongo: Contract) {
-        this.to = to;
-        this.proof = proof;
-        this.Tongo = Tongo;
-    }
-
-    toCalldata(): Call {
-        return this.Tongo.populate("rollover", [{ to: this.to, proof: this.proof }]);
-    }
 }
 
 interface State {
@@ -253,7 +105,7 @@ export class Account implements IAccount {
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
         const nonce = await this.nonce();
         const { inputs, proof } = prove_fund(this.pk, nonce);
-        const operation = new FundOperation(inputs.y, fundDetails.amount, proof, this.Tongo);
+        const operation = new FundOperation({ to: inputs.y, amount: fundDetails.amount, proof, Tongo: this.Tongo });
         await operation.populateApprove();
         return operation;
     }
@@ -275,16 +127,9 @@ export class Account implements IAccount {
         const nonce = await this.nonce();
         const { inputs, proof } = prove_transfer(this.pk, to, balance, transferDetails.amount, L, R, nonce);
 
+
         return new TransferOperation(
-            inputs.y,
-            inputs.y_bar,
-            inputs.L,
-            inputs.L_bar,
-            inputs.L_audit,
-            inputs.R,
-            proof,
-            this.Tongo
-        );
+        { from: inputs.y, to: inputs.y_bar, L: inputs.L, L_bar: inputs.L_bar, L_audit: inputs.L_audit, R: inputs.R, proof, Tongo: this.Tongo }        );
     }
 
     transferWithFee(transferWithFeeDetails: TransferWithFeeDetails): TransferWithFeeOperation {
@@ -306,7 +151,7 @@ export class Account implements IAccount {
 
         const nonce = await this.nonce();
         const { inputs: inputs, proof: proof } = prove_withdraw_all(this.pk, L, R, nonce, withdrawDetails.to, balance);
-        return new WithdrawAllOperation(inputs.y, inputs.to, inputs.amount, proof, this.Tongo);
+        return new WithdrawAllOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, proof, Tongo: this.Tongo });
     }
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
