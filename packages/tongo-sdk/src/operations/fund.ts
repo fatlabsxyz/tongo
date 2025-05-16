@@ -1,8 +1,8 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfFund } from "she-js";
 import { cairo, Call, CallData, Contract, num } from "starknet";
+import { AEHints } from "../ae_balance";
 import { IOperation } from "./operation";
-import { AEBalance } from "../ae_balance";
 
 interface IFundOperation extends IOperation {
     populateApprove(): Promise<void>;
@@ -12,10 +12,7 @@ interface FundOpParams {
     to: ProjectivePoint;
     amount: bigint;
     proof: ProofOfFund;
-    aeHints: {
-        aeBalance: AEBalance,
-        aeAuditBalance: AEBalance,
-    };
+    aeHints: AEHints;
     Tongo: Contract;
 }
 
@@ -25,16 +22,23 @@ export class FundOperation implements IFundOperation {
     amount: bigint;
     proof: ProofOfFund;
     approve?: Call;
+    aeHints: AEHints;
 
-    constructor({ to, amount, proof, Tongo }: FundOpParams) {
+    constructor({ to, amount, proof, Tongo, aeHints }: FundOpParams) {
         this.to = to;
         this.amount = amount;
         this.proof = proof;
         this.Tongo = Tongo;
+        this.aeHints = aeHints;
     }
 
     toCalldata(): Call {
-        return this.Tongo.populate("fund", [{ to: this.to, amount: this.amount, proof: this.proof }]);
+        return this.Tongo.populate("fund", [{
+            to: this.to,
+            amount: this.amount,
+            proof: this.proof,
+            ae_hints: this.aeHints
+        }]);
     }
 
     async populateApprove() {

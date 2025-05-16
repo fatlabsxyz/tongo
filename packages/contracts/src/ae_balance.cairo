@@ -1,9 +1,22 @@
 use core::integer::{u512};
+use starknet::storage_access::{StorePacking};
 
-#[derive(Serde, Drop, Copy, Default, Debug)]
+#[derive(Serde, Drop, Copy, Default, Debug, starknet::Store)]
 pub struct AEBalance {
     ciphertext: u512,
     nonce: u256
+}
+
+impl StorePackingU512 of StorePacking<u512, (u128, u128, u128, u128)> {
+    fn pack(value: u512) -> (u128, u128, u128, u128) {
+        (value.limb0, value.limb1, value.limb2, value.limb3)
+    }
+
+    #[inline]
+    fn unpack(value: (u128, u128, u128, u128)) -> u512 {
+        let ( limb0, limb1, limb2, limb3 ) = value;
+        u512 { limb0, limb1, limb2, limb3 }
+    }
 }
 
 impl U512Default of Default<u512> {

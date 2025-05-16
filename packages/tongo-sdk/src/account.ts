@@ -3,7 +3,7 @@ import { bytesToHex } from "@noble/hashes/utils";
 import { ProjectivePoint } from "@scure/starknet";
 import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost } from "she-js";
 import { BigNumberish, Contract, num, RpcProvider } from "starknet";
-import { AEBalance } from "./ae_balance.js";
+import { AEChaCha, AEHint, AEHintToBytes, bytesToBigAEHint } from "./ae_balance.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
 import { FundOperation } from "./operations/fund.js";
 import { RollOverOperation } from "./operations/rollover.js";
@@ -26,7 +26,6 @@ function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
     }
 }
 
-
 interface FundDetails {
     amount: bigint;
 }
@@ -48,11 +47,12 @@ interface WithdrawDetails {
     amount: bigint;
 }
 
-interface State {
+interface AccountState {
     balance: CipherBalance;
     pending: CipherBalance;
-    decryptBalance: bigint;
-    decryptPending: bigint;
+    audit: CipherBalance;
+    aeBalance: AEHint;
+    aeAuditBalance: AEHint;
     nonce: bigint;
 }
 
@@ -79,7 +79,7 @@ interface IAccount {
     nonce(): Promise<bigint>;
     balance(): Promise<CipherBalance>;
     pending(): Promise<CipherBalance>;
-    state(): Promise<State>;
+    state(): Promise<AccountState>;
     decryptBalance(cipher: CipherBalance): bigint;
     decryptPending(cipher: CipherBalance): bigint;
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost;
@@ -89,6 +89,10 @@ interface IAccount {
 export class Account implements IAccount {
     publicKey: PubKey;
     pk: bigint;
+    auditorKey: PubKey = {
+        x: 3220927228414153929438887738336746530194630060939473224263346330912472379800n,
+        y: 2757351908714051356627755054438992373493721650442793345821069764655464109380n
+    };
 
     Tongo: Contract;
 
@@ -103,14 +107,18 @@ export class Account implements IAccount {
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
+        const { amount } = fundDetails;
         const nonce = await this.nonce();
         const { inputs, proof } = prove_fund(this.pk, nonce);
-        const operation = new FundOperation({ to: inputs.y, amount: fundDetails.amount, proof, Tongo: this.Tongo });
+
+        const aeHints = await this.computeAEHints(amount);
+        const operation = new FundOperation({ to: inputs.y, amount, proof, aeHints, Tongo: this.Tongo });
         await operation.populateApprove();
         return operation;
     }
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
+        const { amount } = transferDetails;
         const { L, R } = await this.balance();
         const balance = this.decryptBalance({ L, R });
         if (L == null) {
@@ -119,17 +127,26 @@ export class Account implements IAccount {
         if (R == null) {
             throw new Error("You dont have balance");
         }
-        if (balance < transferDetails.amount) {
+        if (balance < amount) {
             throw new Error("You dont have enought balance");
         }
 
+        const aeHints = await this.computeAEHints(balance - amount);
         const to = new ProjectivePoint(transferDetails.to.x, transferDetails.to.y, 1n);
         const nonce = await this.nonce();
-        const { inputs, proof } = prove_transfer(this.pk, to, balance, transferDetails.amount, L, R, nonce);
+        const { inputs, proof } = prove_transfer(this.pk, to, balance, amount, L, R, nonce);
 
-
-        return new TransferOperation(
-        { from: inputs.y, to: inputs.y_bar, L: inputs.L, L_bar: inputs.L_bar, L_audit: inputs.L_audit, R: inputs.R, proof, Tongo: this.Tongo }        );
+        return new TransferOperation({
+            from: inputs.y,
+            to: inputs.y_bar,
+            L: inputs.L,
+            L_bar: inputs.L_bar,
+            L_audit: inputs.L_audit,
+            R: inputs.R,
+            proof,
+            aeHints,
+            Tongo: this.Tongo
+        });
     }
 
     transferWithFee(transferWithFeeDetails: TransferWithFeeDetails): TransferWithFeeOperation {
@@ -150,11 +167,13 @@ export class Account implements IAccount {
         }
 
         const nonce = await this.nonce();
+        const aeHints = await this.computeAEHints(0n);
         const { inputs: inputs, proof: proof } = prove_withdraw_all(this.pk, L, R, nonce, withdrawDetails.to, balance);
-        return new WithdrawAllOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, proof, Tongo: this.Tongo });
+        return new WithdrawAllOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, proof, aeHints, Tongo: this.Tongo });
     }
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
+        const { amount } = withdrawDetails;
         const { L, R } = await this.balance();
         const balance = this.decryptBalance({ L, R });
         if (L == null) {
@@ -163,10 +182,11 @@ export class Account implements IAccount {
         if (R == null) {
             throw new Error("You dont have balance");
         }
-        if (balance < withdrawDetails.amount) {
+        if (balance < amount) {
             throw new Error("You dont have enought balance");
         }
 
+        const aeHints = await this.computeAEHints(balance - amount);
         const nonce = await this.nonce();
         const { inputs, proof } = prove_withdraw(
             this.pk,
@@ -177,7 +197,7 @@ export class Account implements IAccount {
             withdrawDetails.to,
             nonce
         );
-        return new WithdrawOperation(inputs.y, inputs.to, inputs.amount, proof, this.Tongo);
+        return new WithdrawOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, proof, aeHints, Tongo: this.Tongo });
     }
 
     async nonce(): Promise<bigint> {
@@ -227,13 +247,31 @@ export class Account implements IAccount {
         return { L, R };
     }
 
-    async state(): Promise<State> {
-        const balance = await this.balance();
-        const pending = await this.pending();
+    async state(): Promise<AccountState> {
+        const { x, y } = this.publicKey;
+        const state = await this.Tongo.get_state({ x, y });
+        const {
+            balance, pending, audit,
+            nonce,
+            ae_balance, ae_audit_balance,
+        } = state;
+        return {
+            balance,
+            pending,
+            nonce,
+            aeBalance: ae_balance,
+            aeAuditBalance: ae_audit_balance,
+            audit
+        };
+    }
+
+    async decryptAEBalance(): Promise<bigint> {
+        const state = await this.state();
         const nonce = await this.nonce();
-        const decryptBalance = this.decryptBalance(balance);
-        const decryptPending = this.decryptPending(pending);
-        return { balance, pending, nonce, decryptBalance, decryptPending };
+        const keyAEBal = await this.deriveSymmetricKey(nonce);
+        const { ciphertext, nonce: cipherNonce } = AEHintToBytes(state.aeBalance);
+        const balance = (new AEChaCha(keyAEBal)).decryptBalance(ciphertext, cipherNonce);
+        return balance;
     }
 
     decryptBalance(cipher: CipherBalance): bigint {
@@ -281,19 +319,28 @@ export class Account implements IAccount {
         return ECDiffieHellman(this.pk, otherPublicKey);
     }
 
-    async deriveSymmetricKeyForTongoAddress(other: TongoAddress) {
-        const sharedSecret = this._diffieHellman(other);
-        deriveSymmetricEncryptionKey({
+    async computeAEHints(amount: bigint) {
+        const nonce = await this.nonce();
+        const keyForAuditAEBal = await this.deriveSymmetricKeyForPubKey(nonce, this.auditorKey);
+        const keyAEBal = await this.deriveSymmetricKey(nonce);
+        return {
+            ae_balance: bytesToBigAEHint((new AEChaCha(keyAEBal)).encryptBalance(amount)),
+            ae_audit_balance: bytesToBigAEHint((new AEChaCha(keyForAuditAEBal)).encryptBalance(amount)),
+        };
+    }
+
+    async deriveSymmetricKeyForPubKey(nonce: bigint, other: PubKey) {
+        const sharedSecret = ECDiffieHellman(this.pk, pubKeyAffineToHex(other));
+        return deriveSymmetricEncryptionKey({
             contractAddress: this.Tongo.address,
-            nonce: await this.nonce(),
+            nonce,
             secret: sharedSecret
         });
     }
 
-    async deriveSymmetricKey() {
-        const secret = this._diffieHellman(this.tongoAddress());
-        const nonce = await this.nonce();
-        deriveSymmetricEncryptionKey({
+    async deriveSymmetricKey(nonce: bigint) {
+        const secret = ECDiffieHellman(this.pk, pubKeyAffineToHex(this.publicKey));
+        return deriveSymmetricEncryptionKey({
             contractAddress: this.Tongo.address,
             nonce,
             secret

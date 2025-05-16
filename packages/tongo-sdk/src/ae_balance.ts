@@ -1,21 +1,48 @@
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
-import { bytesToHex, bytesToNumberBE, hexToBytes, numberToBytesBE } from '@noble/ciphers/utils.js';
+import { bytesToNumberBE, numberToBytesBE } from '@noble/ciphers/utils.js';
 import { randomBytes } from '@noble/ciphers/webcrypto.js';
-import crypto from 'crypto';
 
-export class AEBalance {
+export interface AEHint {
+    ciphertext: bigint,
+    nonce: bigint;
+}
 
-    key: Uint8Array;
+export interface AEHintBytes {
+    ciphertext: Uint8Array,
+    nonce: Uint8Array;
+}
 
-    constructor(key: string) {
+export interface AEHints {
+    ae_balance: AEHint,
+    ae_audit_balance: AEHint,
+}
+
+export function AEHintToBytes({ ciphertext, nonce }: AEHint): AEHintBytes {
+    return {
+        ciphertext: numberToBytesBE(ciphertext, 64),
+        nonce: numberToBytesBE(nonce, 32),
+    };
+}
+
+export function bytesToBigAEHint({ ciphertext, nonce }: AEHintBytes): AEHint {
+    return {
+        ciphertext: bytesToNumberBE(ciphertext),
+        nonce: bytesToNumberBE(nonce),
+    };
+}
+// TODO: we should split this class into a AECipher class that returns
+// AEBalance's. This way we can decouple the cipher from the balance and its
+// serialization.
+export class AEChaCha {
+
+    constructor(readonly key: Uint8Array) {
         // 32 B
-        this.key = hexToBytes(key);
         if (this.key.length != 32) {
             throw new Error(`Key length must be exactly 32 Bytes, not '${this.key.length}'`);
         }
     }
 
-    encryptBalance(balance: bigint): { ciphertext: Uint8Array, nonce: Uint8Array; } {
+    encryptBalance(balance: bigint): AEHintBytes {
         // 512  = ( TAG [128] ) + ( NOISE/RESERVED [352] ) + ( BALANCE [32] )
         // 64 B      16 B                44 B                    4 B
         const nonce = randomBytes(24);

@@ -1,6 +1,7 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfWithdraw, ProofOfWithdrawAll } from "she-js";
 import { Call, Contract, num } from "starknet";
+import { AEHints } from "../ae_balance";
 import { IOperation } from "./operation";
 
 
@@ -10,6 +11,7 @@ interface WithdrawAllOpParams {
     to: bigint;
     amount: bigint;
     proof: ProofOfWithdrawAll;
+    aeHints: AEHints;
     Tongo: Contract;
 }
 
@@ -19,13 +21,15 @@ export class WithdrawAllOperation implements IWithdrawAllOperation {
     amount: bigint;
     proof: ProofOfWithdrawAll;
     Tongo: Contract;
+    aeHints: AEHints;
 
-    constructor({ from, to, amount, proof, Tongo }: WithdrawAllOpParams) {
+    constructor({ from, to, amount, proof, Tongo, aeHints }: WithdrawAllOpParams) {
         this.from = from;
         this.to = to;
         this.amount = amount;
         this.proof = proof;
         this.Tongo = Tongo;
+        this.aeHints = aeHints;
     }
 
     toCalldata(): Call {
@@ -35,25 +39,37 @@ export class WithdrawAllOperation implements IWithdrawAllOperation {
                 amount: this.amount,
                 to: "0x" + this.to.toString(16),
                 proof: this.proof,
+                ae_hints: this.aeHints,
             },
         ]);
     }
 }
 
 export interface IWithdrawOperation extends IOperation { }
+interface WithdrawOpParams {
+    from: ProjectivePoint;
+    to: bigint;
+    amount: bigint;
+    proof: ProofOfWithdraw;
+    aeHints: AEHints;
+    Tongo: Contract;
+}
+
 export class WithdrawOperation implements IWithdrawOperation {
     from: ProjectivePoint;
     to: bigint;
     amount: bigint;
     proof: ProofOfWithdraw;
     Tongo: Contract;
+    aeHints: AEHints;
 
-    constructor(from: ProjectivePoint, to: bigint, amount: bigint, proof: ProofOfWithdraw, Tongo: Contract) {
+    constructor({ from, to, amount, proof, Tongo, aeHints }: WithdrawOpParams) {
         this.from = from;
         this.to = to;
         this.amount = amount;
         this.proof = proof;
         this.Tongo = Tongo;
+        this.aeHints = aeHints;
     }
 
     toCalldata(): Call {
@@ -63,6 +79,7 @@ export class WithdrawOperation implements IWithdrawOperation {
                 amount: this.amount,
                 to: num.toHex(this.to),
                 proof: this.proof,
+                ae_hints: this.aeHints
             },
         ]);
     }

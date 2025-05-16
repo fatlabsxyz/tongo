@@ -1,12 +1,15 @@
 use core::starknet::ContractAddress;
 use crate::verifier::structs::{Fund, WithdrawAll, Withdraw, PubKey, Transfer, Rollover, CipherBalance};
+use crate::ae_balance::{AEBalance};
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct State {
     balance: CipherBalance,
     pending: CipherBalance,
     audit: CipherBalance,
-    nonce: u64
+    nonce: u64,
+    ae_balance: AEBalance,
+    ae_audit_balance: AEBalance
 }
 
 #[starknet::interface]
@@ -217,7 +220,9 @@ pub mod Tongo {
             let pending = self.pending.entry(y).read();
             let audit = self.audit_balance.entry(y).read();
             let nonce = self.nonce.entry(y).read();
-            return State { balance, pending, audit, nonce};
+            let ae_balance = self.ae_balance.entry(y).read();
+            let ae_audit_balance = self.ae_audit_balance.entry(y).read();
+            return State { balance, pending, audit, nonce, ae_balance, ae_audit_balance };
         }
     }
 
