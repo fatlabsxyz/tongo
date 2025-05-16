@@ -1,10 +1,17 @@
-import { bytesToHex, } from "@noble/hashes/utils";
+import { bytesToHex } from "@noble/hashes/utils";
 
 import { ProjectivePoint } from "@scure/starknet";
-import { decipher_balance, g, ProofOfFund, ProofOfTransfer, ProofOfWithdraw, ProofOfWithdrawAll,ProofExPost, InputsExPost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, prove_expost, verify_expost} from "she-js";
-import { BigNumberish, Call, Contract, num, RpcProvider, CallData, cairo} from "starknet";
+import { decipher_balance, g, InputsExPost, ProofExPost, ProofOfFund, ProofOfTransfer, ProofOfWithdraw, ProofOfWithdrawAll, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost } from "she-js";
+import { BigNumberish, cairo, Call, CallData, Contract, num, RpcProvider } from "starknet";
+import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
 import { tongoAbi } from "./tongo.abi.js";
-import { pubKeyAffineToBase58 } from "./utils.js";
+import { TongoAddress } from "./types.js";
+import { pubKeyAffineToBase58, pubKeyBase58ToHex } from "./utils.js";
+
+interface PubKey {
+    x: bigint,
+    y: bigint;
+}
 
 function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
     if (x instanceof Uint8Array) {
@@ -46,12 +53,12 @@ class FundOperation implements IFundOperation {
     }
 
     async populateApprove() {
-       const erc20 = await this.Tongo.ERC20(); 
-       const erc20_addres = num.toHex(erc20)
-       const tongo_address = this.Tongo.address;
-       const amount = cairo.uint256(this.amount)
-       let calldata = CallData.compile({"spender": tongo_address, "amount": amount})
-       this.approve = {contractAddress: erc20_addres, entrypoint: "approve", calldata}
+        const erc20 = await this.Tongo.ERC20();
+        const erc20_addres = num.toHex(erc20);
+        const tongo_address = this.Tongo.address;
+        const amount = cairo.uint256(this.amount);
+        let calldata = CallData.compile({ "spender": tongo_address, "amount": amount });
+        this.approve = { contractAddress: erc20_addres, entrypoint: "approve", calldata };
     }
 }
 
@@ -208,8 +215,9 @@ interface ExPost {
 }
 
 interface IAccount {
-    publicKey(): { x: bigint, y: bigint; };
-    prettyPublicKey(): string;
+    publicKey: { x: bigint, y: bigint; };
+
+    tongoAddress(): string;
     fund(fundDetails: FundDetails): Promise<FundOperation>;
     transfer(transferDetails: TransferDetails): Promise<TransferOperation>;
     transferWithFee(transferWithFeeDetails: TransferWithFeeDetails): TransferWithFeeOperation;
@@ -222,35 +230,32 @@ interface IAccount {
     state(): Promise<State>;
     decryptBalance(cipher: CipherBalance): bigint;
     decryptPending(cipher: CipherBalance): bigint;
-    generateExPost(to: ProjectivePoint, cipher:CipherBalance): ExPost
-    verifyExPost(expost: ExPost): bigint
+    generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost;
+    verifyExPost(expost: ExPost): bigint;
 }
 
 export class Account implements IAccount {
+    publicKey: PubKey;
     pk: bigint;
+
     Tongo: Contract;
 
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider?: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
         this.Tongo = new Contract(tongoAbi, contractAddress, provider).typedv2(tongoAbi);
+        this.publicKey = g.multiply(this.pk);
     }
 
-    publicKey(): { x: bigint, y: bigint; } {
-        const y = g.multiply(this.pk);
-        return y;
-    }
-
-    prettyPublicKey(): string {
-        const pub = g.multiply(this.pk);
-        return pubKeyAffineToBase58(pub);
+    tongoAddress(): TongoAddress {
+        return pubKeyAffineToBase58(this.publicKey);
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
         const nonce = await this.nonce();
         const { inputs, proof } = prove_fund(this.pk, nonce);
         const operation = new FundOperation(inputs.y, fundDetails.amount, proof, this.Tongo);
-        await operation.populateApprove()
-        return operation
+        await operation.populateApprove();
+        return operation;
     }
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
@@ -331,7 +336,7 @@ export class Account implements IAccount {
     }
 
     async nonce(): Promise<bigint> {
-        const { x, y } = this.publicKey();
+        const { x, y } = this.publicKey;
         const nonce = await this.Tongo.get_nonce({ x, y });
         return BigInt(nonce);
     }
@@ -349,7 +354,7 @@ export class Account implements IAccount {
     }
 
     async balance(): Promise<CipherBalance> {
-        const { x, y } = this.publicKey();
+        const { x, y } = this.publicKey;
         const { CL, CR } = await this.Tongo.get_balance({ x, y });
         if (CL.x == 0n && CL.y == 0n) {
             return { L: null, R: null };
@@ -410,19 +415,44 @@ export class Account implements IAccount {
 
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost {
         if (cipher.L == null) {
-            throw new Error('L is null')
+            throw new Error('L is null');
         }
         if (cipher.R == null) {
-            throw new Error('R is null')
+            throw new Error('R is null');
         }
-        
-        const  {inputs, proof} = prove_expost(this.pk, to, cipher.L, cipher.R)
-        return {inputs, proof}
+
+        const { inputs, proof } = prove_expost(this.pk, to, cipher.L, cipher.R);
+        return { inputs, proof };
     }
 
     verifyExPost(expost: ExPost): bigint {
-        verify_expost(expost.inputs, expost.proof)        
-        let amount = this.decryptBalance({L: expost.inputs.L, R: expost.inputs.R })
-        return amount
+        verify_expost(expost.inputs, expost.proof);
+        let amount = this.decryptBalance({ L: expost.inputs.L, R: expost.inputs.R });
+        return amount;
     }
+
+    _diffieHellman(other: TongoAddress) {
+        const otherPublicKey = pubKeyBase58ToHex(other);
+        return ECDiffieHellman(this.pk, otherPublicKey);
+    }
+
+    async deriveSymmetricKeyForTongoAddress(other: TongoAddress) {
+        const sharedSecret = this._diffieHellman(other);
+        deriveSymmetricEncryptionKey({
+            contractAddress: this.Tongo.address,
+            nonce: await this.nonce(),
+            secret: sharedSecret
+        });
+    }
+
+    async deriveSymmetricKey() {
+        const secret = this._diffieHellman(this.tongoAddress());
+        const nonce = await this.nonce();
+        deriveSymmetricEncryptionKey({
+            contractAddress: this.Tongo.address,
+            nonce,
+            secret
+        });
+    }
+
 }
