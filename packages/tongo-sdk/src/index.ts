@@ -34,7 +34,7 @@ const tx_context = {
 };
 
 const wallet = deployerWallet(provider);
-const tongoAddress = "0x04afb76696037392515a44aeba138d1afdf52da84e7cd660bc02b7c769a90028";
+const tongoAddress = "0x0491ac40c8f8f9bf836c85aae3bd44de92244c50273c08a6351aa75219f9beeb";
 export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoAbi);
 
 (async () => {
