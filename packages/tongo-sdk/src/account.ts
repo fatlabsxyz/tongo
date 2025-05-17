@@ -80,8 +80,8 @@ interface IAccount {
     balance(): Promise<CipherBalance>;
     pending(): Promise<CipherBalance>;
     state(): Promise<AccountState>;
-    decryptBalance(cipher: CipherBalance): bigint;
-    decryptPending(cipher: CipherBalance): bigint;
+    decryptBalance(cipher: CipherBalance): Promise<bigint>;
+    decryptPending(): Promise<bigint>;
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost;
     verifyExPost(expost: ExPost): bigint;
 }
@@ -119,8 +119,10 @@ export class Account implements IAccount {
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
         const { amount } = transferDetails;
+
         const { L, R } = await this.balance();
-        const balance = this.decryptBalance({ L, R });
+        const balance = this.decryptCipherBalance({ L, R });
+
         if (L == null) {
             throw new Error("You dont have balance");
         }
@@ -155,7 +157,7 @@ export class Account implements IAccount {
 
     async withdraw_all(withdrawDetails: WithdrawAllDetails): Promise<WithdrawAllOperation> {
         const { L, R } = await this.balance();
-        const balance = this.decryptBalance({ L, R });
+        const balance = await this.decryptBalance({ L, R });
         if (L == null) {
             throw new Error("You dont have balance");
         }
@@ -175,13 +177,10 @@ export class Account implements IAccount {
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
         const { amount } = withdrawDetails;
         const { L, R } = await this.balance();
-        const balance = this.decryptBalance({ L, R });
-        if (L == null) {
+        if (L == null || R == null) {
             throw new Error("You dont have balance");
         }
-        if (R == null) {
-            throw new Error("You dont have balance");
-        }
+        const balance = await this.decryptBalance({ L, R });
         if (balance < amount) {
             throw new Error("You dont have enought balance");
         }
@@ -207,8 +206,7 @@ export class Account implements IAccount {
     }
 
     async rollover(): Promise<RollOverOperation> {
-        const pending = await this.pending();
-        const amount = this.decryptPending(pending);
+        const amount = await this.decryptPending();
         if (amount == 0n) {
             throw new Error("Your pending ammount is 0");
         }
@@ -267,6 +265,9 @@ export class Account implements IAccount {
 
     async decryptAEBalance(): Promise<bigint> {
         const state = await this.state();
+        if (Object.values(state.aeBalance).some(x => x === 0n)) {
+            return 0n;
+        }
         const nonce = await this.nonce();
         const keyAEBal = await this.deriveSymmetricKey(nonce);
         const { ciphertext, nonce: cipherNonce } = AEHintToBytes(state.aeBalance);
@@ -274,26 +275,27 @@ export class Account implements IAccount {
         return balance;
     }
 
-    decryptBalance(cipher: CipherBalance): bigint {
-        if (cipher.L == null) {
+    decryptCipherBalance(cipher: CipherBalance): bigint {
+        const { L, R } = cipher;
+        if (L === null || R === null) {
             return 0n;
         }
-        if (cipher.R == null) {
-            return 0n;
-        }
-        const amount = decipher_balance(this.pk, cipher.L, cipher.R);
+        const amount = decipher_balance(this.pk, L, R);
         return amount;
     }
 
-    decryptPending(cipher: CipherBalance): bigint {
-        if (cipher.L == null) {
-            return 0n;
-        }
-        if (cipher.R == null) {
-            return 0n;
-        }
-        const amount = decipher_balance(this.pk, cipher.L, cipher.R);
-        return amount;
+    async decryptBalance(cipher: CipherBalance): Promise<bigint> {
+        const aeBalance = await this.decryptAEBalance();
+        // TODO: assert aeBalance matches elgamal balance
+        // if (ok) {
+        return aeBalance;
+        // else {
+        // this.decryptCipherBalance(cipher);
+        // }
+    }
+
+    async decryptPending(): Promise<bigint> {
+      return this.decryptCipherBalance(await this.pending())
     }
 
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost {
@@ -310,7 +312,7 @@ export class Account implements IAccount {
 
     verifyExPost(expost: ExPost): bigint {
         verify_expost(expost.inputs, expost.proof);
-        let amount = this.decryptBalance({ L: expost.inputs.L, R: expost.inputs.R });
+        let amount = this.decryptCipherBalance({ L: expost.inputs.L, R: expost.inputs.R });
         return amount;
     }
 
@@ -320,7 +322,7 @@ export class Account implements IAccount {
     }
 
     async computeAEHints(amount: bigint) {
-        const nonce = await this.nonce();
+        const nonce = await this.nonce() + 1n;
         const keyForAuditAEBal = await this.deriveSymmetricKeyForPubKey(nonce, this.auditorKey);
         const keyAEBal = await this.deriveSymmetricKey(nonce);
         return {

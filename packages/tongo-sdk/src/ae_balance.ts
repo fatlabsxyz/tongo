@@ -20,7 +20,7 @@ export interface AEHints {
 export function AEHintToBytes({ ciphertext, nonce }: AEHint): AEHintBytes {
     return {
         ciphertext: numberToBytesBE(ciphertext, 64),
-        nonce: numberToBytesBE(nonce, 32),
+        nonce: numberToBytesBE(nonce, 24),
     };
 }
 

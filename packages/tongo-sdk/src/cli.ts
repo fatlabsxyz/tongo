@@ -49,7 +49,7 @@ program
             ctx.tongoPrivateKey,
             gOpts.tongoAddress,
         );
-        console.log(account.tongoAddress());
+        console.log("Tongo address |", account.tongoAddress());
     });
 
 program
@@ -64,7 +64,10 @@ program
             gOpts.tongoAddress,
             provider
         );
-        console.log(await account.balance());
+        const availableBalance = await account.decryptAEBalance();
+        const pending = await account.decryptPending();
+        console.log("Unlocked balance |", availableBalance);
+        console.log("Pending balance  |", pending);
     });
 
 program
