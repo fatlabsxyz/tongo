@@ -106,6 +106,59 @@ export class Account implements IAccount {
         return pubKeyAffineToBase58(this.publicKey);
     }
 
+    async nonce(): Promise<bigint> {
+        const { x, y } = this.publicKey;
+        const nonce = await this.Tongo.get_nonce({ x, y });
+        return BigInt(nonce);
+    }
+
+    async balance(): Promise<CipherBalance> {
+        const { x, y } = this.publicKey;
+        const { CL, CR } = await this.Tongo.get_balance({ x, y });
+        if (CL.x == 0n && CL.y == 0n) {
+            return { L: null, R: null };
+        }
+        if (CR.x == 0n && CR.y == 0n) {
+            return { L: null, R: null };
+        }
+        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
+        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
+        return { L, R };
+    }
+
+    async pending(): Promise<CipherBalance> {
+        const { x, y } = this.publicKey;
+        const { CL, CR } = await this.Tongo.get_buffer({ x, y });
+        if (CL.x == 0n && CL.y == 0n) {
+            return { L: null, R: null };
+        }
+        if (CR.x == 0n && CR.y == 0n) {
+            return { L: null, R: null };
+        }
+
+        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
+        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
+        return { L, R };
+    }
+
+    async state(): Promise<AccountState> {
+        const { x, y } = this.publicKey;
+        const state = await this.Tongo.get_state({ x, y });
+        const {
+            balance, pending, audit,
+            nonce,
+            ae_balance, ae_audit_balance,
+        } = state;
+        return {
+            balance,
+            pending,
+            nonce,
+            aeBalance: ae_balance,
+            aeAuditBalance: ae_audit_balance,
+            audit
+        };
+    }
+
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
         const { amount } = fundDetails;
         const nonce = await this.nonce();
@@ -199,12 +252,6 @@ export class Account implements IAccount {
         return new WithdrawOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, proof, aeHints, Tongo: this.Tongo });
     }
 
-    async nonce(): Promise<bigint> {
-        const { x, y } = this.publicKey;
-        const nonce = await this.Tongo.get_nonce({ x, y });
-        return BigInt(nonce);
-    }
-
     async rollover(): Promise<RollOverOperation> {
         const amount = await this.decryptPending();
         if (amount == 0n) {
@@ -214,53 +261,6 @@ export class Account implements IAccount {
         const nonce = await this.nonce();
         const { inputs, proof } = prove_fund(this.pk, nonce);
         return new RollOverOperation(inputs.y, proof, this.Tongo);
-    }
-
-    async balance(): Promise<CipherBalance> {
-        const { x, y } = this.publicKey;
-        const { CL, CR } = await this.Tongo.get_balance({ x, y });
-        if (CL.x == 0n && CL.y == 0n) {
-            return { L: null, R: null };
-        }
-        if (CR.x == 0n && CR.y == 0n) {
-            return { L: null, R: null };
-        }
-        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
-        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
-        return { L, R };
-    }
-
-    async pending(): Promise<CipherBalance> {
-        const { x, y } = this.publicKey();
-        const { CL, CR } = await this.Tongo.get_pending({ x, y });
-        if (CL.x == 0n && CL.y == 0n) {
-            return { L: null, R: null };
-        }
-        if (CR.x == 0n && CR.y == 0n) {
-            return { L: null, R: null };
-        }
-
-        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
-        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
-        return { L, R };
-    }
-
-    async state(): Promise<AccountState> {
-        const { x, y } = this.publicKey;
-        const state = await this.Tongo.get_state({ x, y });
-        const {
-            balance, pending, audit,
-            nonce,
-            ae_balance, ae_audit_balance,
-        } = state;
-        return {
-            balance,
-            pending,
-            nonce,
-            aeBalance: ae_balance,
-            aeAuditBalance: ae_audit_balance,
-            audit
-        };
     }
 
     async decryptAEBalance(): Promise<bigint> {
