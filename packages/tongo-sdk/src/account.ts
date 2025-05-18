@@ -2,7 +2,7 @@ import { bytesToHex } from "@noble/hashes/utils";
 
 import { ProjectivePoint } from "@scure/starknet";
 import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost } from "she-js";
-import { BigNumberish, Contract, num, RpcProvider } from "starknet";
+import { BigNumberish, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
 import { AEChaCha, AEHint, AEHintToBytes, bytesToBigAEHint } from "./ae_balance.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
 import { FundOperation } from "./operations/fund.js";
@@ -93,8 +93,7 @@ export class Account implements IAccount {
         x: 3220927228414153929438887738336746530194630060939473224263346330912472379800n,
         y: 2757351908714051356627755054438992373493721650442793345821069764655464109380n
     };
-
-    Tongo: Contract;
+    Tongo: TypedContractV2<typeof tongoAbi>;
 
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider?: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
