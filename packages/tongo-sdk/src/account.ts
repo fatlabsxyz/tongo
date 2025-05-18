@@ -1,8 +1,9 @@
 import { bytesToHex } from "@noble/hashes/utils";
-
 import { ProjectivePoint } from "@scure/starknet";
-import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost } from "she-js";
 import { BigNumberish, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
+
+import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost } from "she-js";
+
 import { AEChaCha, AEHint, AEHintToBytes, bytesToBigAEHint } from "./ae_balance.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
 import { FundOperation } from "./operations/fund.js";
@@ -10,13 +11,8 @@ import { RollOverOperation } from "./operations/rollover.js";
 import { TransferOperation } from "./operations/transfer.js";
 import { WithdrawAllOperation, WithdrawOperation } from "./operations/withdraw.js";
 import { tongoAbi } from "./tongo.abi.js";
-import { TongoAddress } from "./types.js";
-import { pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex } from "./utils.js";
-
-interface PubKey {
-    x: bigint,
-    y: bigint;
-}
+import { CipherBalance, PubKey, TongoAddress } from "./types.js";
+import { parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint } from "./utils.js";
 
 function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
     if (x instanceof Uint8Array) {
@@ -32,7 +28,7 @@ interface FundDetails {
 
 interface TransferDetails {
     amount: bigint;
-    to: { x: bigint, y: bigint; };
+    to: PubKey;
 }
 
 interface TransferWithFeeDetails { }
@@ -56,18 +52,13 @@ interface AccountState {
     nonce: bigint;
 }
 
-interface CipherBalance {
-    L: ProjectivePoint | null;
-    R: ProjectivePoint | null;
-}
-
 interface ExPost {
     inputs: InputsExPost;
     proof: ProofExPost;
 }
 
 interface IAccount {
-    publicKey: { x: bigint, y: bigint; };
+    publicKey: PubKey;
 
     tongoAddress(): string;
     fund(fundDetails: FundDetails): Promise<FundOperation>;
@@ -98,7 +89,7 @@ export class Account implements IAccount {
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider?: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
         this.Tongo = new Contract(tongoAbi, contractAddress, provider).typedv2(tongoAbi);
-        this.publicKey = g.multiply(this.pk);
+        this.publicKey = projectivePointToStarkPoint(g.multiply(this.pk));
     }
 
     tongoAddress(): TongoAddress {
@@ -106,55 +97,46 @@ export class Account implements IAccount {
     }
 
     async nonce(): Promise<bigint> {
-        const { x, y } = this.publicKey;
-        const nonce = await this.Tongo.get_nonce({ x, y });
+        const nonce = await this.Tongo.get_nonce(this.publicKey);
         return BigInt(nonce);
     }
 
     async balance(): Promise<CipherBalance> {
-        const { x, y } = this.publicKey;
-        const { CL, CR } = await this.Tongo.get_balance({ x, y });
+        const { CL, CR } = await this.Tongo.get_balance(this.publicKey);
         if (CL.x == 0n && CL.y == 0n) {
             return { L: null, R: null };
         }
         if (CR.x == 0n && CR.y == 0n) {
             return { L: null, R: null };
         }
-        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
-        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
-        return { L, R };
+        return parseCipherBalance({CL, CR})
     }
 
     async pending(): Promise<CipherBalance> {
-        const { x, y } = this.publicKey;
-        const { CL, CR } = await this.Tongo.get_buffer({ x, y });
+        const { CL, CR } = await this.Tongo.get_buffer(this.publicKey);
         if (CL.x == 0n && CL.y == 0n) {
             return { L: null, R: null };
         }
         if (CR.x == 0n && CR.y == 0n) {
             return { L: null, R: null };
         }
-
-        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
-        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
-        return { L, R };
+        return parseCipherBalance({CL, CR})
     }
 
     async state(): Promise<AccountState> {
-        const { x, y } = this.publicKey;
-        const state = await this.Tongo.get_state({ x, y });
+        const state = await this.Tongo.get_state(this.publicKey);
         const {
             balance, pending, audit,
             nonce,
             ae_balance, ae_audit_balance,
         } = state;
         return {
-            balance,
-            pending,
-            nonce,
-            aeBalance: ae_balance,
-            aeAuditBalance: ae_audit_balance,
-            audit
+            balance: parseCipherBalance(balance),
+            audit: parseCipherBalance(audit),
+            pending: parseCipherBalance(pending),
+            nonce: num.toBigInt(nonce),
+            aeBalance: parseAEBalance(ae_balance),
+            aeAuditBalance: parseAEBalance(ae_audit_balance),
         };
     }
 
@@ -186,7 +168,7 @@ export class Account implements IAccount {
         }
 
         const aeHints = await this.computeAEHints(balance - amount);
-        const to = new ProjectivePoint(transferDetails.to.x, transferDetails.to.y, 1n);
+        const to = starkPointToProjectivePoint(transferDetails.to)
         const nonce = await this.nonce();
         const { inputs, proof } = prove_transfer(this.pk, to, balance, amount, L, R, nonce);
 
@@ -294,7 +276,7 @@ export class Account implements IAccount {
     }
 
     async decryptPending(): Promise<bigint> {
-      return this.decryptCipherBalance(await this.pending())
+        return this.decryptCipherBalance(await this.pending());
     }
 
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost {
