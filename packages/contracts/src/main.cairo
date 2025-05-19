@@ -59,9 +59,58 @@ pub mod Tongo {
         audit_balance: Map<PubKey, CipherBalance>,
         ae_balance: Map<PubKey, AEBalance>,
         ae_audit_balance: Map<PubKey, AEBalance>,
-        buffer: Map<PubKey, CipherBalance>,
+        pending: Map<PubKey, CipherBalance>,
         nonce: Map<PubKey, u64>,
     }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    pub enum Event {
+        TransferEvent: TransferEvent,
+        FundEvent: FundEvent,
+        RolloverEvent: RolloverEvent,
+        WithdrawEvent: WithdrawEvent,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct TransferEvent {
+        #[key]
+        pub to: PubKey,
+        #[key]
+        pub from: PubKey,
+        #[key]
+        pub nonce: u64,
+        pub cipherbalance: CipherBalance,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct FundEvent {
+        #[key]
+        pub to: PubKey,
+        #[key]
+        pub nonce: u64,
+        pub amount: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct RolloverEvent {
+        #[key]
+        pub to: PubKey,
+        #[key]
+        pub nonce: u64,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct WithdrawEvent {
+        #[key]
+        pub from: PubKey,
+        #[key]
+        pub nonce: u64,
+        pub amount: u64,
+        pub to: ContractAddress,
+    }
+
+
 
     #[abi(embed_v0)]
     impl TongoImpl of super::ITongo<ContractState> {

@@ -14,12 +14,12 @@ pub struct PubKey {
 }
 
 pub trait Validate<T> {
-    fn validate(self: T);
+    fn validate(self: @T);
 }
 
 pub impl ValidatePubKey of Validate<PubKey> {
-    fn validate(self: PubKey) {
-        let point = EcPointTrait::new_nz(self.x, self.y);
+    fn validate(self: @PubKey) {
+        let point = EcPointTrait::new_nz(*self.x, *self.y);
         assert!(point.is_some(),"PK not in curve")
     }
 }
@@ -59,8 +59,8 @@ pub struct StarkPoint {
 
 pub impl ValidateStarkPoint of Validate<StarkPoint> {
     /// Asserts that the coordinates of PubKey correspond to a EC point on the STARKNET curve.
-    fn validate(self: StarkPoint) {
-        let point = EcPointTrait::new_nz(self.x, self.y);
+    fn validate(self: @StarkPoint) {
+        let point = EcPointTrait::new_nz(*self.x, *self.y);
         assert!(point.is_some(), "StarkPoint not in curve");
     }
 }
@@ -98,7 +98,7 @@ pub struct CipherBalance {
 }
 
 pub impl ValidateCipherBalance of Validate<CipherBalance> {
-    fn validate(self: CipherBalance) {
+    fn validate(self: @CipherBalance) {
         self.CL.validate();
         self.CR.validate();
     }
@@ -154,7 +154,7 @@ pub impl CipherBalanceImpl of CipherBalanceTrait {
     }
 }
 
-#[derive(Drop, Serde)]
+#[derive(Drop, Serde, Copy)]
 pub struct AEHints {
     pub ae_balance: AEBalance,
     pub ae_audit_balance: AEBalance,
@@ -169,10 +169,10 @@ pub struct Fund {
 }
 
 impl ValidateFund of Validate<Fund> {
-    fn validate(self: Fund) {
+    fn validate(self: @Fund) {
         self.to.validate();
         self.proof.validate();
-        validate_range(self.amount);
+        validate_range(*self.amount);
     }
 }
 
@@ -183,7 +183,7 @@ pub struct Rollover {
 }
 
 impl ValidateRollover of Validate<Rollover> {
-    fn validate(self: Rollover) {
+    fn validate(self: @Rollover) {
         self.to.validate();
         self.proof.validate();
     }
@@ -199,7 +199,7 @@ pub struct Withdraw {
 }
 
 impl ValidateWithdraw of Validate<Withdraw> {
-    fn validate(self: Withdraw) {
+    fn validate(self: @Withdraw) {
         self.from.validate();
         self.proof.validate();
     }
@@ -215,7 +215,7 @@ pub struct WithdrawAll {
 }
 
 impl ValidateWithdrawAll of Validate<WithdrawAll> {
-    fn validate(self: WithdrawAll) {
+    fn validate(self: @WithdrawAll) {
         self.from.validate();
         self.proof.validate();
     }
@@ -235,7 +235,7 @@ pub struct Transfer {
 }
 
 impl ValidateTransfer of Validate<Transfer> {
-    fn validate(self: Transfer) {
+    fn validate(self: @Transfer) {
         self.from.validate();
         self.to.validate();
         self.L.validate();
@@ -260,9 +260,9 @@ pub struct ProofOfFund {
 }
 
 impl ValidateProofOfFund of Validate<ProofOfFund> {
-    fn validate(self: ProofOfFund) {
+    fn validate(self: @ProofOfFund) {
         self.Ax.validate();
-        validate_felt(self.sx);
+        validate_felt(*self.sx);
     }
 }
 
@@ -295,10 +295,10 @@ pub struct ProofOfWitdhrawAll {
 }
 
 impl ValidateProofOfWitdhrawAll of Validate<ProofOfWitdhrawAll> {
-    fn validate(self: ProofOfWitdhrawAll) {
+    fn validate(self: @ProofOfWitdhrawAll) {
         self.A_x.validate();
         self.A_cr.validate();
-        validate_felt(self.s_x);
+        validate_felt(*self.s_x);
     }
 }
 
@@ -315,13 +315,13 @@ pub struct ProofOfWithdraw {
 }
 
 impl ValidateProofOfWithdraw of Validate<ProofOfWithdraw> {
-    fn validate(self: ProofOfWithdraw) {
+    fn validate(self: @ProofOfWithdraw) {
         self.A_x.validate();
         self.A.validate();
         self.A_v.validate();
-        validate_felt(self.sx);
-        validate_felt(self.sb);
-        validate_felt(self.sr);
+        validate_felt(*self.sx);
+        validate_felt(*self.sb);
+        validate_felt(*self.sr);
         let mut i: u32 = 0;
         while i < 32 {
             (*self.range[i]).validate();
@@ -355,13 +355,13 @@ pub struct ProofOfBit {
     pub s1: felt252,
 }
 impl ValidateProofOfBit of Validate<ProofOfBit> {
-    fn validate(self: ProofOfBit) {
+    fn validate(self: @ProofOfBit) {
         self.V.validate();
         self.A0.validate();
         self.A1.validate();
-        validate_felt(self.c0);
-        validate_felt(self.s0);
-        validate_felt(self.s1);
+        validate_felt(*self.c0);
+        validate_felt(*self.s0);
+        validate_felt(*self.s1);
     }
 }
 
@@ -385,7 +385,7 @@ pub struct ProofOfTransfer {
 }
 
 impl ValidateProofOfTranfser of Validate<ProofOfTransfer> {
-    fn validate(self: ProofOfTransfer) {
+    fn validate(self: @ProofOfTransfer) {
         self.A_x.validate();
         self.A_r.validate();
         self.A_b.validate();
@@ -394,11 +394,11 @@ impl ValidateProofOfTranfser of Validate<ProofOfTransfer> {
         self.A_v2.validate();
         self.A_bar.validate();
         self.A_audit.validate();
-        validate_felt(self.s_x);
-        validate_felt(self.s_r);
-        validate_felt(self.s_b);
-        validate_felt(self.s_b2);
-        validate_felt(self.s_r2);
+        validate_felt(*self.s_x);
+        validate_felt(*self.s_r);
+        validate_felt(*self.s_b);
+        validate_felt(*self.s_b2);
+        validate_felt(*self.s_r2);
         let mut i:u32 = 0;
         while i < 32 {
             (*self.range[i]).validate();
