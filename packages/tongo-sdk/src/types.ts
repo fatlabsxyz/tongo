@@ -7,8 +7,8 @@ export interface StarkPoint {
 }
 
 export interface CipherBalance {
-    L: ProjectivePoint | null;
-    R: ProjectivePoint | null;
+    L: ProjectivePoint;
+    R: ProjectivePoint;
 }
 
 export type PubKey = StarkPoint;

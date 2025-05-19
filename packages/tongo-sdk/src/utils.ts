@@ -4,14 +4,27 @@ import { ProjectivePoint } from "@scure/starknet";
 import { CipherBalance, PubKey, StarkPoint, TongoAddress } from "./types.js";
 import { BigNumberish, num, uint256, Uint256 } from "starknet";
 import { AEHint } from "./ae_balance.js";
+import { g } from "she-js";
+
+export function derivePublicKey(privateKey: bigint) {
+    return projectivePointToStarkPoint(g.multiply(privateKey));
+}
+
+export function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
+    if (x instanceof Uint8Array) {
+        return num.toBigInt("0x" + bytesToHex(x));
+    } else {
+        return num.toBigInt(x);
+    }
+}
 
 export function starkPointToProjectivePoint({ x, y }: PubKey): ProjectivePoint {
     return new ProjectivePoint(num.toBigInt(x), num.toBigInt(y), 1n);
 }
 
 export function projectivePointToStarkPoint(p: ProjectivePoint): StarkPoint {
-  const pAffine = p.toAffine();
-  return { x: pAffine.x, y: pAffine.y }
+    const pAffine = p.toAffine();
+    return { x: pAffine.x, y: pAffine.y };
 }
 
 export function parseCipherBalance({ CL, CR }: { CL: StarkPoint, CR: StarkPoint; }): CipherBalance {

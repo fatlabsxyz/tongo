@@ -30,6 +30,7 @@ export function bytesToBigAEHint({ ciphertext, nonce }: AEHintBytes): AEHint {
         nonce: bytesToNumberBE(nonce),
     };
 }
+
 // TODO: we should split this class into a AECipher class that returns
 // AEBalance's. This way we can decouple the cipher from the balance and its
 // serialization.

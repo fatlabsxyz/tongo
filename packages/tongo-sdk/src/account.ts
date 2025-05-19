@@ -12,16 +12,9 @@ import { TransferOperation } from "./operations/transfer.js";
 import { WithdrawAllOperation, WithdrawOperation } from "./operations/withdraw.js";
 import { tongoAbi } from "./tongo.abi.js";
 import { CipherBalance, PubKey, TongoAddress } from "./types.js";
-import { parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint } from "./utils.js";
+import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint } from "./utils.js";
 
-function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
-    if (x instanceof Uint8Array) {
-        return num.toBigInt("0x" + bytesToHex(x));
-    } else {
-        return num.toBigInt(x);
-    }
-}
-
+type TongoContract = TypedContractV2<typeof tongoAbi>;
 interface FundDetails {
     amount: bigint;
 }
@@ -68,8 +61,8 @@ interface IAccount {
     withdraw_all(withdrawDetails: WithdrawAllDetails): Promise<WithdrawAllOperation>;
     rollover(): Promise<RollOverOperation>;
     nonce(): Promise<bigint>;
-    balance(): Promise<CipherBalance>;
-    pending(): Promise<CipherBalance>;
+    balance(): Promise<CipherBalance | undefined>;
+    pending(): Promise<CipherBalance | undefined>;
     state(): Promise<AccountState>;
     decryptBalance(cipher: CipherBalance): Promise<bigint>;
     decryptPending(): Promise<bigint>;
@@ -101,43 +94,25 @@ export class Account implements IAccount {
         return BigInt(nonce);
     }
 
-    async balance(): Promise<CipherBalance> {
+    async balance(): Promise<CipherBalance | undefined> {
         const { CL, CR } = await this.Tongo.get_balance(this.publicKey);
-        if (CL.x == 0n && CL.y == 0n) {
-            return { L: null, R: null };
+        if ((CL.x == 0n && CL.y == 0n) || (CR.x == 0n && CR.y == 0n)) {
+            return undefined;
         }
-        if (CR.x == 0n && CR.y == 0n) {
-            return { L: null, R: null };
-        }
-        return parseCipherBalance({CL, CR})
+        return parseCipherBalance({ CL, CR });
     }
 
-    async pending(): Promise<CipherBalance> {
+    async pending(): Promise<CipherBalance | undefined> {
         const { CL, CR } = await this.Tongo.get_buffer(this.publicKey);
-        if (CL.x == 0n && CL.y == 0n) {
-            return { L: null, R: null };
+        if ((CL.x == 0n && CL.y == 0n) || (CR.x == 0n && CR.y == 0n)) {
+            return undefined;
         }
-        if (CR.x == 0n && CR.y == 0n) {
-            return { L: null, R: null };
-        }
-        return parseCipherBalance({CL, CR})
+        return parseCipherBalance({ CL, CR });
     }
 
     async state(): Promise<AccountState> {
         const state = await this.Tongo.get_state(this.publicKey);
-        const {
-            balance, pending, audit,
-            nonce,
-            ae_balance, ae_audit_balance,
-        } = state;
-        return {
-            balance: parseCipherBalance(balance),
-            audit: parseCipherBalance(audit),
-            pending: parseCipherBalance(pending),
-            nonce: num.toBigInt(nonce),
-            aeBalance: parseAEBalance(ae_balance),
-            aeAuditBalance: parseAEBalance(ae_audit_balance),
-        };
+        return Account.parseAccountState(state);
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
@@ -154,21 +129,19 @@ export class Account implements IAccount {
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
         const { amount } = transferDetails;
 
-        const { L, R } = await this.balance();
+        const cipherBalance = await this.balance();
+        if (cipherBalance === undefined) {
+            throw new Error("You dont have balance");
+        }
+        const { L, R } = cipherBalance;
         const balance = this.decryptCipherBalance({ L, R });
 
-        if (L == null) {
-            throw new Error("You dont have balance");
-        }
-        if (R == null) {
-            throw new Error("You dont have balance");
-        }
         if (balance < amount) {
             throw new Error("You dont have enought balance");
         }
 
         const aeHints = await this.computeAEHints(balance - amount);
-        const to = starkPointToProjectivePoint(transferDetails.to)
+        const to = starkPointToProjectivePoint(transferDetails.to);
         const nonce = await this.nonce();
         const { inputs, proof } = prove_transfer(this.pk, to, balance, amount, L, R, nonce);
 
@@ -190,14 +163,12 @@ export class Account implements IAccount {
     }
 
     async withdraw_all(withdrawDetails: WithdrawAllDetails): Promise<WithdrawAllOperation> {
-        const { L, R } = await this.balance();
-        const balance = await this.decryptBalance({ L, R });
-        if (L == null) {
+        const cipherBalance = await this.balance();
+        if (cipherBalance === undefined) {
             throw new Error("You dont have balance");
         }
-        if (R == null) {
-            throw new Error("You dont have balance");
-        }
+        const { L, R } = cipherBalance;
+        const balance = this.decryptCipherBalance({ L, R });
         if (balance == 0n) {
             throw new Error("You dont have balance");
         }
@@ -210,10 +181,11 @@ export class Account implements IAccount {
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
         const { amount } = withdrawDetails;
-        const { L, R } = await this.balance();
-        if (L == null || R == null) {
+        const cipherBalance = await this.balance();
+        if (cipherBalance === undefined) {
             throw new Error("You dont have balance");
         }
+        const { L, R } = cipherBalance;
         const balance = await this.decryptBalance({ L, R });
         if (balance < amount) {
             throw new Error("You dont have enought balance");
@@ -276,7 +248,12 @@ export class Account implements IAccount {
     }
 
     async decryptPending(): Promise<bigint> {
-        return this.decryptCipherBalance(await this.pending());
+        const pending = await this.pending();
+        if (pending) {
+            return this.decryptCipherBalance(pending);
+        } else {
+            return 0n;
+        }
     }
 
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost {
@@ -328,6 +305,22 @@ export class Account implements IAccount {
             nonce,
             secret
         });
+    }
+
+    static parseAccountState(state: Awaited<ReturnType<TongoContract["get_state"]>>) {
+        const {
+            balance, pending, audit,
+            nonce,
+            ae_balance, ae_audit_balance,
+        } = state;
+        return {
+            balance: parseCipherBalance(balance),
+            audit: parseCipherBalance(audit),
+            pending: parseCipherBalance(pending),
+            nonce: num.toBigInt(nonce),
+            aeBalance: parseAEBalance(ae_balance),
+            aeAuditBalance: parseAEBalance(ae_audit_balance),
+        };
     }
 
 }
