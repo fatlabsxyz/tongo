@@ -103,7 +103,7 @@ export class Account implements IAccount {
     }
 
     async pending(): Promise<CipherBalance | undefined> {
-        const { CL, CR } = await this.Tongo.get_buffer(this.publicKey);
+        const { CL, CR } = await this.Tongo.get_pending(this.publicKey);
         if ((CL.x == 0n && CL.y == 0n) || (CR.x == 0n && CR.y == 0n)) {
             return undefined;
         }
