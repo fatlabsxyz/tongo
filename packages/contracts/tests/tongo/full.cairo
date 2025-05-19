@@ -1,5 +1,5 @@
 use crate::prover::utils::{generate_random, decipher_balance};
-use crate::tongo::setup::{setup_tongo};
+use crate::tongo::setup::{setup_tongo, empty_ae_hint};
 use crate::prover::functions::{prove_transfer, prove_fund, prove_withdraw};
 use starknet::ContractAddress;
 use tongo::verifier::structs::{PubKeyTrait, CipherBalanceTrait};
@@ -48,7 +48,7 @@ fn full() {
     // Funding the y account
     let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
     let initial_balance = 3124;
-    dispatcher.fund(Fund { to: y, amount: initial_balance, proof: fund_proof });
+    dispatcher.fund(Fund { to: y, amount: initial_balance, proof: fund_proof, ae_hints: empty_ae_hint() });
 
     //Bufer should be 0, balance initial_balance and audit initial_balance
     let pending = dispatcher.get_pending(y);
@@ -77,7 +77,8 @@ fn full() {
                 L_bar: inputs.L_bar,
                 L_audit: inputs.L_audit,
                 R: inputs.R,
-                proof
+                proof,
+                ae_hints: empty_ae_hint()
             }
         );
 
@@ -133,7 +134,7 @@ fn full() {
         x_bar, transfer_amount, amount, tranfer_address, balance.CL, balance.CR, nonce, seed + 2
     );
 
-    dispatcher.withdraw(Withdraw { from: y_bar, amount, to: tranfer_address, proof });
+    dispatcher.withdraw(Withdraw { from: y_bar, amount, to: tranfer_address, proof, ae_hints: empty_ae_hint() });
 
     //now y_bar noce should be 2
     let nonce = dispatcher.get_nonce(y_bar);

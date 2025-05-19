@@ -11,13 +11,14 @@ dotenv.config();
 const program = new Command();
 
 const getContext = () => {
-    const { RPC_URL, TONGO_PRIVATE_KEY, SIGNER_PRIVATE_KEY, STARKNET_ACCOUNT } = process.env;
+    const { RPC_URL, TONGO_PRIVATE_KEY, SIGNER_PRIVATE_KEY, STARKNET_ACCOUNT, TONGO_CONTRACT_ADDRESS } = process.env;
     if (!RPC_URL || !TONGO_PRIVATE_KEY || !SIGNER_PRIVATE_KEY || !STARKNET_ACCOUNT) {
         console.error('Missing required environment variables.');
         process.exit(1);
     }
 
     return {
+        tongoContractAddress: TONGO_CONTRACT_ADDRESS,
         rpcUrl: RPC_URL,
         tongoPrivateKey: TONGO_PRIVATE_KEY,
         signerPrivateKey: SIGNER_PRIVATE_KEY,
@@ -36,7 +37,7 @@ program
     .name('tongo-cli')
     .description('A simple CLI utility')
     .version('0.0.1')
-    .option('--tongoAddress <address>', 'Tongo contract address');
+    .option('--tongo <address>', 'Tongo contract address');
 
 program
     .command('address')
@@ -47,9 +48,9 @@ program
         const provider = newProvider(ctx.rpcUrl);
         const account = new TongoAccount(
             ctx.tongoPrivateKey,
-            gOpts.tongoAddress,
+            gOpts.tongo || ctx.tongoContractAddress,
         );
-        console.log(account.prettyPublicKey());
+        console.log("Tongo address |", account.tongoAddress());
     });
 
 program
@@ -61,10 +62,13 @@ program
         const provider = newProvider(ctx.rpcUrl);
         const account = new TongoAccount(
             ctx.tongoPrivateKey,
-            gOpts.tongoAddress,
+            gOpts.tongo || ctx.tongoContractAddress,
             provider
         );
-        console.log(await account.balance());
+        const availableBalance = await account.decryptAEBalance();
+        const pending = await account.decryptPending();
+        console.log("Unlocked balance |", availableBalance);
+        console.log("Pending balance  |", pending);
     });
 
 program
@@ -76,7 +80,7 @@ program
         const provider = newProvider(ctx.rpcUrl);
         const account = new TongoAccount(
             ctx.tongoPrivateKey,
-            gOpts.tongoAddress,
+            gOpts.tongo || ctx.tongoContractAddress,
             provider
         );
         console.log(await account.state());
@@ -99,12 +103,13 @@ program
         const ctx = getContext();
         const gOpts = program.opts();
         const provider = newProvider(ctx.rpcUrl);
-        const account = new TongoAccount(ctx.tongoPrivateKey, gOpts.tongoAddress, provider);
+        const tongoAddress = gOpts.tongo || ctx.tongoContractAddress;
+        const account = new TongoAccount(ctx.tongoPrivateKey, tongoAddress, provider);
         const signer = newOzAccount(ctx.starknetAccount, ctx.signerPrivateKey, provider);
         const fundOp = await account.fund({
             amount: opts.amount
         });
-        const tx = await signer.execute([fundOp.toCalldata()]);
+        const tx = await signer.execute([fundOp.approve!, fundOp.toCalldata()]);
         console.log(tx.transaction_hash);
     });
 
@@ -117,7 +122,8 @@ program
         const ctx = getContext();
         const gOpts = program.opts();
         const provider = newProvider(ctx.rpcUrl);
-        const account = new TongoAccount(ctx.tongoPrivateKey, gOpts.tongoAddress, provider);
+        const tongoAddress = gOpts.tongo || ctx.tongoContractAddress;
+        const account = new TongoAccount(ctx.tongoPrivateKey, tongoAddress, provider);
         const signer = newOzAccount(ctx.starknetAccount, ctx.signerPrivateKey, provider);
         const { amount, to } = opts;
         const toPubKey = pubKeyBase58ToAffine(to);
@@ -136,7 +142,8 @@ program
         const ctx = getContext();
         const gOpts = program.opts();
         const provider = newProvider(ctx.rpcUrl);
-        const account = new TongoAccount(ctx.tongoPrivateKey, gOpts.tongoAddress, provider);
+        const tongoAddress = gOpts.tongo || ctx.tongoContractAddress;
+        const account = new TongoAccount(ctx.tongoPrivateKey, tongoAddress, provider);
         const signer = newOzAccount(ctx.starknetAccount, ctx.signerPrivateKey, provider);
         const { amount, to } = opts;
 
@@ -152,7 +159,8 @@ program
         const ctx = getContext();
         const gOpts = program.opts();
         const provider = newProvider(ctx.rpcUrl);
-        const account = new TongoAccount(ctx.tongoPrivateKey, gOpts.tongoAddress, provider);
+        const tongoAddress = gOpts.tongo || ctx.tongoContractAddress;
+        const account = new TongoAccount(ctx.tongoPrivateKey, tongoAddress, provider);
         const signer = newOzAccount(ctx.starknetAccount, ctx.signerPrivateKey, provider);
         const rollOp = await account.rollover();
         const tx = await signer.execute([rollOp.toCalldata()]);

@@ -1,108 +1,27 @@
-import { bytesToHex, } from "@noble/hashes/utils";
-
+import { bytesToHex } from "@noble/hashes/utils";
 import { ProjectivePoint } from "@scure/starknet";
-import { decipher_balance, g, ProofOfFund, ProofOfTransfer, ProofOfWithdraw, ProofOfWithdrawAll,ProofExPost, InputsExPost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, prove_expost, verify_expost} from "she-js";
-import { BigNumberish, Call, Contract, num, RpcProvider, CallData, cairo} from "starknet";
+import { BigNumberish, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
+
+import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost } from "she-js";
+
+import { AEChaCha, AEHint, AEHintToBytes, bytesToBigAEHint } from "./ae_balance.js";
+import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
+import { FundOperation } from "./operations/fund.js";
+import { RollOverOperation } from "./operations/rollover.js";
+import { TransferOperation } from "./operations/transfer.js";
+import { WithdrawAllOperation, WithdrawOperation } from "./operations/withdraw.js";
 import { tongoAbi } from "./tongo.abi.js";
-import { pubKeyAffineToBase58 } from "./utils.js";
+import { CipherBalance, PubKey, TongoAddress } from "./types.js";
+import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint } from "./utils.js";
 
-function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
-    if (x instanceof Uint8Array) {
-        return num.toBigInt("0x" + bytesToHex(x));
-    } else {
-        return num.toBigInt(x);
-    }
-}
-
-interface IOperation {
-    toCalldata(): Call;
-}
-
-
+type TongoContract = TypedContractV2<typeof tongoAbi>;
 interface FundDetails {
     amount: bigint;
 }
 
-interface IFundOperation extends IOperation {
-    populateApprove(): Promise<void>;
-}
-
-class FundOperation implements IFundOperation {
-    Tongo: Contract;
-    to: ProjectivePoint;
-    amount: bigint;
-    proof: ProofOfFund;
-    approve?: Call;
-
-    constructor(to: ProjectivePoint, amount: bigint, proof: ProofOfFund, Tongo: Contract) {
-        this.to = to;
-        this.amount = amount;
-        this.proof = proof;
-        this.Tongo = Tongo;
-    }
-
-    toCalldata(): Call {
-        return this.Tongo.populate("fund", [{ to: this.to, amount: this.amount, proof: this.proof }]);
-    }
-
-    async populateApprove() {
-       const erc20 = await this.Tongo.ERC20(); 
-       const erc20_addres = num.toHex(erc20)
-       const tongo_address = this.Tongo.address;
-       const amount = cairo.uint256(this.amount)
-       let calldata = CallData.compile({"spender": tongo_address, "amount": amount})
-       this.approve = {contractAddress: erc20_addres, entrypoint: "approve", calldata}
-    }
-}
-
 interface TransferDetails {
     amount: bigint;
-    to: { x: bigint, y: bigint; };
-}
-interface ITransferOperation extends IOperation { }
-class TransferOperation implements ITransferOperation {
-    Tongo: Contract;
-    from: ProjectivePoint;
-    to: ProjectivePoint;
-    L: ProjectivePoint;
-    L_bar: ProjectivePoint;
-    L_audit: ProjectivePoint;
-    R: ProjectivePoint;
-    proof: ProofOfTransfer;
-
-    constructor(
-        from: ProjectivePoint,
-        to: ProjectivePoint,
-        L: ProjectivePoint,
-        L_bar: ProjectivePoint,
-        L_audit: ProjectivePoint,
-        R: ProjectivePoint,
-        proof: ProofOfTransfer,
-        Tongo: Contract
-    ) {
-        this.from = from;
-        this.to = to;
-        this.L = L;
-        this.L_bar = L_bar;
-        this.L_audit = L_audit;
-        this.R = R;
-        this.proof = proof;
-        this.Tongo = Tongo;
-    }
-
-    toCalldata(): Call {
-        return this.Tongo.populate("transfer", [
-            {
-                from: this.from,
-                to: this.to,
-                L: this.L,
-                L_bar: this.L_bar,
-                L_audit: this.L_audit,
-                R: this.R,
-                proof: this.proof,
-            },
-        ]);
-    }
+    to: PubKey;
 }
 
 interface TransferWithFeeDetails { }
@@ -111,95 +30,19 @@ interface TransferWithFeeOperation { }
 interface WithdrawAllDetails {
     to: bigint;
 }
-interface IWithdrawAllOperation extends IOperation { }
-class WithdrawAllOperation implements IWithdrawAllOperation {
-    from: ProjectivePoint;
-    to: bigint;
-    amount: bigint;
-    proof: ProofOfWithdrawAll;
-    Tongo: Contract;
-
-    constructor(from: ProjectivePoint, to: bigint, amount: bigint, proof: ProofOfWithdrawAll, Tongo: Contract) {
-        this.from = from;
-        this.to = to;
-        this.amount = amount;
-        this.proof = proof;
-        this.Tongo = Tongo;
-    }
-
-    toCalldata(): Call {
-        return this.Tongo.populate("withdraw_all", [
-            {
-                from: this.from,
-                amount: this.amount,
-                to: "0x" + this.to.toString(16),
-                proof: this.proof,
-            },
-        ]);
-    }
-}
 
 interface WithdrawDetails {
     to: bigint;
     amount: bigint;
 }
-interface IWithdrawOperation extends IOperation { }
-class WithdrawOperation implements IWithdrawOperation {
-    from: ProjectivePoint;
-    to: bigint;
-    amount: bigint;
-    proof: ProofOfWithdraw;
-    Tongo: Contract;
 
-    constructor(from: ProjectivePoint, to: bigint, amount: bigint, proof: ProofOfWithdraw, Tongo: Contract) {
-        this.from = from;
-        this.to = to;
-        this.amount = amount;
-        this.proof = proof;
-        this.Tongo = Tongo;
-    }
-
-    toCalldata(): Call {
-        return this.Tongo.populate("withdraw", [
-            {
-                from: this.from,
-                amount: this.amount,
-                to: num.toHex(this.to),
-                proof: this.proof,
-            },
-        ]);
-    }
-}
-
-interface IRollOverOperation extends IOperation { }
-
-class RollOverOperation implements IRollOverOperation {
-    to: ProjectivePoint;
-    proof: ProofOfFund;
-    Tongo: Contract;
-
-    constructor(to: ProjectivePoint, proof: ProofOfFund, Tongo: Contract) {
-        this.to = to;
-        this.proof = proof;
-        this.Tongo = Tongo;
-    }
-
-    toCalldata(): Call {
-        return this.Tongo.populate("rollover", [{ to: this.to, proof: this.proof }]);
-    }
-}
-
-interface State {
+interface AccountState {
     balance: CipherBalance;
     pending: CipherBalance;
-    decryptBalance: bigint;
-    decryptPending: bigint;
+    audit: CipherBalance;
+    aeBalance: AEHint;
+    aeAuditBalance: AEHint;
     nonce: bigint;
-}
-
-interface CipherBalance {
-    L: ProjectivePoint | null;
-    R: ProjectivePoint | null;
 }
 
 interface ExPost {
@@ -208,8 +51,9 @@ interface ExPost {
 }
 
 interface IAccount {
-    publicKey(): { x: bigint, y: bigint; };
-    prettyPublicKey(): string;
+    publicKey: PubKey;
+
+    tongoAddress(): string;
     fund(fundDetails: FundDetails): Promise<FundOperation>;
     transfer(transferDetails: TransferDetails): Promise<TransferOperation>;
     transferWithFee(transferWithFeeDetails: TransferWithFeeDetails): TransferWithFeeOperation;
@@ -217,69 +61,101 @@ interface IAccount {
     withdraw_all(withdrawDetails: WithdrawAllDetails): Promise<WithdrawAllOperation>;
     rollover(): Promise<RollOverOperation>;
     nonce(): Promise<bigint>;
-    balance(): Promise<CipherBalance>;
-    pending(): Promise<CipherBalance>;
-    state(): Promise<State>;
-    decryptBalance(cipher: CipherBalance): bigint;
-    decryptPending(cipher: CipherBalance): bigint;
-    generateExPost(to: ProjectivePoint, cipher:CipherBalance): ExPost
-    verifyExPost(expost: ExPost): bigint
+    balance(): Promise<CipherBalance | undefined>;
+    pending(): Promise<CipherBalance | undefined>;
+    state(): Promise<AccountState>;
+    decryptBalance(cipher: CipherBalance): Promise<bigint>;
+    decryptPending(): Promise<bigint>;
+    generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost;
+    verifyExPost(expost: ExPost): bigint;
 }
 
 export class Account implements IAccount {
+    publicKey: PubKey;
     pk: bigint;
-    Tongo: Contract;
+    auditorKey: PubKey = {
+        x: 3220927228414153929438887738336746530194630060939473224263346330912472379800n,
+        y: 2757351908714051356627755054438992373493721650442793345821069764655464109380n
+    };
+    Tongo: TypedContractV2<typeof tongoAbi>;
 
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider?: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
         this.Tongo = new Contract(tongoAbi, contractAddress, provider).typedv2(tongoAbi);
+        this.publicKey = projectivePointToStarkPoint(g.multiply(this.pk));
     }
 
-    publicKey(): { x: bigint, y: bigint; } {
-        const y = g.multiply(this.pk);
-        return y;
+    tongoAddress(): TongoAddress {
+        return pubKeyAffineToBase58(this.publicKey);
     }
 
-    prettyPublicKey(): string {
-        const pub = g.multiply(this.pk);
-        return pubKeyAffineToBase58(pub);
+    async nonce(): Promise<bigint> {
+        const nonce = await this.Tongo.get_nonce(this.publicKey);
+        return BigInt(nonce);
+    }
+
+    async balance(): Promise<CipherBalance | undefined> {
+        const { CL, CR } = await this.Tongo.get_balance(this.publicKey);
+        if ((CL.x == 0n && CL.y == 0n) || (CR.x == 0n && CR.y == 0n)) {
+            return undefined;
+        }
+        return parseCipherBalance({ CL, CR });
+    }
+
+    async pending(): Promise<CipherBalance | undefined> {
+        const { CL, CR } = await this.Tongo.get_pending(this.publicKey);
+        if ((CL.x == 0n && CL.y == 0n) || (CR.x == 0n && CR.y == 0n)) {
+            return undefined;
+        }
+        return parseCipherBalance({ CL, CR });
+    }
+
+    async state(): Promise<AccountState> {
+        const state = await this.Tongo.get_state(this.publicKey);
+        return Account.parseAccountState(state);
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
+        const { amount } = fundDetails;
         const nonce = await this.nonce();
         const { inputs, proof } = prove_fund(this.pk, nonce);
-        const operation = new FundOperation(inputs.y, fundDetails.amount, proof, this.Tongo);
-        await operation.populateApprove()
-        return operation
+
+        const aeHints = await this.computeAEHints(amount);
+        const operation = new FundOperation({ to: inputs.y, amount, proof, aeHints, Tongo: this.Tongo });
+        await operation.populateApprove();
+        return operation;
     }
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
-        const { L, R } = await this.balance();
-        const balance = this.decryptBalance({ L, R });
-        if (L == null) {
+        const { amount } = transferDetails;
+
+        const cipherBalance = await this.balance();
+        if (cipherBalance === undefined) {
             throw new Error("You dont have balance");
         }
-        if (R == null) {
-            throw new Error("You dont have balance");
-        }
-        if (balance < transferDetails.amount) {
+        const { L, R } = cipherBalance;
+        const balance = this.decryptCipherBalance({ L, R });
+
+        if (balance < amount) {
             throw new Error("You dont have enought balance");
         }
 
-        const to = new ProjectivePoint(transferDetails.to.x, transferDetails.to.y, 1n);
+        const aeHints = await this.computeAEHints(balance - amount);
+        const to = starkPointToProjectivePoint(transferDetails.to);
         const nonce = await this.nonce();
-        const { inputs, proof } = prove_transfer(this.pk, to, balance, transferDetails.amount, L, R, nonce);
+        const { inputs, proof } = prove_transfer(this.pk, to, balance, amount, L, R, nonce);
 
-        return new TransferOperation(
-            inputs.y,
-            inputs.y_bar,
-            inputs.L,
-            inputs.L_bar,
-            inputs.L_audit,
-            inputs.R,
+        return new TransferOperation({
+            from: inputs.y,
+            to: inputs.y_bar,
+            L: inputs.L,
+            L_bar: inputs.L_bar,
+            L_audit: inputs.L_audit,
+            R: inputs.R,
             proof,
-            this.Tongo
-        );
+            aeHints,
+            Tongo: this.Tongo
+        });
     }
 
     transferWithFee(transferWithFeeDetails: TransferWithFeeDetails): TransferWithFeeOperation {
@@ -287,36 +163,35 @@ export class Account implements IAccount {
     }
 
     async withdraw_all(withdrawDetails: WithdrawAllDetails): Promise<WithdrawAllOperation> {
-        const { L, R } = await this.balance();
-        const balance = this.decryptBalance({ L, R });
-        if (L == null) {
+        const cipherBalance = await this.balance();
+        if (cipherBalance === undefined) {
             throw new Error("You dont have balance");
         }
-        if (R == null) {
-            throw new Error("You dont have balance");
-        }
+        const { L, R } = cipherBalance;
+        const balance = this.decryptCipherBalance({ L, R });
         if (balance == 0n) {
             throw new Error("You dont have balance");
         }
 
         const nonce = await this.nonce();
+        const aeHints = await this.computeAEHints(0n);
         const { inputs: inputs, proof: proof } = prove_withdraw_all(this.pk, L, R, nonce, withdrawDetails.to, balance);
-        return new WithdrawAllOperation(inputs.y, inputs.to, inputs.amount, proof, this.Tongo);
+        return new WithdrawAllOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, proof, aeHints, Tongo: this.Tongo });
     }
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
-        const { L, R } = await this.balance();
-        const balance = this.decryptBalance({ L, R });
-        if (L == null) {
+        const { amount } = withdrawDetails;
+        const cipherBalance = await this.balance();
+        if (cipherBalance === undefined) {
             throw new Error("You dont have balance");
         }
-        if (R == null) {
-            throw new Error("You dont have balance");
-        }
-        if (balance < withdrawDetails.amount) {
+        const { L, R } = cipherBalance;
+        const balance = await this.decryptBalance({ L, R });
+        if (balance < amount) {
             throw new Error("You dont have enought balance");
         }
 
+        const aeHints = await this.computeAEHints(balance - amount);
         const nonce = await this.nonce();
         const { inputs, proof } = prove_withdraw(
             this.pk,
@@ -327,18 +202,11 @@ export class Account implements IAccount {
             withdrawDetails.to,
             nonce
         );
-        return new WithdrawOperation(inputs.y, inputs.to, inputs.amount, proof, this.Tongo);
-    }
-
-    async nonce(): Promise<bigint> {
-        const { x, y } = this.publicKey();
-        const nonce = await this.Tongo.get_nonce({ x, y });
-        return BigInt(nonce);
+        return new WithdrawOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, proof, aeHints, Tongo: this.Tongo });
     }
 
     async rollover(): Promise<RollOverOperation> {
-        const pending = await this.pending();
-        const amount = this.decryptPending(pending);
+        const amount = await this.decryptPending();
         if (amount == 0n) {
             throw new Error("Your pending ammount is 0");
         }
@@ -348,81 +216,111 @@ export class Account implements IAccount {
         return new RollOverOperation(inputs.y, proof, this.Tongo);
     }
 
-    async balance(): Promise<CipherBalance> {
-        const { x, y } = this.publicKey();
-        const { CL, CR } = await this.Tongo.get_balance({ x, y });
-        if (CL.x == 0n && CL.y == 0n) {
-            return { L: null, R: null };
+    async decryptAEBalance(): Promise<bigint> {
+        const state = await this.state();
+        if (Object.values(state.aeBalance).some(x => x === 0n)) {
+            return 0n;
         }
-        if (CR.x == 0n && CR.y == 0n) {
-            return { L: null, R: null };
-        }
-        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
-        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
-        return { L, R };
-    }
-
-    async pending(): Promise<CipherBalance> {
-        const { x, y } = this.publicKey();
-        const { CL, CR } = await this.Tongo.get_pending({ x, y });
-        if (CL.x == 0n && CL.y == 0n) {
-            return { L: null, R: null };
-        }
-        if (CR.x == 0n && CR.y == 0n) {
-            return { L: null, R: null };
-        }
-
-        const L = new ProjectivePoint(BigInt(CL.x), BigInt(CL.y), 1n);
-        const R = new ProjectivePoint(BigInt(CR.x), BigInt(CR.y), 1n);
-        return { L, R };
-    }
-
-    async state(): Promise<State> {
-        const balance = await this.balance();
-        const pending = await this.pending();
         const nonce = await this.nonce();
-        const decryptBalance = this.decryptBalance(balance);
-        const decryptPending = this.decryptPending(pending);
-        return { balance, pending, nonce, decryptBalance, decryptPending };
+        const keyAEBal = await this.deriveSymmetricKey(nonce);
+        const { ciphertext, nonce: cipherNonce } = AEHintToBytes(state.aeBalance);
+        const balance = (new AEChaCha(keyAEBal)).decryptBalance(ciphertext, cipherNonce);
+        return balance;
     }
 
-    decryptBalance(cipher: CipherBalance): bigint {
-        if (cipher.L == null) {
+    decryptCipherBalance(cipher: CipherBalance): bigint {
+        const { L, R } = cipher;
+        if (L === null || R === null) {
             return 0n;
         }
-        if (cipher.R == null) {
-            return 0n;
-        }
-        const amount = decipher_balance(this.pk, cipher.L, cipher.R);
+        const amount = decipher_balance(this.pk, L, R);
         return amount;
     }
 
-    decryptPending(cipher: CipherBalance): bigint {
-        if (cipher.L == null) {
+    async decryptBalance(cipher: CipherBalance): Promise<bigint> {
+        const aeBalance = await this.decryptAEBalance();
+        // TODO: assert aeBalance matches elgamal balance
+        // if (ok) {
+        return aeBalance;
+        // else {
+        // this.decryptCipherBalance(cipher);
+        // }
+    }
+
+    async decryptPending(): Promise<bigint> {
+        const pending = await this.pending();
+        if (pending) {
+            return this.decryptCipherBalance(pending);
+        } else {
             return 0n;
         }
-        if (cipher.R == null) {
-            return 0n;
-        }
-        const amount = decipher_balance(this.pk, cipher.L, cipher.R);
-        return amount;
     }
 
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost {
         if (cipher.L == null) {
-            throw new Error('L is null')
+            throw new Error('L is null');
         }
         if (cipher.R == null) {
-            throw new Error('R is null')
+            throw new Error('R is null');
         }
-        
-        const  {inputs, proof} = prove_expost(this.pk, to, cipher.L, cipher.R)
-        return {inputs, proof}
+
+        const { inputs, proof } = prove_expost(this.pk, to, cipher.L, cipher.R);
+        return { inputs, proof };
     }
 
     verifyExPost(expost: ExPost): bigint {
-        verify_expost(expost.inputs, expost.proof)        
-        let amount = this.decryptBalance({L: expost.inputs.L, R: expost.inputs.R })
-        return amount
+        verify_expost(expost.inputs, expost.proof);
+        let amount = this.decryptCipherBalance({ L: expost.inputs.L, R: expost.inputs.R });
+        return amount;
     }
+
+    _diffieHellman(other: TongoAddress) {
+        const otherPublicKey = pubKeyBase58ToHex(other);
+        return ECDiffieHellman(this.pk, otherPublicKey);
+    }
+
+    async computeAEHints(amount: bigint) {
+        const nonce = await this.nonce() + 1n;
+        const keyForAuditAEBal = await this.deriveSymmetricKeyForPubKey(nonce, this.auditorKey);
+        const keyAEBal = await this.deriveSymmetricKey(nonce);
+        return {
+            ae_balance: bytesToBigAEHint((new AEChaCha(keyAEBal)).encryptBalance(amount)),
+            ae_audit_balance: bytesToBigAEHint((new AEChaCha(keyForAuditAEBal)).encryptBalance(amount)),
+        };
+    }
+
+    async deriveSymmetricKeyForPubKey(nonce: bigint, other: PubKey) {
+        const sharedSecret = ECDiffieHellman(this.pk, pubKeyAffineToHex(other));
+        return deriveSymmetricEncryptionKey({
+            contractAddress: this.Tongo.address,
+            nonce,
+            secret: sharedSecret
+        });
+    }
+
+    async deriveSymmetricKey(nonce: bigint) {
+        const secret = ECDiffieHellman(this.pk, pubKeyAffineToHex(this.publicKey));
+        return deriveSymmetricEncryptionKey({
+            contractAddress: this.Tongo.address,
+            nonce,
+            secret
+        });
+    }
+
+    static parseAccountState(state: Awaited<ReturnType<TongoContract["get_state"]>>) {
+        const {
+            balance, pending, audit,
+            nonce,
+            ae_balance, ae_audit_balance,
+        } = state;
+        return {
+            balance: parseCipherBalance(balance),
+            audit: parseCipherBalance(audit),
+            pending: parseCipherBalance(pending),
+            nonce: num.toBigInt(nonce),
+            aeBalance: parseAEBalance(ae_balance),
+            aeAuditBalance: parseAEBalance(ae_audit_balance),
+        };
+    }
+
 }

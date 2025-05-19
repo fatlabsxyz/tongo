@@ -1,12 +1,15 @@
 use core::starknet::ContractAddress;
-use crate::verifier::structs::{Fund, WithdrawAll, Withdraw, PubKey, Transfer, Rollover, CipherBalance};
+use crate::verifier::structs::{Fund, WithdrawAll, Withdraw, PubKey, Transfer, Rollover, CipherBalance, AEHints};
+use crate::ae_balance::{AEBalance};
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct State {
     balance: CipherBalance,
     pending: CipherBalance,
     audit: CipherBalance,
-    nonce: u64
+    nonce: u64,
+    ae_balance: AEBalance,
+    ae_audit_balance: AEBalance
 }
 
 #[starknet::interface]
@@ -44,7 +47,8 @@ pub mod Tongo {
     use crate::verifier::utils::{view_key};
     use crate::constants::{STRK_ADDRESS};
 
-    use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover, State};
+    use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover, State, AEHints};
+    use crate::ae_balance::{AEBalance};
 
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
@@ -53,6 +57,8 @@ pub mod Tongo {
     struct Storage {
         balance: Map<PubKey, CipherBalance>,
         audit_balance: Map<PubKey, CipherBalance>,
+        ae_balance: Map<PubKey, AEBalance>,
+        ae_audit_balance: Map<PubKey, AEBalance>,
         pending: Map<PubKey, CipherBalance>,
         nonce: Map<PubKey, u64>,
     }
@@ -121,8 +127,8 @@ pub mod Tongo {
 
         /// Transfer some STARK to Tongo contract and assing some Tongo to account y
         fn fund(ref self: ContractState, fund: Fund) {
-            let Fund { to, amount, proof } = fund;
             fund.validate();
+            let Fund { to, amount, proof, ae_hints } = fund;
             let nonce = self.get_nonce(to);
 
             let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
@@ -137,6 +143,8 @@ pub mod Tongo {
 
             let cipher_audit = CipherBalanceTrait::new(view_key(), amount, 'fund');
             self.add_audit(to, cipher_audit);
+
+            self.overwrite_ae_balances(to, ae_hints);
             self.increase_nonce(to);
             self.emit(FundEvent {to, amount: amount.try_into().unwrap(), nonce});
         }
@@ -144,7 +152,7 @@ pub mod Tongo {
         /// Withdraw some tongo from acount and send the stark to the recipient
         fn withdraw(ref self: ContractState, withdraw: Withdraw) {
             withdraw.validate();
-            let Withdraw { from, amount, to, proof } = withdraw;
+            let Withdraw { from, amount, to, proof, ae_hints } = withdraw;
 
             let balance = self.get_balance(from);
 
@@ -163,13 +171,14 @@ pub mod Tongo {
             self.increase_nonce(from);
             
             self.transfer_to(to, amount);
+            self.overwrite_ae_balances(from, ae_hints);
             self.emit(WithdrawEvent {from, amount: amount.try_into().unwrap(), to, nonce});
         }
 
         /// Withdraw ALL tongo from acount and send the stark to the recipient
         fn withdraw_all(ref self: ContractState, withdraw_all: WithdrawAll) {
             withdraw_all.validate();
-            let WithdrawAll { from, amount, to, proof } = withdraw_all;
+            let WithdrawAll { from, amount, to, proof, ae_hints } = withdraw_all;
 
             //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be
             //frontruned.
@@ -191,6 +200,7 @@ pub mod Tongo {
                 .write(
                     CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }
                 );
+            self.overwrite_ae_balances(from, ae_hints);
 
             self.transfer_to(to, amount);
             self.emit(WithdrawEvent {from, amount: amount.try_into().unwrap(), to, nonce});
@@ -201,7 +211,7 @@ pub mod Tongo {
         /// contract.
         fn transfer(ref self: ContractState, transfer: Transfer) {
             transfer.validate();
-            let Transfer { from, to, L, L_bar, L_audit, R, proof, } = transfer;
+            let Transfer { from, to, L, L_bar, L_audit, R, proof, ae_hints } = transfer;
 
             let balance = self.get_balance(from);
             let nonce = self.get_nonce(from);
@@ -231,6 +241,7 @@ pub mod Tongo {
             //TODO: Acomodar el audit
             self.add_audit(to, CipherBalance { CL: L_audit, CR: R });
             self.increase_nonce(from);
+            self.overwrite_ae_balances(from, ae_hints);
             self.emit(TransferEvent {to, from, nonce, cipherbalance: CipherBalance {CL:L, CR:R} })
         }
 
@@ -263,7 +274,9 @@ pub mod Tongo {
             let pending = self.pending.entry(y).read();
             let audit = self.audit_balance.entry(y).read();
             let nonce = self.nonce.entry(y).read();
-            return State { balance, pending, audit, nonce};
+            let ae_balance = self.ae_balance.entry(y).read();
+            let ae_audit_balance = self.ae_audit_balance.entry(y).read();
+            return State { balance, pending, audit, nonce, ae_balance, ae_audit_balance };
         }
     }
 
@@ -365,6 +378,11 @@ pub mod Tongo {
             let mut nonce = self.nonce.entry(y).read();
             nonce = nonce + 1;
             self.nonce.entry(y).write(nonce);
+        }
+
+        fn overwrite_ae_balances(ref self: ContractState, y: PubKey, ae_hints: AEHints) {
+            self.ae_balance.entry(y).write(ae_hints.ae_balance);
+            self.ae_audit_balance.entry(y).write(ae_hints.ae_audit_balance);
         }
     }
 }
