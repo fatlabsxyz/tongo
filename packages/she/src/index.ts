@@ -1,4 +1,5 @@
 import { AffinePoint } from "@noble/curves/abstract/curve";
+import { x25519 } from "@noble/curves/ed25519";
 import {
   utils,
   CURVE,
@@ -6,6 +7,9 @@ import {
   computeHashOnElements,
   pedersen,
 } from "@scure/starknet";
+import { create } from "domain";
+import { writeFileSync, readFileSync } from 'fs';
+import { prependOnceListener } from "process";
 
 export type Affine = AffinePoint<bigint>;
 
@@ -902,4 +906,79 @@ export function decipher_balance(
     }
   }
   return b;
+}
+
+export function decipher_balance_optimized(
+  x: bigint,
+  L: ProjectivePoint,
+  R: ProjectivePoint,
+  precomputed: Map<string, string>
+): bigint {  
+  const Rx = R.multiply(x);
+    if (Rx.equals(L)) {return 0n}
+
+  const g_b = L.subtract(Rx);
+  let b = find_least_bits(g, g_b, precomputed);
+  return b
+}
+
+function to_key(x: bigint, y: bigint): string {
+  return `${x.toString()}_${(y % 2n).toString()}`;
+}
+
+export function create_hash_map(g: ProjectivePoint): Map<string, bigint> {
+  const precomputed = new Map<string, bigint>();
+  const b = 2n ** 16n;
+
+  let gb = g.multiply(b);
+  let current = gb;
+  precomputed.set(to_key(0n, 0n), 0n)
+  for (let i = 1n; i < b; i++) {
+    const key = to_key(current.x, current.y);
+    precomputed.set(key, i);
+
+    current = current.add(gb);  }
+
+  return precomputed;
+}
+
+export function find_least_bits(
+  g: ProjectivePoint,
+  c: ProjectivePoint,
+  precomputed: Map<string, string>
+): bigint {
+  const lim: bigint = 2n ** 16n;
+
+  const g_neg = g.negate();
+  let delta = g_neg;
+  let current = c.add(delta);
+  let c_prec = precomputed.get(to_key(c.x, c.y))
+  if (c_prec !== undefined)
+    {
+      return BigInt(c_prec) * (2n ** 16n);
+    };
+  for (let i = 1n; i < lim; i++) {
+    const key = to_key(current.x, current.y);
+    const msb = precomputed.get(key);
+    if (msb !== undefined) {
+      return i + BigInt(msb) * (2n ** 16n);
+    }
+    current = current.add(delta);    
+  }
+
+  return 0n;
+}
+
+export function create_and_save_hash_map(): void {
+  let hashed = create_hash_map(g);
+  let entries = Array.from(hashed.entries())
+    .map(([k, v]) => {
+      const keyStr = JSON.stringify(k);
+      const valStr = typeof v === 'bigint' ? `"${v.toString()}"` : JSON.stringify(v);
+      return `[${keyStr}, ${valStr}]`;
+    })
+    .join(',\n');
+    let tsCode = `export const hash_map = new Map([\n${entries}\n]);\n`;
+    writeFileSync("src/map.ts", tsCode, "utf8");
+    console.log("✅ TypeScript file generated at src/map.ts");
 }
