@@ -18,6 +18,8 @@ import { prove_poe, verify_poe } from "../src";
 import { prove_poe2, verify_poe2 } from "../src";
 import { prove_transfer, verify_transfer } from "../src";
 import { prove_expost , verify_expost} from "../src"
+import { find_least_bits, decipher_balance_optimized} from "../src";
+import { hash_map} from "../src/map";
 
 describe("Example test suit", () => {
   it("encrypts the number 2**239", () => {
@@ -145,4 +147,15 @@ describe("Example test suit", () => {
     const b_bar = decipher_balance(x_bar, inputs.L_bar, inputs.R)
     expect(b).toEqual(b_bar)
   });
+});
+
+
+it("bechmark_decipher_optimized", () => {
+  const x = 1234n;
+  const amount = 12n;
+  const random = 111111n;
+  const y = g.multiplyUnsafe(x);
+  const { L, R } = cipher_balance(y, amount, random);
+  const b = decipher_balance_optimized(x, L, R, hash_map);
+  expect(b).toEqual(amount);
 });
