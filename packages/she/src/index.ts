@@ -1,5 +1,4 @@
 import { AffinePoint } from "@noble/curves/abstract/curve";
-import { x25519 } from "@noble/curves/ed25519";
 import {
   utils,
   CURVE,
@@ -7,9 +6,7 @@ import {
   computeHashOnElements,
   pedersen,
 } from "@scure/starknet";
-import { create } from "domain";
-import { writeFileSync, readFileSync } from 'fs';
-import { prependOnceListener } from "process";
+import { writeFileSync} from 'fs';
 
 export type Affine = AffinePoint<bigint>;
 
