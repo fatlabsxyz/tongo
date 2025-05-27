@@ -885,9 +885,11 @@ export function decipher_balance(
   x: bigint,
   L: ProjectivePoint,
   R: ProjectivePoint,
-): bigint {  
+): bigint {
+  if (R.x === 0n || L.x === 0n) { return 0n }
+
   const Rx = R.multiply(x);
-    if (Rx.equals(L)) {return 0n}
+  if (Rx.equals(L)) { return 0n }
 
   const g_b = L.subtract(Rx);
   let b = 1n;
