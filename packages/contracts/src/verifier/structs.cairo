@@ -1,4 +1,4 @@
-use core::starknet::ContractAddress;
+use starknet::ContractAddress;
 use core::ec::{EcPointTrait, NonZeroEcPoint, EcPoint, EcStateTrait};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use core::traits::{Into, TryInto};

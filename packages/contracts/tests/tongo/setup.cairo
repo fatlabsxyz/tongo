@@ -1,22 +1,20 @@
-use tongo::main::{ITongoDispatcher};
-use tongo::constants::STRK_ADDRESS;
-use tongo::verifier::structs::{AEHints};
-use erc20::IERC20Dispatcher;
-use erc20::IERC20DispatcherTrait;
+use erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+use snforge_std::{
+    ContractClass, ContractClassTrait, DeclareResultTrait, Token, declare, set_balance,
+    start_cheat_caller_address, stop_cheat_caller_address,
+};
+use starknet::ContractAddress;
+use tongo::constants::STRK_ADDRESS as STRK_ADDRESS_FELT;
+use tongo::main::ITongoDispatcher;
+use tongo::verifier::structs::AEHints;
 
-
-use core::starknet::{ContractAddress};
-
-
-use snforge_std::{declare, ContractClassTrait, DeclareResultTrait, ContractClass };
-
-pub const TONGO_ADDRESS: felt252 = 'TONGO';
+pub const TONGO_ADDRESS: ContractAddress = 'TONGO'.try_into().unwrap();
+pub const STRK_ADDRESS: ContractAddress = STRK_ADDRESS_FELT.try_into().unwrap();
+pub const GLOBAL_CALLER: ContractAddress = (0x1111111).try_into().unwrap();
+pub const USER_CALLER: ContractAddress = (0x2222222).try_into().unwrap();
 
 pub fn empty_ae_hint() -> AEHints {
-    AEHints {
-        ae_balance: Default::default(),
-        ae_audit_balance: Default::default()
-    }
+    AEHints { ae_balance: Default::default(), ae_audit_balance: Default::default() }
 }
 
 
@@ -27,7 +25,7 @@ fn declare_class(contract_name: ByteArray) -> (ContractClass, felt252) {
 }
 
 fn deploy_contract(
-    contract_class: ContractClass, address: felt252, calldata: Array<felt252>
+    contract_class: ContractClass, address: felt252, calldata: Array<felt252>,
 ) -> ContractAddress {
     let (deployed_address, _) = contract_class
         .deploy_at(@calldata, address.try_into().unwrap())
@@ -37,26 +35,23 @@ fn deploy_contract(
 
 
 pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
-    setup_erc20();
+    let _erc20 = setup_erc20();
     let (tongo_contract, _tongo_class_hash) = declare_class("Tongo");
     let tongo_address = deploy_contract(
-        tongo_contract, TONGO_ADDRESS.try_into().unwrap(), array![]
+        tongo_contract, TONGO_ADDRESS.try_into().unwrap(), array![],
     );
     let tongo_dispatcher = ITongoDispatcher { contract_address: tongo_address };
+    start_cheat_caller_address(TONGO_ADDRESS, USER_CALLER);
 
     (tongo_address, tongo_dispatcher)
 }
 
 
-fn setup_erc20() -> (ContractAddress, IERC20Dispatcher) {
-    let (_erc20_contract, _erc20_class_hash ) = declare_class("ERC20Contract");
-    let (erc20_address, _) = _erc20_contract
-        .deploy_at( @array![], STRK_ADDRESS.try_into().unwrap())
-        .expect('Couldnt deploy');
-    let dispatcher = IERC20Dispatcher {contract_address: erc20_address.try_into().unwrap()};
-    
-    dispatcher.print();
+fn setup_erc20() -> IERC20Dispatcher {
+    let dispatcher = IERC20Dispatcher { contract_address: STRK_ADDRESS };
+    set_balance(USER_CALLER, 100000000000000_u256, Token::STRK);
+    start_cheat_caller_address(STRK_ADDRESS, USER_CALLER);
     dispatcher.approve(TONGO_ADDRESS.try_into().unwrap(), 10000000_u256);
-    return (erc20_address, dispatcher);
+    stop_cheat_caller_address(STRK_ADDRESS);
+    return dispatcher;
 }
-
