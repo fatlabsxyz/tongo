@@ -12,7 +12,7 @@ use tongo::verifier::utils::{compute_prefix, challenge_commits2};
 use tongo::verifier::utils::{generator_h, feltXOR, view_key};
 use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_binary};
 
-use core::starknet::ContractAddress;
+use starknet::ContractAddress;
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use core::ec::{NonZeroEcPoint, EcPointTrait, EcStateTrait, EcPoint};
 

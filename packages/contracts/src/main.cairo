@@ -1,4 +1,4 @@
-use core::starknet::ContractAddress;
+use starknet::ContractAddress;
 use crate::verifier::structs::{Fund, WithdrawAll, Withdraw, PubKey, Transfer, Rollover, CipherBalance, AEHints};
 use crate::ae_balance::{AEBalance};
 
@@ -29,7 +29,7 @@ pub trait ITongo<TContractState> {
 
 #[starknet::contract]
 pub mod Tongo {
-    use core::starknet::{
+    use starknet::{
         storage::StoragePointerReadAccess, storage::StoragePointerWriteAccess,
         storage::StoragePathEntry, storage::Map, syscalls, SyscallResultTrait,
         get_caller_address, get_contract_address, ContractAddress
