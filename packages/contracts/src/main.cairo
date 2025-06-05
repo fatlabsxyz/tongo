@@ -31,9 +31,8 @@ pub trait ITongo<TContractState> {
 pub mod Tongo {
     use starknet::{
         storage::StoragePointerReadAccess, storage::StoragePointerWriteAccess,
-        storage::StoragePathEntry, storage::Map, syscalls, SyscallResultTrait,
-        get_caller_address, get_contract_address, ContractAddress
-    };
+        storage::StoragePathEntry, storage::Map, get_caller_address, get_contract_address, ContractAddress };
+    use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     use crate::verifier::structs::{
         InputsTransfer, InputsFund, InputsWithdraw, CipherBalance, CipherBalanceTrait,
@@ -348,30 +347,13 @@ pub mod Tongo {
         }
 
         fn get_transfer(self: @ContractState, amount: felt252) {
-            let amount: u256 = amount.try_into().unwrap();
-            let calldata: Array<felt252> = array![
-                get_caller_address().try_into().unwrap(),
-                get_contract_address().try_into().unwrap(),
-                amount.low.into(),
-                amount.high.into(),
-            ];
-            syscalls::call_contract_syscall(
-                STRK_ADDRESS.try_into().unwrap(), selector!("transfer_from"), calldata.span()
-            )
-                .unwrap_syscall();
+            let ERC20 = IERC20Dispatcher { contract_address: STRK_ADDRESS.try_into().unwrap() };
+            ERC20.transfer_from(get_caller_address(), get_contract_address(), amount.into());
         }
 
         fn transfer_to(self: @ContractState,to: ContractAddress, amount: felt252){
-            let amount: u256 = amount.try_into().unwrap();
-            let calldata = array![
-                to.into(),
-                amount.low.into(),
-                amount.high.into(),];
-            syscalls::call_contract_syscall(
-               STRK_ADDRESS.try_into().unwrap(),
-               selector!("transfer"),
-               calldata.span()
-            ).unwrap_syscall();
+            let ERC20 = IERC20Dispatcher { contract_address: STRK_ADDRESS.try_into().unwrap() };
+            ERC20.transfer(to, amount.into());
         }
 
         fn increase_nonce(ref self: ContractState, y: PubKey) {
