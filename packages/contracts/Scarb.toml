@@ -6,7 +6,6 @@ edition = "2023_11"
 # See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
 
 [dependencies]
-erc20 = { path = "./erc20" }
 starknet = "2.11.4"
 
 [dev-dependencies]
@@ -14,7 +13,6 @@ snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v
 
 [[target.starknet-contract]]
 sierra = true
-build-external-contracts = ["erc20::ERC20Contract"]
 
 [scripts]
 test = "snforge test"
