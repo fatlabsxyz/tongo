@@ -1,17 +1,18 @@
-use sncast_std::{DeclareResult, FeeSettingsTrait, declare, deploy, get_nonce};
-
+use sncast_std::{DeclareResultTrait, FeeSettingsTrait, declare, deploy, get_nonce};
 
 pub fn base() {
     let salt = 0x3;
 
     let declare_result = declare(
         "Tongo", FeeSettingsTrait::estimate(), Option::Some(get_nonce('latest')),
-    )
-        .expect('map declare failed');
+    );
 
-    let class_hash = match (declare_result) {
-        DeclareResult::AlreadyDeclared(already_declared) => already_declared.class_hash,
-        DeclareResult::Success(tx_result) => tx_result.class_hash,
+    let class_hash = *match (declare_result) {
+        Result::Ok(ok_result) => ok_result.class_hash(),
+        Result::Err(err_result) => {
+            panic!("{:?}", err_result);
+            @(0x0).try_into().unwrap()
+        }
     };
     println!("Class hash 0x{:x}", class_hash);
 
@@ -21,10 +22,9 @@ pub fn base() {
         Option::Some(salt),
         true,
         FeeSettingsTrait::estimate(),
-        Option::Some(get_nonce('pending')),
+        Option::Some(get_nonce('pending'))
     )
         .expect('map deploy failed');
     println!("=======================================================");
-    println!("Salt {:?}", salt);
-    println!("Contract address 0x{:x}", deploy_result.contract_address);
+    println!("Contract address [salt={:x}] 0x{:x}", salt, deploy_result.contract_address);
 }
