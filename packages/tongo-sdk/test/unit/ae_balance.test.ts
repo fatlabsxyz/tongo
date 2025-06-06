@@ -53,4 +53,68 @@ describe("[ae_balance] conversions", () => {
 
 
 describe("[ae_balance] AEChaCha", () => {
-})
+
+  it("constructs correctly", () => {
+    const privateKey = new Uint8Array([
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    ]);
+    const aeChaCha = new AEChaCha(privateKey);
+    expect(aeChaCha).toBeDefined();
+    expect(aeChaCha.key).toStrictEqual(privateKey);
+  });
+
+  it("throws key length mismatch", () => {
+    const privateKeyShorter = new Uint8Array([
+      1, 1, 1, 1, 1, 1, 1, 1,
+    ]);
+    expect(() => new AEChaCha(privateKeyShorter)).toThrowError();
+
+    const privateKeyLonger = new Uint8Array([
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1,
+    ]);
+    expect(() => new AEChaCha(privateKeyLonger)).toThrowError();
+  });
+
+  it("ciphertext has correct properties (length, type)", () => {
+    const privateKey = new Uint8Array([
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    ]);
+    const aeChaCha = new AEChaCha(privateKey);
+    const cleartext = 55555n;
+    const aeCipherText1 = aeChaCha.encryptBalance(cleartext);
+    expect(aeCipherText1.nonce).toBeInstanceOf(Uint8Array);
+    expect(aeCipherText1.ciphertext).toBeInstanceOf(Uint8Array);
+    expect(aeCipherText1.nonce.length).toStrictEqual(24);
+    expect(aeCipherText1.ciphertext.length).toStrictEqual(64);
+  });
+
+  it("cleartext encrypts different every time", () => {
+    const privateKey = new Uint8Array([
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    ]);
+    const aeChaCha = new AEChaCha(privateKey);
+    const cleartext = 55555n;
+    const aeCipherText1 = aeChaCha.encryptBalance(cleartext);
+    const aeCipherText2 = aeChaCha.encryptBalance(cleartext);
+    expect(aeCipherText1.nonce === aeCipherText2.nonce).toBe(false);
+    expect(aeCipherText1.ciphertext === aeCipherText2.ciphertext).toBe(false);
+  });
+
+  it("cleartext is decrypted from ciphertext", () => {
+    const privateKey = new Uint8Array([
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    ]);
+    const aeChaCha = new AEChaCha(privateKey);
+    const cleartext = 55555n;
+    const aeCipherText = aeChaCha.encryptBalance(cleartext);
+    const decryptedCleartext = aeChaCha.decryptBalance(aeCipherText.ciphertext, aeCipherText.nonce);
+    expect(decryptedCleartext).toStrictEqual(cleartext);
+  });
+
+});
