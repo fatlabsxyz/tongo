@@ -1,4 +1,4 @@
-use erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+use tongo::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
     ContractClass, ContractClassTrait, DeclareResultTrait, Token, declare, set_balance,
     start_cheat_caller_address, stop_cheat_caller_address,
