@@ -1,10 +1,9 @@
-use starknet::ContractAddress;
-use core::ec::{EcPointTrait, NonZeroEcPoint, EcPoint, EcStateTrait};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
+use core::ec::{EcPoint, EcPointTrait, EcStateTrait, NonZeroEcPoint};
 use core::traits::{Into, TryInto};
-use crate::verifier::utils::{validate_felt, validate_range};
+use starknet::ContractAddress;
 use crate::ae_balance::AEBalance;
-
+use crate::verifier::utils::{validate_felt, validate_range};
 
 /// Represent the public key y = g ** x of a user.
 #[derive(Serde, Drop, Debug, Copy, Hash)]
@@ -20,7 +19,7 @@ pub trait Validate<T> {
 pub impl ValidatePubKey of Validate<PubKey> {
     fn validate(self: @PubKey) {
         let point = EcPointTrait::new_nz(*self.x, *self.y);
-        assert!(point.is_some(),"PK not in curve")
+        assert!(point.is_some(), "PK not in curve")
     }
 }
 
@@ -174,7 +173,7 @@ pub struct Fund {
     pub to: PubKey,
     pub amount: felt252,
     pub ae_hints: AEHints,
-    pub proof: ProofOfFund
+    pub proof: ProofOfFund,
 }
 
 impl ValidateFund of Validate<Fund> {
@@ -188,7 +187,7 @@ impl ValidateFund of Validate<Fund> {
 #[derive(Drop, Destruct, Serde, Copy)]
 pub struct Rollover {
     pub to: PubKey,
-    pub proof: ProofOfFund
+    pub proof: ProofOfFund,
 }
 
 impl ValidateRollover of Validate<Rollover> {
@@ -204,7 +203,7 @@ pub struct Withdraw {
     pub amount: felt252,
     pub to: ContractAddress,
     pub ae_hints: AEHints,
-    pub proof: ProofOfWithdraw
+    pub proof: ProofOfWithdraw,
 }
 
 impl ValidateWithdraw of Validate<Withdraw> {
@@ -220,7 +219,7 @@ pub struct WithdrawAll {
     pub amount: felt252,
     pub to: ContractAddress,
     pub ae_hints: AEHints,
-    pub proof: ProofOfWitdhrawAll
+    pub proof: ProofOfWitdhrawAll,
 }
 
 impl ValidateWithdrawAll of Validate<WithdrawAll> {
@@ -334,7 +333,7 @@ impl ValidateProofOfWithdraw of Validate<ProofOfWithdraw> {
         let mut i: u32 = 0;
         while i < 32 {
             (*self.range[i]).validate();
-            i = i+1;
+            i = i + 1;
         };
     }
 }
@@ -408,11 +407,11 @@ impl ValidateProofOfTranfser of Validate<ProofOfTransfer> {
         validate_felt(*self.s_b);
         validate_felt(*self.s_b2);
         validate_felt(*self.s_r2);
-        let mut i:u32 = 0;
+        let mut i: u32 = 0;
         while i < 32 {
             (*self.range[i]).validate();
             (*self.range2[i]).validate();
-            i=i+1;
+            i = i + 1;
         }
     }
 }
