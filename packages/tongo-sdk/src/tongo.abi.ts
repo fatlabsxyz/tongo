@@ -409,20 +409,48 @@ export const tongoAbi = [
         ]
     },
     {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::verifier::structs::CipherBalance>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::verifier::structs::CipherBalance"
+            },
+            {
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::ae_balance::AEBalance>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::ae_balance::AEBalance"
+            },
+            {
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
         "type": "struct",
         "name": "tongo::main::State",
         "members": [
             {
                 "name": "balance",
-                "type": "tongo::verifier::structs::CipherBalance"
+                "type": "core::option::Option::<tongo::verifier::structs::CipherBalance>"
             },
             {
                 "name": "pending",
-                "type": "tongo::verifier::structs::CipherBalance"
+                "type": "core::option::Option::<tongo::verifier::structs::CipherBalance>"
             },
             {
                 "name": "audit",
-                "type": "tongo::verifier::structs::CipherBalance"
+                "type": "core::option::Option::<tongo::verifier::structs::CipherBalance>"
             },
             {
                 "name": "nonce",
@@ -430,11 +458,11 @@ export const tongoAbi = [
             },
             {
                 "name": "ae_balance",
-                "type": "tongo::ae_balance::AEBalance"
+                "type": "core::option::Option::<tongo::ae_balance::AEBalance>"
             },
             {
                 "name": "ae_audit_balance",
-                "type": "tongo::ae_balance::AEBalance"
+                "type": "core::option::Option::<tongo::ae_balance::AEBalance>"
             }
         ]
     },

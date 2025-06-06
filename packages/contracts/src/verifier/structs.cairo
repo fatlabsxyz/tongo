@@ -104,6 +104,15 @@ pub impl ValidateCipherBalance of Validate<CipherBalance> {
     }
 }
 
+pub impl IntoOptionCipherBalance of Into<CipherBalance, Option<CipherBalance>> {
+    fn into(self: CipherBalance) -> Option<CipherBalance> {
+        if (self.is_zero()) {
+            return None;
+        }
+        return Some(self);
+    }
+}
+
 #[generate_trait]
 pub impl CipherBalanceImpl of CipherBalanceTrait {
     /// Cipher the balance b under the y key with a fixed randomnes. The fixed randomness should
