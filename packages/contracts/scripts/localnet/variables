@@ -1,0 +1,14 @@
+#!/bin/bash
+## starknet-devnet
+export ACCOUNTS=5
+export SEED=1244846250
+
+# export GAS_PRICE=1
+# export GAS_PRICE_FRI=1
+# export DATA_GAS_PRICE=1
+# export DATA_GAS_PRICE_FRI=1
+# export L2_GAS_PRICE=1
+# export L2_GAS_PRICE_FRI=1
+
+## starkli
+export STARKNET_RPC="http://127.0.0.1:5050"
