@@ -1,39 +1,63 @@
 {
-    "name": "tongo-sdk",
-    "version": "1.0.0",
-    "description": "An SDK for interacting with Tongo contracts",
-    "main": "index.js",
-    "bin": {
-        "tongo": "./dist/cli.js"
+  "name": "tongo-sdk",
+  "version": "1.0.0",
+  "description": "An SDK for interacting with Tongo contracts",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "tongo": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     },
-    "exports": {
-        ".": {
-            "import": "./dist/index.js"
-        }
+    "./dist/tongo.abi.js": {
+      "import": "./dist/tongo.abi.js",
+      "require": "./dist/tongo.abi.js",
+      "types": "./dist/tongo.abi.d.ts"
     },
-    "scripts": {
-        "bin": "node ./dist/cli.js",
-        "clean": "rm -rf dist",
-        "build": "tsc -p ./tsconfig.json --outDir dist && chmod +x dist/cli.js",
-        "update-abi": "echo -n 'export const tongoAbi = ' > ./src/tongo.abi.ts && jq --indent 4 -j '.abi' < ../contracts/target/dev/tongo_Tongo.contract_class.json >> ./src/tongo.abi.ts && echo ' as const;' >> ./src/tongo.abi.ts",
-        "test": "vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
-        "lint": "eslint --config ../../eslint.config.mjs \"{src,test}/**/*.{js,ts,json}\"",
-        "lint:fix": "eslint --config ../../eslint.config.mjs \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
-        "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
-        "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
+    "./dist/account.js": {
+      "import": "./dist/account.js",
+      "require": "./dist/account.js",
+      "types": "./dist/account.d.ts"
     },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "packageManager": "pnpm@10.4.1",
-    "dependencies": {
-        "@noble/ciphers": "^1.3.0",
-        "@noble/hashes": "^1.8.0",
-        "@scure/base": "^1.2.5",
-        "@scure/starknet": "^1.1.0",
-        "commander": "^11.0.0",
-        "dotenv": "^16.3.1",
-        "she-js": "workspace:*",
-        "starknet": "^7.0.0"
-    }
+    "./dist/utils.js": {
+      "import": "./dist/utils.js",
+      "require": "./dist/utils.js",
+      "types": "./dist/utils.d.ts"
+    },
+    "./dist/types.js": {
+      "import": "./dist/types.js",
+      "require": "./dist/types.js",
+      "types": "./dist/types.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "bin": "node ./dist/cli.js",
+    "clean": "rm -rf dist",
+    "build": "tsc -p ./tsconfig.json --outDir dist && chmod +x dist/cli.js",
+    "update-abi": "echo -n 'export const tongoAbi = ' > ./src/tongo.abi.ts && jq --indent 4 -j '.abi' < ../contracts/target/dev/tongo_Tongo.contract_class.json >> ./src/tongo.abi.ts && echo ' as const;' >> ./src/tongo.abi.ts",
+    "test": "vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
+    "lint": "eslint --config ../../eslint.config.mjs \"{src,test}/**/*.{js,ts,json}\"",
+    "lint:fix": "eslint --config ../../eslint.config.mjs \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
+    "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
+    "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.4.1",
+  "dependencies": {
+    "@noble/ciphers": "^1.3.0",
+    "@noble/hashes": "^1.8.0",
+    "@scure/base": "^1.2.5",
+    "@scure/starknet": "^1.1.0",
+    "commander": "^11.0.0",
+    "dotenv": "^16.3.1",
+    "she-js": "workspace:*",
+    "starknet": "^7.0.0"
+  }
 }

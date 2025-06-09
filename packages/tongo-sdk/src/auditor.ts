@@ -1,10 +1,10 @@
 import { BigNumberish, Contract, RpcProvider, TypedContractV2 } from "starknet";
-import { tongoAbi } from "./tongo.abi";
-import { PubKey } from "./types";
-import { bytesOrNumToBigInt, derivePublicKey, pubKeyAffineToHex } from "./utils";
-import { Account } from "./account";
-import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key";
-import { AEChaCha, AEHintToBytes } from "./ae_balance";
+import { tongoAbi } from "./tongo.abi.js";
+import { PubKey } from "./types.js";
+import { bytesOrNumToBigInt, derivePublicKey, pubKeyAffineToHex } from "./utils.js";
+import { Account } from "./account.js";
+import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
+import { AEChaCha, AEHintToBytes } from "./ae_balance.js";
 
 export class Auditor {
     publicKey: PubKey;

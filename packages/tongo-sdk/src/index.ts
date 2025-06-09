@@ -96,6 +96,7 @@ async function waitForTxWithLogs(provider: RpcProvider, txHash: string): Promise
     const sk_2 = 12930923n;
     const account_2 = new TongoAccount(sk_2, tongoAddress, provider);
 
+    console.log("PUB KEY: ", account_2.publicKey);
     // usar balances chicos para decryptar mas rapido
     await logBalances("STEP 0: INITIAL BALANCE & PENDING", account_1, account_2, false);
 

@@ -2,9 +2,9 @@
 
 import { Command } from 'commander';
 import * as dotenv from 'dotenv';
-import { Account as TongoAccount } from './account';
+import { Account as TongoAccount } from './account.js';
 import { Account, constants, RpcProvider } from 'starknet';
-import { pubKeyBase58ToAffine } from './utils';
+import { pubKeyBase58ToAffine } from './utils.js';
 
 dotenv.config();
 

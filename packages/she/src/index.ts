@@ -6,7 +6,7 @@ import {
   computeHashOnElements,
   pedersen,
 } from "@scure/starknet";
-import { writeFileSync} from 'fs';
+// import { writeFileSync} from 'fs';
 
 export type Affine = AffinePoint<bigint>;
 
@@ -337,7 +337,7 @@ export function prove_withdraw(
   const prefix = compute_prefix(seq);
 
   const left = initial_balance - amount;
-  const { r, proof: range } = prove_range(left,32);
+  const { r, proof: range } = prove_range(left, 32);
 
   const kb = generate_random()
   const kx = generate_random()
@@ -479,7 +479,7 @@ export function prove_transfer(
   };
 
   const b_left = initial_balance - amount;
-  const { r: r2, proof: range2 } = prove_range( b_left, 32);
+  const { r: r2, proof: range2 } = prove_range(b_left, 32);
   const G = CR.subtract(R);
 
   const kx = generate_random()
@@ -650,32 +650,32 @@ function simPOE(y: ProjectivePoint, gen: ProjectivePoint) {
 }
 
 function _prove_bit_0(random: bigint): ProofOfBit {
-    const V = h.multiplyUnsafe(random);
-    const V_1 = V.subtract(g);
-    const { A: A1, c: c1, s: s1 } = simPOE(V_1, h);
+  const V = h.multiplyUnsafe(random);
+  const V_1 = V.subtract(g);
+  const { A: A1, c: c1, s: s1 } = simPOE(V_1, h);
 
-    const k = generate_random()
-    const A0 = h.multiplyUnsafe(k);
+  const k = generate_random()
+  const A0 = h.multiplyUnsafe(k);
 
-    const c = challenge_commits2(0n, [A0, A1]);
-    const c0 = c ^ c1; //bitwisexor
-    const s0 = (k + c0 * random) % CURVE_ORDER;
+  const c = challenge_commits2(0n, [A0, A1]);
+  const c0 = c ^ c1; //bitwisexor
+  const s0 = (k + c0 * random) % CURVE_ORDER;
 
-    return { V, A0, A1, c0, s0, s1 };
+  return { V, A0, A1, c0, s0, s1 };
 }
 
-function _prove_bit_1 (random: bigint): ProofOfBit {
-    const V = g.add(h.multiplyUnsafe(random));
-    const V0 = V;
-    const { A: A0, c: c0, s: s0 } = simPOE(V0, h);
+function _prove_bit_1(random: bigint): ProofOfBit {
+  const V = g.add(h.multiplyUnsafe(random));
+  const V0 = V;
+  const { A: A0, c: c0, s: s0 } = simPOE(V0, h);
 
-    const k = generate_random()
-    const A1 = h.multiplyUnsafe(k);
-    const c = challenge_commits2(0n, [A0, A1]);
-    const c1 = c ^ c0; //bitwisexor
-    const s1 = (k + c1 * random) % CURVE_ORDER;
+  const k = generate_random()
+  const A1 = h.multiplyUnsafe(k);
+  const c = challenge_commits2(0n, [A0, A1]);
+  const c1 = c ^ c0; //bitwisexor
+  const s1 = (k + c1 * random) % CURVE_ORDER;
 
-    return { V, A0, A1, c0, s0, s1 };
+  return { V, A0, A1, c0, s0, s1 };
 }
 
 
@@ -716,12 +716,12 @@ function prove_range(
   if (b >= 2 ** bits) {
     throw new Error("number not in range");
   }
-  const b_bin: (0|1)[] = b
+  const b_bin: (0 | 1)[] = b
     .toString(2)
     .padStart(bits, "0")
     .split("")
     .map(Number)
-    .map(x => x as (0|1))
+    .map(x => x as (0 | 1))
     .reverse();
   const proof: ProofOfBit[] = [];
   let pow = 1n;
@@ -761,71 +761,71 @@ function verify_range(proof: ProofOfBit[], bits: number): ProjectivePoint {
 
 // --------------------------------------- AUDIT EX POST ------------------------------------------------
 export interface ProofExPost {
-    Ax: ProjectivePoint,
-    Ar: ProjectivePoint,
-    At: ProjectivePoint,
-    A: ProjectivePoint,
-    A_bar: ProjectivePoint,
-    sx: bigint,
-    sb: bigint,
-    sr: bigint,
+  Ax: ProjectivePoint,
+  Ar: ProjectivePoint,
+  At: ProjectivePoint,
+  A: ProjectivePoint,
+  A_bar: ProjectivePoint,
+  sx: bigint,
+  sb: bigint,
+  sr: bigint,
 }
 export interface InputsExPost {
-    y: ProjectivePoint,
-    y_bar: ProjectivePoint,
-    L: ProjectivePoint,
-    L_bar: ProjectivePoint
-    R: ProjectivePoint,
-    TL: ProjectivePoint,
-    TR: ProjectivePoint,
+  y: ProjectivePoint,
+  y_bar: ProjectivePoint,
+  L: ProjectivePoint,
+  L_bar: ProjectivePoint
+  R: ProjectivePoint,
+  TL: ProjectivePoint,
+  TR: ProjectivePoint,
 }
 
 export function prove_expost(
-    x:bigint,
-    y_bar:ProjectivePoint,
-    TL:ProjectivePoint,
-    TR:ProjectivePoint
-): {inputs: InputsExPost, proof:ProofExPost} {
-    const y = g.multiply(x)
-    const b = decipher_balance(x, TL,TR)
-    const r = generate_random()
-    const {L,R} = cipher_balance(y,b,r)
-    const {L:L_bar,R: R_bar} = cipher_balance(y_bar,b,r)
+  x: bigint,
+  y_bar: ProjectivePoint,
+  TL: ProjectivePoint,
+  TR: ProjectivePoint
+): { inputs: InputsExPost, proof: ProofExPost } {
+  const y = g.multiply(x)
+  const b = decipher_balance(x, TL, TR)
+  const r = generate_random()
+  const { L, R } = cipher_balance(y, b, r)
+  const { L: L_bar, R: R_bar } = cipher_balance(y_bar, b, r)
 
-    const inputs: InputsExPost = {y, y_bar, L, L_bar, R, TL,TR}
+  const inputs: InputsExPost = { y, y_bar, L, L_bar, R, TL, TR }
 
-    const kx = generate_random()
-    const kr = generate_random()
-    const kb = generate_random()
+  const kx = generate_random()
+  const kr = generate_random()
+  const kb = generate_random()
 
-    const Ax = g.multiplyUnsafe(kx)
-    const Ar = g.multiplyUnsafe(kr)
+  const Ax = g.multiplyUnsafe(kx)
+  const Ar = g.multiplyUnsafe(kr)
 
-    const A = g.multiplyUnsafe(kb).add(y.multiplyUnsafe(kr));
-    const A_bar = g.multiplyUnsafe(kb).add(y_bar.multiplyUnsafe(kr));
+  const A = g.multiplyUnsafe(kb).add(y.multiplyUnsafe(kr));
+  const A_bar = g.multiplyUnsafe(kb).add(y_bar.multiplyUnsafe(kr));
 
-    const G = TR.subtract(R);
-    const At = G.multiplyUnsafe(kx)
+  const G = TR.subtract(R);
+  const At = G.multiplyUnsafe(kx)
 
-    const c = challenge_commits2(0n,[Ax,Ar,At,A,A_bar])
+  const c = challenge_commits2(0n, [Ax, Ar, At, A, A_bar])
 
-    const sx = (kx + x * c) % CURVE_ORDER;
-    const sr = (kr + x * c) % CURVE_ORDER;
-    const sb = (kb + x * c) % CURVE_ORDER;
+  const sx = (kx + x * c) % CURVE_ORDER;
+  const sr = (kr + x * c) % CURVE_ORDER;
+  const sb = (kb + x * c) % CURVE_ORDER;
 
-    const proof: ProofExPost = {Ax, Ar, At, A, A_bar, sx,sr,sb}
-    return {inputs, proof}
+  const proof: ProofExPost = { Ax, Ar, At, A, A_bar, sx, sr, sb }
+  return { inputs, proof }
 }
 
-export function verify_expost(inputs:InputsExPost, proof: ProofExPost) {
-    const c = challenge_commits2(0n,[proof.Ax,proof.Ar,proof.At,proof.A,proof.A_bar])
-    poe(inputs.y, g, proof.Ax, c, proof.sx)
-    poe(inputs.R, g, proof.Ar, c, proof.sr)
-    const Y = inputs.TL.subtract(inputs.L);
-    const G = inputs.TR.subtract(inputs.R);
-    poe(Y, G, proof.At, c, proof.sx)
-    poe2(inputs.L,g,inputs.y,proof.A, c, proof.sb,proof.sr)
-    poe2(inputs.L_bar,g,inputs.y_bar,proof.A, c, proof.sb,proof.sr)
+export function verify_expost(inputs: InputsExPost, proof: ProofExPost) {
+  const c = challenge_commits2(0n, [proof.Ax, proof.Ar, proof.At, proof.A, proof.A_bar])
+  poe(inputs.y, g, proof.Ax, c, proof.sx)
+  poe(inputs.R, g, proof.Ar, c, proof.sr)
+  const Y = inputs.TL.subtract(inputs.L);
+  const G = inputs.TR.subtract(inputs.R);
+  poe(Y, G, proof.At, c, proof.sx)
+  poe2(inputs.L, g, inputs.y, proof.A, c, proof.sb, proof.sr)
+  poe2(inputs.L_bar, g, inputs.y_bar, proof.A, c, proof.sb, proof.sr)
 }
 
 // --------------------------------------- AUDIT EX POST ------------------------------------------------
@@ -912,9 +912,9 @@ export function decipher_balance_optimized(
   L: ProjectivePoint,
   R: ProjectivePoint,
   precomputed: Map<string, string>
-): bigint {  
+): bigint {
   const Rx = R.multiply(x);
-    if (Rx.equals(L)) {return 0n}
+  if (Rx.equals(L)) { return 0n }
 
   const g_b = L.subtract(Rx);
   let b = find_least_bits(g, g_b, precomputed);
@@ -936,7 +936,8 @@ export function create_hash_map(g: ProjectivePoint): Map<string, bigint> {
     const key = to_key(current.x, current.y);
     precomputed.set(key, i);
 
-    current = current.add(gb);  }
+    current = current.add(gb);
+  }
 
   return precomputed;
 }
@@ -952,32 +953,31 @@ export function find_least_bits(
   let delta = g_neg;
   let current = c.add(delta);
   let c_prec = precomputed.get(to_key(c.x, c.y))
-  if (c_prec !== undefined)
-    {
-      return BigInt(c_prec) * (2n ** 16n);
-    };
+  if (c_prec !== undefined) {
+    return BigInt(c_prec) * (2n ** 16n);
+  };
   for (let i = 1n; i < lim; i++) {
     const key = to_key(current.x, current.y);
     const msb = precomputed.get(key);
     if (msb !== undefined) {
       return i + BigInt(msb) * (2n ** 16n);
     }
-    current = current.add(delta);    
+    current = current.add(delta);
   }
 
   return 0n;
 }
 
-export function create_and_save_hash_map(): void {
-  let hashed = create_hash_map(g);
-  let entries = Array.from(hashed.entries())
-    .map(([k, v]) => {
-      const keyStr = JSON.stringify(k);
-      const valStr = typeof v === 'bigint' ? `"${v.toString()}"` : JSON.stringify(v);
-      return `[${keyStr}, ${valStr}]`;
-    })
-    .join(',\n');
-    let tsCode = `export const hash_map = new Map([\n${entries}\n]);\n`;
-    writeFileSync("src/map.ts", tsCode, "utf8");
-    console.log("✅ TypeScript file generated at src/map.ts");
-}
+// export function create_and_save_hash_map(): void {
+//   let hashed = create_hash_map(g);
+//   let entries = Array.from(hashed.entries())
+//     .map(([k, v]) => {
+//       const keyStr = JSON.stringify(k);
+//       const valStr = typeof v === 'bigint' ? `"${v.toString()}"` : JSON.stringify(v);
+//       return `[${keyStr}, ${valStr}]`;
+//     })
+//     .join(',\n');
+//   let tsCode = `export const hash_map = new Map([\n${entries}\n]);\n`;
+//   writeFileSync("src/map.ts", tsCode, "utf8");
+//   console.log("✅ TypeScript file generated at src/map.ts");
+// }

@@ -1,24 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Tongo Demo UI</title>
-  <style>
-    body { font-family: monospace; background-color: #111; color: #eee; padding: 20px; }
-    button { margin: 10px 0; padding: 10px; font-size: 16px; }
-    #output { white-space: pre-wrap; background: #222; padding: 10px; margin-top: 20px; border: 1px solid #444; }
-  </style>
-</head>
-<body>
-  <h1>Tongo Demo UI</h1>
-  <button onclick="runStep('fund')">Step 1: Fund</button>
-  <button onclick="runStep('transfer')">Step 2: Transfer</button>
-  <button onclick="runStep('rollover')">Step 3: Rollover</button>
-  <button onclick="runStep('withdraw')">Step 4: Withdraw</button>
-  <button onclick="runStep('audit')">Step 5: Audit</button>
-
-  <div id="output">Log will appear here...</div>
-
-  <script type="module" src="./demo-ui.js"></script>
-</body>
+  <head>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tongo SDK Demo</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/frontend.tsx"></script>
+  </body>
 </html>

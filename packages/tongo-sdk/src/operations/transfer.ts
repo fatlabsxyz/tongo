@@ -1,8 +1,8 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfTransfer } from "she-js";
 import { Call, Contract } from "starknet";
-import { AEHints } from "../ae_balance";
-import { IOperation } from "./operation";
+import { AEHints } from "../ae_balance.js";
+import { IOperation } from "./operation.js";
 
 export interface ITransferOperation extends IOperation { }
 interface TransferOpParams {

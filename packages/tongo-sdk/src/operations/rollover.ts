@@ -1,6 +1,6 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { Call, Contract } from "starknet";
-import { IOperation } from "./operation";
+import { IOperation } from "./operation.js";
 import { ProofOfFund } from "she-js";
 
 

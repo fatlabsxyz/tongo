@@ -1,8 +1,8 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfWithdraw, ProofOfWithdrawAll } from "she-js";
 import { Call, Contract, num } from "starknet";
-import { AEHints } from "../ae_balance";
-import { IOperation } from "./operation";
+import { AEHints } from "../ae_balance.js";
+import { IOperation } from "./operation.js";
 
 
 export interface IWithdrawAllOperation extends IOperation { }

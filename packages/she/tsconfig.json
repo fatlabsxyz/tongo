@@ -1,8 +1,12 @@
+// packages/she/tsconfig.json
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*", "src/.*.js"],
-  "exclude": ["node_modules", "dist"],
   "compilerOptions": {
-    "declaration": true
-  }
+    "outDir": "lib",           // Important: Tell TSC where to output JS and .d.ts files
+    "rootDir": "src",          // Important: Tell TSC where the source files are
+    "declaration": true,       // Crucial: This tells TSC to generate .d.ts files
+    "declarationMap": true     // Optional but good for debugging types
+  },
+  "include": ["src/**/*"],     // Only include the actual source files
+  "exclude": ["node_modules", "lib", "tests"] // Exclude build output and test files
 }

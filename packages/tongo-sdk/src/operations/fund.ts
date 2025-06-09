@@ -1,8 +1,8 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfFund } from "she-js";
 import { cairo, Call, CallData, Contract, num } from "starknet";
-import { AEHints } from "../ae_balance";
-import { IOperation } from "./operation";
+import { AEHints } from "../ae_balance.js";
+import { IOperation } from "./operation.js";
 
 interface IFundOperation extends IOperation {
     populateApprove(): Promise<void>;
