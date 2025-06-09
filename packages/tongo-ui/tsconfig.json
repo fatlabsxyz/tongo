@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "module": "NodeNext",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "tongo-sdk": ["../tongo-sdk/src"] // This can help with module resolution during development
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}
