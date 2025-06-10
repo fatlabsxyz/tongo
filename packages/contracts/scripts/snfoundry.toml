@@ -1,4 +1,4 @@
 [sncast.localnet]
 url = "http://127.0.0.1:5050"
-accounts-file = "../localnet/sn_foundry_localnet_account.json"
+accounts-file = "./localnet/accounts.json"
 account = "localnet"
