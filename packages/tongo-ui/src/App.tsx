@@ -57,7 +57,12 @@ const App: React.FC = () => {
 	const account_1 = new TongoAccount(account1Sk, tongoAddress, provider);
 	const account_2 = new TongoAccount(account2Sk, tongoAddress, provider);
 
-	const [accountTab, setAccountTab] = useState<'account' | 'fund' | 'transfer' | 'withdraw'>('account');
+	const [accountTab, setAccountTab] = useState<'account' | 'fund' | 'transfer' | 'withdraw' | 'audit'>('account');
+
+	// Audit tab state
+	const [auditTarget, setAuditTarget] = useState<'account1' | 'account2'>('account1');
+	const [auditorSk, setAuditorSk] = useState<string>(''); // entered as string
+	const [auditedBalance, setAuditedBalance] = useState<string>('');
 
 	const [fundAmount, setFundAmount] = useState<string>('10');
 	const [fundTarget, setFundTarget] = useState<'account1' | 'account2'>('account1');
@@ -158,6 +163,24 @@ const App: React.FC = () => {
 		const recipientStarknetAddress = 839131273n;
 		const op = await source.withdraw({ amount: BigInt(withdrawAmount), to: recipientStarknetAddress });
 		await executeAndRefresh(op.toCalldata(), `WITHDRAW OK FOR ACCOUNT ${withdrawSource === 'account1' ? 'A' : 'B'}`);
+	};
+
+	const handleAudit = async () => {
+		try {
+			setStatus('AUDITING...');
+			const sk = BigInt(auditorSk);
+			const auditor = new TongoAccount(sk, tongoAddress, provider);
+			const state = auditTarget === 'account1'
+				? await account_1.state()
+				: await account_2.state();
+			const auditValue = auditor.decryptCipherBalance(state.audit);
+			setAuditedBalance(auditValue.toString());
+			setStatus('AUDIT SUCCESSFUL');
+		} catch (err: any) {
+			console.error("Audit error", err);
+			setError(`AUDIT FAILED: ${err.message || 'Unknown error'}`);
+			setAuditedBalance('');
+		}
 	};
 
 	const formatPubkey = (key: any) => {
@@ -408,6 +431,8 @@ const App: React.FC = () => {
 					>
 						Withdraw
 					</button>
+
+					<button onClick={() => setAccountTab('audit')} style={tabButtonStyle(accountTab === 'audit')}>Audit</button>
 				</div>
 
 				{/* Account Balances Tab */}
@@ -573,6 +598,53 @@ const App: React.FC = () => {
 						</button>
 					</div>
 				)}
+
+				{accountTab === 'audit' && (
+					<div>
+						<h2 style={sectionTitleStyle}>AUDIT ACCOUNT</h2>
+						<div style={inputGroupStyle}>
+							<label style={labelStyle}>ACCOUNT TO AUDIT:</label>
+							<select style={selectStyle} value={auditTarget} onChange={(e) => setAuditTarget(e.target.value as any)}>
+								<option value="account1">ACCOUNT A</option>
+								<option value="account2">ACCOUNT B</option>
+							</select>
+						</div>
+						<div style={inputGroupStyle}>
+							<label style={labelStyle}>AUDITOR SECRET KEY:</label>
+							<select
+								style={selectStyle}
+								value={auditorSk}
+								onChange={(e) => setAuditorSk(e.target.value)}
+							>
+								<option value="">-- Select or Enter Key --</option>
+								<option value="1242079909984902665305">1242079909984902665305</option>
+								<option value="custom">Custom...</option>
+							</select>
+							{auditorSk === 'custom' && (
+								<input
+									type="text"
+									placeholder="Enter custom auditor key"
+									onChange={(e) => setAuditorSk(e.target.value)}
+									style={inputStyle}
+									onFocus={(e) => Object.assign(e.currentTarget.style, inputFocusStyle)}
+									onBlur={(e) => Object.assign(e.currentTarget.style, inputStyle)}
+								/>
+							)}
+						</div>
+						<button
+							onClick={handleAudit}
+							style={buttonStyle}
+							onMouseEnter={(e) => Object.assign(e.currentTarget.style, { ...buttonStyle, backgroundColor: '#FF6655', transform: 'translateY(-1px)' })}
+							onMouseLeave={(e) => Object.assign(e.currentTarget.style, buttonStyle)}
+						>
+							EXECUTE AUDIT
+						</button>
+						{auditedBalance && (
+							<p style={accountDetailTextStyle}><strong style={accountDetailLabelStyle}>AUDITED BALANCE:</strong> {auditedBalance}</p>
+						)}
+					</div>
+				)}
+
 			</div>
 
 			{(status || error) && (
