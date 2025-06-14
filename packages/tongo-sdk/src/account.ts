@@ -1,9 +1,6 @@
 import { bytesToHex } from "@noble/hashes/utils";
-import { ProjectivePoint } from "@scure/starknet";
 import { BigNumberish, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
-
-import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost } from "she-js";
-
+import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost, ProjectivePoint } from "she-js";
 import { AEChaCha, AEHint, AEHintToBytes, bytesToBigAEHint } from "./ae_balance.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
 import { FundOperation } from "./operations/fund.js";
@@ -37,11 +34,11 @@ interface WithdrawDetails {
 }
 
 interface AccountState {
-    balance: CipherBalance;
-    pending: CipherBalance;
-    audit: CipherBalance;
-    aeBalance: AEHint;
-    aeAuditBalance: AEHint;
+    balance?: CipherBalance;
+    pending?: CipherBalance;
+    audit?: CipherBalance;
+    aeBalance?: AEHint;
+    aeAuditBalance?: AEHint;
     nonce: bigint;
 }
 
@@ -64,7 +61,7 @@ interface IAccount {
     balance(): Promise<CipherBalance | undefined>;
     pending(): Promise<CipherBalance | undefined>;
     state(): Promise<AccountState>;
-    decryptBalance(cipher: CipherBalance): Promise<bigint>;
+    decryptBalance(cipher: CipherBalance): Promise<bigint|undefined>;
     decryptPending(): Promise<bigint>;
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost;
     verifyExPost(expost: ExPost): bigint;
@@ -134,6 +131,7 @@ export class Account implements IAccount {
             throw new Error("You dont have balance");
         }
         const { L, R } = cipherBalance;
+
         const balance = this.decryptCipherBalance({ L, R });
 
         if (balance < amount) {
@@ -187,6 +185,7 @@ export class Account implements IAccount {
         }
         const { L, R } = cipherBalance;
         const balance = await this.decryptBalance({ L, R });
+
         if (balance < amount) {
             throw new Error("You dont have enought balance");
         }
@@ -216,13 +215,12 @@ export class Account implements IAccount {
         return new RollOverOperation(inputs.y, proof, this.Tongo);
     }
 
-    async decryptAEBalance(): Promise<bigint> {
+    async decryptAEBalance(): Promise<bigint|undefined> {
         const state = await this.state();
-        if (Object.values(state.aeBalance).some(x => x === 0n)) {
-            return 0n;
-        }
         const nonce = await this.nonce();
         const keyAEBal = await this.deriveSymmetricKey(nonce);
+        if (state.aeBalance === undefined)
+          return undefined
         const { ciphertext, nonce: cipherNonce } = AEHintToBytes(state.aeBalance);
         const balance = (new AEChaCha(keyAEBal)).decryptBalance(ciphertext, cipherNonce);
         return balance;
@@ -230,15 +228,14 @@ export class Account implements IAccount {
 
     decryptCipherBalance(cipher: CipherBalance): bigint {
         const { L, R } = cipher;
-        if (L === null || R === null) {
-            return 0n;
-        }
         const amount = decipher_balance(this.pk, L, R);
         return amount;
     }
 
     async decryptBalance(cipher: CipherBalance): Promise<bigint> {
         const aeBalance = await this.decryptAEBalance();
+        if (aeBalance === undefined)
+          return 0n
         // TODO: assert aeBalance matches elgamal balance
         // if (ok) {
         return aeBalance;
@@ -314,12 +311,12 @@ export class Account implements IAccount {
             ae_balance, ae_audit_balance,
         } = state;
         return {
-            balance: parseCipherBalance(balance),
-            audit: parseCipherBalance(audit),
-            pending: parseCipherBalance(pending),
+            balance: balance.isSome() ? parseCipherBalance(balance.unwrap()!) : undefined,
+            audit: audit.isSome() ? parseCipherBalance(audit.unwrap()!) : undefined,
+            pending: pending.isSome() ? parseCipherBalance(pending.unwrap()!) : undefined,
             nonce: num.toBigInt(nonce),
-            aeBalance: parseAEBalance(ae_balance),
-            aeAuditBalance: parseAEBalance(ae_audit_balance),
+            aeBalance: ae_balance.isSome() ? parseAEBalance(ae_balance.unwrap()!) : undefined,
+            aeAuditBalance: ae_audit_balance.isSome() ? parseAEBalance(ae_audit_balance.unwrap()!) : undefined,
         };
     }
 

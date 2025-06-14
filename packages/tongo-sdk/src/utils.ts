@@ -1,6 +1,6 @@
 import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";
-import { ProjectivePoint } from "@scure/starknet";
+import { ProjectivePoint } from "she-js";
 import { CipherBalance, PubKey, StarkPoint, TongoAddress } from "./types.js";
 import { BigNumberish, num, uint256, Uint256 } from "starknet";
 import { AEHint } from "./ae_balance.js";
