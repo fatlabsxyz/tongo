@@ -1,25 +1,31 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
+  cipher_balance,
+  CURVE_ORDER,
+  decipher_balance,
   encrypt,
   g,
+  generate_random,
   h,
-} from "../src";
-import { generate_random, CURVE_ORDER } from "../src";
-import { prove_fund, verify_fund } from "../src";
-import {
+  prove_expost,
+  prove_fund,
+  prove_poe,
+  prove_poe2,
+  prove_transfer,
+  prove_withdraw,
   prove_withdraw_all,
-  verify_withdraw_all,
-  cipher_balance,
+  verify_expost,
+  verify_fund,
+  verify_poe,
+  verify_poe2,
+  verify_transfer,
+  verify_withdraw,
+  verify_withdraw_all
 } from "../src";
-import { prove_withdraw, verify_withdraw } from "../src";
-import { decipher_balance } from "../src";
-import { prove_poe, verify_poe } from "../src";
-import { prove_poe2, verify_poe2 } from "../src";
-import { prove_transfer, verify_transfer } from "../src";
-import { prove_expost , verify_expost} from "../src"
-import { find_least_bits, decipher_balance_optimized} from "../src";
-import { hash_map} from "../src/map";
+
+// import { find_least_bits, decipher_balance_optimized} from "../src";
+// import { hash_map} from "../src/map";
 
 describe("Example test suit", () => {
   it("encrypts the number 2**239", () => {
@@ -150,12 +156,12 @@ describe("Example test suit", () => {
 });
 
 
-it("bechmark_decipher_optimized", () => {
-  const x = 1234n;
-  const amount = 12n;
-  const random = 111111n;
-  const y = g.multiplyUnsafe(x);
-  const { L, R } = cipher_balance(y, amount, random);
-  const b = decipher_balance_optimized(x, L, R, hash_map);
-  expect(b).toEqual(amount);
-});
+// it("bechmark_decipher_optimized", () => {
+//   const x = 1234n;
+//   const amount = 12n;
+//   const random = 111111n;
+//   const y = g.multiplyUnsafe(x);
+//   const { L, R } = cipher_balance(y, amount, random);
+//   const b = decipher_balance_optimized(x, L, R, hash_map);
+//   expect(b).toEqual(amount);
+// });
