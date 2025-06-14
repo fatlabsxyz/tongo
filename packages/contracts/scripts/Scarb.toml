@@ -15,7 +15,9 @@ sierra = true
 casm = true
 
 [scripts]
-deploy_local = "sncast --profile localnet script run --no-state-file deploy_local"
+deploy_local = "sncast --profile localnet5151 script run deploy_local"
+devnet5151 = "bash -c '. ./localnet/variables && starknet-devnet --port 5151'"
+devnet = "bash -c '. ./localnet/variables && starknet-devnet --lite-mode --fork-network http://127.0.0.1:5151'"
 
 [[target.starknet-contract]]
 build-external-contracts = [
