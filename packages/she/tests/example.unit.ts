@@ -21,7 +21,8 @@ import {
   verify_poe2,
   verify_transfer,
   verify_withdraw,
-  verify_withdraw_all
+  verify_withdraw_all,
+  assert_balance
 } from "../src";
 
 // import { find_least_bits, decipher_balance_optimized} from "../src";
@@ -114,6 +115,17 @@ describe("Example test suit", () => {
       nonce,
     );
     verify_transfer(inputs, proof);
+  });
+
+  it("assert_balance", () => {
+    const x = 1234n;
+    const amount = 12n;
+    const fake_amount = 44n;
+    const random = 111111n;
+    const y = g.multiplyUnsafe(x);
+    const { L, R } = cipher_balance(y, amount, random);
+    expect(assert_balance(x, fake_amount, L, R)).toEqual(false);
+    expect(assert_balance(x, amount, L, R)).toEqual(true);
   });
 
   it("bechmark_decipher", () => {
