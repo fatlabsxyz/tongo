@@ -18,9 +18,12 @@ export function relayerAccount(provider: RpcProvider): Account {
 }
 
 export const relayer = relayerAccount(provider);
-export const tongoAddress = process.env.TONGO_CONTRACT_ADDRESS;
-if (tongoAddress === undefined)
-  throw new Error("TONGO_CONTRACT_ADDRESS env var is missing");
+export const tongoAddress = (() => {
+  const _address = process.env.TONGO_CONTRACT_ADDRESS;
+  if (_address === undefined)
+    throw new Error("TONGO_CONTRACT_ADDRESS env var is missing");
+  return _address;
+})();
 
 export const Tongo = new Contract(tongoAbi, tongoAddress, relayer).typedv2(tongoAbi);
 
