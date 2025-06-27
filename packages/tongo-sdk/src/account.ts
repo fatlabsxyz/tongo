@@ -70,9 +70,9 @@ interface IAccount {
     rawAEAuditBalance(): Promise<AEBalance | undefined>;
 
     // state handling
-    decryptAEBalance(cipher: AEBalance, accountNonce: bigint): Promise<bigint|undefined>;
+    decryptAEBalance(cipher: AEBalance, accountNonce: bigint): Promise<bigint>;
     decryptCipherBalance(cipher: CipherBalance): bigint;
-    decryptBalance(accountState: AccountState): Promise<bigint|undefined>;
+    decryptBalance(accountState: AccountState): Promise<bigint>;
     balance(): Promise<bigint>
     decryptPending(accountState: AccountState): Promise<bigint>;
     pending(): Promise<bigint>
