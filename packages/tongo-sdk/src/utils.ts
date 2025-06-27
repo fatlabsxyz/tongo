@@ -3,7 +3,7 @@ import { bytesToHex } from "@noble/hashes/utils";
 import { ProjectivePoint } from "she-js";
 import { CipherBalance, PubKey, StarkPoint, TongoAddress } from "./types.js";
 import { BigNumberish, num, uint256, Uint256 } from "starknet";
-import { AEHint } from "./ae_balance.js";
+import { AEBalance } from "./ae_balance.js";
 import { g } from "she-js";
 
 export function derivePublicKey(privateKey: bigint) {
@@ -40,7 +40,7 @@ function isUint256(x: number | bigint | Uint256): x is Uint256 {
     return (low !== undefined) && (high !== undefined);
 }
 
-export function parseAEBalance({ ciphertext, nonce }: { ciphertext: BigNumberish; nonce: number | bigint | Uint256; }): AEHint {
+export function parseAEBalance({ ciphertext, nonce }: { ciphertext: BigNumberish; nonce: number | bigint | Uint256; }): AEBalance {
     let parsedNonce: bigint;
     if (isUint256(nonce)) {
         parsedNonce = uint256.uint256ToBN(nonce);

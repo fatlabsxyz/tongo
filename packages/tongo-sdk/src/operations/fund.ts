@@ -1,7 +1,7 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfFund } from "she-js";
 import { cairo, Call, CallData, Contract, num } from "starknet";
-import { AEHints } from "../ae_balance";
+import { AEBalances } from "../ae_balance";
 import { IOperation } from "./operation";
 
 interface IFundOperation extends IOperation {
@@ -12,7 +12,7 @@ interface FundOpParams {
     to: ProjectivePoint;
     amount: bigint;
     proof: ProofOfFund;
-    aeHints: AEHints;
+    aeHints: AEBalances;
     Tongo: Contract;
 }
 
@@ -22,7 +22,7 @@ export class FundOperation implements IFundOperation {
     amount: bigint;
     proof: ProofOfFund;
     approve?: Call;
-    aeHints: AEHints;
+    aeHints: AEBalances;
 
     constructor({ to, amount, proof, Tongo, aeHints }: FundOpParams) {
         this.to = to;

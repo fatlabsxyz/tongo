@@ -1,7 +1,7 @@
 import { bytesToHex } from "@noble/hashes/utils";
 import { BigNumberish, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
-import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost, ProjectivePoint } from "she-js";
-import { AEChaCha, AEHint, AEHintToBytes, bytesToBigAEHint } from "./ae_balance.js";
+import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost, ProjectivePoint, assert_balance } from "she-js";
+import { AEChaCha, AEBalance, AEHintToBytes, bytesToBigAEHint } from "./ae_balance.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
 import { FundOperation } from "./operations/fund.js";
 import { RollOverOperation } from "./operations/rollover.js";
@@ -10,6 +10,7 @@ import { WithdrawAllOperation, WithdrawOperation } from "./operations/withdraw.j
 import { tongoAbi } from "./tongo.abi.js";
 import { CipherBalance, PubKey, TongoAddress } from "./types.js";
 import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint } from "./utils.js";
+import { After } from "node:v8";
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
 interface FundDetails {
@@ -37,8 +38,8 @@ interface AccountState {
     balance?: CipherBalance;
     pending?: CipherBalance;
     audit?: CipherBalance;
-    aeBalance?: AEHint;
-    aeAuditBalance?: AEHint;
+    aeBalance?: AEBalance;
+    aeAuditBalance?: AEBalance;
     nonce: bigint;
 }
 
@@ -51,18 +52,32 @@ interface IAccount {
     publicKey: PubKey;
 
     tongoAddress(): string;
+
+    // operations
     fund(fundDetails: FundDetails): Promise<FundOperation>;
     transfer(transferDetails: TransferDetails): Promise<TransferOperation>;
     transferWithFee(transferWithFeeDetails: TransferWithFeeDetails): TransferWithFeeOperation;
     withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation>;
     withdraw_all(withdrawDetails: WithdrawAllDetails): Promise<WithdrawAllOperation>;
     rollover(): Promise<RollOverOperation>;
-    nonce(): Promise<bigint>;
-    balance(): Promise<CipherBalance | undefined>;
-    pending(): Promise<CipherBalance | undefined>;
+
+    // state access
     state(): Promise<AccountState>;
-    decryptBalance(cipher: CipherBalance): Promise<bigint|undefined>;
-    decryptPending(): Promise<bigint>;
+    nonce(): Promise<bigint>;
+    rawBalance(): Promise<CipherBalance | undefined>;
+    rawPending(): Promise<CipherBalance | undefined>;
+    rawAEBalance(): Promise<AEBalance | undefined>;
+    rawAEAuditBalance(): Promise<AEBalance | undefined>;
+
+    // state handling
+    decryptAEBalance(cipher: AEBalance, accountNonce: bigint): Promise<bigint|undefined>;
+    decryptCipherBalance(cipher: CipherBalance): bigint;
+    decryptBalance(accountState: AccountState): Promise<bigint|undefined>;
+    balance(): Promise<bigint>
+    decryptPending(accountState: AccountState): Promise<bigint>;
+    pending(): Promise<bigint>
+
+    // ex post
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost;
     verifyExPost(expost: ExPost): bigint;
 }
@@ -87,24 +102,28 @@ export class Account implements IAccount {
     }
 
     async nonce(): Promise<bigint> {
-        const nonce = await this.Tongo.get_nonce(this.publicKey);
-        return BigInt(nonce);
+        const { nonce } = await this.state();
+        return nonce
     }
 
-    async balance(): Promise<CipherBalance | undefined> {
-        const { CL, CR } = await this.Tongo.get_balance(this.publicKey);
-        if ((CL.x == 0n && CL.y == 0n) || (CR.x == 0n && CR.y == 0n)) {
-            return undefined;
-        }
-        return parseCipherBalance({ CL, CR });
+    async rawBalance(): Promise<CipherBalance | undefined> {
+        const { balance } = await this.state();
+        return balance
     }
 
-    async pending(): Promise<CipherBalance | undefined> {
-        const { CL, CR } = await this.Tongo.get_pending(this.publicKey);
-        if ((CL.x == 0n && CL.y == 0n) || (CR.x == 0n && CR.y == 0n)) {
-            return undefined;
-        }
-        return parseCipherBalance({ CL, CR });
+    async rawPending(): Promise<CipherBalance | undefined> {
+        const { pending } = await this.state();
+        return pending
+    }
+
+    async rawAEBalance(): Promise<AEBalance | undefined> {
+        const { aeBalance } = await this.state();
+        return aeBalance
+    }
+
+    async rawAEAuditBalance(): Promise<AEBalance | undefined> {
+        const { aeAuditBalance } = await this.state();
+        return aeAuditBalance
     }
 
     async state(): Promise<AccountState> {
@@ -126,21 +145,23 @@ export class Account implements IAccount {
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
         const { amount } = transferDetails;
 
-        const cipherBalance = await this.balance();
-        if (cipherBalance === undefined) {
-            throw new Error("You dont have balance");
-        }
-        const { L, R } = cipherBalance;
+        const state  = await this.state();
+        const { nonce, balance: cipherBalance } = state;
 
-        const balance = this.decryptCipherBalance({ L, R });
+        const balance = await this.decryptBalance(state);
+        if (balance === 0n) {
+            throw new Error("You dont have enough balance");
+        }
+
+        // Balance is well defined if decryption was successful
+        const { L, R } = cipherBalance!;
 
         if (balance < amount) {
-            throw new Error("You dont have enought balance");
+            throw new Error("You dont have enough balance");
         }
 
         const aeHints = await this.computeAEHints(balance - amount);
         const to = starkPointToProjectivePoint(transferDetails.to);
-        const nonce = await this.nonce();
         const { inputs, proof } = prove_transfer(this.pk, to, balance, amount, L, R, nonce);
 
         return new TransferOperation({
@@ -161,17 +182,17 @@ export class Account implements IAccount {
     }
 
     async withdraw_all(withdrawDetails: WithdrawAllDetails): Promise<WithdrawAllOperation> {
-        const cipherBalance = await this.balance();
-        if (cipherBalance === undefined) {
-            throw new Error("You dont have balance");
-        }
-        const { L, R } = cipherBalance;
-        const balance = this.decryptCipherBalance({ L, R });
-        if (balance == 0n) {
-            throw new Error("You dont have balance");
-        }
+        const state  = await this.state();
+        const { nonce, balance: cipherBalance } = state;
 
-        const nonce = await this.nonce();
+        const balance = await this.decryptBalance(state);
+        if (balance === 0n) {
+            throw new Error("You dont have enough balance");
+        }
+        // Balance is well defined if decryption was successful
+        const { L, R } = cipherBalance!;
+
+        // zeroing out aehints
         const aeHints = await this.computeAEHints(0n);
         const { inputs: inputs, proof: proof } = prove_withdraw_all(this.pk, L, R, nonce, withdrawDetails.to, balance);
         return new WithdrawAllOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, proof, aeHints, Tongo: this.Tongo });
@@ -179,12 +200,15 @@ export class Account implements IAccount {
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
         const { amount } = withdrawDetails;
-        const cipherBalance = await this.balance();
-        if (cipherBalance === undefined) {
-            throw new Error("You dont have balance");
+        const state  = await this.state();
+        const balance = await this.decryptBalance(state);
+
+        if (balance === 0n) {
+            throw new Error("You dont have enough balance");
         }
-        const { L, R } = cipherBalance;
-        const balance = await this.decryptBalance({ L, R });
+
+        // Balance is well defined if decryption was successful
+        const { L, R } = state.balance!;
 
         if (balance < amount) {
             throw new Error("You dont have enought balance");
@@ -205,52 +229,66 @@ export class Account implements IAccount {
     }
 
     async rollover(): Promise<RollOverOperation> {
-        const amount = await this.decryptPending();
+        const { nonce, pending } = await this.state();
+        const amount = this.decryptCipherBalance(pending!);
         if (amount == 0n) {
             throw new Error("Your pending ammount is 0");
         }
-
-        const nonce = await this.nonce();
         const { inputs, proof } = prove_fund(this.pk, nonce);
         return new RollOverOperation(inputs.y, proof, this.Tongo);
     }
 
-    async decryptAEBalance(): Promise<bigint|undefined> {
-        const state = await this.state();
-        const nonce = await this.nonce();
-        const keyAEBal = await this.deriveSymmetricKey(nonce);
-        if (state.aeBalance === undefined)
-          return undefined
-        const { ciphertext, nonce: cipherNonce } = AEHintToBytes(state.aeBalance);
-        const balance = (new AEChaCha(keyAEBal)).decryptBalance(ciphertext, cipherNonce);
+    async decryptAEBalance(aeBalance: AEBalance, accountNonce: bigint): Promise<bigint> {
+        const keyAEBal = await this.deriveSymmetricKey(accountNonce);
+        const { ciphertext, nonce: cipherNonce } = AEHintToBytes(aeBalance);
+        const balance = (new AEChaCha(keyAEBal)).decryptBalance({ciphertext, nonce: cipherNonce});
         return balance;
     }
 
-    decryptCipherBalance(cipher: CipherBalance): bigint {
-        const { L, R } = cipher;
-        const amount = decipher_balance(this.pk, L, R);
-        return amount;
+    decryptCipherBalance({ L, R }: CipherBalance): bigint {
+        return decipher_balance(this.pk, L, R);
     }
 
-    async decryptBalance(cipher: CipherBalance): Promise<bigint> {
-        const aeBalance = await this.decryptAEBalance();
-        if (aeBalance === undefined)
-          return 0n
-        // TODO: assert aeBalance matches elgamal balance
-        // if (ok) {
-        return aeBalance;
-        // else {
-        // this.decryptCipherBalance(cipher);
-        // }
+    async decryptBalance(accountState: AccountState): Promise<bigint> {
+      const { nonce, balance, aeBalance } = accountState;
+      // NOTE: undefined balance == Cairo::None == un-initialized account == 0 balance
+      if (balance === undefined) {
+        return 0n;
+      }
+
+      // balance is defined but aeBalance is not, weird state but workable, log warning and continue
+      if (aeBalance === undefined) {
+        console.log("Unknown aeBalance account state");
+        return this.decryptCipherBalance(balance);
+      }
+
+      // If both are defined we attempt to quickly decipher symmetric hint and validate cipher balance
+      const decryptedAEBalance = await this.decryptAEBalance(aeBalance, nonce);
+      if (assert_balance(this.pk, decryptedAEBalance, balance.L, balance.R)) {
+        return decryptedAEBalance;
+      } else {
+        console.log("aeBalance does not match balance. This is not critical but should review AE encryption");
+        return this.decryptCipherBalance(balance);
+      }
     }
 
-    async decryptPending(): Promise<bigint> {
-        const pending = await this.pending();
+    async balance(): Promise<bigint> {
+      const state = await this.state();
+      return this.decryptBalance(state)
+    }
+
+    async decryptPending(accountState: AccountState): Promise<bigint> {
+        const { pending } = accountState;
         if (pending) {
             return this.decryptCipherBalance(pending);
         } else {
             return 0n;
         }
+    }
+
+    async pending(): Promise<bigint> {
+      const state = await this.state();
+      return this.decryptPending(state)
     }
 
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost {

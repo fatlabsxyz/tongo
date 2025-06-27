@@ -24,7 +24,7 @@ export class Auditor {
         if (otherState.aeAuditBalance === undefined) return 0n;
         const { ciphertext, nonce: cipherNonce } = AEHintToBytes(otherState.aeAuditBalance);
         const cipher = new AEChaCha(sharedSecret)
-        return cipher.decryptBalance(ciphertext, cipherNonce)
+        return cipher.decryptBalance({ciphertext, nonce: cipherNonce})
     }
 
     async deriveSymmetricKeyForPubKey(nonce: bigint, other: PubKey) {

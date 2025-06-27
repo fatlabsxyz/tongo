@@ -65,8 +65,8 @@ program
             gOpts.tongo || ctx.tongoContractAddress,
             provider
         );
-        const availableBalance = await account.decryptAEBalance();
-        const pending = await account.decryptPending();
+        const availableBalance = await account.balance();
+        const pending = await account.pending();
         console.log("Unlocked balance |", availableBalance);
         console.log("Pending balance  |", pending);
     });

@@ -1,7 +1,7 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfWithdraw, ProofOfWithdrawAll } from "she-js";
 import { Call, Contract, num } from "starknet";
-import { AEHints } from "../ae_balance";
+import { AEBalances } from "../ae_balance";
 import { IOperation } from "./operation";
 
 
@@ -11,7 +11,7 @@ interface WithdrawAllOpParams {
     to: bigint;
     amount: bigint;
     proof: ProofOfWithdrawAll;
-    aeHints: AEHints;
+    aeHints: AEBalances;
     Tongo: Contract;
 }
 
@@ -21,7 +21,7 @@ export class WithdrawAllOperation implements IWithdrawAllOperation {
     amount: bigint;
     proof: ProofOfWithdrawAll;
     Tongo: Contract;
-    aeHints: AEHints;
+    aeHints: AEBalances;
 
     constructor({ from, to, amount, proof, Tongo, aeHints }: WithdrawAllOpParams) {
         this.from = from;
@@ -51,7 +51,7 @@ interface WithdrawOpParams {
     to: bigint;
     amount: bigint;
     proof: ProofOfWithdraw;
-    aeHints: AEHints;
+    aeHints: AEBalances;
     Tongo: Contract;
 }
 
@@ -61,7 +61,7 @@ export class WithdrawOperation implements IWithdrawOperation {
     amount: bigint;
     proof: ProofOfWithdraw;
     Tongo: Contract;
-    aeHints: AEHints;
+    aeHints: AEBalances;
 
     constructor({ from, to, amount, proof, Tongo, aeHints }: WithdrawOpParams) {
         this.from = from;
