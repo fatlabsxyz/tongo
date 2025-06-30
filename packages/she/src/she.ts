@@ -881,6 +881,25 @@ export function decipher_balance(
   return b;
 }
 
+export function assert_balance(
+  x: bigint,
+  balance: bigint,
+  L: ProjectivePoint,
+  R: ProjectivePoint,
+): boolean {
+
+  // TODO: should throw error
+  if (R.x === 0n || L.x === 0n) { return false }
+
+  const Rx = R.multiply(x);
+  // TODO: should throw error
+  if (Rx.equals(L)) { return false }
+
+  const g_b = L.subtract(Rx);
+  const candidate_g_b = g.multiply(balance);
+  return g_b.equals(candidate_g_b);
+}
+
 export function decipher_balance_optimized(
   x: bigint,
   L: ProjectivePoint,

@@ -1,7 +1,7 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfTransfer } from "she-js";
 import { Call, Contract } from "starknet";
-import { AEHints } from "../ae_balance";
+import { AEBalances } from "../ae_balance";
 import { IOperation } from "./operation";
 
 export interface ITransferOperation extends IOperation { }
@@ -13,7 +13,7 @@ interface TransferOpParams {
     L_audit: ProjectivePoint;
     R: ProjectivePoint;
     proof: ProofOfTransfer;
-    aeHints: AEHints;
+    aeHints: AEBalances;
     Tongo: Contract;
 }
 
@@ -26,7 +26,7 @@ export class TransferOperation implements ITransferOperation {
     L_audit: ProjectivePoint;
     R: ProjectivePoint;
     proof: ProofOfTransfer;
-    aeHints: AEHints;
+    aeHints: AEBalances;
 
     constructor({ from, to, L, L_bar, L_audit, R, proof, Tongo, aeHints }: TransferOpParams) {
         this.from = from;

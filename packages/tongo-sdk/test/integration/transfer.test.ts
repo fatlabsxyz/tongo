@@ -29,8 +29,10 @@ describe("[integration]", () => {
     expect(senderState.audit).toBeDefined();
     expect(senderState.aeBalance).toBeDefined();
     expect(senderState.aeAuditBalance).toBeDefined();
-    expect(await accSender.decryptAEBalance()).toStrictEqual(77n);
+
+    expect(await accSender.decryptAEBalance(senderState.aeBalance!, senderState.nonce)).toStrictEqual(77n);
     expect(accSender.decryptCipherBalance(senderState.balance!)).toStrictEqual(77n);
+    expect(await accSender.balance()).toStrictEqual(77n);
 
     // receiver should only have a pending and audit balance
     const receiverState = await accRec.state();

@@ -2,29 +2,29 @@ import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { bytesToNumberBE, numberToBytesBE } from '@noble/ciphers/utils.js';
 import { randomBytes } from '@noble/ciphers/webcrypto.js';
 
-export interface AEHint {
+export interface AEBalance {
     ciphertext: bigint,
     nonce: bigint;
 }
 
-export interface AEHintBytes {
+export interface AEBalanceBytes {
     ciphertext: Uint8Array,
     nonce: Uint8Array;
 }
 
-export interface AEHints {
-    ae_balance: AEHint,
-    ae_audit_balance: AEHint,
+export interface AEBalances {
+    ae_balance: AEBalance,
+    ae_audit_balance: AEBalance,
 }
 
-export function AEHintToBytes({ ciphertext, nonce }: AEHint): AEHintBytes {
+export function AEHintToBytes({ ciphertext, nonce }: AEBalance): AEBalanceBytes {
     return {
         ciphertext: numberToBytesBE(ciphertext, 64),
         nonce: numberToBytesBE(nonce, 24),
     };
 }
 
-export function bytesToBigAEHint({ ciphertext, nonce }: AEHintBytes): AEHint {
+export function bytesToBigAEHint({ ciphertext, nonce }: AEBalanceBytes): AEBalance {
     return {
         ciphertext: bytesToNumberBE(ciphertext),
         nonce: bytesToNumberBE(nonce),
@@ -43,7 +43,7 @@ export class AEChaCha {
         }
     }
 
-    encryptBalance(balance: bigint): AEHintBytes {
+    encryptBalance(balance: bigint): AEBalanceBytes {
         // 512  = ( TAG [128] ) + ( NOISE/RESERVED [352] ) + ( BALANCE [32] )
         // 64 B      16 B                44 B                    4 B
         const nonce = randomBytes(24);
@@ -55,7 +55,7 @@ export class AEChaCha {
         return { ciphertext, nonce };
     }
 
-    decryptBalance(ciphertext: Uint8Array, nonce: Uint8Array): bigint {
+    decryptBalance({ciphertext, nonce}: AEBalanceBytes): bigint {
         const chacha = xchacha20poly1305(this.key, nonce);
         try {
             const plaintext = chacha.decrypt(ciphertext);

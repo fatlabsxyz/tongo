@@ -112,8 +112,8 @@ describe("[ae_balance] AEChaCha", () => {
     ]);
     const aeChaCha = new AEChaCha(privateKey);
     const cleartext = 55555n;
-    const aeCipherText = aeChaCha.encryptBalance(cleartext);
-    const decryptedCleartext = aeChaCha.decryptBalance(aeCipherText.ciphertext, aeCipherText.nonce);
+    const { ciphertext, nonce } = aeChaCha.encryptBalance(cleartext);
+    const decryptedCleartext = aeChaCha.decryptBalance({ ciphertext, nonce });
     expect(decryptedCleartext).toStrictEqual(cleartext);
   });
 
