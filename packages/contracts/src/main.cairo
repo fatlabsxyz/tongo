@@ -1,15 +1,17 @@
 use starknet::ContractAddress;
-use crate::verifier::structs::{Fund, WithdrawAll, Withdraw, PubKey, Transfer, Rollover, CipherBalance, AEHints};
-use crate::ae_balance::{AEBalance};
+use crate::ae_balance::AEBalance;
+use crate::verifier::structs::{
+    AEHints, CipherBalance, Fund, PubKey, Rollover, Transfer, Withdraw, WithdrawAll,
+};
 
 #[derive(Serde, Drop, Debug, Copy)]
 pub struct State {
-    balance: CipherBalance,
-    pending: CipherBalance,
-    audit: CipherBalance,
+    balance: Option<CipherBalance>,
+    pending: Option<CipherBalance>,
+    audit: Option<CipherBalance>,
     nonce: u64,
-    ae_balance: AEBalance,
-    ae_audit_balance: AEBalance
+    ae_balance: Option<AEBalance>,
+    ae_audit_balance: Option<AEBalance>,
 }
 
 #[starknet::interface]
@@ -29,25 +31,22 @@ pub trait ITongo<TContractState> {
 
 #[starknet::contract]
 pub mod Tongo {
-    use starknet::{
-        storage::StoragePointerReadAccess, storage::StoragePointerWriteAccess,
-        storage::StoragePathEntry, storage::Map, get_caller_address, get_contract_address, ContractAddress };
+    use starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use starknet::{ContractAddress, get_caller_address, get_contract_address};
+    use crate::ae_balance::{AEBalance, IntoOptionAEBalance};
+    use crate::constants::STRK_ADDRESS;
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
-
     use crate::verifier::structs::{
-        InputsTransfer, InputsFund, InputsWithdraw, CipherBalance, CipherBalanceTrait,
-        StarkPoint,
+        CipherBalance, CipherBalanceTrait, InputsFund, InputsTransfer, InputsWithdraw,
+        IntoOptionCipherBalance, PubKey, StarkPoint, Validate,
     };
-    use crate::verifier::structs::Validate;
-    use crate::verifier::structs::PubKey;
+    use crate::verifier::utils::view_key;
     use crate::verifier::verifier::{
-        verify_withdraw, verify_withdraw_all, verify_transfer, verify_fund
+        verify_fund, verify_transfer, verify_withdraw, verify_withdraw_all,
     };
-    use crate::verifier::utils::{view_key};
-    use crate::constants::{STRK_ADDRESS};
-
-    use super::{Withdraw, WithdrawAll, Transfer, Fund, Rollover, State, AEHints};
-    use crate::ae_balance::{AEBalance};
+    use super::{AEHints, Fund, Rollover, State, Transfer, Withdraw, WithdrawAll};
 
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
@@ -109,8 +108,6 @@ pub mod Tongo {
         pub to: ContractAddress,
     }
 
-
-
     #[abi(embed_v0)]
     impl TongoImpl of super::ITongo<ContractState> {
         fn rollover(ref self: ContractState, rollover: Rollover) {
@@ -121,7 +118,7 @@ pub mod Tongo {
             verify_fund(inputs, proof);
             self.pending_to_balance(to);
             self.increase_nonce(to);
-            self.emit(RolloverEvent {to, nonce});
+            self.emit(RolloverEvent { to, nonce });
         }
 
         /// Transfer some STARK to Tongo contract and assing some Tongo to account y
@@ -145,7 +142,7 @@ pub mod Tongo {
 
             self.overwrite_ae_balances(to, ae_hints);
             self.increase_nonce(to);
-            self.emit(FundEvent {to, amount: amount.try_into().unwrap(), nonce});
+            self.emit(FundEvent { to, amount: amount.try_into().unwrap(), nonce });
         }
 
         /// Withdraw some tongo from acount and send the stark to the recipient
@@ -157,10 +154,9 @@ pub mod Tongo {
 
             let nonce = self.get_nonce(from);
             let inputs: InputsWithdraw = InputsWithdraw {
-                y: from, amount, nonce, to, L: balance.CL, R: balance.CR
+                y: from, amount, nonce, to, L: balance.CL, R: balance.CR,
             };
             verify_withdraw(inputs, proof);
-
 
             let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
             self.remove_balance(from, cipher);
@@ -168,10 +164,10 @@ pub mod Tongo {
             let cipher = CipherBalanceTrait::new(view_key(), amount, 'withdraw');
             self.remove_audit(from, cipher);
             self.increase_nonce(from);
-            
+
             self.transfer_to(to, amount);
             self.overwrite_ae_balances(from, ae_hints);
-            self.emit(WithdrawEvent {from, amount: amount.try_into().unwrap(), to, nonce});
+            self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce });
         }
 
         /// Withdraw ALL tongo from acount and send the stark to the recipient
@@ -184,7 +180,7 @@ pub mod Tongo {
             let balance = self.get_balance(from);
             let nonce = self.get_nonce(from);
             let inputs: InputsWithdraw = InputsWithdraw {
-                y: from, amount, nonce, to, L: balance.CL, R: balance.CR
+                y: from, amount, nonce, to, L: balance.CL, R: balance.CR,
             };
             verify_withdraw_all(inputs, proof);
 
@@ -197,12 +193,12 @@ pub mod Tongo {
                 .balance
                 .entry(from)
                 .write(
-                    CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }
+                    CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } },
                 );
             self.overwrite_ae_balances(from, ae_hints);
 
             self.transfer_to(to, amount);
-            self.emit(WithdrawEvent {from, amount: amount.try_into().unwrap(), to, nonce});
+            self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce });
         }
 
         /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done
@@ -241,7 +237,12 @@ pub mod Tongo {
             self.add_audit(to, CipherBalance { CL: L_audit, CR: R });
             self.increase_nonce(from);
             self.overwrite_ae_balances(from, ae_hints);
-            self.emit(TransferEvent {to, from, nonce, cipherbalance: CipherBalance {CL:L, CR:R} })
+            self
+                .emit(
+                    TransferEvent {
+                        to, from, nonce, cipherbalance: CipherBalance { CL: L, CR: R },
+                    },
+                )
         }
 
         fn ERC20(self: @ContractState) -> ContractAddress {
@@ -269,12 +270,12 @@ pub mod Tongo {
         }
 
         fn get_state(self: @ContractState, y: PubKey) -> State {
-            let balance = self.balance.entry(y).read();
-            let pending = self.pending.entry(y).read();
-            let audit = self.audit_balance.entry(y).read();
+            let balance = IntoOptionCipherBalance::into(self.balance.entry(y).read());
+            let pending = IntoOptionCipherBalance::into(self.pending.entry(y).read());
+            let audit = IntoOptionCipherBalance::into(self.audit_balance.entry(y).read());
             let nonce = self.nonce.entry(y).read();
-            let ae_balance = self.ae_balance.entry(y).read();
-            let ae_audit_balance = self.ae_audit_balance.entry(y).read();
+            let ae_balance = IntoOptionAEBalance::into(self.ae_balance.entry(y).read());
+            let ae_audit_balance = IntoOptionAEBalance::into(self.ae_audit_balance.entry(y).read());
             return State { balance, pending, audit, nonce, ae_balance, ae_audit_balance };
         }
     }
@@ -321,7 +322,7 @@ pub mod Tongo {
                 .pending
                 .entry(y)
                 .write(
-                    CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } }
+                    CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } },
                 );
         }
 
@@ -351,7 +352,7 @@ pub mod Tongo {
             ERC20.transfer_from(get_caller_address(), get_contract_address(), amount.into());
         }
 
-        fn transfer_to(self: @ContractState,to: ContractAddress, amount: felt252){
+        fn transfer_to(self: @ContractState, to: ContractAddress, amount: felt252) {
             let ERC20 = IERC20Dispatcher { contract_address: STRK_ADDRESS.try_into().unwrap() };
             ERC20.transfer(to, amount.into());
         }

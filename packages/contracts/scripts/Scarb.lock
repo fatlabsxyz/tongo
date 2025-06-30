@@ -2,10 +2,6 @@
 version = 1
 
 [[package]]
-name = "erc20"
-version = "0.1.0"
-
-[[package]]
 name = "sncast_std"
 version = "0.44.0"
 source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.44.0#437d128b4f54847666ea8021530d237f6bf47866"
@@ -13,9 +9,6 @@ source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.44.0#437d128
 [[package]]
 name = "tongo"
 version = "0.1.0"
-dependencies = [
- "erc20",
-]
 
 [[package]]
 name = "utils"

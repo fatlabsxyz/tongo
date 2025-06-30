@@ -21,6 +21,7 @@ export class Auditor {
         const _otherState = await this.Tongo.get_state(otherPubKey);
         const otherState = Account.parseAccountState(_otherState);
         const sharedSecret = await this.deriveSymmetricKeyForPubKey(otherState.nonce, otherPubKey);
+        if (otherState.aeAuditBalance === undefined) return 0n;
         const { ciphertext, nonce: cipherNonce } = AEHintToBytes(otherState.aeAuditBalance);
         const cipher = new AEChaCha(sharedSecret)
         return cipher.decryptBalance(ciphertext, cipherNonce)
