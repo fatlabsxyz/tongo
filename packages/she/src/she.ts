@@ -8,11 +8,11 @@ import {
 import { writeFileSync } from 'fs';
 
 import { Affine } from "./types.js";
-import { CURVE_ORDER, g, h, view } from "./constants.js";
+import { CURVE_ORDER, GENERATOR, SECONDARY_GENERATOR,VIEW } from "./constants.js";
 
 
 export function encrypt(sc: bigint): Affine {
-  return g.multiplyUnsafe(sc).toAffine();
+  return GENERATOR.multiplyUnsafe(sc).toAffine();
 }
 
 // ----------------------------------- POE -------------------------------------------------
@@ -118,8 +118,8 @@ export function cipherBalance(
   amount: bigint,
   random: bigint,
 ) {
-  const L = g.multiply(amount).add(y.multiplyUnsafe(random));
-  const R = g.multiplyUnsafe(random);
+  const L = GENERATOR.multiply(amount).add(y.multiplyUnsafe(random));
+  const R = GENERATOR.multiplyUnsafe(random);
   return { L, R };
 }
 
@@ -139,14 +139,14 @@ export function proveFund(
   nonce: bigint,
 ): { inputs: InputsFund; proof: ProofOfFund } {
   const fund_selector = 1718972004n;
-  const y = g.multiply(x);
+  const y = GENERATOR.multiply(x);
   const inputs: InputsFund = { y: y, nonce: nonce };
 
   const seq: bigint[] = [fund_selector, y.toAffine().x, y.toAffine().y, nonce];
   const prefix = computePrefix(seq);
 
   const k = generateRandom()
-  const Ax = g.multiplyUnsafe(k);
+  const Ax = GENERATOR.multiplyUnsafe(k);
   const c = challengeCommits2(prefix, [Ax]);
   const sx = (k + x * c) % CURVE_ORDER;
 
@@ -164,7 +164,7 @@ export function verifyFund(inputs: InputsFund, proof: ProofOfFund) {
   ];
   const prefix = computePrefix(seq);
   const c = challengeCommits2(prefix, [proof.Ax]);
-  const res = poe(inputs.y, g, proof.Ax, c, proof.sx);
+  const res = poe(inputs.y, GENERATOR, proof.Ax, c, proof.sx);
   if (res == false) {
     throw new Error("verifyFund failed");
   }
@@ -197,7 +197,7 @@ export function proveWithdrawAll(
   amount: bigint,
 ): { inputs: InputsWithdraw; proof: ProofOfWithdrawAll } {
   const withdraw_all_selector = 36956203100010950502698282092n;
-  const y = g.multiply(x);
+  const y = GENERATOR.multiply(x);
   const inputs: InputsWithdraw = {
     y: y,
     nonce: nonce,
@@ -218,7 +218,7 @@ export function proveWithdrawAll(
 
   const k = generateRandom()
   const R = CR;
-  const A_x = g.multiplyUnsafe(k);
+  const A_x = GENERATOR.multiplyUnsafe(k);
   const A_cr = R.multiplyUnsafe(k);
 
   const c = challengeCommits2(prefix, [A_x, A_cr]);
@@ -254,12 +254,12 @@ export function verifyWithdrawAll(
   const prefix = computePrefix(seq);
   const c = challengeCommits2(prefix, [proof.A_x, proof.A_cr]);
 
-  let res = poe(inputs.y, g, proof.A_x, c, proof.s_x);
+  let res = poe(inputs.y, GENERATOR, proof.A_x, c, proof.s_x);
   if (res == false) {
     throw new Error("error in poe y");
   }
 
-  const g_b = g.multiplyUnsafe(inputs.amount);
+  const g_b = GENERATOR.multiplyUnsafe(inputs.amount);
   const Y = inputs.L.subtract(g_b);
 
   res = poe(Y, inputs.R, proof.A_cr, c, proof.s_x);
@@ -290,7 +290,7 @@ export function proveWithdraw(
   nonce: bigint,
 ): { inputs: InputsWithdraw; proof: ProofOfWithdraw } {
   const withdraw_selector = 8604536554778681719n;
-  const y = g.multiply(x);
+  const y = GENERATOR.multiply(x);
   const inputs: InputsWithdraw = {
     y: y,
     nonce: nonce,
@@ -318,9 +318,9 @@ export function proveWithdraw(
   const kr = generateRandom()
 
   const R = CR;
-  const Ax = g.multiplyUnsafe(kx);
-  const A = g.multiplyUnsafe(kb).add(R.multiplyUnsafe(kx));
-  const Av = g.multiplyUnsafe(kb).add(h.multiplyUnsafe(kr));
+  const Ax = GENERATOR.multiplyUnsafe(kx);
+  const A = GENERATOR.multiplyUnsafe(kb).add(R.multiplyUnsafe(kx));
+  const Av = GENERATOR.multiplyUnsafe(kb).add(SECONDARY_GENERATOR.multiplyUnsafe(kr));
 
   const c = challengeCommits2(prefix, [Ax, A, Av]);
 
@@ -355,22 +355,22 @@ export function verifyWithdraw(
   const prefix = computePrefix(seq);
   const c = challengeCommits2(prefix, [proof.A_x, proof.A, proof.A_v]);
 
-  let res = poe(inputs.y, g, proof.A_x, c, proof.sx);
+  let res = poe(inputs.y, GENERATOR, proof.A_x, c, proof.sx);
   if (res == false) {
     throw new Error("error in poe y");
   }
 
-  const g_b = g.multiplyUnsafe(inputs.amount);
+  const g_b = GENERATOR.multiplyUnsafe(inputs.amount);
   const Y = inputs.L.subtract(g_b);
 
-  res = poe2(Y, g, inputs.R, proof.A, c, proof.sb, proof.sx);
+  res = poe2(Y, GENERATOR, inputs.R, proof.A, c, proof.sb, proof.sx);
   if (res == false) {
     throw new Error("error in poe2 Y");
   }
 
   const V = verifyRange(proof.range, 32);
 
-  res = poe2(V, g, h, proof.A_v, c, proof.sb, proof.sr);
+  res = poe2(V, GENERATOR, SECONDARY_GENERATOR, proof.A_v, c, proof.sb, proof.sr);
   if (res == false) {
     throw new Error("error in poe2 V");
   }
@@ -419,12 +419,12 @@ export function proveTransfer(
   nonce: bigint,
 ): { inputs: InputsTransfer; proof: ProofOfTransfer } {
   const transfer_selector = 8390876182755042674n;
-  const y = g.multiply(x);
+  const y = GENERATOR.multiply(x);
 
   const { r, proof: range } = proveRange(amount, 32);
   const { L, R } = cipherBalance(y, amount, r);
   const L_bar = cipherBalance(y_bar, amount, r).L;
-  const L_audit = cipherBalance(view, amount, r).L;
+  const L_audit = cipherBalance(VIEW, amount, r).L;
 
   const seq: bigint[] = [
     transfer_selector,
@@ -462,14 +462,14 @@ export function proveTransfer(
   const kb2 = generateRandom()
   const kr2 = generateRandom()
 
-  const Ax = g.multiplyUnsafe(kx);
-  const Ar = g.multiplyUnsafe(kr);
-  const A_b = g.multiplyUnsafe(kb).add(y.multiplyUnsafe(kr));
-  const A_bar = g.multiplyUnsafe(kb).add(y_bar.multiplyUnsafe(kr));
-  const A_audit = g.multiplyUnsafe(kb).add(view.multiplyUnsafe(kr));
-  const A_v = g.multiplyUnsafe(kb).add(h.multiplyUnsafe(kr));
-  const A_b2 = g.multiplyUnsafe(kb2).add(G.multiplyUnsafe(kx));
-  const A_v2 = g.multiplyUnsafe(kb2).add(h.multiplyUnsafe(kr2));
+  const Ax = GENERATOR.multiplyUnsafe(kx);
+  const Ar = GENERATOR.multiplyUnsafe(kr);
+  const A_b = GENERATOR.multiplyUnsafe(kb).add(y.multiplyUnsafe(kr));
+  const A_bar = GENERATOR.multiplyUnsafe(kb).add(y_bar.multiplyUnsafe(kr));
+  const A_audit = GENERATOR.multiplyUnsafe(kb).add(VIEW.multiplyUnsafe(kr));
+  const A_v = GENERATOR.multiplyUnsafe(kb).add(SECONDARY_GENERATOR.multiplyUnsafe(kr));
+  const A_b2 = GENERATOR.multiplyUnsafe(kb2).add(G.multiplyUnsafe(kx));
+  const A_v2 = GENERATOR.multiplyUnsafe(kb2).add(SECONDARY_GENERATOR.multiplyUnsafe(kr2));
 
   const c = challengeCommits2(prefix, [
     Ax,
@@ -512,15 +512,15 @@ export function proveTransfer(
 /// Transfer b from y = g**x to y_bar.  Public inputs: y, y_bar L = g**b y**r, L_bar = g**b
 /// y_bar**r, R = g**r.
 /// We need to prove:
-/// 1) knowlede of x in y = g**x.
-/// 2) knowlede of r in R = g**r.
-/// 3) knowlede of b and r in L = g**b y**r with the same r that 2)
-/// 4) knowlede of b and r in L_bar = g**b y_bar**r with the same r that 2) and same b that 3)
+/// 1) knowledge of x in y = g**x.
+/// 2) knowledge of r in R = g**r.
+/// 3) knowledge of b and r in L = g**b y**r with the same r that 2)
+/// 4) knowledge of b and r in L_bar = g**b y_bar**r with the same r that 2) and same b that 3)
 /// 4b) knowlede of b and r in L_audit = g**b y_audit**r with the same r that 2) and same b that 3)
 /// 5) b is in range [0,2**n-1]. For this we commit V = g**b h**r and an array of n  V_i = g**bi
 /// h**ri. r = sum 2**i r_i 5b) proof that bi are either 0 or 1.
 /// 5c) knowledge of b and r in V = g**b y**r with the same r that 2) and b that 3)
-/// 6) The proof neceary to show that the remaining balance is in range.
+/// 6) The proof necessary to show that the remaining balance is in range.
 /// TODO: finish the doc
 export function verifyTransfer(
   inputs: InputsTransfer,
@@ -551,24 +551,24 @@ export function verifyTransfer(
     proof.A_audit,
   ]);
 
-  let res = poe(inputs.y, g, proof.A_x, c, proof.s_x);
+  let res = poe(inputs.y, GENERATOR, proof.A_x, c, proof.s_x);
   if (res == false) {
     throw new Error("error in poe for y");
   }
 
-  res = poe(inputs.R, g, proof.A_r, c, proof.s_r);
+  res = poe(inputs.R, GENERATOR, proof.A_r, c, proof.s_r);
   if (res == false) {
     throw new Error("error in poe for R");
   }
 
-  res = poe2(inputs.L, g, inputs.y, proof.A_b, c, proof.s_b, proof.s_r);
+  res = poe2(inputs.L, GENERATOR, inputs.y, proof.A_b, c, proof.s_b, proof.s_r);
   if (res == false) {
     throw new Error("error in poe2 for L");
   }
 
   res = poe2(
     inputs.L_bar,
-    g,
+    GENERATOR,
     inputs.y_bar,
     proof.A_bar,
     c,
@@ -579,26 +579,26 @@ export function verifyTransfer(
     throw new Error("error in poe2 for L_bar");
   }
 
-  res = poe2(inputs.L_audit, g, view, proof.A_audit, c, proof.s_b, proof.s_r);
+  res = poe2(inputs.L_audit, GENERATOR, VIEW, proof.A_audit, c, proof.s_b, proof.s_r);
   if (res == false) {
     throw new Error("error in pore2 for L_audit");
   }
 
   const V = verifyRange(proof.range, 32);
-  res = poe2(V, g, h, proof.A_v, c, proof.s_b, proof.s_r);
+  res = poe2(V, GENERATOR, SECONDARY_GENERATOR, proof.A_v, c, proof.s_b, proof.s_r);
   if (res == false) {
     throw new Error("erro in poe2 for V");
   }
 
   const Y = inputs.CL.subtract(inputs.L);
   const G = inputs.CR.subtract(inputs.R);
-  res = poe2(Y, g, G, proof.A_b2, c, proof.s_b2, proof.s_x);
+  res = poe2(Y, GENERATOR, G, proof.A_b2, c, proof.s_b2, proof.s_x);
   if (res == false) {
     throw new Error("error in poe2 for Y");
   }
 
   const V2 = verifyRange(proof.range2, 32);
-  res = poe2(V2, g, h, proof.A_v2, c, proof.s_b2, proof.s_r2);
+  res = poe2(V2, GENERATOR, SECONDARY_GENERATOR, proof.A_v2, c, proof.s_b2, proof.s_r2);
   if (res == false) {
     throw new Error("error in poe2 for V2");
   }
@@ -624,12 +624,12 @@ function simPOE(y: ProjectivePoint, gen: ProjectivePoint) {
 }
 
 function _proveBit0(random: bigint): ProofOfBit {
-    const V = h.multiplyUnsafe(random);
-    const V_1 = V.subtract(g);
-    const { A: A1, c: c1, s: s1 } = simPOE(V_1, h);
+    const V = SECONDARY_GENERATOR.multiplyUnsafe(random);
+    const V_1 = V.subtract(GENERATOR);
+    const { A: A1, c: c1, s: s1 } = simPOE(V_1, SECONDARY_GENERATOR);
 
     const k = generateRandom()
-    const A0 = h.multiplyUnsafe(k);
+    const A0 = SECONDARY_GENERATOR.multiplyUnsafe(k);
 
     const c = challengeCommits2(0n, [A0, A1]);
     const c0 = c ^ c1; //bitwisexor
@@ -639,12 +639,12 @@ function _proveBit0(random: bigint): ProofOfBit {
 }
 
 function _proveBit1 (random: bigint): ProofOfBit {
-    const V = g.add(h.multiplyUnsafe(random));
+    const V = GENERATOR.add(SECONDARY_GENERATOR.multiplyUnsafe(random));
     const V0 = V;
-    const { A: A0, c: c0, s: s0 } = simPOE(V0, h);
+    const { A: A0, c: c0, s: s0 } = simPOE(V0, SECONDARY_GENERATOR);
 
     const k = generateRandom()
-    const A1 = h.multiplyUnsafe(k);
+    const A1 = SECONDARY_GENERATOR.multiplyUnsafe(k);
     const c = challengeCommits2(0n, [A0, A1]);
     const c1 = c ^ c0; //bitwisexor
     const s1 = (k + c1 * random) % CURVE_ORDER;
@@ -669,12 +669,12 @@ function proveBit(bit: 0 | 1, random: bigint): ProofOfBit {
 function oneOrZero(pi: ProofOfBit) {
   const c = challengeCommits2(0n, [pi.A0, pi.A1]);
   const c1 = c ^ pi.c0;
-  let res = poe(pi.V, h, pi.A0, pi.c0, pi.s0);
+  let res = poe(pi.V, SECONDARY_GENERATOR, pi.A0, pi.c0, pi.s0);
   if (res == false) {
     throw new Error("Failed 0 in proof of bit");
   }
-  const V1 = pi.V.subtract(g);
-  res = poe(V1, h, pi.A1, c1, pi.s1);
+  const V1 = pi.V.subtract(GENERATOR);
+  res = poe(V1, SECONDARY_GENERATOR, pi.A1, c1, pi.s1);
   if (res == false) {
     throw new Error("Failed 1 in proof of bit");
   }
@@ -759,7 +759,7 @@ export function proveExpost(
     TL:ProjectivePoint,
     TR:ProjectivePoint
 ): {inputs: InputsExPost, proof:ProofExPost} {
-    const y = g.multiply(x)
+    const y = GENERATOR.multiply(x)
     const b = decipherBalance(x, TL,TR)
     const r = generateRandom()
     const {L,R} = cipherBalance(y,b,r)
@@ -770,11 +770,11 @@ export function proveExpost(
     const kr = generateRandom()
     const kb = generateRandom()
 
-    const Ax = g.multiplyUnsafe(kx)
-    const Ar = g.multiplyUnsafe(kr)
+    const Ax = GENERATOR.multiplyUnsafe(kx)
+    const Ar = GENERATOR.multiplyUnsafe(kr)
 
-    const A = g.multiplyUnsafe(kb).add(y.multiplyUnsafe(kr));
-    const A_bar = g.multiplyUnsafe(kb).add(y_bar.multiplyUnsafe(kr));
+    const A = GENERATOR.multiplyUnsafe(kb).add(y.multiplyUnsafe(kr));
+    const A_bar = GENERATOR.multiplyUnsafe(kb).add(y_bar.multiplyUnsafe(kr));
 
     const G = TR.subtract(R);
     const At = G.multiplyUnsafe(kx)
@@ -790,13 +790,13 @@ export function proveExpost(
 }
 export function verifyExpost(inputs:InputsExPost, proof: ProofExPost) {
     const c = challengeCommits2(0n,[proof.Ax,proof.Ar,proof.At,proof.A,proof.A_bar])
-    poe(inputs.y, g, proof.Ax, c, proof.sx)
-    poe(inputs.R, g, proof.Ar, c, proof.sr)
+    poe(inputs.y, GENERATOR, proof.Ax, c, proof.sx)
+    poe(inputs.R, GENERATOR, proof.Ar, c, proof.sr)
     const Y = inputs.TL.subtract(inputs.L);
     const G = inputs.TR.subtract(inputs.R);
     poe(Y, G, proof.At, c, proof.sx)
-    poe2(inputs.L,g,inputs.y,proof.A, c, proof.sb,proof.sr)
-    poe2(inputs.L_bar,g,inputs.y_bar,proof.A, c, proof.sb,proof.sr)
+    poe2(inputs.L,GENERATOR,inputs.y,proof.A, c, proof.sb,proof.sr)
+    poe2(inputs.L_bar,GENERATOR,inputs.y_bar,proof.A, c, proof.sb,proof.sr)
 }
 
 // --------------------------------------- AUDIT EX POST ------------------------------------------------
@@ -864,13 +864,13 @@ export function decipherBalance(
 
   const g_b = L.subtract(Rx);
   let b = 1n;
-  let temp = g;
+  let temp = GENERATOR;
   if (temp.equals(g_b)) {
     return 1n;
   }
   while (b < 2 ** 32) {
     b = b + 1n;
-    temp = temp.add(g);
+    temp = temp.add(GENERATOR);
     if (temp.equals(g_b)) {
       break;
     }
@@ -893,7 +893,7 @@ export function assertBalance(
   if (Rx.equals(L)) { return false }
 
   const g_b = L.subtract(Rx);
-  const candidate_g_b = g.multiply(balance);
+  const candidate_g_b = GENERATOR.multiply(balance);
   return g_b.equals(candidate_g_b);
 }
 
@@ -907,7 +907,7 @@ export function decipherBalanceOptimized(
     if (Rx.equals(L)) {return 0n}
 
   const g_b = L.subtract(Rx);
-  let b = findLeastBits(g, g_b, precomputed);
+  let b = findLeastBits(GENERATOR, g_b, precomputed);
   return b
 }
 
@@ -959,7 +959,7 @@ export function findLeastBits(
 }
 
 export function createAndSaveHashMap(): void {
-  let hashed = createHashMap(g);
+  let hashed = createHashMap(GENERATOR);
   let entries = Array.from(hashed.entries())
     .map(([k, v]) => {
       const keyStr = JSON.stringify(k);

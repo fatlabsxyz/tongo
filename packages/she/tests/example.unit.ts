@@ -5,9 +5,9 @@ import {
   CURVE_ORDER,
   decipherBalance,
   encrypt,
-  g,
+  GENERATOR,
   generateRandom,
-  h,
+  SECONDARY_GENERATOR,
   proveExpost,
   proveFund,
   provePoe,
@@ -59,7 +59,7 @@ describe("Example test suit", () => {
     const amount = 10n;
     const to = 116200n;
     const random = 111111n;
-    const y = g.multiplyUnsafe(x);
+    const y = GENERATOR.multiplyUnsafe(x);
     const { L, R } = cipherBalance(y, amount, random);
     const { inputs, proof } = proveWithdrawAll(
       x,
@@ -74,7 +74,7 @@ describe("Example test suit", () => {
 
   it("proveWithdraw vs verifyWithdraw", () => {
     const x = 888n;
-    const y = g.multiplyUnsafe(x);
+    const y = GENERATOR.multiplyUnsafe(x);
 
     const nonce = 2n;
     const initial_balance = 100n;
@@ -95,9 +95,9 @@ describe("Example test suit", () => {
 
   it("proveTransfer vs verifyTransfer", () => {
     const x = 4444n;
-    const y = g.multiplyUnsafe(x);
+    const y = GENERATOR.multiplyUnsafe(x);
     const x_bar = 7777n;
-    const y_bar = g.multiplyUnsafe(x_bar);
+    const y_bar = GENERATOR.multiplyUnsafe(x_bar);
 
     const nonce = 82n;
     const initial_balance = 100n;
@@ -122,7 +122,7 @@ describe("Example test suit", () => {
     const amount = 12n;
     const fake_amount = 44n;
     const random = 111111n;
-    const y = g.multiplyUnsafe(x);
+    const y = GENERATOR.multiplyUnsafe(x);
     const { L, R } = cipherBalance(y, amount, random);
     expect(assertBalance(x, fake_amount, L, R)).toEqual(false);
     expect(assertBalance(x, amount, L, R)).toEqual(true);
@@ -132,7 +132,7 @@ describe("Example test suit", () => {
     const x = 1234n;
     const amount = 12n;
     const random = 111111n;
-    const y = g.multiplyUnsafe(x);
+    const y = GENERATOR.multiplyUnsafe(x);
     const { L, R } = cipherBalance(y, amount, random);
     const b = decipherBalance(x, L, R);
     expect(b).toEqual(amount);
@@ -140,22 +140,22 @@ describe("Example test suit", () => {
 
   it("poe", () => {
     const x = 12n;
-    const { y, A, s } = provePoe(x, g);
-    verifyPoe(y, g, A, s);
+    const { y, A, s } = provePoe(x, GENERATOR);
+    verifyPoe(y, GENERATOR, A, s);
   });
 
   it("poe2", () => {
     const x1 = 12n;
     const x2 = 12412n;
-    const { y, A, s1, s2 } = provePoe2(x1, x2, g, h);
-    verifyPoe2(y, g, h, A, s1, s2);
+    const { y, A, s1, s2 } = provePoe2(x1, x2, GENERATOR, SECONDARY_GENERATOR);
+    verifyPoe2(y, GENERATOR, SECONDARY_GENERATOR, A, s1, s2);
   });
 
   it("expost", () => {
     const x = 3809213n
     const x_bar = 3809213n
-    const y = g.multiplyUnsafe(x);
-    const y_bar = g.multiplyUnsafe(x_bar);
+    const y = GENERATOR.multiplyUnsafe(x);
+    const y_bar = GENERATOR.multiplyUnsafe(x_bar);
     const b = 65n
     const r = 2930213809218n
     const {L:TL, R:TR} = cipherBalance(y,b,r)
@@ -176,4 +176,4 @@ describe("Example test suit", () => {
 //   const { L, R } = cipherBalance(y, amount, random);
 //   const b = decipherBalanceOptimized(x, L, R, hash_map);
 //   expect(b).toEqual(amount);
-// });
+// })
