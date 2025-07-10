@@ -35,22 +35,22 @@ export function poe(
   return LHS.equals(RHS);
 }
 
-export function prove_poe(x: bigint, g: ProjectivePoint) {
+export function provePoe(x: bigint, g: ProjectivePoint) {
   const y = g.multiply(x);
-  const k = generate_random()
+  const k = generateRandom()
   const A = g.multiplyUnsafe(k);
-  const c = challenge_commits2(0n, [A]);
+  const c = challengeCommits2(0n, [A]);
   const s = (k + x * c) % CURVE_ORDER;
   return { y, A, s };
 }
 
-export function verify_poe(
+export function verifyPoe(
   y: ProjectivePoint,
   g: ProjectivePoint,
   A: ProjectivePoint,
   s: bigint,
 ) {
-  const c = challenge_commits2(0n, [A]);
+  const c = challengeCommits2(0n, [A]);
   const res = poe(y, g, A, c, s);
   if (res == false) {
     throw new Error("nope");
@@ -81,23 +81,23 @@ function poe2(
   return LHS.equals(RHS);
 }
 
-export function prove_poe2(
+export function provePoe2(
   x1: bigint,
   x2: bigint,
   g1: ProjectivePoint,
   g2: ProjectivePoint,
 ) {
   const y = g1.multiply(x1).add(g2.multiply(x2));
-  const k1 = generate_random()
-  const k2 = generate_random()
+  const k1 = generateRandom()
+  const k2 = generateRandom()
   const A = g1.multiplyUnsafe(k1).add(g2.multiplyUnsafe(k2));
-  const c = challenge_commits2(0n, [A]);
+  const c = challengeCommits2(0n, [A]);
   const s1 = (k1 + x1 * c) % CURVE_ORDER;
   const s2 = (k2 + x2 * c) % CURVE_ORDER;
   return { y, A, s1, s2 };
 }
 
-export function verify_poe2(
+export function verifyPoe2(
   y: ProjectivePoint,
   g1: ProjectivePoint,
   g2: ProjectivePoint,
@@ -105,7 +105,7 @@ export function verify_poe2(
   s1: bigint,
   s2: bigint,
 ) {
-  const c = challenge_commits2(0n, [A]);
+  const c = challengeCommits2(0n, [A]);
   const res = poe2(y, g1, g2, A, c, s1, s2);
   if (res == false) {
     throw new Error("nope");
@@ -113,7 +113,7 @@ export function verify_poe2(
 }
 // ----------------------------------- POE2 -------------------------------------------------
 
-export function cipher_balance(
+export function cipherBalance(
   y: ProjectivePoint,
   amount: bigint,
   random: bigint,
@@ -134,7 +134,7 @@ export interface ProofOfFund {
   sx: bigint;
 }
 
-export function prove_fund(
+export function proveFund(
   x: bigint,
   nonce: bigint,
 ): { inputs: InputsFund; proof: ProofOfFund } {
@@ -143,18 +143,18 @@ export function prove_fund(
   const inputs: InputsFund = { y: y, nonce: nonce };
 
   const seq: bigint[] = [fund_selector, y.toAffine().x, y.toAffine().y, nonce];
-  const prefix = compute_prefix(seq);
+  const prefix = computePrefix(seq);
 
-  const k = generate_random()
+  const k = generateRandom()
   const Ax = g.multiplyUnsafe(k);
-  const c = challenge_commits2(prefix, [Ax]);
+  const c = challengeCommits2(prefix, [Ax]);
   const sx = (k + x * c) % CURVE_ORDER;
 
   const proof: ProofOfFund = { Ax: Ax, sx: sx };
   return { inputs, proof };
 }
 
-export function verify_fund(inputs: InputsFund, proof: ProofOfFund) {
+export function verifyFund(inputs: InputsFund, proof: ProofOfFund) {
   const fund_selector = 1718972004n;
   const seq: bigint[] = [
     fund_selector,
@@ -162,11 +162,11 @@ export function verify_fund(inputs: InputsFund, proof: ProofOfFund) {
     inputs.y.toAffine().y,
     inputs.nonce,
   ];
-  const prefix = compute_prefix(seq);
-  const c = challenge_commits2(prefix, [proof.Ax]);
+  const prefix = computePrefix(seq);
+  const c = challengeCommits2(prefix, [proof.Ax]);
   const res = poe(inputs.y, g, proof.Ax, c, proof.sx);
   if (res == false) {
-    throw new Error("verify_fund failed");
+    throw new Error("verifyFund failed");
   }
 }
 // -----------------------------  FUND -------------------------------------------------------
@@ -188,7 +188,7 @@ export interface ProofOfWithdrawAll {
 }
 
 
-export function prove_withdraw_all(
+export function proveWithdrawAll(
   x: bigint,
   CL: ProjectivePoint,
   CR: ProjectivePoint,
@@ -214,14 +214,14 @@ export function prove_withdraw_all(
     to,
     nonce,
   ];
-  const prefix = compute_prefix(seq);
+  const prefix = computePrefix(seq);
 
-  const k = generate_random()
+  const k = generateRandom()
   const R = CR;
   const A_x = g.multiplyUnsafe(k);
   const A_cr = R.multiplyUnsafe(k);
 
-  const c = challenge_commits2(prefix, [A_x, A_cr]);
+  const c = challengeCommits2(prefix, [A_x, A_cr]);
   const s_x = (k + x * c) % CURVE_ORDER;
 
   const proof: ProofOfWithdrawAll = { A_x: A_x, A_cr: A_cr, s_x: s_x };
@@ -239,7 +239,7 @@ export function prove_withdraw_all(
 /// The verifier asserts:
 /// - g**s == Ax * (y**c)
 /// - R**s == Acr * (L/g**b)**c
-export function verify_withdraw_all(
+export function verifyWithdrawAll(
   inputs: InputsWithdraw,
   proof: ProofOfWithdrawAll,
 ) {
@@ -251,8 +251,8 @@ export function verify_withdraw_all(
     inputs.to,
     inputs.nonce,
   ];
-  const prefix = compute_prefix(seq);
-  const c = challenge_commits2(prefix, [proof.A_x, proof.A_cr]);
+  const prefix = computePrefix(seq);
+  const c = challengeCommits2(prefix, [proof.A_x, proof.A_cr]);
 
   let res = poe(inputs.y, g, proof.A_x, c, proof.s_x);
   if (res == false) {
@@ -280,7 +280,7 @@ export interface ProofOfWithdraw {
   range: ProofOfBit[];
 }
 
-export function prove_withdraw(
+export function proveWithdraw(
   x: bigint,
   initial_balance: bigint,
   amount: bigint,
@@ -308,21 +308,21 @@ export function prove_withdraw(
     to,
     nonce,
   ];
-  const prefix = compute_prefix(seq);
+  const prefix = computePrefix(seq);
 
   const left = initial_balance - amount;
-  const { r, proof: range } = prove_range(left,32);
+  const { r, proof: range } = proveRange(left,32);
 
-  const kb = generate_random()
-  const kx = generate_random()
-  const kr = generate_random()
+  const kb = generateRandom()
+  const kx = generateRandom()
+  const kr = generateRandom()
 
   const R = CR;
   const Ax = g.multiplyUnsafe(kx);
   const A = g.multiplyUnsafe(kb).add(R.multiplyUnsafe(kx));
   const Av = g.multiplyUnsafe(kb).add(h.multiplyUnsafe(kr));
 
-  const c = challenge_commits2(prefix, [Ax, A, Av]);
+  const c = challengeCommits2(prefix, [Ax, A, Av]);
 
   const sb = (kb + left * c) % CURVE_ORDER;
   const sx = (kx + x * c) % CURVE_ORDER;
@@ -340,7 +340,7 @@ export function prove_withdraw(
   return { inputs, proof };
 }
 
-export function verify_withdraw(
+export function verifyWithdraw(
   inputs: InputsWithdraw,
   proof: ProofOfWithdraw,
 ) {
@@ -352,8 +352,8 @@ export function verify_withdraw(
     inputs.to,
     inputs.nonce,
   ];
-  const prefix = compute_prefix(seq);
-  const c = challenge_commits2(prefix, [proof.A_x, proof.A, proof.A_v]);
+  const prefix = computePrefix(seq);
+  const c = challengeCommits2(prefix, [proof.A_x, proof.A, proof.A_v]);
 
   let res = poe(inputs.y, g, proof.A_x, c, proof.sx);
   if (res == false) {
@@ -368,7 +368,7 @@ export function verify_withdraw(
     throw new Error("error in poe2 Y");
   }
 
-  const V = verify_range(proof.range, 32);
+  const V = verifyRange(proof.range, 32);
 
   res = poe2(V, g, h, proof.A_v, c, proof.sb, proof.sr);
   if (res == false) {
@@ -409,7 +409,7 @@ export interface ProofOfTransfer {
   range2: ProofOfBit[];
 }
 
-export function prove_transfer(
+export function proveTransfer(
   x: bigint,
   y_bar: ProjectivePoint,
   initial_balance: bigint,
@@ -421,10 +421,10 @@ export function prove_transfer(
   const transfer_selector = 8390876182755042674n;
   const y = g.multiply(x);
 
-  const { r, proof: range } = prove_range(amount, 32);
-  const { L, R } = cipher_balance(y, amount, r);
-  const L_bar = cipher_balance(y_bar, amount, r).L;
-  const L_audit = cipher_balance(view, amount, r).L;
+  const { r, proof: range } = proveRange(amount, 32);
+  const { L, R } = cipherBalance(y, amount, r);
+  const L_bar = cipherBalance(y_bar, amount, r).L;
+  const L_audit = cipherBalance(view, amount, r).L;
 
   const seq: bigint[] = [
     transfer_selector,
@@ -438,7 +438,7 @@ export function prove_transfer(
     R.toAffine().y,
     nonce,
   ];
-  const prefix = compute_prefix(seq);
+  const prefix = computePrefix(seq);
 
   const inputs: InputsTransfer = {
     y: y,
@@ -453,14 +453,14 @@ export function prove_transfer(
   };
 
   const b_left = initial_balance - amount;
-  const { r: r2, proof: range2 } = prove_range( b_left, 32);
+  const { r: r2, proof: range2 } = proveRange( b_left, 32);
   const G = CR.subtract(R);
 
-  const kx = generate_random()
-  const kb = generate_random()
-  const kr = generate_random()
-  const kb2 = generate_random()
-  const kr2 = generate_random()
+  const kx = generateRandom()
+  const kb = generateRandom()
+  const kr = generateRandom()
+  const kb2 = generateRandom()
+  const kr2 = generateRandom()
 
   const Ax = g.multiplyUnsafe(kx);
   const Ar = g.multiplyUnsafe(kr);
@@ -471,7 +471,7 @@ export function prove_transfer(
   const A_b2 = g.multiplyUnsafe(kb2).add(G.multiplyUnsafe(kx));
   const A_v2 = g.multiplyUnsafe(kb2).add(h.multiplyUnsafe(kr2));
 
-  const c = challenge_commits2(prefix, [
+  const c = challengeCommits2(prefix, [
     Ax,
     Ar,
     A_b,
@@ -522,7 +522,7 @@ export function prove_transfer(
 /// 5c) knowledge of b and r in V = g**b y**r with the same r that 2) and b that 3)
 /// 6) The proof neceary to show that the remaining balance is in range.
 /// TODO: finish the doc
-export function verify_transfer(
+export function verifyTransfer(
   inputs: InputsTransfer,
   proof: ProofOfTransfer,
 ) {
@@ -539,8 +539,8 @@ export function verify_transfer(
     inputs.R.toAffine().y,
     inputs.nonce,
   ];
-  const prefix = compute_prefix(seq);
-  const c = challenge_commits2(prefix, [
+  const prefix = computePrefix(seq);
+  const c = challengeCommits2(prefix, [
     proof.A_x,
     proof.A_r,
     proof.A_b,
@@ -584,7 +584,7 @@ export function verify_transfer(
     throw new Error("error in pore2 for L_audit");
   }
 
-  const V = verify_range(proof.range, 32);
+  const V = verifyRange(proof.range, 32);
   res = poe2(V, g, h, proof.A_v, c, proof.s_b, proof.s_r);
   if (res == false) {
     throw new Error("erro in poe2 for V");
@@ -597,7 +597,7 @@ export function verify_transfer(
     throw new Error("error in poe2 for Y");
   }
 
-  const V2 = verify_range(proof.range2, 32);
+  const V2 = verifyRange(proof.range2, 32);
   res = poe2(V2, g, h, proof.A_v2, c, proof.s_b2, proof.s_r2);
   if (res == false) {
     throw new Error("error in poe2 for V2");
@@ -617,35 +617,35 @@ interface ProofOfBit {
 }
 
 function simPOE(y: ProjectivePoint, gen: ProjectivePoint) {
-  const s = generate_random()
-  const c = generate_random()
+  const s = generateRandom()
+  const c = generateRandom()
   const A = gen.multiplyUnsafe(s).subtract(y.multiplyUnsafe(c));
   return { A, c, s };
 }
 
-function _prove_bit_0(random: bigint): ProofOfBit {
+function _proveBit0(random: bigint): ProofOfBit {
     const V = h.multiplyUnsafe(random);
     const V_1 = V.subtract(g);
     const { A: A1, c: c1, s: s1 } = simPOE(V_1, h);
 
-    const k = generate_random()
+    const k = generateRandom()
     const A0 = h.multiplyUnsafe(k);
 
-    const c = challenge_commits2(0n, [A0, A1]);
+    const c = challengeCommits2(0n, [A0, A1]);
     const c0 = c ^ c1; //bitwisexor
     const s0 = (k + c0 * random) % CURVE_ORDER;
 
     return { V, A0, A1, c0, s0, s1 };
 }
 
-function _prove_bit_1 (random: bigint): ProofOfBit {
+function _proveBit1 (random: bigint): ProofOfBit {
     const V = g.add(h.multiplyUnsafe(random));
     const V0 = V;
     const { A: A0, c: c0, s: s0 } = simPOE(V0, h);
 
-    const k = generate_random()
+    const k = generateRandom()
     const A1 = h.multiplyUnsafe(k);
-    const c = challenge_commits2(0n, [A0, A1]);
+    const c = challengeCommits2(0n, [A0, A1]);
     const c1 = c ^ c0; //bitwisexor
     const s1 = (k + c1 * random) % CURVE_ORDER;
 
@@ -653,11 +653,11 @@ function _prove_bit_1 (random: bigint): ProofOfBit {
 }
 
 
-function prove_bit(bit: 0 | 1, random: bigint): ProofOfBit {
+function proveBit(bit: 0 | 1, random: bigint): ProofOfBit {
   if (bit == 0) {
-    return _prove_bit_0(random)
+    return _proveBit0(random)
   } else {
-    return _prove_bit_1(random)
+    return _proveBit1(random)
   }
 }
 
@@ -667,13 +667,12 @@ function prove_bit(bit: 0 | 1, random: bigint): ProofOfBit {
 /// also proven with a poe. This is combined in a OR statement and the protocol can valitates that
 /// one of the cases is valid without leak which one is valid.
 function oneOrZero(pi: ProofOfBit) {
-  const c = challenge_commits2(0n, [pi.A0, pi.A1]);
+  const c = challengeCommits2(0n, [pi.A0, pi.A1]);
   const c1 = c ^ pi.c0;
   let res = poe(pi.V, h, pi.A0, pi.c0, pi.s0);
   if (res == false) {
     throw new Error("Failed 0 in proof of bit");
   }
-
   const V1 = pi.V.subtract(g);
   res = poe(V1, h, pi.A1, c1, pi.s1);
   if (res == false) {
@@ -683,7 +682,7 @@ function oneOrZero(pi: ProofOfBit) {
 // -------------------------- PROOF OF BIT ----------------------------------------------------
 
 // --------------------------------------- RANGE ------------------------------------------------
-function prove_range(
+function proveRange(
   b: bigint,
   bits: number,
 ): { r: bigint; proof: ProofOfBit[] } {
@@ -702,8 +701,8 @@ function prove_range(
   let r = 0n;
   let i = 0;
   while (i < bits) {
-    const r_inn = generate_random()
-    const pi = prove_bit(b_bin[i]!, r_inn);
+    const r_inn = generateRandom()
+    const pi = proveBit(b_bin[i]!, r_inn);
     proof.push(pi);
     r = (r + r_inn * pow) % CURVE_ORDER;
     pow = 2n * pow;
@@ -716,7 +715,7 @@ function prove_range(
 /// those bi are indeed the binary decomposition b = sum_i b_i 2**i. With the b that
 /// is encoded in V = g**b h**r. (Note that r = sim_i r_i 2**i)
 /// TODO: This could (and probably should) be change to bulletproof.
-function verify_range(proof: ProofOfBit[], bits: number): ProjectivePoint {
+function verifyRange(proof: ProofOfBit[], bits: number): ProjectivePoint {
   let pi = proof[0]!;
   oneOrZero(pi);
   let V = pi.V;
@@ -754,23 +753,22 @@ export interface InputsExPost {
     TR: ProjectivePoint,
 }
 
-export function prove_expost(
+export function proveExpost(
     x:bigint,
     y_bar:ProjectivePoint,
     TL:ProjectivePoint,
     TR:ProjectivePoint
 ): {inputs: InputsExPost, proof:ProofExPost} {
     const y = g.multiply(x)
-    const b = decipher_balance(x, TL,TR)
-    const r = generate_random()
-    const {L,R} = cipher_balance(y,b,r)
-    const {L:L_bar,R: R_bar} = cipher_balance(y_bar,b,r)
-
+    const b = decipherBalance(x, TL,TR)
+    const r = generateRandom()
+    const {L,R} = cipherBalance(y,b,r)
+    const {L:L_bar,R: R_bar} = cipherBalance(y_bar,b,r)
     const inputs: InputsExPost = {y, y_bar, L, L_bar, R, TL,TR}
 
-    const kx = generate_random()
-    const kr = generate_random()
-    const kb = generate_random()
+    const kx = generateRandom()
+    const kr = generateRandom()
+    const kb = generateRandom()
 
     const Ax = g.multiplyUnsafe(kx)
     const Ar = g.multiplyUnsafe(kr)
@@ -781,7 +779,7 @@ export function prove_expost(
     const G = TR.subtract(R);
     const At = G.multiplyUnsafe(kx)
 
-    const c = challenge_commits2(0n,[Ax,Ar,At,A,A_bar])
+    const c = challengeCommits2(0n,[Ax,Ar,At,A,A_bar])
 
     const sx = (kx + x * c) % CURVE_ORDER;
     const sr = (kr + x * c) % CURVE_ORDER;
@@ -790,9 +788,8 @@ export function prove_expost(
     const proof: ProofExPost = {Ax, Ar, At, A, A_bar, sx,sr,sb}
     return {inputs, proof}
 }
-
-export function verify_expost(inputs:InputsExPost, proof: ProofExPost) {
-    const c = challenge_commits2(0n,[proof.Ax,proof.Ar,proof.At,proof.A,proof.A_bar])
+export function verifyExpost(inputs:InputsExPost, proof: ProofExPost) {
+    const c = challengeCommits2(0n,[proof.Ax,proof.Ar,proof.At,proof.A,proof.A_bar])
     poe(inputs.y, g, proof.Ax, c, proof.sx)
     poe(inputs.R, g, proof.Ar, c, proof.sr)
     const Y = inputs.TL.subtract(inputs.L);
@@ -813,8 +810,8 @@ export function PED(elements: bigint[]) {
 export const PED2 = (data: bigint[], fn = pedersen) =>
   data.reduce((x, y) => BigInt(fn(x, y)));
 
-// This function coincides with cairo challenge_commits2
-export function challenge_commits2(prefix: bigint, commits: ProjectivePoint[]) {
+// This function coincides with cairo challengeCommits2
+export function challengeCommits2(prefix: bigint, commits: ProjectivePoint[]) {
   const data: bigint[] = [prefix];
   commits.forEach((commit, _index) => {
     const temp = commit.toAffine();
@@ -833,16 +830,16 @@ export function challenge_commits2(prefix: bigint, commits: ProjectivePoint[]) {
 }
 
 //This function coincides with cairo compure_prefix
-export function compute_prefix(seq: bigint[]) {
+export function computePrefix(seq: bigint[]) {
   return PED2([0n, ...seq]);
 }
 
-export function generate_random(): bigint {
+export function generateRandom(): bigint {
   const random_bytes = utils.randomPrivateKey();
   return utils.normPrivateKeyToScalar(random_bytes);
 }
 
-export function generate_cairo_random(
+export function generateCairoRandom(
   seed: bigint,
   multiplicity: bigint,
 ): bigint {
@@ -855,7 +852,7 @@ export function generate_cairo_random(
   return c;
 }
 
-export function decipher_balance(
+export function decipherBalance(
   x: bigint,
   L: ProjectivePoint,
   R: ProjectivePoint,
@@ -881,7 +878,7 @@ export function decipher_balance(
   return b;
 }
 
-export function assert_balance(
+export function assertBalance(
   x: bigint,
   balance: bigint,
   L: ProjectivePoint,
@@ -900,7 +897,7 @@ export function assert_balance(
   return g_b.equals(candidate_g_b);
 }
 
-export function decipher_balance_optimized(
+export function decipherBalanceOptimized(
   x: bigint,
   L: ProjectivePoint,
   R: ProjectivePoint,
@@ -910,23 +907,23 @@ export function decipher_balance_optimized(
     if (Rx.equals(L)) {return 0n}
 
   const g_b = L.subtract(Rx);
-  let b = find_least_bits(g, g_b, precomputed);
+  let b = findLeastBits(g, g_b, precomputed);
   return b
 }
 
-function to_key(x: bigint, y: bigint): string {
+function toKey(x: bigint, y: bigint): string {
   return `${x.toString()}_${(y % 2n).toString()}`;
 }
 
-export function create_hash_map(g: ProjectivePoint): Map<string, bigint> {
+export function createHashMap(g: ProjectivePoint): Map<string, bigint> {
   const precomputed = new Map<string, bigint>();
   const b = 2n ** 16n;
 
   let gb = g.multiply(b);
   let current = gb;
-  precomputed.set(to_key(0n, 0n), 0n)
+  precomputed.set(toKey(0n, 0n), 0n)
   for (let i = 1n; i < b; i++) {
-    const key = to_key(current.x, current.y);
+    const key = toKey(current.x, current.y);
     precomputed.set(key, i);
 
     current = current.add(gb);  }
@@ -934,7 +931,7 @@ export function create_hash_map(g: ProjectivePoint): Map<string, bigint> {
   return precomputed;
 }
 
-export function find_least_bits(
+export function findLeastBits(
   g: ProjectivePoint,
   c: ProjectivePoint,
   precomputed: Map<string, string>
@@ -944,13 +941,13 @@ export function find_least_bits(
   const g_neg = g.negate();
   let delta = g_neg;
   let current = c.add(delta);
-  let c_prec = precomputed.get(to_key(c.x, c.y))
+  let c_prec = precomputed.get(toKey(c.x, c.y))
   if (c_prec !== undefined)
     {
       return BigInt(c_prec) * (2n ** 16n);
     };
   for (let i = 1n; i < lim; i++) {
-    const key = to_key(current.x, current.y);
+    const key = toKey(current.x, current.y);
     const msb = precomputed.get(key);
     if (msb !== undefined) {
       return i + BigInt(msb) * (2n ** 16n);
@@ -961,8 +958,8 @@ export function find_least_bits(
   return 0n;
 }
 
-export function create_and_save_hash_map(): void {
-  let hashed = create_hash_map(g);
+export function createAndSaveHashMap(): void {
+  let hashed = createHashMap(g);
   let entries = Array.from(hashed.entries())
     .map(([k, v]) => {
       const keyStr = JSON.stringify(k);

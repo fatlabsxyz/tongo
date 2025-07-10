@@ -1,31 +1,31 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  cipher_balance,
+  cipherBalance,
   CURVE_ORDER,
-  decipher_balance,
+  decipherBalance,
   encrypt,
   g,
-  generate_random,
+  generateRandom,
   h,
-  prove_expost,
-  prove_fund,
-  prove_poe,
-  prove_poe2,
-  prove_transfer,
-  prove_withdraw,
-  prove_withdraw_all,
-  verify_expost,
-  verify_fund,
-  verify_poe,
-  verify_poe2,
-  verify_transfer,
-  verify_withdraw,
-  verify_withdraw_all,
-  assert_balance
+  proveExpost,
+  proveFund,
+  provePoe,
+  provePoe2,
+  proveTransfer,
+  proveWithdraw,
+  proveWithdrawAll,
+  verifyExpost,
+  verifyFund,
+  verifyPoe,
+  verifyPoe2,
+  verifyTransfer,
+  verifyWithdraw,
+  verifyWithdrawAll,
+  assertBalance
 } from "../src";
 
-// import { find_least_bits, decipher_balance_optimized} from "../src";
+// import { find_least_bits, decipherBalanceOptimized} from "../src";
 // import { hash_map} from "../src/map";
 
 describe("Example test suit", () => {
@@ -40,28 +40,28 @@ describe("Example test suit", () => {
   it("Testing random generator", () => {
     let i = 0;
     while (i < 100) {
-      const r = generate_random();
+      const r = generateRandom();
       expect(r).toBeLessThan(CURVE_ORDER);
       i = i + 1;
     }
   });
 
-  it("prove_fund vs verify_fund", () => {
+  it("proveFund vs verifyFund", () => {
     const x = 1234n;
     const nonce = 10n;
-    const { inputs, proof } = prove_fund(x, nonce);
-    verify_fund(inputs, proof);
+    const { inputs, proof } = proveFund(x, nonce);
+    verifyFund(inputs, proof);
   });
 
-  it("prove_withdraw_all vs verify_withdraw_all", () => {
+  it("proveWithdrawAll vs verifyWithdrawAll", () => {
     const x = 1234n;
     const nonce = 10n;
     const amount = 10n;
     const to = 116200n;
     const random = 111111n;
     const y = g.multiplyUnsafe(x);
-    const { L, R } = cipher_balance(y, amount, random);
-    const { inputs, proof } = prove_withdraw_all(
+    const { L, R } = cipherBalance(y, amount, random);
+    const { inputs, proof } = proveWithdrawAll(
       x,
       L,
       R,
@@ -69,10 +69,10 @@ describe("Example test suit", () => {
       to,
       amount,
     );
-    verify_withdraw_all(inputs, proof);
+    verifyWithdrawAll(inputs, proof);
   });
 
-  it("prove_withdrw vs verify_withdraw", () => {
+  it("proveWithdraw vs verifyWithdraw", () => {
     const x = 888n;
     const y = g.multiplyUnsafe(x);
 
@@ -80,8 +80,8 @@ describe("Example test suit", () => {
     const initial_balance = 100n;
     const amount = 10n;
     const to = 555n;
-    const { L, R } = cipher_balance(y, initial_balance, 99n);
-    const { inputs, proof } = prove_withdraw(
+    const { L, R } = cipherBalance(y, initial_balance, 99n);
+    const { inputs, proof } = proveWithdraw(
       x,
       initial_balance,
       amount,
@@ -90,10 +90,10 @@ describe("Example test suit", () => {
       to,
       nonce,
     );
-    verify_withdraw(inputs, proof);
+    verifyWithdraw(inputs, proof);
   });
 
-  it("prove_transfer vs verify_transfer", () => {
+  it("proveTransfer vs verifyTransfer", () => {
     const x = 4444n;
     const y = g.multiplyUnsafe(x);
     const x_bar = 7777n;
@@ -103,9 +103,9 @@ describe("Example test suit", () => {
     const initial_balance = 100n;
     const amount = 10n;
     const random = 999n;
-    const { L, R } = cipher_balance(y, initial_balance, random);
+    const { L, R } = cipherBalance(y, initial_balance, random);
 
-    const { inputs, proof } = prove_transfer(
+    const { inputs, proof } = proveTransfer(
       x,
       y_bar,
       initial_balance,
@@ -114,41 +114,41 @@ describe("Example test suit", () => {
       R,
       nonce,
     );
-    verify_transfer(inputs, proof);
+    verifyTransfer(inputs, proof);
   });
 
-  it("assert_balance", () => {
+  it("assertBalance", () => {
     const x = 1234n;
     const amount = 12n;
     const fake_amount = 44n;
     const random = 111111n;
     const y = g.multiplyUnsafe(x);
-    const { L, R } = cipher_balance(y, amount, random);
-    expect(assert_balance(x, fake_amount, L, R)).toEqual(false);
-    expect(assert_balance(x, amount, L, R)).toEqual(true);
+    const { L, R } = cipherBalance(y, amount, random);
+    expect(assertBalance(x, fake_amount, L, R)).toEqual(false);
+    expect(assertBalance(x, amount, L, R)).toEqual(true);
   });
 
-  it("bechmark_decipher", () => {
+  it("benchmarkDecipher", () => {
     const x = 1234n;
     const amount = 12n;
     const random = 111111n;
     const y = g.multiplyUnsafe(x);
-    const { L, R } = cipher_balance(y, amount, random);
-    const b = decipher_balance(x, L, R);
+    const { L, R } = cipherBalance(y, amount, random);
+    const b = decipherBalance(x, L, R);
     expect(b).toEqual(amount);
   });
 
   it("poe", () => {
     const x = 12n;
-    const { y, A, s } = prove_poe(x, g);
-    verify_poe(y, g, A, s);
+    const { y, A, s } = provePoe(x, g);
+    verifyPoe(y, g, A, s);
   });
 
   it("poe2", () => {
     const x1 = 12n;
     const x2 = 12412n;
-    const { y, A, s1, s2 } = prove_poe2(x1, x2, g, h);
-    verify_poe2(y, g, h, A, s1, s2);
+    const { y, A, s1, s2 } = provePoe2(x1, x2, g, h);
+    verifyPoe2(y, g, h, A, s1, s2);
   });
 
   it("expost", () => {
@@ -158,22 +158,22 @@ describe("Example test suit", () => {
     const y_bar = g.multiplyUnsafe(x_bar);
     const b = 65n
     const r = 2930213809218n
-    const {L:TL, R:TR} = cipher_balance(y,b,r)
+    const {L:TL, R:TR} = cipherBalance(y,b,r)
     
-    const {inputs, proof} = prove_expost(x, y_bar, TL, TR)
-    verify_expost(inputs,proof)
-    const b_bar = decipher_balance(x_bar, inputs.L_bar, inputs.R)
+    const {inputs, proof} = proveExpost(x, y_bar, TL, TR)
+    verifyExpost(inputs,proof)
+    const b_bar = decipherBalance(x_bar, inputs.L_bar, inputs.R)
     expect(b).toEqual(b_bar)
   });
 });
 
 
-// it("bechmark_decipher_optimized", () => {
+// it("benchmarkDecipherOptimized", () => {
 //   const x = 1234n;
 //   const amount = 12n;
 //   const random = 111111n;
 //   const y = g.multiplyUnsafe(x);
-//   const { L, R } = cipher_balance(y, amount, random);
-//   const b = decipher_balance_optimized(x, L, R, hash_map);
+//   const { L, R } = cipherBalance(y, amount, random);
+//   const b = decipherBalanceOptimized(x, L, R, hash_map);
 //   expect(b).toEqual(amount);
 // });
