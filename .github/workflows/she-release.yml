@@ -82,7 +82,7 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          VERSION=${TAG#v}
+          VERSION=${TAG#she-v}
           npm version $VERSION --no-git-tag-version
 
       - name: Publish
