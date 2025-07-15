@@ -1,0 +1,79 @@
+name: Release on Github and publish to npm
+on:
+  push:
+    tags:
+      # expected format: v<version> (example: v0.0.1)
+    - 'sdk-v*'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: packages/tongo-sdk
+
+jobs:
+  build:
+    name: Build, Test and generate artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check-out repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Set-up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Install 
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      # - name: Test
+      #   run: node test/index.js
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: .
+
+  publish:
+    name: Publish npm package on Github
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .
+
+      - name: Set-up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@fatlabsxyz'
+        env: 
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify Authentication
+        run: npm whoami --registry https://npm.pkg.github.com
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update package.json version from tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=${TAG#v}
+          npm version $VERSION --no-git-tag-version
+
+      - name: Publish
+        run: npm publish --provenance --access public --verbose
