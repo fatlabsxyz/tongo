@@ -1,5 +1,5 @@
 {
-  "name": "tongo-sdk",
+  "name": "@fatlabsxyz/tongo-sdk",
   "version": "1.0.0",
   "description": "An SDK for interacting with Tongo contracts",
   "main": "index.js",
