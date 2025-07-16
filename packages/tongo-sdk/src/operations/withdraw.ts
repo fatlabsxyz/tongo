@@ -1,5 +1,5 @@
 import { ProjectivePoint } from "@scure/starknet";
-import { ProofOfWithdraw, ProofOfWithdrawAll } from "she-js";
+import { ProofOfWithdraw, ProofOfWithdrawAll } from "@fatlabsxyz/she-js";
 import { Call, Contract, num } from "starknet";
 import { AEBalances } from "../ae_balance";
 import { IOperation } from "./operation";

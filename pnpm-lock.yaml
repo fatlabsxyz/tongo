@@ -68,15 +68,15 @@ importers:
 
   packages/tongo-sdk:
     dependencies:
+      '@fatlabsxyz/she-js':
+        specifier: workspace:*
+        version: link:../she
       commander:
         specifier: ^11.0.0
         version: 11.1.0
       dotenv:
         specifier: ^16.3.1
         version: 16.5.0
-      she-js:
-        specifier: workspace:*
-        version: link:../she
       starknet:
         specifier: ^7.0.0
         version: 7.1.0

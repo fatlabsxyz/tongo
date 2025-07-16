@@ -1,6 +1,6 @@
 import { bytesToHex } from "@noble/hashes/utils";
 import { BigNumberish, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
-import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost, ProjectivePoint, assert_balance } from "she-js";
+import { decipher_balance, g, InputsExPost, ProofExPost, prove_expost, prove_fund, prove_transfer, prove_withdraw, prove_withdraw_all, verify_expost, ProjectivePoint, assert_balance } from "@fatlabsxyz/she-js";
 import { AEChaCha, AEBalance, AEHintToBytes, bytesToBigAEHint } from "./ae_balance.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
 import { FundOperation } from "./operations/fund.js";
