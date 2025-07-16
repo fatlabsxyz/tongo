@@ -1,5 +1,5 @@
 {
-  "name": "she-js",
+  "name": "@fatlabsxyz/she-js",
   "version": "0.0.1",
   "description": "Homomorphic Encryption over the Stark curve",
   "main": "lib/index.js",
