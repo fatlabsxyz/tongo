@@ -1,36 +1,39 @@
 {
-    "name": "tongo-sdk",
-    "version": "1.0.0",
-    "description": "An SDK for interacting with Tongo contracts",
-    "main": "index.js",
-    "bin": {
-        "tongo": "./dist/cli.js"
-    },
-    "exports": {
-        ".": {
-            "import": "./dist/index.js"
-        }
-    },
-    "scripts": {
-        "bin": "node ./dist/cli.js",
-        "clean": "rm -rf dist",
-        "build": "tsc -p ./tsconfig.json --outDir dist && chmod +x dist/cli.js",
-        "update-abi": "echo -n 'export const tongoAbi = ' > ./src/tongo.abi.ts && jq --indent 4 -j '.abi' < ../contracts/target/dev/tongo_Tongo.contract_class.json >> ./src/tongo.abi.ts && echo ' as const;' >> ./src/tongo.abi.ts",
-        "test": "source ./test/envvars && vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
-        "test:integration": "source ./test/envvars && vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
-        "lint": "eslint --config ../../eslint.config.mjs \"{src,test}/**/*.{js,ts,json}\"",
-        "lint:fix": "eslint --config ../../eslint.config.mjs \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
-        "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
-        "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
-    },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "packageManager": "pnpm@10.4.1",
-    "dependencies": {
-        "commander": "^11.0.0",
-        "dotenv": "^16.3.1",
-        "she-js": "workspace:*",
-        "starknet": "^7.0.0"
+  "name": "tongo-sdk",
+  "version": "1.0.0",
+  "description": "An SDK for interacting with Tongo contracts",
+  "main": "index.js",
+  "bin": {
+    "tongo": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
     }
+  },
+  "scripts": {
+    "bin": "node ./dist/cli.js",
+    "clean": "rm -rf dist",
+    "build": "tsc -p ./tsconfig.json --outDir dist && chmod +x dist/cli.js",
+    "update-abi": "echo -n 'export const tongoAbi = ' > ./src/tongo.abi.ts && jq --indent 4 -j '.abi' < ../contracts/target/dev/tongo_Tongo.contract_class.json >> ./src/tongo.abi.ts && echo ' as const;' >> ./src/tongo.abi.ts",
+    "test": "source ./test/envvars && vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
+    "test:integration": "source ./test/envvars && vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
+    "lint": "eslint --config ../../eslint.config.mjs \"{src,test}/**/*.{js,ts,json}\"",
+    "lint:fix": "eslint --config ../../eslint.config.mjs \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
+    "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
+    "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.4.1",
+  "dependencies": {
+    "commander": "^11.0.0",
+    "dotenv": "^16.3.1",
+    "she-js": "workspace:*",
+    "starknet": "^7.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/fatlabsxyz"
+  }
 }
