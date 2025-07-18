@@ -1,28 +1,15 @@
 import {
   CURVE,
-  ProjectivePoint
+  ProjectivePoint,
+  poseidonHashMany
 } from "@scure/starknet";
 
+// import { weierstrass, ProjPointType, SignatureType, DER } from '@noble/curves/abstract/weierstrass';
 
 export const CURVE_ORDER = CURVE.n;
 
 export const g = new ProjectivePoint(CURVE.Gx, CURVE.Gy, 1n);
 
-// It is critical to ensure that h has been generated in a way
-// that nobody knows the discrete logarithm.
-//
-// Starknet utilizes nothing-up-my-sleeve technique:
-// The parameters of the Pedersen hash are generated from the constant 𝜋.
-// The x-coordinate of each point is a chunk of 76 decimal digit of 𝜋 modulo 𝑝.
-// If it is a quadratic residue then the point is valid
-// else the x-coordinate coordinate is incremented by one.
-// https://docs.starkware.co/starkex/pedersen-hash-function.html
-// https://github.com/starkware-libs/starkex-for-spot-trading/blob/607f0b4ce507e1d95cd018d206a2797f6ba4aab4/src/starkware/crypto/starkware/crypto/signature/nothing_up_my_sleeve_gen.py
-export const h = new ProjectivePoint(
-  691680531741293280453937373379419976656630796816457407115079998151342235387n,
-  3202630011890313728668067682268550517524522030380821660699334634079346351030n,
-  1n,
-);
 
 //audidor secretkey = 
 export const auditor_key = 1242079909984902665305n;
@@ -31,3 +18,46 @@ export const view = new ProjectivePoint(
   2757351908714051356627755054438992373493721650442793345821069764655464109380n,
   1n,
 );
+
+
+/// Tries to construct a projective point from a x coordinate
+function tryFromX(x: bigint): ProjectivePoint | null {
+    const {Fp, a, b } = CURVE;
+    const x2 = Fp.sqr(x); // x * x
+    const x3 = Fp.mul(x2, x); // x2 * x
+    const y2 =  Fp.add(Fp.add(x3, Fp.mul(x, a)), b); // x3 + a * x + b
+
+    try { Fp.sqrt(y2);}
+    catch (sqrtError) { return null }
+
+    const y = Fp.sqrt(y2); // y = y² ^ (p+1)/4
+    let h = new ProjectivePoint(x,y,1n)
+    return h
+}
+
+
+// It is critical to ensure that h has been generated in a way
+// that nobody knows the discrete logarithm.
+//
+// We utilize nothing-up-my-sleeve technique: The generation algorithm is bellow
+export const h = new ProjectivePoint(
+  627088272801405713560985229077786158610581355215145837257248988047835443922n,
+  962306405833205337611861169387935900858447421343428280515103558221889311122n,
+  1n
+);
+
+/// Construct the hash(seed,n) for n from 0 until the hash is a valid x coordinate for a point in the Starknet curve.
+/// We use at the moment Gx as input, this could be changed
+export function generateH(): ProjectivePoint {
+    const input = CURVE.Gx
+    let nonce = 1n;
+    let output: ProjectivePoint| null = null
+    while (output == null) {
+        let x = poseidonHashMany([input, nonce])
+        output = tryFromX(x)
+        nonce = nonce + 1n
+    }
+    return output 
+}
+
+
