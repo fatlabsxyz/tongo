@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateH, h } from "../src/constants"
+import { generateH } from "../src/constants"
 
 import {
   cipherBalance,
@@ -170,7 +170,7 @@ describe("Example test suit", () => {
 
 it("generateH", ()=> {
     let h_gen = generateH();
-    expect(h_gen).toEqual(h)
+    expect(h_gen).toEqual(SECONDARY_GENERATOR)
 });
 
 
