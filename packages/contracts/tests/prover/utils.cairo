@@ -2,11 +2,13 @@ use core::ec::stark_curve::{GEN_X, GEN_Y, ORDER};
 use core::ec::{EcPointTrait};
 use core::ec::{NonZeroEcPoint, EcPoint};
 use core::pedersen::PedersenTrait;
+use core::poseidon::poseidon_hash_span;
 use core::hash::{HashStateTrait};
 use tongo::verifier::utils::in_order;
 use tongo::verifier::utils::in_range;
 use tongo::verifier::structs::{CipherBalanceTrait, CipherBalance};
 use tongo::verifier::structs::{StarkPoint};
+use tongo::verifier::utils::generator_h;
 
 use core::circuit::{
     CircuitElement, CircuitInput, circuit_add, circuit_mul, EvalCircuitTrait, u384,
@@ -147,4 +149,23 @@ pub fn decipher_balance(b: felt252, x: felt252, cipher: CipherBalance) {
         let RHS: NonZeroEcPoint = R.mul(x).try_into().unwrap();
         assert!(LHS.coordinates() == RHS.coordinates(), "decipher failed for b 0");
     }
+}
+
+pub fn computeH() -> NonZeroEcPoint {
+    let input = GEN_X;
+    let mut output = Option::None;
+    let mut nonce: felt252 = 1;
+    while (output.is_none()) {
+        let x = poseidon_hash_span([input,nonce].span());
+        output = EcPointTrait::new_nz_from_x(x);
+        nonce = nonce + 1;
+    }
+    return output.unwrap();
+}
+
+#[test]
+fn showH() {
+    let h = computeH();
+//    println!("H: x: {:x}, y: {:x}", h.x(), h.y());
+    assert(h.coordinates() == generator_h().coordinates(), 'False');
 }
