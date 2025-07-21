@@ -5,6 +5,6 @@ import {
 } from "@scure/starknet";
 
 export type Affine = AffinePoint<bigint>;
-export { CURVE_ORDER, g, h } from "./constants.js";
+export { CURVE_ORDER, GENERATOR, SECONDARY_GENERATOR } from "./constants.js";
 export const ProjectivePoint = SheProjectivePoint;
 export type ProjectivePoint = SheProjectivePointType;
