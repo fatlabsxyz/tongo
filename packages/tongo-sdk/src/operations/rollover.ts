@@ -1,7 +1,7 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { Call, Contract } from "starknet";
 import { IOperation } from "./operation";
-import { ProofOfFund } from "she-js";
+import { ProofOfFund } from "@fatlabsxyz/she-js";
 
 
 export interface IRollOverOperation extends IOperation { }

@@ -95,15 +95,14 @@ pub fn challenge_commits2(prefix: felt252, ref commits: Array<StarkPoint>) -> fe
     return c;
 }
 
-
-/// This generator has to be generated at random a it exponent CAN NOT be known.
-/// TODO: Generate one at random an store the cooridnates, generate the proof
-/// that there are not magic numbers under the sleve
-/// ULTRA WARNING: DO NOT FORGET TO DO THIS
+/// This generatos has been computed hashing:
+/// x = poseidon(input, nonce) for nonce from 1,... until x is a coordinate of a valid point
+/// of the starknet curve, currently input= GEN_X.
+/// TODO: Think if we need another input
 pub fn generator_h() -> NonZeroEcPoint {
-    let ultra_secret: felt252 = 'TONGO';
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let h: NonZeroEcPoint = g.mul(ultra_secret).try_into().unwrap();
+    let h_x: felt252 = 0x162eb5cc8f50e522225785a604ba6d7e9ab06b647157f77c59a06032610b2d2;
+    let h_y: felt252 = 0x220a56864c490175202e3e34db0e24d12979fbfacea16a360e8feb1f6749192;
+    let h = EcPointTrait::new_nz(h_x, h_y).unwrap();
     return h;
 }
 

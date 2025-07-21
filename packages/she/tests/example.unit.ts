@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { generateH, h } from "../src/constants"
 
 import {
   cipherBalance,
@@ -165,6 +166,11 @@ describe("Example test suit", () => {
     const b_bar = decipherBalance(x_bar, inputs.L_bar, inputs.R)
     expect(b).toEqual(b_bar)
   });
+});
+
+it("generateH", ()=> {
+    let h_gen = generateH();
+    expect(h_gen).toEqual(h)
 });
 
 

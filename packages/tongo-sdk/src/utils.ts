@@ -1,10 +1,9 @@
 import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";
-import { ProjectivePoint } from "she-js";
+import { ProjectivePoint, g } from "@fatlabsxyz/she-js";
 import { CipherBalance, PubKey, StarkPoint, TongoAddress } from "./types.js";
 import { BigNumberish, num, uint256, Uint256 } from "starknet";
 import { AEBalance } from "./ae_balance.js";
-import { g } from "she-js";
 
 export function derivePublicKey(privateKey: bigint) {
     return projectivePointToStarkPoint(g.multiply(privateKey));
