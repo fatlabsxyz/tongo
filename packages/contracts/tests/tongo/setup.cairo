@@ -4,19 +4,14 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::ContractAddress;
-use tongo::constants::STRK_ADDRESS as STRK_ADDRESS_FELT;
 use tongo::main::ITongoDispatcher;
-use tongo::verifier::structs::AEHints;
+use tongo::verifier::structs::{AEHints, PubKeyTrait};
 
-pub const TONGO_ADDRESS: ContractAddress = 'TONGO'.try_into().unwrap();
-pub const STRK_ADDRESS: ContractAddress = STRK_ADDRESS_FELT.try_into().unwrap();
-pub const GLOBAL_CALLER: ContractAddress = (0x1111111).try_into().unwrap();
-pub const USER_CALLER: ContractAddress = (0x2222222).try_into().unwrap();
+use crate::consts::{TONGO_ADDRESS,STRK_ADDRESS,USER_CALLER, AUDITOR_PRIVATE, OWNER_ADDRESS};
 
 pub fn empty_ae_hint() -> AEHints {
     AEHints { ae_balance: Default::default(), ae_audit_balance: Default::default() }
 }
-
 
 fn declare_class(contract_name: ByteArray) -> (ContractClass, felt252) {
     let contract = declare(contract_name.clone()).unwrap().contract_class();
@@ -37,8 +32,11 @@ fn deploy_contract(
 pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
     let _erc20 = setup_erc20();
     let (tongo_contract, _tongo_class_hash) = declare_class("Tongo");
+
+    let audit_key = PubKeyTrait::from_secret(AUDITOR_PRIVATE);
+    let constructor_calldata: Array<felt252> = array![OWNER_ADDRESS.into(), audit_key.x, audit_key.y, STRK_ADDRESS.into()];
     let tongo_address = deploy_contract(
-        tongo_contract, TONGO_ADDRESS.try_into().unwrap(), array![],
+        tongo_contract, TONGO_ADDRESS.try_into().unwrap(), constructor_calldata,
     );
     let tongo_dispatcher = ITongoDispatcher { contract_address: tongo_address };
     start_cheat_caller_address(TONGO_ADDRESS, USER_CALLER);

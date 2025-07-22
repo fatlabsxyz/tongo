@@ -6,6 +6,7 @@ use tongo::verifier::structs::{PubKeyTrait, CipherBalanceTrait};
 use tongo::verifier::structs::{Rollover, Fund, Transfer, Withdraw};
 
 use tongo::main::ITongoDispatcherTrait;
+use crate::consts::AUDITOR_KEY;
 
 #[test]
 fn full() {
@@ -66,7 +67,7 @@ fn full() {
 
     let transfer_amount = 100;
     let (inputs, proof) = prove_transfer(
-        x, y_bar, initial_balance, transfer_amount, balance.CL, balance.CR, nonce, seed + 1
+        x, y_bar, initial_balance, transfer_amount, balance.CL, balance.CR,AUDITOR_KEY(), nonce, seed + 1
     );
     dispatcher
         .transfer(

@@ -9,7 +9,7 @@ use tongo::verifier::structs::{CipherBalanceTrait};
 
 use tongo::verifier::utils::{compute_prefix, challenge_commits2};
 
-use tongo::verifier::utils::{generator_h, feltXOR, view_key};
+use tongo::verifier::utils::{generator_h, feltXOR};
 use crate::prover::utils::{generate_random, compute_s, compute_z, simPOE, to_binary};
 
 use starknet::ContractAddress;
@@ -135,19 +135,19 @@ pub fn prove_transfer(
     b: felt252,
     CL: StarkPoint,
     CR: StarkPoint,
+    y_audit: PubKey,
     nonce: u64,
     seed: felt252
 ) -> (InputsTransfer, ProofOfTransfer) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y = PubKeyTrait::from_secret(x);
     let h = generator_h();
-    let view = view_key();
 
     let (r, proof) = prove_range(b.try_into().unwrap(), generate_random(seed + 1, 1));
     let balance = CipherBalanceTrait::new(y, b, r);
     let (L, R) = (balance.CL, balance.CR);
     let L_bar = CipherBalanceTrait::new(y_bar, b, r).CL;
-    let L_audit = CipherBalanceTrait::new(view, b, r).CL;
+    let L_audit = CipherBalanceTrait::new(y_audit, b, r).CL;
 
     let b_left = b0 - b;
     let (r2, proof2) = prove_range(b_left.try_into().unwrap(), generate_random(seed + 2, 1));
@@ -180,7 +180,7 @@ pub fn prove_transfer(
 
     let mut state = EcStateTrait::init();
     state.add_mul(kb, g);
-    state.add_mul(kr, EcPointTrait::new_nz(view.x, view.y).unwrap());
+    state.add_mul(kr, EcPointTrait::new_nz(y_audit.x, y_audit.y).unwrap());
     let A_audit = state.finalize_nz().unwrap();
 
     let mut state = EcStateTrait::init();
@@ -240,6 +240,7 @@ pub fn prove_transfer(
         L_bar: L_bar,
         L_audit: L_audit,
         nonce: nonce,
+        y_audit,
     };
 
     let proof: ProofOfTransfer = ProofOfTransfer {

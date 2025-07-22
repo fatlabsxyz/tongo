@@ -5,6 +5,8 @@ use tongo::verifier::verifier::verify_transfer;
 use tongo::verifier::structs::PubKeyTrait;
 use tongo::verifier::structs::{CipherBalanceTrait};
 
+use crate::consts::AUDITOR_KEY;
+
 #[test]
 fn test_transfer() {
     // setup
@@ -25,7 +27,7 @@ fn test_transfer() {
     let y_bar = PubKeyTrait::from_secret(x_bar);
 
     let (inputs, proof) = prove_transfer(
-        x, y_bar, b0, b, balance.CL, balance.CR, nonce, generate_random(seed, 4)
+        x, y_bar, b0, b, balance.CL, balance.CR, AUDITOR_KEY(), nonce, generate_random(seed, 4)
     );
 
     verify_transfer(inputs, proof);
