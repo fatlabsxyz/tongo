@@ -27,6 +27,8 @@ pub trait ITongo<TContractState> {
     fn get_nonce(self: @TContractState, y: PubKey) -> u64;
     fn ERC20(self: @TContractState) -> ContractAddress;
     fn get_state(self: @TContractState, y: PubKey) -> State;
+    fn change_auditor_key(ref self: TContractState, new_auditor_key:PubKey);
+    fn auditor_key(self: @TContractState) -> PubKey;
 }
 
 #[starknet::contract]
@@ -36,13 +38,11 @@ pub mod Tongo {
     };
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
     use crate::ae_balance::{AEBalance, IntoOptionAEBalance};
-    use crate::constants::STRK_ADDRESS;
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::verifier::structs::{
         CipherBalance, CipherBalanceTrait, InputsFund, InputsTransfer, InputsWithdraw,
         IntoOptionCipherBalance, PubKey, StarkPoint, Validate,
     };
-    use crate::verifier::utils::view_key;
     use crate::verifier::verifier::{
         verify_fund, verify_transfer, verify_withdraw, verify_withdraw_all,
     };
@@ -59,6 +59,16 @@ pub mod Tongo {
         ae_audit_balance: Map<PubKey, AEBalance>,
         pending: Map<PubKey, CipherBalance>,
         nonce: Map<PubKey, u64>,
+        auditor_key: PubKey,
+        owner: ContractAddress,
+        ERC20: ContractAddress,
+    }
+
+    #[constructor]
+    fn constructor(ref self: ContractState, owner: ContractAddress, auditor_key: PubKey, ERC20:ContractAddress) {
+        self.owner.write(owner);
+        self.auditor_key.write(auditor_key);
+        self.ERC20.write(ERC20);
     }
 
     #[event]
@@ -137,7 +147,7 @@ pub mod Tongo {
             let cipher = CipherBalanceTrait::new(to, amount, 'fund');
             self.add_balance(to, cipher);
 
-            let cipher_audit = CipherBalanceTrait::new(view_key(), amount, 'fund');
+            let cipher_audit = CipherBalanceTrait::new(self.auditor_key.read(), amount, 'fund');
             self.add_audit(to, cipher_audit);
 
             self.overwrite_ae_balances(to, ae_hints);
@@ -161,7 +171,7 @@ pub mod Tongo {
             let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
             self.remove_balance(from, cipher);
 
-            let cipher = CipherBalanceTrait::new(view_key(), amount, 'withdraw');
+            let cipher = CipherBalanceTrait::new(self.auditor_key.read(), amount, 'withdraw');
             self.remove_audit(from, cipher);
             self.increase_nonce(from);
 
@@ -184,7 +194,7 @@ pub mod Tongo {
             };
             verify_withdraw_all(inputs, proof);
 
-            let cipher = CipherBalanceTrait::new(view_key(), amount, 'withdraw');
+            let cipher = CipherBalanceTrait::new(self.auditor_key.read(), amount, 'withdraw');
             self.remove_audit(from, cipher);
             self.increase_nonce(from);
 
@@ -221,6 +231,7 @@ pub mod Tongo {
                 L: L,
                 L_bar: L_bar,
                 L_audit: L_audit,
+                y_audit: self.auditor_key(),
             };
 
             verify_transfer(inputs, proof);
@@ -246,7 +257,7 @@ pub mod Tongo {
         }
 
         fn ERC20(self: @ContractState) -> ContractAddress {
-            return STRK_ADDRESS.try_into().unwrap();
+            self.ERC20.read()
         }
 
         fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
@@ -277,6 +288,15 @@ pub mod Tongo {
             let ae_balance = IntoOptionAEBalance::into(self.ae_balance.entry(y).read());
             let ae_audit_balance = IntoOptionAEBalance::into(self.ae_audit_balance.entry(y).read());
             return State { balance, pending, audit, nonce, ae_balance, ae_audit_balance };
+        }
+
+        fn change_auditor_key(ref self: ContractState, new_auditor_key:PubKey) {
+            assert!(get_caller_address() == self.owner.read(), "Caller not owner");
+            self.auditor_key.write(new_auditor_key);
+        }
+
+        fn auditor_key(self: @ContractState) -> PubKey {
+            self.auditor_key.read()
         }
     }
 
@@ -348,12 +368,14 @@ pub mod Tongo {
         }
 
         fn get_transfer(self: @ContractState, amount: felt252) {
-            let ERC20 = IERC20Dispatcher { contract_address: STRK_ADDRESS.try_into().unwrap() };
+            let asset_address =  self.ERC20.read();
+            let ERC20 = IERC20Dispatcher { contract_address: asset_address};
             ERC20.transfer_from(get_caller_address(), get_contract_address(), amount.into());
         }
 
         fn transfer_to(self: @ContractState, to: ContractAddress, amount: felt252) {
-            let ERC20 = IERC20Dispatcher { contract_address: STRK_ADDRESS.try_into().unwrap() };
+            let asset_address =  self.ERC20.read();
+            let ERC20 = IERC20Dispatcher { contract_address: asset_address};
             ERC20.transfer(to, amount.into());
         }
 

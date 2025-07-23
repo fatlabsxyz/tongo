@@ -5,6 +5,7 @@ use crate::prover::functions::{prove_transfer, prove_fund};
 use tongo::main::ITongoDispatcherTrait;
 use tongo::verifier::structs::{Fund, Transfer};
 use tongo::verifier::structs::{PubKeyTrait};
+use crate::consts::AUDITOR_KEY;
 
 #[test]
 fn test_transfer() {
@@ -26,7 +27,7 @@ fn test_transfer() {
     let nonce = dispatcher.get_nonce(y);
 
     let b = 100;
-    let (inputs, proof) = prove_transfer(x, y_bar, b0, b, balance.CL, balance.CR, nonce, seed + 1);
+    let (inputs, proof) = prove_transfer(x, y_bar, b0, b, balance.CL, balance.CR, AUDITOR_KEY(), nonce, seed + 1);
     dispatcher
         .transfer(
             Transfer {
@@ -63,6 +64,6 @@ fn test_benchmark_prover() {
 
     let b = 100;
     let (_inputs, _proof) = prove_transfer(
-        x, y_bar, b0, b, balance.CL, balance.CR, nonce, seed + 1
+        x, y_bar, b0, b, balance.CL, balance.CR, AUDITOR_KEY(), nonce, seed + 1
     );
 }

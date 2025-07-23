@@ -1,7 +1,7 @@
 use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint, EcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
 use crate::verifier::utils::{in_order};
-use crate::verifier::utils::{generator_h, view_key};
+use crate::verifier::utils::{generator_h};
 use crate::verifier::utils::{feltXOR};
 use crate::verifier::utils::{compute_prefix, challenge_commits2};
 use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWitdhrawAll, ProofOfBit2};
@@ -158,6 +158,7 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
 /// 6) The proof neceary to show that the remaining balance is in range.
 /// TODO: finish the doc
 pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
+    //TODO: update this
     let mut seq: Array<felt252> = array![
         'transfer',
         inputs.y.x,
@@ -221,7 +222,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let res = poe2(
         inputs.L_audit.try_into().unwrap(),
         g,
-        view_key().try_into().unwrap(),
+        inputs.y_audit.try_into().unwrap(),
         proof.A_audit.try_into().unwrap(),
         c,
         proof.s_b,

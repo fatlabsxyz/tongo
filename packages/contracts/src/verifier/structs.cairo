@@ -6,7 +6,7 @@ use crate::ae_balance::AEBalance;
 use crate::verifier::utils::{validate_felt, validate_range};
 
 /// Represent the public key y = g ** x of a user.
-#[derive(Serde, Drop, Debug, Copy, Hash)]
+#[derive(Serde, Drop, Debug, Copy, Hash, starknet::Store)]
 pub struct PubKey {
     pub x: felt252,
     pub y: felt252,
@@ -349,6 +349,7 @@ pub struct InputsTransfer {
     pub L: StarkPoint,
     pub L_bar: StarkPoint,
     pub L_audit: StarkPoint,
+    pub y_audit: PubKey,
 }
 
 #[derive(Serde, Drop, Debug, Copy)]

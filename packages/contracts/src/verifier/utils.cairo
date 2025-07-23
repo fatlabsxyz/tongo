@@ -2,8 +2,6 @@ use core::ec::stark_curve::{ORDER};
 use core::pedersen::PedersenTrait;
 use core::hash::HashStateTrait;
 use core::ec::{EcPointTrait, NonZeroEcPoint};
-use core::ec::stark_curve::{GEN_X, GEN_Y};
-use tongo::verifier::structs::PubKey;
 use tongo::verifier::structs::StarkPoint;
 
 // 2**32
@@ -104,14 +102,4 @@ pub fn generator_h() -> NonZeroEcPoint {
     let h_y: felt252 = 0x220a56864c490175202e3e34db0e24d12979fbfacea16a360e8feb1f6749192;
     let h = EcPointTrait::new_nz(h_x, h_y).unwrap();
     return h;
-}
-
-
-/// This return the key y from the auditor.
-/// TODO: This sould change to a constat point whit the exponent only known for the auditor
-pub fn view_key() -> PubKey {
-    let ultra_secret: felt252 = 'CURIOSITY';
-    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    let h = g.mul(ultra_secret).try_into().unwrap();
-    PubKey { x: h.x(), y: h.y() }
 }

@@ -8,6 +8,7 @@ use tongo::verifier::structs::{PubKeyTrait, CipherBalanceTrait};
 
 use tongo::main::ITongoDispatcherTrait;
 use tongo::verifier::structs::{Fund, WithdrawAll, Transfer};
+use crate::consts::AUDITOR_KEY;
 
 #[test]
 fn audit_fund() {
@@ -93,7 +94,7 @@ fn audit_transfer() {
     let balance = dispatcher.get_balance(y);
 
     let b = 100;
-    let (inputs, proof) = prove_transfer(x, y_bar, b0, b, balance.CL, balance.CR, nonce, seed + 1);
+    let (inputs, proof) = prove_transfer(x, y_bar, b0, b, balance.CL, balance.CR, AUDITOR_KEY(),nonce, seed + 1);
     dispatcher
         .transfer(
             Transfer {
