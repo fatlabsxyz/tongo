@@ -149,7 +149,7 @@ export class Account implements IAccount {
     }
 
     // Warning: This is only for display. This is not the correct amount
-    // of tongos that corresponds to arc20Amount
+    // of tongos that corresponds to erc20Amount
     async erc20ToTongo(erc20Amount: bigint) : Promise<bigint> {
         const rate = await this.rate();
         let temp = erc20Amount / rate; 
