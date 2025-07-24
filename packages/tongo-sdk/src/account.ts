@@ -11,7 +11,7 @@ import { RagequitOperation } from "./operations/ragequit.js";
 import { tongoAbi } from "./tongo.abi.js";
 import { AUDITOR_PRIVATE } from "./auditor.js";
 import { CipherBalance, PubKey, TongoAddress } from "./types.js";
-import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint } from "./utils.js";
+import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint, castBigInt} from "./utils.js";
 import { After } from "node:v8";
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
@@ -77,6 +77,7 @@ interface IAccount {
     rawPending(): Promise<CipherBalance | undefined>;
     rawAEBalance(): Promise<AEBalance | undefined>;
     rawAEAuditBalance(): Promise<AEBalance | undefined>;
+    rate(): Promise<bigint>;
 
     // state handling
     decryptAEBalance(cipher: AEBalance, accountNonce: bigint): Promise<bigint>;
@@ -85,6 +86,8 @@ interface IAccount {
     balance(): Promise<bigint>
     decryptPending(accountState: AccountState): Promise<bigint>;
     pending(): Promise<bigint>
+    erc20ToTongo(erc20Amount: bigint): Promise<bigint>;
+    tongoToErc20(tongoAmount: bigint): Promise<bigint>;
 
     // ex post
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost;
@@ -138,6 +141,28 @@ export class Account implements IAccount {
     async state(): Promise<AccountState> {
         const state = await this.Tongo.get_state(this.publicKey);
         return Account.parseAccountState(state);
+    }
+
+    async rate(): Promise<bigint> {
+        const rate = await this.Tongo.get_rate();
+        return castBigInt(rate);
+    }
+
+    // Warning: This is only for display. This is not the correct amount
+    // of tongos that corresponds to arc20Amount
+    async erc20ToTongo(erc20Amount: bigint) : Promise<bigint> {
+        const rate = await this.rate();
+        let temp = erc20Amount / rate; 
+        if (erc20Amount % rate != 0n )  {
+            return temp + 1n;
+        } else {
+            return temp;
+        }
+    }
+
+    async tongoToErc20(tongoAmount: bigint): Promise<bigint> {
+        const rate = await this.rate();
+        return tongoAmount * rate;
     }
 
     async stateDeciphered(): Promise<AccountStateDeciphered> {

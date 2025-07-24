@@ -55,7 +55,8 @@ export class FundOperation implements IFundOperation {
         const erc20 = await this.Tongo.ERC20();
         const erc20_addres = num.toHex(erc20);
         const tongo_address = this.Tongo.address;
-        const amount = cairo.uint256(this.amount);
+        const rate = await this.Tongo.rate();
+        const amount = cairo.uint256(this.amount * rate);
         let calldata = CallData.compile({ "spender": tongo_address, "amount": amount });
         this.approve = { contractAddress: erc20_addres, entrypoint: "approve", calldata };
     }
