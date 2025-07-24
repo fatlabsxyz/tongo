@@ -22,6 +22,7 @@ pub struct RolloverEvent {
     pub to: PubKey,
     #[key]
     pub nonce: u64,
+    pub rollovered: CipherBalance,
 }
 
 #[derive(Drop, starknet::Event)]
@@ -45,8 +46,10 @@ pub struct TransferEvent {
     #[key]
     pub nonce: u64,
     pub auditorPubKey: PubKey,
-    pub auditedBalanceLeft: CipherBalance,
-    pub auditedBalanceSend: CipherBalance,
+    pub auditedBalanceSelf: CipherBalance,
+    pub auditedBalance: CipherBalance,
+    pub transferBalance: CipherBalance,
+    pub transferBalanceSelf: CipherBalance,
 }
 
 

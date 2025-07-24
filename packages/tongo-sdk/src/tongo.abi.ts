@@ -757,12 +757,22 @@ export const tongoAbi = [
                 "kind": "data"
             },
             {
-                "name": "auditedBalanceLeft",
+                "name": "auditedBalanceSelf",
                 "type": "tongo::structs::common::cipherbalance::CipherBalance",
                 "kind": "data"
             },
             {
-                "name": "auditedBalanceSend",
+                "name": "auditedBalance",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance",
+                "kind": "data"
+            },
+            {
+                "name": "transferBalance",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance",
+                "kind": "data"
+            },
+            {
+                "name": "transferBalanceSelf",
                 "type": "tongo::structs::common::cipherbalance::CipherBalance",
                 "kind": "data"
             }
@@ -814,6 +824,11 @@ export const tongoAbi = [
                 "name": "nonce",
                 "type": "core::integer::u64",
                 "kind": "key"
+            },
+            {
+                "name": "rollovered",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance",
+                "kind": "data"
             }
         ]
     },

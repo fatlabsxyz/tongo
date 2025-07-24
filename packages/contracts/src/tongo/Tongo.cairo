@@ -163,7 +163,7 @@ pub mod Tongo {
             self.overwrite_ae_balances(from, ae_hints);
             self .emit(
                 TransferEvent {
-                        to, from, nonce, auditorPubKey, auditedBalanceLeft: auditedBalanceSelf, auditedBalanceSend: transferBalance
+                        to, from, nonce, auditorPubKey, auditedBalanceSelf, auditedBalance, transferBalance,  transferBalanceSelf
                     },
                 )
         }
@@ -173,9 +173,10 @@ pub mod Tongo {
             let nonce = self.get_nonce(to);
             let inputs: InputsRollOver = InputsRollOver { y: to, nonce: nonce };
             verify_rollover(inputs, proof);
+            let rollovered = self.pending.entry(to).read();
             self.pending_to_balance(to);
             self.increase_nonce(to);
-            self.emit(RolloverEvent { to, nonce });
+            self.emit(RolloverEvent { to, nonce, rollovered});
         }
 
         fn ERC20(self: @ContractState) -> ContractAddress {
