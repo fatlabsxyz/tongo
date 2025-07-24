@@ -1,3 +1,10 @@
+
+#[derive(Drop, Serde, Copy)]
+pub struct AEHints {
+    pub ae_balance: AEBalance,
+    pub ae_audit_balance: AEBalance,
+}
+
 use core::integer::u512;
 use starknet::storage_access::StorePacking;
 

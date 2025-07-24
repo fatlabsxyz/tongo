@@ -1,52 +1,29 @@
-use starknet::ContractAddress;
-use crate::ae_balance::AEBalance;
-use crate::verifier::structs::{
-    AEHints, CipherBalance, Fund, PubKey, Rollover, Transfer, Withdraw, WithdrawAll,
-};
-
-#[derive(Serde, Drop, Debug, Copy)]
-pub struct State {
-    balance: Option<CipherBalance>,
-    pending: Option<CipherBalance>,
-    audit: Option<CipherBalance>,
-    nonce: u64,
-    ae_balance: Option<AEBalance>,
-    ae_audit_balance: Option<AEBalance>,
-}
-
-#[starknet::interface]
-pub trait ITongo<TContractState> {
-    fn fund(ref self: TContractState, fund: Fund);
-    fn rollover(ref self: TContractState, rollover: Rollover);
-    fn withdraw_all(ref self: TContractState, withdraw_all: WithdrawAll);
-    fn withdraw(ref self: TContractState, withdraw: Withdraw);
-    fn transfer(ref self: TContractState, transfer: Transfer);
-    fn get_balance(self: @TContractState, y: PubKey) -> CipherBalance;
-    fn get_audit(self: @TContractState, y: PubKey) -> CipherBalance;
-    fn get_pending(self: @TContractState, y: PubKey) -> CipherBalance;
-    fn get_nonce(self: @TContractState, y: PubKey) -> u64;
-    fn ERC20(self: @TContractState) -> ContractAddress;
-    fn get_state(self: @TContractState, y: PubKey) -> State;
-    fn change_auditor_key(ref self: TContractState, new_auditor_key:PubKey);
-    fn auditor_key(self: @TContractState) -> PubKey;
-}
 
 #[starknet::contract]
 pub mod Tongo {
+    //TODO: Decidir en donde meter STate
+    use crate::tongo::ITongo::{ITongo, State};
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use crate::ae_balance::{AEBalance, IntoOptionAEBalance};
+    use crate::structs::aecipher::{AEBalance, IntoOptionAEBalance, AEHints};
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use crate::verifier::structs::{
-        CipherBalance, CipherBalanceTrait, InputsFund, InputsTransfer, InputsWithdraw,
-        IntoOptionCipherBalance, PubKey, StarkPoint, Validate,
+    use crate::structs::common::{
+        cipherbalance::{CipherBalance, CipherBalanceTrait},
+        pubkey::PubKey,
+    };
+    use crate::structs::operations::{
+        fund::{InputsFund, Fund},
+        withdraw::{InputsWithdraw, Withdraw},
+        transfer::{InputsTransfer, Transfer},
+        ragequit::{InputsRagequit, Ragequit},
+        rollover::{InputsRollOver, Rollover},
     };
     use crate::verifier::verifier::{
-        verify_fund, verify_transfer, verify_withdraw, verify_withdraw_all,
+        verify_fund, verify_transfer, verify_withdraw, verify_ragequit,verify_rollover
     };
-    use super::{AEHints, Fund, Rollover, State, Transfer, Withdraw, WithdrawAll};
+    use crate::structs::events::{TransferEvent, FundEvent, RolloverEvent, WithdrawEvent, RagequitEvent};
 
     #[storage]
     // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
@@ -59,7 +36,7 @@ pub mod Tongo {
         ae_audit_balance: Map<PubKey, AEBalance>,
         pending: Map<PubKey, CipherBalance>,
         nonce: Map<PubKey, u64>,
-        auditor_key: PubKey,
+        auditor_key:PubKey,
         owner: ContractAddress,
         ERC20: ContractAddress,
     }
@@ -78,54 +55,18 @@ pub mod Tongo {
         FundEvent: FundEvent,
         RolloverEvent: RolloverEvent,
         WithdrawEvent: WithdrawEvent,
+        RagequitEvent: RagequitEvent,
     }
 
-    #[derive(Drop, starknet::Event)]
-    pub struct TransferEvent {
-        #[key]
-        pub to: PubKey,
-        #[key]
-        pub from: PubKey,
-        #[key]
-        pub nonce: u64,
-        pub cipherbalance: CipherBalance,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct FundEvent {
-        #[key]
-        pub to: PubKey,
-        #[key]
-        pub nonce: u64,
-        pub amount: u64,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct RolloverEvent {
-        #[key]
-        pub to: PubKey,
-        #[key]
-        pub nonce: u64,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct WithdrawEvent {
-        #[key]
-        pub from: PubKey,
-        #[key]
-        pub nonce: u64,
-        pub amount: u64,
-        pub to: ContractAddress,
-    }
 
     #[abi(embed_v0)]
-    impl TongoImpl of super::ITongo<ContractState> {
+    impl TongoImpl of ITongo<ContractState> {
+        //TODO: update the rolloverproof to emit audit 
         fn rollover(ref self: ContractState, rollover: Rollover) {
-            rollover.validate();
             let Rollover { to, proof } = rollover;
             let nonce = self.get_nonce(to);
-            let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
-            verify_fund(inputs, proof);
+            let inputs: InputsRollOver = InputsRollOver { y: to.try_into().unwrap(), nonce: nonce };
+            verify_rollover(inputs, proof);
             self.pending_to_balance(to);
             self.increase_nonce(to);
             self.emit(RolloverEvent { to, nonce });
@@ -133,11 +74,12 @@ pub mod Tongo {
 
         /// Transfer some STARK to Tongo contract and assing some Tongo to account y
         fn fund(ref self: ContractState, fund: Fund) {
-            fund.validate();
-            let Fund { to, amount, proof, ae_hints } = fund;
+            let Fund { to, amount, proof, ae_hints, auditedBalance, auxBalance} = fund;
             let nonce = self.get_nonce(to);
+            let currentBalance = self.get_balance(to);
+            let auditorPubKey = self.auditor_key();
 
-            let inputs: InputsFund = InputsFund { y: to, nonce: nonce };
+            let inputs: InputsFund = InputsFund { y: to.try_into().unwrap(), nonce, amount, auxBalance, currentBalance, auditedBalance, auditorPubKey: auditorPubKey.try_into().unwrap() };
             verify_fund(inputs, proof);
 
             //get the transfer amount from the sender
@@ -147,111 +89,98 @@ pub mod Tongo {
             let cipher = CipherBalanceTrait::new(to, amount, 'fund');
             self.add_balance(to, cipher);
 
-            let cipher_audit = CipherBalanceTrait::new(self.auditor_key.read(), amount, 'fund');
-            self.add_audit(to, cipher_audit);
+            self.set_audit(to, auditedBalance);
 
             self.overwrite_ae_balances(to, ae_hints);
             self.increase_nonce(to);
-            self.emit(FundEvent { to, amount: amount.try_into().unwrap(), nonce });
+            self.emit(FundEvent { to, amount: amount.try_into().unwrap(), nonce , auditorPubKey, auditedBalanceLeft: auditedBalance});
         }
 
         /// Withdraw some tongo from acount and send the stark to the recipient
         fn withdraw(ref self: ContractState, withdraw: Withdraw) {
-            withdraw.validate();
-            let Withdraw { from, amount, to, proof, ae_hints } = withdraw;
+            let Withdraw { from, amount, auditedBalance, to, proof, ae_hints } = withdraw;
 
-            let balance = self.get_balance(from);
-
+            let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
-            let inputs: InputsWithdraw = InputsWithdraw {
-                y: from, amount, nonce, to, L: balance.CL, R: balance.CR,
-            };
+            let auditorPubKey = self.auditor_key();
+            
+            let inputs: InputsWithdraw = InputsWithdraw { y: from.try_into().unwrap(), amount, nonce, to, currentBalance, auditedBalance, auditorPubKey: auditorPubKey.try_into().unwrap()};
             verify_withdraw(inputs, proof);
 
             let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
             self.remove_balance(from, cipher);
 
-            let cipher = CipherBalanceTrait::new(self.auditor_key.read(), amount, 'withdraw');
-            self.remove_audit(from, cipher);
+            self.set_audit(from, auditedBalance);
             self.increase_nonce(from);
 
             self.transfer_to(to, amount);
             self.overwrite_ae_balances(from, ae_hints);
-            self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce });
+            self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce , auditorPubKey, auditedBalanceLeft: auditedBalance});
         }
 
         /// Withdraw ALL tongo from acount and send the stark to the recipient
-        fn withdraw_all(ref self: ContractState, withdraw_all: WithdrawAll) {
-            withdraw_all.validate();
-            let WithdrawAll { from, amount, to, proof, ae_hints } = withdraw_all;
-
-            //TODO: The recipient ContractAddress has to be signed by x otherwhise the proof can be
-            //frontruned.
-            let balance = self.get_balance(from);
+        fn ragequit(ref self: ContractState, ragequit: Ragequit) {
+            let Ragequit { from, amount, to, proof, ae_hints } = ragequit;
+            //TODO: add validations
+            let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
-            let inputs: InputsWithdraw = InputsWithdraw {
-                y: from, amount, nonce, to, L: balance.CL, R: balance.CR,
+            let auditorPubKey = self.auditor_key();
+            let inputs: InputsRagequit = InputsRagequit {
+                y: from.try_into().unwrap(), amount, nonce, to, currentBalance,
             };
-            verify_withdraw_all(inputs, proof);
+            verify_ragequit(inputs, proof);
 
-            let cipher = CipherBalanceTrait::new(self.auditor_key.read(), amount, 'withdraw');
-            self.remove_audit(from, cipher);
+            let auditedZeroBalance = CipherBalanceTrait::new(auditorPubKey, 0, 1);
+            self.set_audit(from, auditedZeroBalance);
+
+            let zeroBalance: CipherBalance  = CipherBalanceTrait::new(from, 0, 1);
+            self.balance.entry(from).write(zeroBalance.into());
+
             self.increase_nonce(from);
 
-            //TODO: Revisar esto
-            self
-                .balance
-                .entry(from)
-                .write(
-                    CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } },
-                );
             self.overwrite_ae_balances(from, ae_hints);
 
             self.transfer_to(to, amount);
-            self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce });
+            self.emit(RagequitEvent { from, amount: amount.try_into().unwrap(), to, nonce });
         }
 
         /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done
         /// w.r.t the balance stored in Balance plus Pending and to the nonce stored in the
         /// contract.
         fn transfer(ref self: ContractState, transfer: Transfer) {
-            transfer.validate();
-            let Transfer { from, to, L, L_bar, L_audit, R, proof, ae_hints } = transfer;
+            let Transfer { from, to, transferBalance, transferBalanceSelf, auditedBalance, auditedBalanceSelf, proof, ae_hints} = transfer;
 
-            let balance = self.get_balance(from);
+            let currentBalance= self.get_balance(from);
             let nonce = self.get_nonce(from);
+            let auditorPubKey = self.auditor_key.read();
 
             let inputs: InputsTransfer = InputsTransfer {
-                y: from,
-                y_bar: to,
-                nonce: nonce,
-                CL: balance.CL,
-                CR: balance.CR,
-                R: R,
-                L: L,
-                L_bar: L_bar,
-                L_audit: L_audit,
-                y_audit: self.auditor_key(),
+                y: from.try_into().unwrap(),
+                y_bar: to.try_into().unwrap(),
+                nonce,
+                auditorPubKey: auditorPubKey.try_into().unwrap(),
+                currentBalance,
+                transferBalance,
+                transferBalanceSelf,
+                auditedBalance,
+                auditedBalanceSelf,
             };
 
             verify_transfer(inputs, proof);
 
             // verificar la prueva with respect to balance + pending
 
-            self.remove_balance(from, CipherBalance { CL: L, CR: R });
+            self.remove_balance(from, transferBalanceSelf);
 
             //TODO: Acomodar el audit
-            self.remove_audit(from, CipherBalance { CL: L_audit, CR: R });
+            self.set_audit(from, auditedBalanceSelf);
 
-            self.add_pending(to, CipherBalance { CL: L_bar, CR: R });
-            //TODO: Acomodar el audit
-            self.add_audit(to, CipherBalance { CL: L_audit, CR: R });
+            self.add_pending(to, transferBalance);
             self.increase_nonce(from);
             self.overwrite_ae_balances(from, ae_hints);
-            self
-                .emit(
-                    TransferEvent {
-                        to, from, nonce, cipherbalance: CipherBalance { CL: L, CR: R },
+            self .emit(
+                TransferEvent {
+                        to, from, nonce, auditorPubKey, auditedBalanceLeft: auditedBalanceSelf, auditedBalanceSend: transferBalance
                     },
                 )
         }
@@ -261,7 +190,7 @@ pub mod Tongo {
         }
 
         fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
-            y.validate();
+//            y.validate();
             self.nonce.entry(y).read()
         }
 
@@ -269,21 +198,21 @@ pub mod Tongo {
         /// points of the stark curve. (L,R) = ((Lx, Ly), (Rx, Ry )) = (g**b y**r , g**r) for some
         /// random r.
         fn get_balance(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.balance.entry(y).read()
+            self.balance.entry(y).read().handle_null(y).into()
         }
 
         fn get_audit(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.audit_balance.entry(y).read()
+            self.audit_balance.entry(y).read().handle_null(self.auditor_key()).into()
         }
 
         fn get_pending(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.pending.entry(y).read()
+            self.pending.entry(y).read().handle_null(y).into()
         }
 
         fn get_state(self: @ContractState, y: PubKey) -> State {
-            let balance = IntoOptionCipherBalance::into(self.balance.entry(y).read());
-            let pending = IntoOptionCipherBalance::into(self.pending.entry(y).read());
-            let audit = IntoOptionCipherBalance::into(self.audit_balance.entry(y).read());
+            let balance = self.balance.entry(y).read().handle_null(y).into();
+            let pending = self.pending.entry(y).read().handle_null(y).into();
+            let audit = self.audit_balance.entry(y).read().handle_null(self.auditor_key.read()).into();
             let nonce = self.nonce.entry(y).read();
             let ae_balance = IntoOptionAEBalance::into(self.ae_balance.entry(y).read());
             let ae_audit_balance = IntoOptionAEBalance::into(self.ae_audit_balance.entry(y).read());
@@ -304,67 +233,71 @@ pub mod Tongo {
     pub impl PrivateImpl of IPrivate {
         fn add_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
             let old_balance = self.balance.entry(y).read();
-            if old_balance.is_zero() {
-                self.balance.entry(y).write(new_balance);
+            if old_balance.is_null() {
+                self.balance.entry(y).write(new_balance.into());
             } else {
-                let sum = old_balance.add(new_balance);
+                let sum = old_balance.add(new_balance.into());
                 self.balance.entry(y).write(sum);
             }
         }
 
         fn remove_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
             let old_balance = self.balance.entry(y).read();
-            if old_balance.is_zero() {
-                self.balance.entry(y).write(new_balance);
+            if old_balance.is_null() {
+                self.balance.entry(y).write(new_balance.into());
             } else {
-                let sum = old_balance.remove(new_balance);
+                let sum = old_balance.remove(new_balance.into());
                 self.balance.entry(y).write(sum);
             }
         }
 
         fn add_pending(ref self: ContractState, y: PubKey, new_pending: CipherBalance) {
             let old_pending = self.pending.entry(y).read();
-            if old_pending.is_zero() {
-                self.pending.entry(y).write(new_pending);
+            if old_pending.is_null() {
+                self.pending.entry(y).write(new_pending.into());
             } else {
-                let sum = old_pending.add(new_pending);
+                let sum = old_pending.add(new_pending.into());
                 self.pending.entry(y).write(sum);
             }
         }
 
         fn pending_to_balance(ref self: ContractState, y: PubKey) {
             let pending = self.pending.entry(y).read();
-            if pending.is_zero() {
+            if pending.is_null() {
                 return;
             }
-            self.add_balance(y, pending);
+            self.add_balance(y, pending.into());
             self
                 .pending
-                .entry(y)
+                .entry(y.into())
                 .write(
-                    CipherBalance { CL: StarkPoint { x: 0, y: 0 }, CR: StarkPoint { x: 0, y: 0 } },
+                    CipherBalanceTrait::null()
                 );
         }
 
 
         fn add_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
             let old_audit = self.audit_balance.entry(y).read();
-            if old_audit.is_zero() {
-                self.audit_balance.entry(y).write(new_audit);
+            if old_audit.is_null() {
+                self.audit_balance.entry(y).write(new_audit.into());
             } else {
-                let sum = old_audit.add(new_audit);
+                let sum = old_audit.add(new_audit.into());
                 self.audit_balance.entry(y).write(sum);
             }
         }
 
         fn remove_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
             let old_audit = self.audit_balance.entry(y).read();
-            if old_audit.is_zero() {
-                self.audit_balance.entry(y).write(new_audit);
+            if old_audit.is_null() {
+                self.audit_balance.entry(y).write(new_audit.into());
             } else {
-                let sum = old_audit.remove(new_audit);
+                let sum = old_audit.remove(new_audit.into());
                 self.audit_balance.entry(y).write(sum);
             }
+        }
+
+        fn set_audit(ref self: ContractState, y:PubKey, new_audit: CipherBalance) {
+            self.audit_balance.entry(y).write(new_audit.into());
         }
 
         fn get_transfer(self: @ContractState, amount: felt252) {

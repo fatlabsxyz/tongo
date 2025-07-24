@@ -1,11 +1,14 @@
+
+use tongo::tongo::ITongo::ITongoDispatcherTrait;
+use tongo::structs::{
+    operations::transfer::Transfer,
+};
+use crate::consts::AUDITOR_KEY;
+use crate::tongo::fund::fund_account;
 use crate::tongo::setup::{setup_tongo, empty_ae_hint};
 use crate::prover::utils::{generate_random};
-use crate::prover::functions::{prove_transfer, prove_fund};
-
-use tongo::main::ITongoDispatcherTrait;
-use tongo::verifier::structs::{Fund, Transfer};
-use tongo::verifier::structs::{PubKeyTrait};
-use crate::consts::AUDITOR_KEY;
+use crate::prover::functions::{prove_transfer};
+use crate::prover::utils::pubkey_from_secret;
 
 #[test]
 fn test_transfer() {
@@ -13,30 +16,29 @@ fn test_transfer() {
     let (_address, dispatcher) = setup_tongo();
 
     let x = generate_random(seed, 1);
-    let y = PubKeyTrait::from_secret(x);
+    let y = pubkey_from_secret(x);
     let x_bar = generate_random(seed, 2);
-    let y_bar = PubKeyTrait::from_secret(x_bar);
+    let y_bar = pubkey_from_secret(x_bar);
 
-    let nonce = dispatcher.get_nonce(y);
-    let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
+    let initial_balance = 0;
+    let initial_fund = 250;
+    fund_account(x, initial_balance, initial_fund , dispatcher );
 
-    let b0 = 3124;
-    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof, ae_hints: empty_ae_hint() });
 
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);
 
     let b = 100;
-    let (inputs, proof) = prove_transfer(x, y_bar, b0, b, balance.CL, balance.CR, AUDITOR_KEY(), nonce, seed + 1);
+    let (inputs, proof) = prove_transfer(x, y_bar, initial_fund, b,AUDITOR_KEY(), balance, nonce, seed + 1);
     dispatcher
         .transfer(
             Transfer {
-                from: inputs.y,
-                to: inputs.y_bar,
-                L: inputs.L,
-                L_bar: inputs.L_bar,
-                L_audit: inputs.L_audit,
-                R: inputs.R,
+                from: y,
+                to: y_bar,
+                transferBalance: inputs.transferBalance,
+                transferBalanceSelf: inputs.transferBalanceSelf,
+                auditedBalance: inputs.auditedBalance,
+                auditedBalanceSelf: inputs.auditedBalanceSelf,
                 proof,
                 ae_hints: empty_ae_hint()
             }
@@ -49,21 +51,19 @@ fn test_benchmark_prover() {
     let (_address, dispatcher) = setup_tongo();
 
     let x = generate_random(seed, 1);
-    let y = PubKeyTrait::from_secret(x);
+    let y = pubkey_from_secret(x);
     let x_bar = generate_random(seed, 2);
-    let y_bar = PubKeyTrait::from_secret(x_bar);
-    let nonce = dispatcher.get_nonce(y);
+    let y_bar = pubkey_from_secret(x_bar);
 
-    let (_fund_inputs, fund_proof) = prove_fund(x, nonce, generate_random(seed + 1, 1));
 
-    let b0 = 3124;
-    dispatcher.fund(Fund { to: y, amount: b0, proof: fund_proof, ae_hints: empty_ae_hint() });
+    let initial_balance = 0;
+    let initial_fund = 250;
+    fund_account(x, initial_balance, initial_fund , dispatcher );
+
 
     let balance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);
 
     let b = 100;
-    let (_inputs, _proof) = prove_transfer(
-        x, y_bar, b0, b, balance.CL, balance.CR, AUDITOR_KEY(), nonce, seed + 1
-    );
+    let _ = prove_transfer(x, y_bar, initial_fund, b,AUDITOR_KEY(), balance, nonce, seed + 1);
 }

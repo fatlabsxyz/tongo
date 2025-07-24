@@ -4,10 +4,13 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::ContractAddress;
-use tongo::main::ITongoDispatcher;
-use tongo::verifier::structs::{AEHints, PubKeyTrait};
+use tongo::tongo::ITongo::ITongoDispatcher;
+use tongo::structs::{
+    aecipher::AEHints,
+};
 
 use crate::consts::{TONGO_ADDRESS,STRK_ADDRESS,USER_CALLER, AUDITOR_PRIVATE, OWNER_ADDRESS};
+use crate::prover::utils::pubkey_from_secret;
 
 pub fn empty_ae_hint() -> AEHints {
     AEHints { ae_balance: Default::default(), ae_audit_balance: Default::default() }
@@ -33,7 +36,7 @@ pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
     let _erc20 = setup_erc20();
     let (tongo_contract, _tongo_class_hash) = declare_class("Tongo");
 
-    let audit_key = PubKeyTrait::from_secret(AUDITOR_PRIVATE);
+    let audit_key = pubkey_from_secret(AUDITOR_PRIVATE);
     let constructor_calldata: Array<felt252> = array![OWNER_ADDRESS.into(), audit_key.x, audit_key.y, STRK_ADDRESS.into()];
     let tongo_address = deploy_contract(
         tongo_contract, TONGO_ADDRESS.try_into().unwrap(), constructor_calldata,
