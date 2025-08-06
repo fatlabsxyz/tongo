@@ -1,83 +1,81 @@
-use core::ec::{EcStateTrait, EcPointTrait, NonZeroEcPoint, EcPoint};
+use core::ec::{ EcPointTrait, NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
-use crate::verifier::utils::{in_order};
 use crate::verifier::utils::{generator_h};
-use crate::verifier::utils::{feltXOR};
-use crate::verifier::utils::{compute_prefix, challenge_commits2};
-use crate::verifier::structs::{InputsWithdraw, ProofOfBit, ProofOfWitdhrawAll, ProofOfBit2};
-use crate::verifier::structs::{InputsTransfer, ProofOfTransfer};
-use crate::verifier::structs::{ProofOfWithdraw};
-use crate::verifier::structs::{InputsFund, ProofOfFund};
-use crate::verifier::structs::{StarkPoint};
-use crate::errors::{FUND, WITHDRAW, TRANSFER};
+use crate::structs::operations::{
+    fund::{ InputsFund, ProofOfFund },
+    withdraw::{ InputsWithdraw, ProofOfWithdraw },
+    transfer::{ InputsTransfer, ProofOfTransfer },
+    rollover::{ InputsRollOver, ProofOfRollOver },
+    ragequit::{ InputsRagequit, ProofOfRagequit },
+};
+use crate::structs::common::{
+    cipherbalance::CipherBalanceTrait,
+};
+use crate::structs::errors::{FUND, WITHDRAW, TRANSFER};
+use crate::structs::traits::{Prefix, Challenge};
 
+use crate::verifier::she::{
+    poe,
+    poe2,
+    verify_range,
+};
 
-/// Proof of Exponent: validate a proof of knowledge of the exponent y = g ** x. The sigma protocol
-/// runs as follow: 
-/// P:  k <-- R        sends    A = g ** k
-/// V:  c <-- R        sends    c
-/// P:  s = k + c*x    sends    s
-/// The verifier asserts:
-/// - g**s == A * (y**c)
-pub fn poe(
-    y: NonZeroEcPoint, g: NonZeroEcPoint, A: NonZeroEcPoint, c: felt252, s: felt252
-) -> bool {
-    assert!(in_order(c), "failed");
-    assert!(in_order(s), "failed");
-
-    let mut state = EcStateTrait::init();
-    state.add(A);
-    state.add_mul(c, y);
-    let RHS = state.finalize_nz().unwrap();
-    let LHS = (g.into().mul(s)).try_into().unwrap();
-
-    LHS.coordinates() == RHS.coordinates()
-}
-
-
-/// Proof of Exponent 2: validate a proof of knowledge of the exponent y = g1**x1 g2**x2. The sigma
-/// protocol runs as follows:
-/// P:  k1,k2 <-- R        sends    A = g1**k1 g2**k2
-/// V:  c <-- R            sends    c
-/// P:  s1 = k1 + c*x1
-/// P:  s2 = k2 + c*x1      send s1, s1
-/// The verifier asserts:
-/// - g1**s1 g2**s2 == A * (y**c)
-pub fn poe2(
-    y: NonZeroEcPoint,
-    g1: NonZeroEcPoint,
-    g2: NonZeroEcPoint,
-    A: NonZeroEcPoint,
-    c: felt252,
-    s1: felt252,
-    s2: felt252
-) -> bool {
-    let mut state = EcStateTrait::init();
-    state.add_mul(s1, g1);
-    state.add_mul(s2, g2);
-    let LHS = state.finalize_nz().unwrap();
-
-    let mut state = EcStateTrait::init();
-    state.add(A);
-    state.add_mul(c, y);
-    let RHS = state.finalize_nz().unwrap();
-
-    LHS.coordinates() == RHS.coordinates()
-}
 
 /// Verify knowledge of x such that y = g**x
-pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund) {
-    let mut seq: Array<felt252> = array!['fund', inputs.y.x, inputs.y.y, inputs.nonce.into(),];
-    let prefix = compute_prefix(ref seq);
-    let mut commits = array![proof.Ax];
-    let c = challenge_commits2(prefix, ref commits);
+pub fn verify_rollover(inputs: InputsRollOver, proof: ProofOfRollOver) {
+    let prefix = inputs.prefix();
+    let c = proof.compute_challenge(prefix);
 
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let res = poe(inputs.y.try_into().unwrap(), g, proof.Ax.try_into().unwrap(), c, proof.sx);
+    //TODO: Handle the error code
     assert(res, FUND::F100);
 }
 
+//TODO: Doc
+pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund) {
+    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
+
+    let (L,R) = inputs.auxBalance.points_nz();
+    let (L_audit, R_audit) = inputs.auditedBalance.points();
+    let (L0, R0) = inputs.currentBalance.points();
+    //TODO: handle this errorcode
+    assert!(R_audit.try_into().unwrap().coordinates() == R.try_into().unwrap().coordinates(),"nope");
+    
+    let prefix = inputs.prefix();
+//    let mut commits: Array<StarkPoint> = array![proof.Ax.into(), proof.Ar.into(), proof.Ab.into(),proof.A_auditor.into(), proof.AUX_A.into()];
+    let c = proof.compute_challenge(prefix);
+//    let c = challenge_commits2(prefix, ref commits);
+
+
+    let res = poe(inputs.y.try_into().unwrap(), g, proof.Ax.try_into().unwrap(), c, proof.sx);
+    assert(res, FUND::F100);
+
+    let res = poe(R,g,proof.Ar.try_into().unwrap(),c, proof.sr);
+    assert(res, 'Error 1');
+
+    let res =  poe2(L,g,inputs.y.try_into().unwrap(),proof.Ab.try_into().unwrap(), c, proof.sb,proof.sr);
+    assert(res, 'Error 2');
+
+
+    let g_amount = g.into().mul(inputs.amount);
+    let AUX_L_auditor:NonZeroEcPoint = (L_audit.into() - g_amount).try_into().unwrap();
+    let res =  poe2(AUX_L_auditor, g, inputs.auditorPubKey.try_into().unwrap(), proof.A_auditor.try_into().unwrap(), c, proof.sb,proof.sr);
+    assert(res, 'Error 3');
+
+
+    let AUX_L:NonZeroEcPoint = (L0 - L.into()).try_into().unwrap();
+    let AUX_R:NonZeroEcPoint = (R0 - R.into()).try_into().unwrap();
+    let res =  poe(AUX_L, AUX_R,proof.AUX_A.try_into().unwrap(),c, proof.sx);
+    //TODO: Handle Error
+    assert(res, 'Error 4');
+
+
+}
+
+
+///TODO: Update
 /// Proof of Withdraw All: validate the proof needed for withdraw all balance b. The cipher balance is
 /// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the
 /// correct balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r =
@@ -88,52 +86,58 @@ pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund) {
 /// The verifier asserts:
 /// - g**s == Ax * (y**c)
 /// - R**s == Acr * (L/g**b)**c
-pub fn verify_withdraw_all(inputs: InputsWithdraw, proof: ProofOfWitdhrawAll) {
-    let mut seq: Array<felt252> = array![
-        'withdraw_all', inputs.y.x, inputs.y.y, inputs.to.into(), inputs.nonce.into(),
-    ];
-    let prefix = compute_prefix(ref seq);
-    let mut commits = array![proof.A_x, proof.A_cr];
-    let c = challenge_commits2(prefix, ref commits);
+pub fn verify_ragequit(inputs: InputsRagequit, proof: ProofOfRagequit) {
+    let prefix = inputs.prefix();
+    let c = proof.compute_challenge(prefix);
 
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
+    let (L, R) = inputs.currentBalance.points_nz();
     let res = poe(inputs.y.try_into().unwrap(), g, proof.A_x.try_into().unwrap(), c, proof.s_x);
     assert(res, WITHDRAW::W100);
 
-    let L: EcPoint = inputs.L.try_into().unwrap();
 
     let g_b = EcPointTrait::mul(g.into(), inputs.amount);
-    let Y: NonZeroEcPoint = (L - g_b.try_into().unwrap()).try_into().unwrap();
+    let Y: NonZeroEcPoint = (L.into() - g_b).try_into().unwrap();
 
-    let res = poe(Y, inputs.R.try_into().unwrap(), proof.A_cr.try_into().unwrap(), c, proof.s_x);
+    let res = poe(Y, R, proof.A_cr.try_into().unwrap(), c, proof.s_x);
     assert(res, WITHDRAW::W101);
 }
 
 
+//TODO: Check this function 
 pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
-    let mut seq: Array<felt252> = array![
-        'withdraw', inputs.y.x, inputs.y.y, inputs.to.into(), inputs.nonce.into(),
-    ];
-    let prefix = compute_prefix(ref seq);
-
-    let mut commits = array![proof.A_x, proof.A, proof.A_v];
-    let c = challenge_commits2(prefix, ref commits);
-
+    let prefix = inputs.prefix();
+    let c = proof.compute_challenge(prefix);
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
+
+    let (L0,R0) = inputs.currentBalance.points_nz();
+    let (L_audit, R_audit) = inputs.auditedBalance.points_nz();
+
+    //This is to assert knowledge of x such that y = g**x
     let res = poe(inputs.y.try_into().unwrap(), g, proof.A_x.try_into().unwrap(), c, proof.sx);
     assert(res, WITHDRAW::W100);
 
-    let g_b = EcPointTrait::mul(g.into(), inputs.amount).try_into().unwrap();
-    let L: EcPoint = inputs.L.try_into().unwrap();
-    let Y: NonZeroEcPoint = (L - g_b).try_into().unwrap();
+    //This is to assert knowledge of r such that R_audit = g**r
+    let res = poe(R_audit, g, proof.A_r.try_into().unwrap(), c, proof.sr);
+    assert(res, 'nope1');
+
+    //This is to assert knowledge of amount_left and r (the same) such thad L_audit == g**amount_left y_audit**r
+    let res = poe2(L_audit, g, inputs.auditorPubKey.try_into().unwrap(),proof.A_auditor.try_into().unwrap(),c,proof.sb,proof.sr);
+    assert(res, 'nope2');
+
+    //This to assert that amount_left+b is the amount actually stored in the balance of the account
+    let g_b = g.into().mul(inputs.amount);
+    let Y: NonZeroEcPoint = (L0.into() - g_b).try_into().unwrap();
     let res = poe2(
-        Y, g, inputs.R.try_into().unwrap(), proof.A.try_into().unwrap(), c, proof.sb, proof.sx
+        Y, g, R0, proof.A.try_into().unwrap(), c, proof.sb, proof.sx
     );
     assert(res, WITHDRAW::W103);
 
+    //This assert that V = g**amount h**r (with the same r as before, and amount>0)
     let V = verify_range(proof.range);
+    //This is to assert that V == g**amount_left * h**r with the same amount_left as before (this proves that amount_left==amount > 0)
     let res = poe2(
-        V.try_into().unwrap(),
+        V,
         g,
         generator_h(),
         proof.A_v.try_into().unwrap(),
@@ -158,32 +162,23 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
 /// 6) The proof neceary to show that the remaining balance is in range.
 /// TODO: finish the doc
 pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
-    //TODO: update this
-    let mut seq: Array<felt252> = array![
-        'transfer',
-        inputs.y.x,
-        inputs.y.y,
-        inputs.y_bar.x,
-        inputs.y_bar.y,
-        inputs.L.x,
-        inputs.L.y,
-        inputs.R.x,
-        inputs.R.y,
-        inputs.nonce.into(),
-    ];
-    let prefix = compute_prefix(ref seq);
+    let (CL, CR) = inputs.currentBalance.points();
+    let (L,R) = inputs.transferBalanceSelf.points_nz();
+    let (L_bar,R_bar) = inputs.transferBalance.points_nz();
+    //TODO: errorcode maybe write this in the validate
+    assert(R.coordinates() == R_bar.coordinates(), 'Nope');
 
-    let mut commits = array![
-        proof.A_x,
-        proof.A_r,
-        proof.A_b,
-        proof.A_b2,
-        proof.A_v,
-        proof.A_v2,
-        proof.A_bar,
-        proof.A_audit,
-    ];
-    let c = challenge_commits2(prefix, ref commits);
+    let (L_audit,R_audit) = inputs.auditedBalance.points_nz();
+    //TODO: errorcode maybe write this in the validate
+    assert(R.coordinates() == R_audit.coordinates(), 'Nope');
+
+    //TODO: add POE for R_audit == g**r2
+    let (L_audit_self,R_audit_self) = inputs.auditedBalanceSelf.points_nz();
+
+    //TODO: add things to this
+    let prefix = inputs.prefix();
+    let c = proof.compute_challenge(prefix);
+
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
     // This is for asserting knowledge of x
@@ -191,12 +186,12 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     assert(res, TRANSFER::T100);
 
     // This is for asserting R = g**r
-    let res = poe(inputs.R.try_into().unwrap(), g, proof.A_r.try_into().unwrap(), c, proof.s_r);
+    let res = poe(R, g, proof.A_r.try_into().unwrap(), c, proof.s_r);
     assert(res, TRANSFER::T101);
 
     //This is for asserting L = g**b y**r
     let res = poe2(
-        inputs.L.try_into().unwrap(),
+        L,
         g,
         inputs.y.try_into().unwrap(),
         proof.A_b.try_into().unwrap(),
@@ -208,7 +203,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
     //This is for asserting L_bar = g**b y_bar**r
     let res = poe2(
-        inputs.L_bar.try_into().unwrap(),
+        L_bar,
         g,
         inputs.y_bar.try_into().unwrap(),
         proof.A_bar.try_into().unwrap(),
@@ -220,9 +215,9 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
     //This is for asserting L_audit= g**b y_audit*r
     let res = poe2(
-        inputs.L_audit.try_into().unwrap(),
+        L_audit,
         g,
-        inputs.y_audit.try_into().unwrap(),
+        inputs.auditorPubKey.try_into().unwrap(),
         proof.A_audit.try_into().unwrap(),
         c,
         proof.s_b,
@@ -230,10 +225,28 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     );
     assert(res, TRANSFER::T104);
 
+
+    // This is for asserting R = g**r
+    let res = poe(R_audit_self, g, proof.A_r2.try_into().unwrap(), c, proof.s_r2);
+    assert!(res, "Nope");
+
+    //This is for asserting L_self_audit= g**b2 y_audit*r2
+    let res = poe2(
+        L_audit_self,
+        g,
+        inputs.auditorPubKey.try_into().unwrap(),
+        proof.A_self_audit.try_into().unwrap(),
+        c,
+        proof.s_b2,
+        proof.s_r2
+    );
+    //TODO: error code
+    assert!(res, "Nope");
+
     // Now we need to show that V = g**b h**r with the same b and r.
     let V = verify_range(proof.range);
     let res = poe2(
-        V.try_into().unwrap(),
+        V,
         g,
         generator_h(),
         proof.A_v.try_into().unwrap(),
@@ -243,13 +256,9 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     );
     assert(res, TRANSFER::T105);
 
-    let CL: EcPoint = inputs.CL.try_into().unwrap();
-    let L: EcPoint = inputs.L.try_into().unwrap();
-    let Y: NonZeroEcPoint = (CL - L).try_into().unwrap();
+    let Y: NonZeroEcPoint = (CL - L.into()).try_into().unwrap();
 
-    let CR: EcPoint = inputs.CR.try_into().unwrap();
-    let R: EcPoint = inputs.R.try_into().unwrap();
-    let G: NonZeroEcPoint = (CR - R).try_into().unwrap();
+    let G: NonZeroEcPoint = (CR - R.into()).try_into().unwrap();
     let res = poe2(Y, g, G, proof.A_b2.try_into().unwrap(), c, proof.s_b2, proof.s_x);
     assert(res, TRANSFER::T106);
 
@@ -257,7 +266,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     // This is for asserting that b2 is in range
     let V2 = verify_range(proof.range2);
     let res = poe2(
-        V2.try_into().unwrap(),
+        V2,
         g,
         generator_h(),
         proof.A_v2.try_into().unwrap(),
@@ -269,62 +278,3 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 }
 
 
-/// Proof of Bit: validate that a commited V = g**b h**r is the ciphertext of  either b=0 OR b=1.
-/// If b = 0 then V = h**r and a proof of exponet for r is enought. If b=1 then V/g = h**r could be
-/// also proven with a poe. This is combined in a OR statement and the protocol can valitates that
-/// one of the cases is valid without leak which one is valid.
-pub fn oneORzero(pi: ProofOfBit) {
-    let mut commits = array![pi.A0, pi.A1];
-    let c = challenge_commits2(0,ref commits);
-    //TODO: update this challenge
-    let c1 = feltXOR(c, pi.c0);
-
-    poe(pi.V.try_into().unwrap(), generator_h(), pi.A0.try_into().unwrap(), pi.c0, pi.s0);
-
-    let gen = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-    //TODO: Precompute -gen
-    let V_0: EcPoint = pi.V.try_into().unwrap();
-    let V1: NonZeroEcPoint = (V_0 - gen).try_into().unwrap();
-
-    poe(V1.try_into().unwrap(), generator_h(), pi.A1.try_into().unwrap(), c1, pi.s1);
-}
-
-/// Verify that a span of Vi = g**b_i h**r_i are encoding either b=1 or b=0 and that
-/// those bi are indeed the binary decomposition b = sum_i b_i 2**i. With the b that
-/// is encoded in V = g**b h**r. (Note that r = sim_i r_i 2**i)
-/// TODO: This could (and probably should) be change to bulletproof.
-pub fn verify_range(proof: Span<ProofOfBit>) -> StarkPoint {
-    let mut i: u32 = 0;
-    let mut state = EcStateTrait::init();
-    let mut pow: felt252 = 1;
-    while i < 32 {
-        let pi = *proof[i];
-        oneORzero(pi);
-        let vi: NonZeroEcPoint = pi.V.try_into().unwrap();
-        state.add_mul(pow, vi);
-        pow = 2 * pow;
-        i = i + 1;
-    };
-    let V = state.finalize_nz().unwrap();
-    return V.into();
-}
-
-/// Alternative proof of commit a bit or one or zero. It seems it is not as efficient
-/// as the proof we are ussing now but this can be check all at one. This could be log(n)
-/// instead linear in n as the other one.
-/// TODO: test and decide (If we change to bulletproof this has no sense)
-pub fn alternative_oneORzero(proof: ProofOfBit2) {
-    let h = generator_h();
-
-    let mut commits = array![proof.A, proof.B];
-    let c = challenge_commits2(0,ref commits);
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-
-    poe2(proof.V.try_into().unwrap(), g, h, proof.A.try_into().unwrap(), c, proof.sb, proof.sr);
-
-    let V: EcPoint = proof.V.try_into().unwrap();
-    let B: EcPoint = proof.B.try_into().unwrap();
-    let LHS = h.into().mul(proof.z);
-    let RHS = V.mul(c) - V.mul(proof.sb) + B;
-    assert!(LHS.try_into().unwrap().coordinates() == RHS.try_into().unwrap().coordinates(), "asd2");
-}

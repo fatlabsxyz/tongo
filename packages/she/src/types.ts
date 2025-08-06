@@ -8,3 +8,4 @@ export type Affine = AffinePoint<bigint>;
 export { CURVE_ORDER, GENERATOR, SECONDARY_GENERATOR } from "./constants.js";
 export const ProjectivePoint = SheProjectivePoint;
 export type ProjectivePoint = SheProjectivePointType;
+

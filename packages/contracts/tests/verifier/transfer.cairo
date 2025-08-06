@@ -2,10 +2,11 @@ use crate::prover::utils::{generate_random};
 use crate::prover::functions::{prove_transfer};
 use tongo::verifier::verifier::verify_transfer;
 
-use tongo::verifier::structs::PubKeyTrait;
-use tongo::verifier::structs::{CipherBalanceTrait};
-
+use tongo::structs::common::{
+    cipherbalance::CipherBalanceTrait,
+};
 use crate::consts::AUDITOR_KEY;
+use crate::prover::utils::pubkey_from_secret;
 
 #[test]
 fn test_transfer() {
@@ -13,7 +14,7 @@ fn test_transfer() {
 
     let seed = 47198274198273;
     let x = generate_random(seed, 1);
-    let y = PubKeyTrait::from_secret(x);
+    let y = pubkey_from_secret(x);
 
     // balance stored
     let b0 = 100;
@@ -24,10 +25,10 @@ fn test_transfer() {
     let b = 12;
     let nonce = 1;
     let x_bar = generate_random(seed, 2);
-    let y_bar = PubKeyTrait::from_secret(x_bar);
+    let y_bar = pubkey_from_secret(x_bar);
 
     let (inputs, proof) = prove_transfer(
-        x, y_bar, b0, b, balance.CL, balance.CR, AUDITOR_KEY(), nonce, generate_random(seed, 4)
+        x, y_bar, b0, b,AUDITOR_KEY(), balance, nonce, generate_random(seed, 4)
     );
 
     verify_transfer(inputs, proof);

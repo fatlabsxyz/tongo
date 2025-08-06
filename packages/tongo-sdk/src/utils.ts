@@ -1,6 +1,6 @@
 import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";
-import { ProjectivePoint, g } from "@fatlabsxyz/she-js";
+import { ProjectivePoint, GENERATOR as g } from "@fatlabsxyz/she-js";
 import { CipherBalance, PubKey, StarkPoint, TongoAddress } from "./types.js";
 import { BigNumberish, num, uint256, Uint256 } from "starknet";
 import { AEBalance } from "./ae_balance.js";
@@ -26,10 +26,10 @@ export function projectivePointToStarkPoint(p: ProjectivePoint): StarkPoint {
     return { x: pAffine.x, y: pAffine.y };
 }
 
-export function parseCipherBalance({ CL, CR }: { CL: StarkPoint, CR: StarkPoint; }): CipherBalance {
+export function parseCipherBalance({ L, R }: { L: StarkPoint, R: StarkPoint; }): CipherBalance {
     return {
-        L: starkPointToProjectivePoint(CL),
-        R: starkPointToProjectivePoint(CR)
+        L: starkPointToProjectivePoint(L),
+        R: starkPointToProjectivePoint(R)
     };
 }
 

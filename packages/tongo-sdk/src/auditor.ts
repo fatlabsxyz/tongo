@@ -6,6 +6,9 @@ import { Account } from "./account";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key";
 import { AEChaCha, AEHintToBytes } from "./ae_balance";
 
+//TODO: This is for testing
+export const AUDITOR_PRIVATE: bigint = 1242079909984902665305n;
+
 export class Auditor {
     publicKey: PubKey;
     pk: bigint;

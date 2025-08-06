@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateH } from "../src/constants"
+import { generateH, VIEW } from "../src/constants"
 
 import {
   cipherBalance,
@@ -15,15 +15,18 @@ import {
   provePoe2,
   proveTransfer,
   proveWithdraw,
-  proveWithdrawAll,
+  proveRagequit,
+  proveRollover,
   verifyExpost,
   verifyFund,
   verifyPoe,
   verifyPoe2,
   verifyTransfer,
   verifyWithdraw,
-  verifyWithdrawAll,
-  assertBalance
+  verifyRagequit,
+  verifyRollover,
+  assertBalance,
+  computePrefix,
 } from "../src";
 
 // import { find_least_bits, decipherBalanceOptimized} from "../src";
@@ -49,9 +52,53 @@ describe("Example test suit", () => {
 
   it("proveFund vs verifyFund", () => {
     const x = 1234n;
+    const y = GENERATOR.multiplyUnsafe(x);
+    const random = 199n;
+    const amount = 100n;
+    const initialBalance = 10n;
+    const currentBalance = cipherBalance(y,initialBalance,random);
     const nonce = 10n;
-    const { inputs, proof } = proveFund(x, nonce);
+
+    const { inputs, proof } = proveFund(x, amount,initialBalance, currentBalance,nonce, VIEW);
     verifyFund(inputs, proof);
+  });
+
+  it("prefix vs verifyFund", () => {
+    const x = 12n;
+    const y = GENERATOR.multiplyUnsafe(x);
+    const random = 1n;
+    const amount = 100n;
+    const initialBalance = 0n;
+    const currentBalance = cipherBalance(y,initialBalance,random);
+    const auxBalance = currentBalance;
+    const auditedBalance = currentBalance;
+    const auditorPubKey = y;
+    const nonce = 0n;
+
+  const fund_selector = 1718972004n;
+    const seq: bigint[] = [
+        fund_selector,
+        y.toAffine().x,
+        y.toAffine().y,
+        amount,
+        nonce,
+        currentBalance.L.toAffine().x,
+        currentBalance.L.toAffine().y,
+        currentBalance.R.toAffine().x,
+        currentBalance.R.toAffine().y,
+        auxBalance.L.toAffine().x,
+        auxBalance.L.toAffine().y,
+        auxBalance.R.toAffine().x,
+        auxBalance.R.toAffine().y,
+        auditedBalance.L.toAffine().x,
+        auditedBalance.L.toAffine().y,
+        auditedBalance.R.toAffine().x,
+        auditedBalance.R.toAffine().y,
+        auditorPubKey.toAffine().x,
+        auditorPubKey.toAffine().y,
+    ];
+    const prefix = computePrefix(seq);
+//     console.log("prefix: {}", prefix);
   });
 
   it("proveWithdrawAll vs verifyWithdrawAll", () => {
@@ -61,16 +108,15 @@ describe("Example test suit", () => {
     const to = 116200n;
     const random = 111111n;
     const y = GENERATOR.multiplyUnsafe(x);
-    const { L, R } = cipherBalance(y, amount, random);
-    const { inputs, proof } = proveWithdrawAll(
+    const currentBalance = cipherBalance(y, amount, random);
+    const { inputs, proof } = proveRagequit(
       x,
-      L,
-      R,
+      currentBalance,
       nonce,
       to,
       amount,
     );
-    verifyWithdrawAll(inputs, proof);
+    verifyRagequit(inputs, proof);
   });
 
   it("proveWithdraw vs verifyWithdraw", () => {
@@ -81,17 +127,28 @@ describe("Example test suit", () => {
     const initial_balance = 100n;
     const amount = 10n;
     const to = 555n;
-    const { L, R } = cipherBalance(y, initial_balance, 99n);
+    const currentBalance = cipherBalance(y, initial_balance, 99n);
     const { inputs, proof } = proveWithdraw(
       x,
       initial_balance,
       amount,
-      L,
-      R,
       to,
+      currentBalance,
       nonce,
+      VIEW,
     );
     verifyWithdraw(inputs, proof);
+  });
+
+  it("proveRollover vs verifyRollover", () => {
+    const x = 4444n;
+    const nonce = 82n;
+
+    const { inputs, proof } = proveRollover(
+      x,
+      nonce,
+    );
+    verifyRollover(inputs, proof);
   });
 
   it("proveTransfer vs verifyTransfer", () => {
@@ -104,15 +161,15 @@ describe("Example test suit", () => {
     const initial_balance = 100n;
     const amount = 10n;
     const random = 999n;
-    const { L, R } = cipherBalance(y, initial_balance, random);
+    const currentBalance = cipherBalance(y, initial_balance, random);
 
     const { inputs, proof } = proveTransfer(
       x,
       y_bar,
       initial_balance,
       amount,
-      L,
-      R,
+      VIEW,
+      currentBalance,
       nonce,
     );
     verifyTransfer(inputs, proof);
@@ -138,6 +195,7 @@ describe("Example test suit", () => {
     const b = decipherBalance(x, L, R);
     expect(b).toEqual(amount);
   });
+
 
   it("poe", () => {
     const x = 12n;

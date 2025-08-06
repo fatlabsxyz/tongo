@@ -3,6 +3,7 @@ import { ProofOfFund } from "@fatlabsxyz/she-js";
 import { cairo, Call, CallData, Contract, num } from "starknet";
 import { AEBalances } from "../ae_balance";
 import { IOperation } from "./operation";
+import { CipherBalance } from "../types.js";
 
 interface IFundOperation extends IOperation {
     populateApprove(): Promise<void>;
@@ -11,6 +12,8 @@ interface IFundOperation extends IOperation {
 interface FundOpParams {
     to: ProjectivePoint;
     amount: bigint;
+    auditedBalance: CipherBalance;
+    auxBalance: CipherBalance;
     proof: ProofOfFund;
     aeHints: AEBalances;
     Tongo: Contract;
@@ -20,13 +23,18 @@ export class FundOperation implements IFundOperation {
     Tongo: Contract;
     to: ProjectivePoint;
     amount: bigint;
+    auditedBalance: CipherBalance;
+    auxBalance: CipherBalance;
     proof: ProofOfFund;
     approve?: Call;
     aeHints: AEBalances;
 
-    constructor({ to, amount, proof, Tongo, aeHints }: FundOpParams) {
+    constructor({ to, amount, proof, Tongo, aeHints, auditedBalance, auxBalance}: FundOpParams) {
         this.to = to;
         this.amount = amount;
+
+        this.auditedBalance = auditedBalance;
+        this.auxBalance = auxBalance;
         this.proof = proof;
         this.Tongo = Tongo;
         this.aeHints = aeHints;
@@ -35,6 +43,8 @@ export class FundOperation implements IFundOperation {
     toCalldata(): Call {
         return this.Tongo.populate("fund", [{
             to: this.to,
+            auditedBalance: this.auditedBalance,
+            auxBalance:  this.auxBalance,
             amount: this.amount,
             proof: this.proof,
             ae_hints: this.aeHints

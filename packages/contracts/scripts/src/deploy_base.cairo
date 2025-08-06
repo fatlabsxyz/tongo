@@ -1,6 +1,6 @@
 use sncast_std::{DeclareResultTrait, FeeSettingsTrait, declare, deploy, get_nonce};
-use tongo::verifier::structs::PubKeyTrait;
 use starknet::ContractAddress;
+use crate::prover::utils::pubkey_from_secret;
 
 pub fn base() {
     let salt = 0x3;
@@ -21,7 +21,7 @@ pub fn base() {
 
     let STRK_ADDRESS: ContractAddress = 0x4718F5A0FC34CC1AF16A1CDEE98FFB20C31F5CD61D6AB07201858F4287C938D.try_into().unwrap();
     let AUDITOR_PRIVATE: felt252 = 'CURIOSITY';
-    let audit_key = PubKeyTrait::from_secret(AUDITOR_PRIVATE);
+    let audit_key = pubkey_from_secret(AUDITOR_PRIVATE);
     let OWNER_ADDRESS: ContractAddress = 'OWNER'.try_into().unwrap();
 
     let constructor_calldata: Array<felt252> = array![OWNER_ADDRESS.into(), audit_key.x, audit_key.y, STRK_ADDRESS.into()];

@@ -6,8 +6,12 @@ use core::poseidon::poseidon_hash_span;
 use core::hash::{HashStateTrait};
 use tongo::verifier::utils::in_order;
 use tongo::verifier::utils::in_range;
-use tongo::verifier::structs::{CipherBalanceTrait, CipherBalance};
-use tongo::verifier::structs::{StarkPoint};
+
+use tongo::structs::common::{
+    pubkey::PubKey,
+    cipherbalance::{CipherBalance, CipherBalanceTrait},
+};
+
 use tongo::verifier::utils::generator_h;
 
 use core::circuit::{
@@ -15,6 +19,32 @@ use core::circuit::{
     CircuitOutputsTrait, CircuitModulus, AddInputResultTrait, CircuitInputs
 };
 
+pub fn pubkey_from_secret(x:felt252) -> PubKey {
+        let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+        let key:NonZeroEcPoint = g.mul(x).try_into().unwrap();
+        key.into()
+}
+
+pub fn challenge_commits(prefix:felt252, ref commits: Array<NonZeroEcPoint>) -> felt252 {
+    let mut array = array![prefix];
+    let mut commit = commits.pop_front();
+    while commit.is_some() {
+        let unwrap = commit.unwrap();
+        let (x,y) = unwrap.coordinates();
+        array.append(x);
+        array.append(y);
+        commit = commits.pop_front();
+    }
+
+    let base = poseidon_hash_span(array.span());
+    let mut salt = 1;
+    let mut c = ORDER + 1;
+    while !in_order(c) {
+        c = poseidon_hash_span(array![base,salt].span());
+        salt = salt + 1;
+    }
+    return c;
+}
 
 /// Computes k + c*x mod (CURVE ORDER). The inputs should be in curve order.
 pub fn compute_s(c: felt252, x: felt252, k: felt252) -> felt252 {
@@ -123,7 +153,7 @@ pub fn to_binary(number: u32) -> Array<u8> {
 
 /// Simulate a valid transcript (A_x, c, s) for a proof of exponent y = gen**x.
 /// Output: A_x: StarkPoint, challenge: felt252, s: felt252
-pub fn simPOE(y: StarkPoint, gen: NonZeroEcPoint, seed: felt252) -> (StarkPoint, felt252, felt252) {
+pub fn simPOE(y: NonZeroEcPoint, gen: NonZeroEcPoint, seed: felt252) -> (NonZeroEcPoint, felt252, felt252) {
     let gen: EcPoint = gen.try_into().unwrap();
     let y: EcPoint = y.try_into().unwrap();
     let s = generate_random(seed+1, 1);
@@ -131,7 +161,7 @@ pub fn simPOE(y: StarkPoint, gen: NonZeroEcPoint, seed: felt252) -> (StarkPoint,
     let temp1 = EcPointTrait::mul(gen, s);
     let temp2 = EcPointTrait::mul(y, c.try_into().unwrap());
     let A: NonZeroEcPoint = (temp1 - temp2).try_into().unwrap();
-    return (A.into(), c, s);
+    return (A, c, s);
 }
 
 /// Asserts that g**b == L/R**x. This show that the given balance b is encoded in the cipher

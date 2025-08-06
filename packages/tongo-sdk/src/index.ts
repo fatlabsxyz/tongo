@@ -34,21 +34,22 @@ const tx_context = {
 };
 
 const wallet = deployerWallet(provider);
-const tongoAddress = "0x0491ac40c8f8f9bf836c85aae3bd44de92244c50273c08a6351aa75219f9beeb";
+const tongoAddress = "0x0124bc6b2e694180ed1ab16d4f01b1f63ab418d743cdac14fd269ba447014f9b"
 export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoAbi);
 
 (async () => {
-    const sk = 82130983n;
+    const sk = 8213103n;
     const account = new TongoAccount(sk, tongoAddress, provider);
 
-    const sk2 = 12930923n;
+    const sk2 = 1293095n;
     const account2 = new TongoAccount(sk2, tongoAddress, provider);
 
-    let state = await account.state();
-    console.log("State user 1: ", state);
 
-    state = await account2.state();
-    console.log("State user 2: ", state);
+    let stateDeciphered = await account.stateDeciphered();
+    console.log("State user 1 Deciphered: ", stateDeciphered);
+
+    stateDeciphered = await account2.stateDeciphered();
+    console.log("State user 2: ", stateDeciphered);
 
     console.log("------------------------ Funding user 1 --------------------------------");
     const operation = await account.fund({ amount: 100n });
@@ -56,11 +57,11 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     let res = await provider.waitForTransaction(response.transaction_hash);
 
-    state = await account.state();
-    console.log("State user 1: ", state);
+    stateDeciphered = await account.stateDeciphered();
+    console.log("State user 1 Deciphered: ", stateDeciphered);
 
-    state = await account2.state();
-    console.log("State user 2: ", state);
+    stateDeciphered = await account2.stateDeciphered();
+    console.log("State user 2: ", stateDeciphered);
 
     console.log("------------------------ Trasnfering to user 2 --------------------------------");
     const operation_transfer = await account.transfer({ amount: 23n, to: account2.publicKey });
@@ -68,11 +69,11 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     res = await provider.waitForTransaction(response.transaction_hash);
 
-    state = await account.state();
-    console.log("State user 1: ", state);
+    stateDeciphered = await account.stateDeciphered();
+    console.log("State user 1: ", stateDeciphered);
 
-    state = await account2.state();
-    console.log("State user 2: ", state);
+    stateDeciphered = await account2.stateDeciphered();
+    console.log("State user 2: ", stateDeciphered);
 
     console.log("------------------------ RollOver of user 2 --------------------------------");
     const rollover_operation = await account2.rollover();
@@ -80,8 +81,8 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     res = await provider.waitForTransaction(response.transaction_hash);
 
-    state = await account2.state();
-    console.log("State user 2: ", state);
+    stateDeciphered = await account2.stateDeciphered();
+    console.log("State user 2: ", stateDeciphered);
 
     console.log("------------------------ withdraw some of  of user 1 --------------------------------");
     const withdraw_operation = await account.withdraw({ amount: 1n, to: 839131273n });
@@ -89,16 +90,16 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     res = await provider.waitForTransaction(response.transaction_hash);
 
-    state = await account.state();
-    console.log("State user 1: ", state);
+    stateDeciphered = await account.stateDeciphered();
+    console.log("State user 1: ", stateDeciphered);
 
     console.log("------------------------ withdraw all of  of user 2 --------------------------------");
-    const withdraw_all_operation = await account2.withdraw_all({ to: 839131273n });
+    const withdraw_all_operation = await account2.ragequit({ to: 839131273n });
 
     response = await wallet.execute(withdraw_all_operation.toCalldata(), tx_context);
     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
     res = await provider.waitForTransaction(response.transaction_hash);
 
-    state = await account2.state();
-    console.log("State user 2: ", state);
+    stateDeciphered = await account2.stateDeciphered();
+    console.log("State user 2: ", stateDeciphered);
 })();
