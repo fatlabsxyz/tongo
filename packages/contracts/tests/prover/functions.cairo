@@ -36,7 +36,6 @@ pub fn prove_fund(
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y = pubkey_from_secret(x);
 
-
     let r = generate_random(seed, 1);
     let auxBalance = CipherBalanceTrait::new(y, initialBalance, r);
     let (_, R) = auxBalance.points();

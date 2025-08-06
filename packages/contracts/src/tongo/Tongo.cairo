@@ -65,7 +65,7 @@ pub mod Tongo {
         fn rollover(ref self: ContractState, rollover: Rollover) {
             let Rollover { to, proof } = rollover;
             let nonce = self.get_nonce(to);
-            let inputs: InputsRollOver = InputsRollOver { y: to.try_into().unwrap(), nonce: nonce };
+            let inputs: InputsRollOver = InputsRollOver { y: to, nonce: nonce };
             verify_rollover(inputs, proof);
             self.pending_to_balance(to);
             self.increase_nonce(to);
@@ -79,7 +79,7 @@ pub mod Tongo {
             let currentBalance = self.get_balance(to);
             let auditorPubKey = self.auditor_key();
 
-            let inputs: InputsFund = InputsFund { y: to.try_into().unwrap(), nonce, amount, auxBalance, currentBalance, auditedBalance, auditorPubKey: auditorPubKey.try_into().unwrap() };
+            let inputs: InputsFund = InputsFund { y: to, nonce, amount, auxBalance, currentBalance, auditedBalance, auditorPubKey: auditorPubKey.try_into().unwrap() };
             verify_fund(inputs, proof);
 
             //get the transfer amount from the sender
@@ -104,7 +104,7 @@ pub mod Tongo {
             let nonce = self.get_nonce(from);
             let auditorPubKey = self.auditor_key();
             
-            let inputs: InputsWithdraw = InputsWithdraw { y: from.try_into().unwrap(), amount, nonce, to, currentBalance, auditedBalance, auditorPubKey: auditorPubKey.try_into().unwrap()};
+            let inputs: InputsWithdraw = InputsWithdraw { y: from, amount, nonce, to, currentBalance, auditedBalance, auditorPubKey};
             verify_withdraw(inputs, proof);
 
             let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
@@ -125,9 +125,7 @@ pub mod Tongo {
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
             let auditorPubKey = self.auditor_key();
-            let inputs: InputsRagequit = InputsRagequit {
-                y: from.try_into().unwrap(), amount, nonce, to, currentBalance,
-            };
+            let inputs: InputsRagequit = InputsRagequit { y: from, amount, nonce, to, currentBalance };
             verify_ragequit(inputs, proof);
 
             let auditedZeroBalance = CipherBalanceTrait::new(auditorPubKey, 0, 1);
@@ -155,10 +153,10 @@ pub mod Tongo {
             let auditorPubKey = self.auditor_key.read();
 
             let inputs: InputsTransfer = InputsTransfer {
-                y: from.try_into().unwrap(),
-                y_bar: to.try_into().unwrap(),
+                y: from,
+                y_bar: to,
                 nonce,
-                auditorPubKey: auditorPubKey.try_into().unwrap(),
+                auditorPubKey,
                 currentBalance,
                 transferBalance,
                 transferBalanceSelf,
@@ -246,7 +244,7 @@ pub mod Tongo {
             if old_balance.is_null() {
                 self.balance.entry(y).write(new_balance.into());
             } else {
-                let sum = old_balance.remove(new_balance.into());
+                let sum = old_balance.subtract(new_balance.into());
                 self.balance.entry(y).write(sum);
             }
         }
@@ -273,27 +271,6 @@ pub mod Tongo {
                 .write(
                     CipherBalanceTrait::null()
                 );
-        }
-
-
-        fn add_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
-            let old_audit = self.audit_balance.entry(y).read();
-            if old_audit.is_null() {
-                self.audit_balance.entry(y).write(new_audit.into());
-            } else {
-                let sum = old_audit.add(new_audit.into());
-                self.audit_balance.entry(y).write(sum);
-            }
-        }
-
-        fn remove_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
-            let old_audit = self.audit_balance.entry(y).read();
-            if old_audit.is_null() {
-                self.audit_balance.entry(y).write(new_audit.into());
-            } else {
-                let sum = old_audit.remove(new_audit.into());
-                self.audit_balance.entry(y).write(sum);
-            }
         }
 
         fn set_audit(ref self: ContractState, y:PubKey, new_audit: CipherBalance) {

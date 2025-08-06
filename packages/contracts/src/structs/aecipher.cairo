@@ -1,10 +1,3 @@
-
-#[derive(Drop, Serde, Copy)]
-pub struct AEHints {
-    pub ae_balance: AEBalance,
-    pub ae_audit_balance: AEBalance,
-}
-
 use core::integer::u512;
 use starknet::storage_access::StorePacking;
 
@@ -12,6 +5,12 @@ use starknet::storage_access::StorePacking;
 pub struct AEBalance {
     ciphertext: u512,
     nonce: u256,
+}
+
+#[derive(Drop, Serde, Copy)]
+pub struct AEHints {
+    pub ae_balance: AEBalance,
+    pub ae_audit_balance: AEBalance,
 }
 
 pub impl IntoOptionAEBalance of Into<AEBalance, Option<AEBalance>> {

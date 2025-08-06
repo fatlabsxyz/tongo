@@ -8,7 +8,7 @@ use crate::structs::aecipher::AEHints;
 use crate::structs::traits::{Prefix, Challenge};
 use crate::verifier::utils::{cast_in_order};
 
-use crate::structs::traits::{SerdeNonZeroEcPoint, AppendPoint};
+use crate::structs::traits::{AppendPoint};
 
 #[derive(Drop, Destruct, Serde)]
 pub struct Fund {
@@ -20,7 +20,6 @@ pub struct Fund {
     pub proof: ProofOfFund,
 }
 
-
 #[derive(Serde, Drop, Copy, Debug)]
 pub struct InputsFund {
     pub y: PubKey,
@@ -30,6 +29,16 @@ pub struct InputsFund {
     pub auxBalance: CipherBalance,
     pub auditedBalance: CipherBalance,
     pub auditorPubKey: PubKey,
+}
+
+impl FundPrefix of Prefix<InputsFund> {
+    /// There is no need to compute the hash of all elements.
+    /// We just use this to be extra sure
+    fn prefix(self: @InputsFund) -> felt252 {
+        let mut arr = array!['fund'];         
+        self.serialize(ref arr);
+        poseidon_hash_span(arr.span())
+    }
 }
 
 #[derive(Serde, Drop, Copy)]
@@ -56,12 +65,3 @@ impl ChallengeFund of Challenge<ProofOfFund> {
     }
 }
 
-impl FundPrefix of Prefix<InputsFund> {
-    /// There is no need to compute the hash of all elements.
-    /// We just use this to be extra sure
-    fn prefix(self: @InputsFund) -> felt252 {
-        let mut arr = array!['fund'];         
-        self.serialize(ref arr);
-        poseidon_hash_span(arr.span())
-    }
-}

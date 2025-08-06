@@ -58,7 +58,7 @@ fn test_withdraw() {
 
     let currentBalance = dispatcher.get_balance(y);
     let nonce = dispatcher.get_nonce(y);
-    let withdraw_amount = 30;
+    let withdraw_amount = 25;
 
     let (inputs, proof) = prove_withdraw(
         x,initial_fund, withdraw_amount, tranfer_address, currentBalance, nonce,AUDITOR_KEY(), seed

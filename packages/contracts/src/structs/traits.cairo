@@ -11,21 +11,6 @@ pub trait Challenge<T> {
     fn compute_challenge(self: @T, prefix: felt252) -> felt252;
 }
 
-
-pub impl SerdeNonZeroEcPoint of Serde<NonZeroEcPoint> {
-    fn serialize(self: @NonZeroEcPoint, ref output: Array<felt252>) {
-        let (x,y) = self.coordinates();
-        output.append(x);
-        output.append(y);
-    }
-
-    fn deserialize(ref serialized: Span<felt252>) -> Option<NonZeroEcPoint> {
-        let x  = (*serialized.pop_front()?);
-        let y = (*serialized.pop_front()?);
-        return EcPointTrait::new_nz(x,y);
-    }
-}
-
 #[generate_trait]
 pub impl AppendPointImpl of AppendPoint {
     fn append_coordinates(ref self: Array<felt252>, point: @StarkPoint) {

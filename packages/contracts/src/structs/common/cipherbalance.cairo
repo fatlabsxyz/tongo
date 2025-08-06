@@ -5,7 +5,6 @@ use crate::structs::common::{
 use core::traits::{Into, TryInto};
 use core::ec::{EcPoint, NonZeroEcPoint, EcPointTrait, EcStateTrait};
 use core::ec::stark_curve::{GEN_X,GEN_Y};
-use crate::structs::traits::SerdeNonZeroEcPoint;
 
 #[derive(Serde, Drop, Copy, starknet::Store, Debug)]
 pub struct CipherBalance {
@@ -18,7 +17,7 @@ pub trait CipherBalanceTrait<CipherBalance> {
     fn points(self: CipherBalance) -> (EcPoint, EcPoint);
     fn points_nz(self: CipherBalance) -> (NonZeroEcPoint, NonZeroEcPoint);
     fn add(self: CipherBalance, cipher: CipherBalance) -> CipherBalance ;
-    fn remove(self: CipherBalance, cipher: CipherBalance) -> CipherBalance ;
+    fn subtract(self: CipherBalance, cipher: CipherBalance) -> CipherBalance ;
     fn null() -> CipherBalance;
     fn is_null(self: @CipherBalance) -> bool;
     fn handle_null(self: CipherBalance, y:PubKey) -> CipherBalance;
@@ -28,7 +27,6 @@ pub impl CipherBalanceImpl of CipherBalanceTrait<CipherBalance> {
     /// Cipher the balance b under the y key with a fixed randomnes. The fixed randomness should
     /// not be a problem because b is known here. This only is performed on fund transactions or
     /// withdraw all
-    /// TODO: think what to do with the randomness to avoid end up un a ZeroPoint
     fn new(key: PubKey, amount: felt252, randomness: felt252) -> CipherBalance {
         let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
         let mut R: NonZeroEcPoint = g.mul(randomness).try_into().unwrap();
@@ -36,11 +34,10 @@ pub impl CipherBalanceImpl of CipherBalanceTrait<CipherBalance> {
         let mut state = EcStateTrait::init();
         state.add_mul(amount, g.try_into().unwrap());
         state.add_mul(randomness, key.try_into().unwrap());
-        let mut L = state.finalize_nz().unwrap();
+        let L = state.finalize_nz().unwrap();
 
         CipherBalance { L: L.into(), R: R.into() }
     }
-
 
     fn points(self: CipherBalance) -> (EcPoint, EcPoint) {
         (self.L.try_into().unwrap(), self.R.try_into().unwrap())
@@ -58,7 +55,7 @@ pub impl CipherBalanceImpl of CipherBalanceTrait<CipherBalance> {
         CipherBalance{L:L, R:R}
     }
 
-    fn remove(self: CipherBalance, cipher: CipherBalance) -> CipherBalance {
+    fn subtract(self: CipherBalance, cipher: CipherBalance) -> CipherBalance {
         let (L_old, R_old) = self.points();
         let (L, R) = cipher.points();
         let L = (-L + L_old).try_into().unwrap();

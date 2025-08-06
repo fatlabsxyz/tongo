@@ -1,5 +1,5 @@
 use crate::structs::common::starkpoint::StarkPoint;
-use crate::structs::traits::{Challenge, SerdeNonZeroEcPoint, AppendPoint};
+use crate::structs::traits::{Challenge, AppendPoint};
 use crate::verifier::utils::{cast_in_order};
 use core::poseidon::poseidon_hash_span;
 
