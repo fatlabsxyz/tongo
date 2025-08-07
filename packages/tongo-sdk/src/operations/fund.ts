@@ -4,6 +4,7 @@ import { cairo, Call, CallData, Contract, num } from "starknet";
 import { AEBalances } from "../ae_balance";
 import { IOperation } from "./operation";
 import { CipherBalance } from "../types.js";
+import { castBigInt } from "../utils.js";
 
 interface IFundOperation extends IOperation {
     populateApprove(): Promise<void>;
@@ -55,8 +56,8 @@ export class FundOperation implements IFundOperation {
         const erc20 = await this.Tongo.ERC20();
         const erc20_addres = num.toHex(erc20);
         const tongo_address = this.Tongo.address;
-        const rate = await this.Tongo.rate();
-        const amount = cairo.uint256(this.amount * rate);
+        const rate = await this.Tongo.get_rate();
+        const amount = cairo.uint256(this.amount * castBigInt(rate));
         let calldata = CallData.compile({ "spender": tongo_address, "amount": amount });
         this.approve = { contractAddress: erc20_addres, entrypoint: "approve", calldata };
     }
