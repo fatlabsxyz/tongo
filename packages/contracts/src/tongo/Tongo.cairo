@@ -75,7 +75,7 @@ pub mod Tongo {
 
             //get the transfer amount from the sender
             //TODO: Check Allowance
-            self.get_transfer(self.unwrapTongoAmount(amount));
+            self.transfer_from_caller(self.unwrapTongoAmount(amount));
 
             let cipher = CipherBalanceTrait::new(to, amount, 'fund');
             self.add_balance(to, cipher);
@@ -275,7 +275,7 @@ pub mod Tongo {
             self.audit_balance.entry(y).write(new_audit.into());
         }
 
-        fn get_transfer(self: @ContractState, amount: u256) {
+        fn transfer_from_caller(self: @ContractState, amount: u256) {
             let asset_address =  self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address};
             ERC20.transfer_from(get_caller_address(), get_contract_address(), amount);
