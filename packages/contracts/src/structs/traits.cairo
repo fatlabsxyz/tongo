@@ -1,4 +1,3 @@
-use core::ec::{NonZeroEcPoint, EcPointTrait};
 use crate::structs::common::starkpoint::StarkPoint;
 
 pub trait Prefix<T> {

@@ -39,13 +39,15 @@ pub mod Tongo {
         auditor_key:PubKey,
         owner: ContractAddress,
         ERC20: ContractAddress,
+        rate: u256,
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress, auditor_key: PubKey, ERC20:ContractAddress) {
+    fn constructor(ref self: ContractState, owner: ContractAddress, auditor_key: PubKey, ERC20:ContractAddress, rate: u256) {
         self.owner.write(owner);
         self.auditor_key.write(auditor_key);
         self.ERC20.write(ERC20);
+        self.rate.write(rate);
     }
 
     #[event]
@@ -61,17 +63,6 @@ pub mod Tongo {
 
     #[abi(embed_v0)]
     impl TongoImpl of ITongo<ContractState> {
-        //TODO: update the rolloverproof to emit audit 
-        fn rollover(ref self: ContractState, rollover: Rollover) {
-            let Rollover { to, proof } = rollover;
-            let nonce = self.get_nonce(to);
-            let inputs: InputsRollOver = InputsRollOver { y: to, nonce: nonce };
-            verify_rollover(inputs, proof);
-            self.pending_to_balance(to);
-            self.increase_nonce(to);
-            self.emit(RolloverEvent { to, nonce });
-        }
-
         /// Transfer some STARK to Tongo contract and assing some Tongo to account y
         fn fund(ref self: ContractState, fund: Fund) {
             let Fund { to, amount, proof, ae_hints, auditedBalance, auxBalance} = fund;
@@ -84,7 +75,7 @@ pub mod Tongo {
 
             //get the transfer amount from the sender
             //TODO: Check Allowance
-            self.get_transfer(amount);
+            self.get_transfer(self.unwrapTongoAmount(amount));
 
             let cipher = CipherBalanceTrait::new(to, amount, 'fund');
             self.add_balance(to, cipher);
@@ -99,7 +90,6 @@ pub mod Tongo {
         /// Withdraw some tongo from acount and send the stark to the recipient
         fn withdraw(ref self: ContractState, withdraw: Withdraw) {
             let Withdraw { from, amount, auditedBalance, to, proof, ae_hints } = withdraw;
-
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
             let auditorPubKey = self.auditor_key();
@@ -113,7 +103,7 @@ pub mod Tongo {
             self.set_audit(from, auditedBalance);
             self.increase_nonce(from);
 
-            self.transfer_to(to, amount);
+            self.transfer_to(to, self.unwrapTongoAmount(amount));
             self.overwrite_ae_balances(from, ae_hints);
             self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce , auditorPubKey, auditedBalanceLeft: auditedBalance});
         }
@@ -121,7 +111,6 @@ pub mod Tongo {
         /// Withdraw ALL tongo from acount and send the stark to the recipient
         fn ragequit(ref self: ContractState, ragequit: Ragequit) {
             let Ragequit { from, amount, to, proof, ae_hints } = ragequit;
-            //TODO: add validations
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
             let auditorPubKey = self.auditor_key();
@@ -138,7 +127,7 @@ pub mod Tongo {
 
             self.overwrite_ae_balances(from, ae_hints);
 
-            self.transfer_to(to, amount);
+            self.transfer_to(to, self.unwrapTongoAmount(amount));
             self.emit(RagequitEvent { from, amount: amount.try_into().unwrap(), to, nonce });
         }
 
@@ -166,11 +155,7 @@ pub mod Tongo {
 
             verify_transfer(inputs, proof);
 
-            // verificar la prueva with respect to balance + pending
-
             self.remove_balance(from, transferBalanceSelf);
-
-            //TODO: Acomodar el audit
             self.set_audit(from, auditedBalanceSelf);
 
             self.add_pending(to, transferBalance);
@@ -183,12 +168,21 @@ pub mod Tongo {
                 )
         }
 
+        fn rollover(ref self: ContractState, rollover: Rollover) {
+            let Rollover { to, proof } = rollover;
+            let nonce = self.get_nonce(to);
+            let inputs: InputsRollOver = InputsRollOver { y: to, nonce: nonce };
+            verify_rollover(inputs, proof);
+            self.pending_to_balance(to);
+            self.increase_nonce(to);
+            self.emit(RolloverEvent { to, nonce });
+        }
+
         fn ERC20(self: @ContractState) -> ContractAddress {
             self.ERC20.read()
         }
 
         fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
-//            y.validate();
             self.nonce.entry(y).read()
         }
 
@@ -224,6 +218,10 @@ pub mod Tongo {
 
         fn auditor_key(self: @ContractState) -> PubKey {
             self.auditor_key.read()
+        }
+
+        fn get_rate(self: @ContractState) -> u256 {
+            self.rate.read()
         }
     }
 
@@ -277,16 +275,16 @@ pub mod Tongo {
             self.audit_balance.entry(y).write(new_audit.into());
         }
 
-        fn get_transfer(self: @ContractState, amount: felt252) {
+        fn get_transfer(self: @ContractState, amount: u256) {
             let asset_address =  self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address};
-            ERC20.transfer_from(get_caller_address(), get_contract_address(), amount.into());
+            ERC20.transfer_from(get_caller_address(), get_contract_address(), amount);
         }
 
-        fn transfer_to(self: @ContractState, to: ContractAddress, amount: felt252) {
+        fn transfer_to(self: @ContractState, to: ContractAddress, amount: u256) {
             let asset_address =  self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address};
-            ERC20.transfer(to, amount.into());
+            ERC20.transfer(to, amount);
         }
 
         fn increase_nonce(ref self: ContractState, y: PubKey) {
@@ -298,6 +296,11 @@ pub mod Tongo {
         fn overwrite_ae_balances(ref self: ContractState, y: PubKey, ae_hints: AEHints) {
             self.ae_balance.entry(y).write(ae_hints.ae_balance);
             self.ae_audit_balance.entry(y).write(ae_hints.ae_audit_balance);
+        }
+
+        fn unwrapTongoAmount(self:@ContractState, amount: felt252) -> u256 {
+            let rate = self.rate.read();
+            return (amount.into() * rate);
         }
     }
 }

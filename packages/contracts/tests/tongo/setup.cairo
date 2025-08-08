@@ -9,7 +9,7 @@ use tongo::structs::{
     aecipher::AEHints,
 };
 
-use crate::consts::{TONGO_ADDRESS,STRK_ADDRESS,USER_CALLER, AUDITOR_PRIVATE, OWNER_ADDRESS};
+use crate::consts::{TONGO_ADDRESS,STRK_ADDRESS,USER_CALLER, AUDITOR_PRIVATE, OWNER_ADDRESS, RATE};
 use crate::prover::utils::pubkey_from_secret;
 
 pub fn empty_ae_hint() -> AEHints {
@@ -37,7 +37,7 @@ pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
     let (tongo_contract, _tongo_class_hash) = declare_class("Tongo");
 
     let audit_key = pubkey_from_secret(AUDITOR_PRIVATE);
-    let constructor_calldata: Array<felt252> = array![OWNER_ADDRESS.into(), audit_key.x, audit_key.y, STRK_ADDRESS.into()];
+    let constructor_calldata: Array<felt252> = array![OWNER_ADDRESS.into(), audit_key.x, audit_key.y, STRK_ADDRESS.into(), RATE.low.into(), RATE.high.into()];
     let tongo_address = deploy_contract(
         tongo_contract, TONGO_ADDRESS.try_into().unwrap(), constructor_calldata,
     );

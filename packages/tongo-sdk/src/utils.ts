@@ -75,3 +75,12 @@ export function pubKeyBase58ToHex(b58string: string): string {
     const bytes = base58.decode(b58string);
     return bytesToHex(bytes);
 }
+
+export function castBigInt(x: number | bigint | Uint256) {
+  if (num.isBigNumberish(x)) {
+    return num.toBigInt(x);
+  } else {
+    return uint256.uint256ToBN(x);
+  }
+}
+

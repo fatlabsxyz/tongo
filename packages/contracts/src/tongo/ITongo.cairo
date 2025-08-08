@@ -41,4 +41,5 @@ pub trait ITongo<TContractState> {
     fn get_state(self: @TContractState, y: PubKey) -> State;
     fn change_auditor_key(ref self: TContractState, new_auditor_key:PubKey);
     fn auditor_key(self: @TContractState) -> PubKey;
+    fn get_rate(self:@TContractState) -> u256;
 }

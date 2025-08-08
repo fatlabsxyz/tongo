@@ -695,6 +695,17 @@ export const tongoAbi = [
                     }
                 ],
                 "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_rate",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::integer::u256"
+                    }
+                ],
+                "state_mutability": "view"
             }
         ]
     },
@@ -713,6 +724,10 @@ export const tongoAbi = [
             {
                 "name": "ERC20",
                 "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "rate",
+                "type": "core::integer::u256"
             }
         ]
     },

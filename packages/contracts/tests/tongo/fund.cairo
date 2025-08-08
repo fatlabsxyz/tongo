@@ -2,8 +2,9 @@ use crate::tongo::setup::{setup_tongo, empty_ae_hint};
 use crate::prover::functions::{prove_fund};
 use crate::prover::utils::{generate_random, decipher_balance};
 use tongo::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
+use tongo::erc20::{IERC20DispatcherTrait, IERC20Dispatcher};
 use tongo::structs::operations::fund::Fund;
-use crate::consts::AUDITOR_KEY;
+use crate::consts::{AUDITOR_KEY, USER_CALLER, STRK_ADDRESS};
 use crate::prover::utils::pubkey_from_secret;
 
 pub fn fund_account(x: felt252, previous_amount:felt252, fund_amount:felt252, dispatcher:ITongoDispatcher) {
@@ -20,13 +21,17 @@ pub fn fund_account(x: felt252, previous_amount:felt252, fund_amount:felt252, di
 
 #[test]
 fn test_fund() {
-    //TODO: Tiene sentido que la proof del fundeo dependa de b en el challenge?
     let seed = 12093821093;
     let (_tongo_address, dispatcher) = setup_tongo();
+    let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
+    let initialErc20 = erc20dispatcher.balance_of(USER_CALLER);
     let x = generate_random(seed, 1);
-    fund_account(x,0, 250, dispatcher);
+    let tongoAmount = 250;
+    fund_account(x,0, tongoAmount, dispatcher);
 
-    fund_account(x,250,100,dispatcher);
+    let finalErc20 = erc20dispatcher.balance_of(USER_CALLER);
+    let rate = dispatcher.get_rate();
+    assert(initialErc20 - finalErc20 == rate*tongoAmount.into(), 'nope');
 }
 
 //#[test]
