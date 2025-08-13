@@ -11,8 +11,7 @@ import { RagequitOperation } from "./operations/ragequit.js";
 import { tongoAbi } from "./tongo.abi.js";
 import { AUDITOR_PRIVATE } from "./auditor.js";
 import { CipherBalance, PubKey, TongoAddress } from "./types.js";
-import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint, castBigInt} from "./utils.js";
-import { After } from "node:v8";
+import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint, castBigInt } from "./utils.js";
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
 interface FundDetails {
@@ -83,9 +82,9 @@ interface IAccount {
     decryptAEBalance(cipher: AEBalance, accountNonce: bigint): Promise<bigint>;
     decryptCipherBalance(cipher: CipherBalance): bigint;
     decryptBalance(accountState: AccountState): Promise<bigint>;
-    balance(): Promise<bigint>
+    balance(): Promise<bigint>;
     decryptPending(accountState: AccountState): Promise<bigint>;
-    pending(): Promise<bigint>
+    pending(): Promise<bigint>;
     erc20ToTongo(erc20Amount: bigint): Promise<bigint>;
     tongoToErc20(tongoAmount: bigint): Promise<bigint>;
 
@@ -97,10 +96,10 @@ interface IAccount {
 export class Account implements IAccount {
     publicKey: PubKey;
     pk: bigint;
-//     auditorKey: PubKey = {
-//         x: 3220927228414153929438887738336746530194630060939473224263346330912472379800n,
-//         y: 2757351908714051356627755054438992373493721650442793345821069764655464109380n
-//     };
+    //     auditorKey: PubKey = {
+    //         x: 3220927228414153929438887738336746530194630060939473224263346330912472379800n,
+    //         y: 2757351908714051356627755054438992373493721650442793345821069764655464109380n
+    //     };
     Tongo: TypedContractV2<typeof tongoAbi>;
 
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
@@ -119,27 +118,27 @@ export class Account implements IAccount {
 
     async nonce(): Promise<bigint> {
         const { nonce } = await this.state();
-        return nonce
+        return nonce;
     }
 
     async rawBalance(): Promise<CipherBalance | undefined> {
         const { balance } = await this.state();
-        return balance
+        return balance;
     }
 
     async rawPending(): Promise<CipherBalance | undefined> {
         const { pending } = await this.state();
-        return pending
+        return pending;
     }
 
     async rawAEBalance(): Promise<AEBalance | undefined> {
         const { aeBalance } = await this.state();
-        return aeBalance
+        return aeBalance;
     }
 
     async rawAEAuditBalance(): Promise<AEBalance | undefined> {
         const { aeAuditBalance } = await this.state();
-        return aeAuditBalance
+        return aeAuditBalance;
     }
 
     async state(): Promise<AccountState> {
@@ -154,10 +153,10 @@ export class Account implements IAccount {
 
     // Warning: This is only for display. This is not the correct amount
     // of tongos that corresponds to erc20Amount
-    async erc20ToTongo(erc20Amount: bigint) : Promise<bigint> {
+    async erc20ToTongo(erc20Amount: bigint): Promise<bigint> {
         const rate = await this.rate();
-        let temp = erc20Amount / rate; 
-        if (erc20Amount % rate != 0n )  {
+        let temp = erc20Amount / rate;
+        if (erc20Amount % rate != 0n) {
             return temp + 1n;
         } else {
             return temp;
@@ -171,32 +170,32 @@ export class Account implements IAccount {
 
     async stateDeciphered(): Promise<AccountStateDeciphered> {
         const state = await this.Tongo.get_state(this.publicKey);
-        const accountState = Account.parseAccountState(state)
+        const accountState = Account.parseAccountState(state);
         return {
             balance: await this.decryptBalance(accountState),
             pending: await this.decryptPending(accountState),
             audited: await this.decryptAudit(accountState),
             nonce: accountState.nonce,
-        }
+        };
     }
 
     async auditorKey(): Promise<PubKey> {
         const auditorKey = await this.Tongo.auditor_key();
-        return auditorKey
+        return auditorKey;
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
         const { amount } = fundDetails;
-        const state  = await this.state();
+        const state = await this.state();
         const { nonce, balance: currentBalance } = state;
 
         const initialBalance = await this.decryptBalance(state);
         const auditorPubKey = starkPointToProjectivePoint(await this.auditorKey());
 
-        const { inputs, proof } = proveFund(this.pk, amount,initialBalance, currentBalance,  nonce, auditorPubKey);
+        const { inputs, proof } = proveFund(this.pk, amount, initialBalance, currentBalance, nonce, auditorPubKey);
 
         const aeHints = await this.computeAEHints(amount + initialBalance);
-        const operation = new FundOperation({ to: inputs.y, amount, proof, aeHints,auditedBalance: inputs.auditedBalance, auxBalance: inputs.auxBalance, Tongo: this.Tongo });
+        const operation = new FundOperation({ to: inputs.y, amount, proof, aeHints, auditedBalance: inputs.auditedBalance, auxBalance: inputs.auxBalance, Tongo: this.Tongo });
         await operation.populateApprove();
         return operation;
     }
@@ -204,17 +203,17 @@ export class Account implements IAccount {
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
         const { amount } = transferDetails;
 
-        const state  = await this.state();
+        const state = await this.state();
         const { nonce, balance: currentBalance } = state;
 
         const initialBalance = await this.decryptBalance(state);
-        if (initialBalance=== 0n) {
+        if (initialBalance === 0n) {
             throw new Error("You dont have enough balance");
         }
 
         // Balance is well defined if decryption was successful
 
-        if (initialBalance< amount) {
+        if (initialBalance < amount) {
             throw new Error("You dont have enough balance");
         }
 
@@ -241,7 +240,7 @@ export class Account implements IAccount {
     }
 
     async ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation> {
-        const state  = await this.state();
+        const state = await this.state();
         const { nonce, balance: cipherBalance } = state;
 
         const initialBalance = await this.decryptBalance(state);
@@ -259,10 +258,10 @@ export class Account implements IAccount {
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
         const { amount } = withdrawDetails;
-        const state  = await this.state();
+        const state = await this.state();
         const initialBalance = await this.decryptBalance(state);
 
-        if (initialBalance=== 0n) {
+        if (initialBalance === 0n) {
             throw new Error("You dont have enough balance");
         }
 
@@ -302,7 +301,7 @@ export class Account implements IAccount {
     async decryptAEBalance(aeBalance: AEBalance, accountNonce: bigint): Promise<bigint> {
         const keyAEBal = await this.deriveSymmetricKey(accountNonce);
         const { ciphertext, nonce: cipherNonce } = AEHintToBytes(aeBalance);
-        const balance = (new AEChaCha(keyAEBal)).decryptBalance({ciphertext, nonce: cipherNonce});
+        const balance = (new AEChaCha(keyAEBal)).decryptBalance({ ciphertext, nonce: cipherNonce });
         return balance;
     }
 
@@ -313,36 +312,36 @@ export class Account implements IAccount {
     //TODO: This is temporal and we should update this to handle rotating keys
     async decryptAudit(accountState: AccountState): Promise<bigint> {
         const { audit } = accountState;
-        const {L, R} = audit;
+        const { L, R } = audit;
         return decipherBalance(AUDITOR_PRIVATE, L, R);
     }
 
     async decryptBalance(accountState: AccountState): Promise<bigint> {
-      const { nonce, balance, aeBalance } = accountState;
-      // NOTE: undefined balance == Cairo::None == un-initialized account == 0 balance
-      if (balance === undefined) {
-        return 0n;
-      }
+        const { nonce, balance, aeBalance } = accountState;
+        // NOTE: undefined balance == Cairo::None == un-initialized account == 0 balance
+        if (balance === undefined) {
+            return 0n;
+        }
 
-      // balance is defined but aeBalance is not, weird state but workable, log warning and continue
-      if (aeBalance === undefined) {
-        console.log("Unknown aeBalance account state");
-        return this.decryptCipherBalance(balance);
-      }
+        // balance is defined but aeBalance is not, weird state but workable, log warning and continue
+        if (aeBalance === undefined) {
+            console.log("Unknown aeBalance account state");
+            return this.decryptCipherBalance(balance);
+        }
 
-      // If both are defined we attempt to quickly decipher symmetric hint and validate cipher balance
-      const decryptedAEBalance = await this.decryptAEBalance(aeBalance, nonce);
-      if (assertBalance(this.pk, decryptedAEBalance, balance.L, balance.R)) {
-        return decryptedAEBalance;
-      } else {
-        console.log("aeBalance does not match balance. This is not critical but should review AE encryption");
-        return this.decryptCipherBalance(balance);
-      }
+        // If both are defined we attempt to quickly decipher symmetric hint and validate cipher balance
+        const decryptedAEBalance = await this.decryptAEBalance(aeBalance, nonce);
+        if (assertBalance(this.pk, decryptedAEBalance, balance.L, balance.R)) {
+            return decryptedAEBalance;
+        } else {
+            console.log("aeBalance does not match balance. This is not critical but should review AE encryption");
+            return this.decryptCipherBalance(balance);
+        }
     }
 
     async balance(): Promise<bigint> {
-      const state = await this.state();
-      return this.decryptBalance(state)
+        const state = await this.state();
+        return this.decryptBalance(state);
     }
 
     async decryptPending(accountState: AccountState): Promise<bigint> {
@@ -355,8 +354,8 @@ export class Account implements IAccount {
     }
 
     async pending(): Promise<bigint> {
-      const state = await this.state();
-      return this.decryptPending(state)
+        const state = await this.state();
+        return this.decryptPending(state);
     }
 
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost {
