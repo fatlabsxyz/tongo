@@ -33,6 +33,7 @@ function newOzAccount(address: string, pk: string, provider: RpcProvider): Accou
 function newProvider(url: string): RpcProvider {
     return new RpcProvider({ nodeUrl: url, specVersion: "0.8" });
 }
+
 program
     .name('tongo-cli')
     .description('A simple CLI utility')
@@ -44,13 +45,10 @@ program
     .description('Derives address')
     .action((options) => {
         const ctx = getContext();
-        const gOpts = program.opts();
-        const provider = newProvider(ctx.rpcUrl);
-        const account = new TongoAccount(
+        const address = TongoAccount.tongoAddress(
             ctx.tongoPrivateKey,
-            gOpts.tongo || ctx.tongoContractAddress,
         );
-        console.log("Tongo address |", account.tongoAddress());
+        console.log("Tongo address |", address);
     });
 
 program

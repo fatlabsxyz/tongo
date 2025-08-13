@@ -103,7 +103,7 @@ export class Account implements IAccount {
 //     };
     Tongo: TypedContractV2<typeof tongoAbi>;
 
-    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider?: RpcProvider) {
+    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
         this.Tongo = new Contract(tongoAbi, contractAddress, provider).typedv2(tongoAbi);
         this.publicKey = projectivePointToStarkPoint(g.multiply(this.pk));
@@ -111,6 +111,10 @@ export class Account implements IAccount {
 
     tongoAddress(): TongoAddress {
         return pubKeyAffineToBase58(this.publicKey);
+    }
+
+    static tongoAddress(pk: BigNumberish | Uint8Array): TongoAddress {
+        return pubKeyAffineToBase58(projectivePointToStarkPoint(g.multiply(bytesOrNumToBigInt(pk))));
     }
 
     async nonce(): Promise<bigint> {
