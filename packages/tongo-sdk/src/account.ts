@@ -96,10 +96,6 @@ interface IAccount {
 export class Account implements IAccount {
     publicKey: PubKey;
     pk: bigint;
-    //     auditorKey: PubKey = {
-    //         x: 3220927228414153929438887738336746530194630060939473224263346330912472379800n,
-    //         y: 2757351908714051356627755054438992373493721650442793345821069764655464109380n
-    //     };
     Tongo: TypedContractV2<typeof tongoAbi>;
 
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
