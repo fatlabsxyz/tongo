@@ -1,13 +1,13 @@
 import { num ,BigNumberish, Contract, RpcProvider, TypedContractV2 } from "starknet";
 import { tongoAbi } from "./tongo.abi";
-import {CipherBalance, PubKey, TongoAddress } from "./types";
-import { bytesOrNumToBigInt, derivePublicKey, pubKeyAffineToHex, pubKeyAffineToBase58, parseCipherBalance} from "./utils";
-import { Account } from "./account";
-import { decipherBalance } from "@fatlabsxyz/she-js";
+import { PubKey, TongoAddress, derivePublicKey, pubKeyAffineToHex, pubKeyAffineToBase58, parseCipherBalance } from "./types";
+import { bytesOrNumToBigInt, } from "./utils";
+import { Account } from "./account/account.js";
+import { CipherBalance, decipherBalance } from "@fatlabsxyz/she-js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key";
 import { AEChaCha, AEHintToBytes } from "./ae_balance";
 import {ReaderEvent, StarknetEventReader} from "./data.service.js"
-import { AccountState } from "./account.js";
+import { RawAccountState } from "./account/IAccount.js";
 
 //TODO: This is for testing
 export const AUDITOR_PRIVATE: bigint = 1242079909984902665305n;
@@ -103,7 +103,7 @@ export class Auditor {
         this.provider = provider;
     }
 
-    async stateOf(otherPubKey: PubKey): Promise<AccountState> {
+    async stateOf(otherPubKey: PubKey): Promise<RawAccountState> {
         const state = await this.Tongo.get_state(otherPubKey);
         return Account.parseAccountState(state);
     }
@@ -114,7 +114,7 @@ export class Auditor {
 
     async viewDeclaredBalance(otherPubKey: PubKey): Promise<bigint> {
         const state = await this.stateOf(otherPubKey); 
-        const balance = this.decryptCipherBalance(state.audit);
+        const balance = this.decryptCipherBalance(state.audit!);
         return Promise.resolve(balance)
     }
 
@@ -138,98 +138,98 @@ export class Auditor {
         });
     }
 
-    async getUserEventsFund(initialBlock: number, otherPubKey: PubKey): Promise<AuditorFundEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsFund(initialBlock, otherPubKey);
-        return events.map((event) => ({
-            type: ReaderToAuditorEvents[event.type],
-            tx_hash: event.tx_hash,
-            block_number: event.block_number,
-            nonce: event.nonce,
-            amount: event.amount,
-            user: pubKeyAffineToBase58(otherPubKey),
-        } as AuditorFundEvent) )
-    }
-
-    async getUserEventsRollover(initialBlock: number, otherPubKey: PubKey): Promise<AuditorRolloverEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsRollover(initialBlock, otherPubKey);
-        return events.map((event) => ({
-            type: ReaderToAuditorEvents[event.type],
-            tx_hash: event.tx_hash,
-            block_number: event.block_number,
-            nonce: event.nonce,
-            user: pubKeyAffineToBase58(otherPubKey),
-        } as AuditorRolloverEvent) )
-    }
-
-    async getUserEventsWithdraw(initialBlock: number, otherPubKey: PubKey): Promise<AuditorWithdrawEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsWithdraw(initialBlock, otherPubKey);
-        return events.map((event) => ({
-            type: ReaderToAuditorEvents[event.type],
-            tx_hash: event.tx_hash,
-            block_number: event.block_number,
-            nonce: event.nonce,
-            amount: event.amount,
-            user: pubKeyAffineToBase58(otherPubKey),
-            to: num.toHex(event.to),
-        } as AuditorWithdrawEvent) )
-    }
-
-    async getUserEventsRagequit(initialBlock: number, otherPubKey: PubKey): Promise<AuditorRagequitEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsRagequit(initialBlock, otherPubKey);
-        return events.map((event) => ({
-            type: ReaderToAuditorEvents[event.type],
-            tx_hash: event.tx_hash,
-            block_number: event.block_number,
-            nonce: event.nonce,
-            amount: event.amount,
-            user: pubKeyAffineToBase58(otherPubKey),
-            to: num.toHex(event.to),
-        } as AuditorRagequitEvent) )
-    }
-
-    async getUserEventsTransferOut(initialBlock: number, otherPubKey: PubKey): Promise<AuditorTransferOutEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsTransferOut(initialBlock, otherPubKey);
-        return events.map((event) => ({
-            type: ReaderToAuditorEvents[event.type],
-            tx_hash: event.tx_hash,
-            block_number: event.block_number,
-            nonce: event.nonce,
-            amount: this.decryptCipherBalance(parseCipherBalance(event.auditedBalance)),
-            from: pubKeyAffineToBase58(otherPubKey),
-            to: pubKeyAffineToBase58(event.to)
-        } as AuditorTransferOutEvent) )
-    }
-
-    async getUserEventsTransferIn(initialBlock: number, otherPubKey: PubKey): Promise<AuditorTransferInEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsTransferIn(initialBlock, otherPubKey);
-        return events.map((event) => ({
-            type: ReaderToAuditorEvents[event.type],
-            tx_hash: event.tx_hash,
-            block_number: event.block_number,
-            nonce: event.nonce,
-            amount: this.decryptCipherBalance(parseCipherBalance(event.auditedBalance)),
-            from: pubKeyAffineToBase58(event.from),
-            to: pubKeyAffineToBase58(otherPubKey)
-        } as AuditorTransferInEvent) )
-    }
-
-    async getUserTxHistory(initialBlock: number, otherPubKey: PubKey): Promise<AuditorEvents[]> {
-        let promises = Promise.all([
-            this.getUserEventsFund(initialBlock, otherPubKey), 
-            this.getUserEventsRollover(initialBlock, otherPubKey),
-            this.getUserEventsWithdraw(initialBlock, otherPubKey),
-            this.getUserEventsRagequit(initialBlock, otherPubKey),
-            this.getUserEventsTransferOut(initialBlock, otherPubKey),
-            this.getUserEventsTransferIn(initialBlock, otherPubKey),
-        ])
-
-        let events = (await promises).flat()
-        return events.sort((a,b) => (b.block_number - a.block_number))
-    }
+//     async getUserEventsFund(initialBlock: number, otherPubKey: PubKey): Promise<AuditorFundEvent[]> {
+//         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+//         const events = await reader.getEventsFund(initialBlock, otherPubKey);
+//         return events.map((event) => ({
+//             type: ReaderToAuditorEvents[event.type],
+//             tx_hash: event.tx_hash,
+//             block_number: event.block_number,
+//             nonce: event.nonce,
+//             amount: event.amount,
+//             user: pubKeyAffineToBase58(otherPubKey),
+//         } as AuditorFundEvent) )
+//     }
+// 
+//     async getUserEventsRollover(initialBlock: number, otherPubKey: PubKey): Promise<AuditorRolloverEvent[]> {
+//         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+//         const events = await reader.getEventsRollover(initialBlock, otherPubKey);
+//         return events.map((event) => ({
+//             type: ReaderToAuditorEvents[event.type],
+//             tx_hash: event.tx_hash,
+//             block_number: event.block_number,
+//             nonce: event.nonce,
+//             user: pubKeyAffineToBase58(otherPubKey),
+//         } as AuditorRolloverEvent) )
+//     }
+// 
+//     async getUserEventsWithdraw(initialBlock: number, otherPubKey: PubKey): Promise<AuditorWithdrawEvent[]> {
+//         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+//         const events = await reader.getEventsWithdraw(initialBlock, otherPubKey);
+//         return events.map((event) => ({
+//             type: ReaderToAuditorEvents[event.type],
+//             tx_hash: event.tx_hash,
+//             block_number: event.block_number,
+//             nonce: event.nonce,
+//             amount: event.amount,
+//             user: pubKeyAffineToBase58(otherPubKey),
+//             to: num.toHex(event.to),
+//         } as AuditorWithdrawEvent) )
+//     }
+// 
+//     async getUserEventsRagequit(initialBlock: number, otherPubKey: PubKey): Promise<AuditorRagequitEvent[]> {
+//         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+//         const events = await reader.getEventsRagequit(initialBlock, otherPubKey);
+//         return events.map((event) => ({
+//             type: ReaderToAuditorEvents[event.type],
+//             tx_hash: event.tx_hash,
+//             block_number: event.block_number,
+//             nonce: event.nonce,
+//             amount: event.amount,
+//             user: pubKeyAffineToBase58(otherPubKey),
+//             to: num.toHex(event.to),
+//         } as AuditorRagequitEvent) )
+//     }
+// 
+//     async getUserEventsTransferOut(initialBlock: number, otherPubKey: PubKey): Promise<AuditorTransferOutEvent[]> {
+//         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+//         const events = await reader.getEventsTransferOut(initialBlock, otherPubKey);
+//         return events.map((event) => ({
+//             type: ReaderToAuditorEvents[event.type],
+//             tx_hash: event.tx_hash,
+//             block_number: event.block_number,
+//             nonce: event.nonce,
+//             amount: this.decryptCipherBalance(parseCipherBalance(event.auditedBalance)),
+//             from: pubKeyAffineToBase58(otherPubKey),
+//             to: pubKeyAffineToBase58(event.to)
+//         } as AuditorTransferOutEvent) )
+//     }
+// 
+//     async getUserEventsTransferIn(initialBlock: number, otherPubKey: PubKey): Promise<AuditorTransferInEvent[]> {
+//         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+//         const events = await reader.getEventsTransferIn(initialBlock, otherPubKey);
+//         return events.map((event) => ({
+//             type: ReaderToAuditorEvents[event.type],
+//             tx_hash: event.tx_hash,
+//             block_number: event.block_number,
+//             nonce: event.nonce,
+//             amount: this.decryptCipherBalance(parseCipherBalance(event.auditedBalance)),
+//             from: pubKeyAffineToBase58(event.from),
+//             to: pubKeyAffineToBase58(otherPubKey)
+//         } as AuditorTransferInEvent) )
+//     }
+// 
+//     async getUserTxHistory(initialBlock: number, otherPubKey: PubKey): Promise<AuditorEvents[]> {
+//         let promises = Promise.all([
+//             this.getUserEventsFund(initialBlock, otherPubKey), 
+//             this.getUserEventsRollover(initialBlock, otherPubKey),
+//             this.getUserEventsWithdraw(initialBlock, otherPubKey),
+//             this.getUserEventsRagequit(initialBlock, otherPubKey),
+//             this.getUserEventsTransferOut(initialBlock, otherPubKey),
+//             this.getUserEventsTransferIn(initialBlock, otherPubKey),
+//         ])
+// 
+//         let events = (await promises).flat()
+//         return events.sort((a,b) => (b.block_number - a.block_number))
+//     }
 }

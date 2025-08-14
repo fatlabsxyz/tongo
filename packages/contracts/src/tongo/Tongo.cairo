@@ -1,17 +1,17 @@
-
 #[starknet::contract]
 pub mod Tongo {
     //TODO: Decidir en donde meter STate
-    use crate::tongo::ITongo::{ITongo, State};
+    use crate::tongo::ITongo::{ITongo};
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use crate::structs::aecipher::{AEBalance, IntoOptionAEBalance, AEHints};
+    use crate::structs::aecipher::{AEBalance, IntoOptionAEBalance};
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::structs::common::{
         cipherbalance::{CipherBalance, CipherBalanceTrait},
         pubkey::PubKey,
+        state::State,
     };
     use crate::structs::operations::{
         fund::{InputsFund, Fund},
@@ -19,35 +19,80 @@ pub mod Tongo {
         transfer::{InputsTransfer, Transfer},
         ragequit::{InputsRagequit, Ragequit},
         rollover::{InputsRollOver, Rollover},
+        audit::{InputsAudit, Audit},
+        audit::{verifyAudit},
     };
     use crate::verifier::verifier::{
         verify_fund, verify_transfer, verify_withdraw, verify_ragequit,verify_rollover
     };
-    use crate::structs::events::{TransferEvent, FundEvent, RolloverEvent, WithdrawEvent, RagequitEvent};
+    use crate::structs::events::{
+        TransferEvent,
+        FundEvent,
+        RolloverEvent,
+        WithdrawEvent,
+        RagequitEvent,
+        BalanceDeclared,
+        TransferDeclared,
+        AuditorPubKeySet,
+    };
 
     #[storage]
-    // The storage of the balance is a map: G --> G\timesG with y --> (L,R). The curve points are
-    // stored in the form (x,y). Reading an empty y gives a default value of ((0,0), (0,0)) wich are
-    // not curve points TODO: it would be nice to set te default value to curve points like  (y,g)
     struct Storage {
-        balance: Map<PubKey, CipherBalance>,
-        audit_balance: Map<PubKey, CipherBalance>,
-        ae_balance: Map<PubKey, AEBalance>,
-        ae_audit_balance: Map<PubKey, AEBalance>,
-        pending: Map<PubKey, CipherBalance>,
-        nonce: Map<PubKey, u64>,
-        auditor_key:PubKey,
+        /// The contract address that is owner of the Tongo instance.
         owner: ContractAddress,
+
+        /// The contract address of the ERC20 that Tongo is wrapping.
         ERC20: ContractAddress,
+
+        /// The conversion  rage between the wrapped ERC20 a tongo:
+        ///
+        /// ERC20_amount = Tongo_amount*rate
         rate: u256,
+
+        /// The encrypted balance for the given pubkey.
+        balance: Map<PubKey, CipherBalance>,
+
+        /// The encrypted pending balance for the given pubkey. The pending balance is the sum of incoming
+        /// transfer. User has to execute a rollover operation to convert this to usable balance.
+        pending: Map<PubKey, CipherBalance>,
+
+        /// The nonce of the given pubkey. Nonce is increased in every user operation.
+        nonce: Map<PubKey, u64>,
+
+        /// Hint to fast decrypt the balance of the given pubkey. This encrypts the same amount that is
+        /// stored in `balance`. It is neither check nor enforced by the protocol, only the the user can decrypt it with
+        /// knowledge of the private key and it is only usefull for attempting a fast decryption of `balance.
+        ae_balance: Map<PubKey, AEBalance>,
+
+        //TODO: call it last declared balance? think if we need to just use events.
+        /// The balance of the given pubkey enrypted for the auditor key.
+        ///
+        /// If the contract was deployed witouth an auditor, the map is empty and all keys return the Default CipherBalance
+        /// {L: {x:0, y:0}, R:{x:0,y:0}};
+        audit_balance: Map<PubKey, CipherBalance>,
+
+        /// Hint to fast decrypt the audited balance of the given pubkey. This encrypts the same amount that is
+        /// stored in `audit_balance`. It is neither check nor enforced by the protocol, only the auditor can decrypt it
+        /// with knowledge of the auditor private key and it is only usefull for attempting a fast decryption of `audit_balance`.
+        ae_audit_balance: Map<PubKey, AEBalance>,
+
+        /// The auditor pubkey. If the contract was deployed without auditor this will be an Option::None without a way
+        /// to change it.
+        auditor_key:Option<PubKey>,
+
+        /// The increasing number that identifies the public key
+        key_number: u128,
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress, auditor_key: PubKey, ERC20:ContractAddress, rate: u256) {
+    fn constructor(ref self: ContractState, owner: ContractAddress,  ERC20:ContractAddress, rate: u256, auditor_key: Option<PubKey>) {
         self.owner.write(owner);
-        self.auditor_key.write(auditor_key);
         self.ERC20.write(ERC20);
         self.rate.write(rate);
+
+        if auditor_key.is_some(){
+            self._set_auditor_key(auditor_key.unwrap());
+        }
     }
 
     #[event]
@@ -58,213 +103,241 @@ pub mod Tongo {
         RolloverEvent: RolloverEvent,
         WithdrawEvent: WithdrawEvent,
         RagequitEvent: RagequitEvent,
+        BalanceDeclared: BalanceDeclared,
+        TransferDeclared: TransferDeclared,
+        AuditorPubKeySet: AuditorPubKeySet,
     }
 
 
     #[abi(embed_v0)]
     impl TongoImpl of ITongo<ContractState> {
-        /// Transfer some STARK to Tongo contract and assing some Tongo to account y
-        fn fund(ref self: ContractState, fund: Fund) {
-            let Fund { to, amount, proof, ae_hints, auditedBalance, auxBalance} = fund;
-            let nonce = self.get_nonce(to);
-            let currentBalance = self.get_balance(to);
-            let auditorPubKey = self.auditor_key();
-
-            let inputs: InputsFund = InputsFund { y: to, nonce, amount, auxBalance, currentBalance, auditedBalance, auditorPubKey: auditorPubKey.try_into().unwrap() };
-            verify_fund(inputs, proof);
-
-            //get the transfer amount from the sender
-            //TODO: Check Allowance
-            self.transfer_from_caller(self.unwrapTongoAmount(amount));
-
-            let cipher = CipherBalanceTrait::new(to, amount, 'fund');
-            self.add_balance(to, cipher);
-
-            self.set_audit(to, auditedBalance);
-
-            self.overwrite_ae_balances(to, ae_hints);
-            self.increase_nonce(to);
-            self.emit(FundEvent { to, amount: amount.try_into().unwrap(), nonce , auditorPubKey, auditedBalanceLeft: auditedBalance});
+        /// Returns the contract address that Tongo is wraping.
+        fn ERC20(self: @ContractState) -> ContractAddress {
+            self.ERC20.read()
         }
 
-        /// Withdraw some tongo from acount and send the stark to the recipient
+        /// Returns the rate of conversion between the wrapped ERC20 a tongo:
+        ///
+        /// ERC20_amount = Tongo_amount*rate
+        ///
+        /// The amount variable in all operation refers to the amount of Tongos.
+        fn get_rate(self: @ContractState) -> u256 {
+            self.rate.read()
+        }
+
+        /// TODO: At the moment the only thing the owner can do is to rotate the auditor key.
+        /// 
+        /// Returns the contract address of the owner of the Tongo account.
+        fn get_owner(self: @ContractState) -> ContractAddress {
+            self.owner.read()
+        }
+
+        /// Funds a tongo account. Callable only by the account owner
+        ///
+        /// Emits FundEvent
+        fn fund(ref self: ContractState, fund: Fund) {
+            let Fund { to, amount, proof, auditPart, hint} = fund;
+            let nonce = self.get_nonce(to);
+            let currentBalance = self.get_balance(to);
+
+            let inputs: InputsFund = InputsFund { y: to, nonce, amount,  currentBalance };
+            verify_fund(inputs, proof);
+
+            self._transfer_from_caller(self._unwrap_tongo_amount(amount));
+
+            let cipher = CipherBalanceTrait::new(to, amount, 'fund');
+            self._add_balance(to, cipher);
+            self._overwrite_hint(to, hint);
+            self.emit(FundEvent { to, amount: amount.try_into().unwrap(), nonce});
+
+            if self.auditor_key.read().is_some() {
+                self._handle_audit_balance(to, nonce, auditPart);
+            }
+
+            self._increase_nonce(to);
+        }
+
+        /// Withdraw Tongos and send the ERC20 to a starknet address.
+        ///
+        /// Emits WithdrawEvent
         fn withdraw(ref self: ContractState, withdraw: Withdraw) {
-            let Withdraw { from, amount, auditedBalance, to, proof, ae_hints } = withdraw;
+            let Withdraw { from, amount, to, proof, auditPart, hint } = withdraw;
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
-            let auditorPubKey = self.auditor_key();
             
-            let inputs: InputsWithdraw = InputsWithdraw { y: from, amount, nonce, to, currentBalance, auditedBalance, auditorPubKey};
+            let inputs: InputsWithdraw = InputsWithdraw { y: from, amount, nonce, to, currentBalance };
             verify_withdraw(inputs, proof);
 
             let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
-            self.remove_balance(from, cipher);
+            self._remove_balance(from, cipher);
+            self._overwrite_hint(from, hint);
+            self._transfer_to(to, self._unwrap_tongo_amount(amount));
+            self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce});
 
-            self.set_audit(from, auditedBalance);
-            self.increase_nonce(from);
+            if self.auditor_key.read().is_some() {
+                self._handle_audit_balance(from, nonce, auditPart);
+            }
 
-            self.transfer_to(to, self.unwrapTongoAmount(amount));
-            self.overwrite_ae_balances(from, ae_hints);
-            self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce , auditorPubKey, auditedBalanceLeft: auditedBalance});
+            self._increase_nonce(from);
         }
 
-        /// Withdraw ALL tongo from acount and send the stark to the recipient
+        /// Withdraw all the balance of an account and send the ERC20 to a starknet address. This proof avoids
+        /// the limitations of the range prove that are present in the regular withdraw.
+        ///
+        /// Emits RagequitEvent
         fn ragequit(ref self: ContractState, ragequit: Ragequit) {
-            let Ragequit { from, amount, to, proof, ae_hints } = ragequit;
+            let Ragequit { from, amount, to, proof, hint, auditPart } = ragequit;
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
-            let auditorPubKey = self.auditor_key();
             let inputs: InputsRagequit = InputsRagequit { y: from, amount, nonce, to, currentBalance };
             verify_ragequit(inputs, proof);
 
-            let auditedZeroBalance = CipherBalanceTrait::new(auditorPubKey, 0, 1);
-            self.set_audit(from, auditedZeroBalance);
-
             let zeroBalance: CipherBalance  = CipherBalanceTrait::new(from, 0, 1);
             self.balance.entry(from).write(zeroBalance.into());
+            self._overwrite_hint(from, hint);
 
-            self.increase_nonce(from);
-
-            self.overwrite_ae_balances(from, ae_hints);
-
-            self.transfer_to(to, self.unwrapTongoAmount(amount));
+            self._transfer_to(to, self._unwrap_tongo_amount(amount));
             self.emit(RagequitEvent { from, amount: amount.try_into().unwrap(), to, nonce });
+
+            if self.auditor_key.read().is_some() {
+                self._handle_audit_balance(from, nonce, auditPart);
+            }
+            //end of audit
+
+            self._increase_nonce(from);
         }
 
-        /// Transfer the amount encoded in L, L_bar from "from" to "to". The proof has to be done
-        /// w.r.t the balance stored in Balance plus Pending and to the nonce stored in the
-        /// contract.
+        /// Transfer Tongos from the balanca of te sender to the pending of the receiver
+        ///
+        /// Emits TransferEvent
         fn transfer(ref self: ContractState, transfer: Transfer) {
-            let Transfer { from, to, transferBalance, transferBalanceSelf, auditedBalance, auditedBalanceSelf, proof, ae_hints} = transfer;
+            let Transfer { from, to, transferBalance, transferBalanceSelf, proof, auditPart, auditPartTransfer, hint} = transfer;
 
             let currentBalance= self.get_balance(from);
             let nonce = self.get_nonce(from);
-            let auditorPubKey = self.auditor_key.read();
 
             let inputs: InputsTransfer = InputsTransfer {
                 y: from,
                 y_bar: to,
                 nonce,
-                auditorPubKey,
                 currentBalance,
                 transferBalance,
                 transferBalanceSelf,
-                auditedBalance,
-                auditedBalanceSelf,
             };
 
             verify_transfer(inputs, proof);
 
-            self.remove_balance(from, transferBalanceSelf);
-            self.set_audit(from, auditedBalanceSelf);
+            self._remove_balance(from, transferBalanceSelf);
+            self._overwrite_hint(from, hint);
 
-            self.add_pending(to, transferBalance);
-            self.increase_nonce(from);
-            self.overwrite_ae_balances(from, ae_hints);
-            self .emit(
-                TransferEvent {
-                        to, from, nonce, auditorPubKey, auditedBalanceSelf, auditedBalance, transferBalance,  transferBalanceSelf
-                    },
-                )
+            self._add_pending(to, transferBalance);
+            self .emit( TransferEvent { to, from, nonce, transferBalance, transferBalanceSelf, hint});
+
+            if self.auditor_key.read().is_some() {
+                self._handle_audit_balance(from, nonce, auditPart);
+                self._handle_audit_transfer(from,nonce,to,transferBalanceSelf,auditPartTransfer);
+            }
+            //end of audit
+
+            self._increase_nonce(from);
         }
 
+        /// Moves to the balance the amount stored in the pending. Callable only by the account owner.
+        ///
+        /// Emits RolloverEvent
         fn rollover(ref self: ContractState, rollover: Rollover) {
-            let Rollover { to, proof, ae_hints } = rollover;
+            let Rollover { to, proof, hint } = rollover;
             let nonce = self.get_nonce(to);
             let inputs: InputsRollOver = InputsRollOver { y: to, nonce: nonce };
             verify_rollover(inputs, proof);
             let rollovered = self.pending.entry(to).read();
-            self.pending_to_balance(to);
-            self.increase_nonce(to);
-            self.overwrite_ae_balances(to, ae_hints);
+
+            self._pending_to_balance(to);
+            self._increase_nonce(to);
+            self._overwrite_hint(to, hint);
             self.emit(RolloverEvent { to, nonce, rollovered });
         }
 
-        fn ERC20(self: @ContractState) -> ContractAddress {
-            self.ERC20.read()
-        }
-
-        fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
-            self.nonce.entry(y).read()
-        }
-
-        /// Returns the cipher balance of the given public key y. The cipher balance consist in two
-        /// points of the stark curve. (L,R) = ((Lx, Ly), (Rx, Ry )) = (g**b y**r , g**r) for some
-        /// random r.
+        /// Returns the curretn stored balance of a Tongo account
         fn get_balance(self: @ContractState, y: PubKey) -> CipherBalance {
             self.balance.entry(y).read().handle_null(y).into()
         }
 
-        fn get_audit(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.audit_balance.entry(y).read().handle_null(self.auditor_key()).into()
-        }
-
+        /// Returns the current pending balance of a Tongo account
         fn get_pending(self: @ContractState, y: PubKey) -> CipherBalance {
             self.pending.entry(y).read().handle_null(y).into()
         }
 
+        /// Return, if the Tongo instance allows, the current declared balance of a Tongo account for the auditor
+        fn get_audit(self: @ContractState, y: PubKey) -> Option<CipherBalance> {
+            if self.auditor_key.read().is_none() {
+                return Option::<CipherBalance>::None ;
+            }
+            let auditorPubKey = self.auditor_key.read().unwrap();
+            Option::Some(self.audit_balance.entry(y).read().handle_null(auditorPubKey).into())
+        }
+
+        /// Returns the current nonce of a Tongo account
+        fn get_nonce(self: @ContractState, y: PubKey) -> u64 {
+            self.nonce.entry(y).read()
+        }
+
+        /// Returns the current state of a Tongo account.
         fn get_state(self: @ContractState, y: PubKey) -> State {
             let balance = self.balance.entry(y).read().handle_null(y).into();
             let pending = self.pending.entry(y).read().handle_null(y).into();
-            let audit = self.audit_balance.entry(y).read().handle_null(self.auditor_key.read()).into();
             let nonce = self.nonce.entry(y).read();
+
+            let audit = self.get_audit(y);
             let ae_balance = IntoOptionAEBalance::into(self.ae_balance.entry(y).read());
             let ae_audit_balance = IntoOptionAEBalance::into(self.ae_audit_balance.entry(y).read());
             return State { balance, pending, audit, nonce, ae_balance, ae_audit_balance };
         }
 
-        fn change_auditor_key(ref self: ContractState, new_auditor_key:PubKey) {
-            assert!(get_caller_address() == self.owner.read(), "Caller not owner");
-            self.auditor_key.write(new_auditor_key);
-        }
-
-        fn auditor_key(self: @ContractState) -> PubKey {
+        /// Returns the current auditor public key.
+        fn auditor_key(self: @ContractState) -> Option<PubKey> {
             self.auditor_key.read()
         }
 
-        fn get_rate(self: @ContractState) -> u256 {
-            self.rate.read()
+        /// Rotates the current auditor public key.
+        fn change_auditor_key(ref self: ContractState, new_auditor_key:PubKey) {
+            assert!(get_caller_address() == self.owner.read(), "Caller not owner");
+            assert!(self.auditor_key.read().is_some(), "This contract was deployed without an auditor");
+            self._set_auditor_key(new_auditor_key);
         }
     }
 
     #[generate_trait]
     pub impl PrivateImpl of IPrivate {
-        fn add_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
-            let old_balance = self.balance.entry(y).read();
-            if old_balance.is_null() {
-                self.balance.entry(y).write(new_balance.into());
-            } else {
-                let sum = old_balance.add(new_balance.into());
-                self.balance.entry(y).write(sum);
-            }
+        /// Adds the given balance to the current balance of the given tongo Account.
+        fn _add_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
+            let old_balance = self.get_balance(y);
+            let sum = old_balance.add(new_balance.into());
+            self.balance.entry(y).write(sum);
         }
 
-        fn remove_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
-            let old_balance = self.balance.entry(y).read();
-            if old_balance.is_null() {
-                self.balance.entry(y).write(new_balance.into());
-            } else {
-                let sum = old_balance.subtract(new_balance.into());
-                self.balance.entry(y).write(sum);
-            }
+        /// Substract the given balance to the current balance of the given Tongo account.
+        fn _remove_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
+            let old_balance = self.get_balance(y);
+            let sum = old_balance.subtract(new_balance.into());
+            self.balance.entry(y).write(sum);
         }
 
-        fn add_pending(ref self: ContractState, y: PubKey, new_pending: CipherBalance) {
-            let old_pending = self.pending.entry(y).read();
-            if old_pending.is_null() {
-                self.pending.entry(y).write(new_pending.into());
-            } else {
-                let sum = old_pending.add(new_pending.into());
-                self.pending.entry(y).write(sum);
-            }
+        /// Adds the given balance to the current pending state of the given Tongo account.
+        fn _add_pending(ref self: ContractState, y: PubKey, new_pending: CipherBalance) {
+            let old_pending = self.get_pending(y);
+            let sum = old_pending.add(new_pending.into());
+            self.pending.entry(y).write(sum);
         }
 
-        fn pending_to_balance(ref self: ContractState, y: PubKey) {
+        /// Adds the pending balance to the current balance of the givren Tongo accout
+        /// sets the pending to 0.
+        fn _pending_to_balance(ref self: ContractState, y: PubKey) {
             let pending = self.pending.entry(y).read();
             if pending.is_null() {
                 return;
             }
-            self.add_balance(y, pending.into());
+            self._add_balance(y, pending.into());
             self
                 .pending
                 .entry(y.into())
@@ -273,36 +346,85 @@ pub mod Tongo {
                 );
         }
 
-        fn set_audit(ref self: ContractState, y:PubKey, new_audit: CipherBalance) {
+        /// Overwrites the current audited cipherBalance to the the given one.
+        fn _set_audit(ref self: ContractState, y:PubKey, new_audit: CipherBalance) {
             self.audit_balance.entry(y).write(new_audit.into());
         }
 
-        fn transfer_from_caller(self: @ContractState, amount: u256) {
+        /// Pull some ERC20 amount from the caller.
+        fn _transfer_from_caller(self: @ContractState, amount: u256) {
             let asset_address =  self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address};
             ERC20.transfer_from(get_caller_address(), get_contract_address(), amount);
         }
 
-        fn transfer_to(self: @ContractState, to: ContractAddress, amount: u256) {
+        /// Transfer some amount of ERC20 to the given starknet address.
+        fn _transfer_to(self: @ContractState, to: ContractAddress, amount: u256) {
             let asset_address =  self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address};
             ERC20.transfer(to, amount);
         }
 
-        fn increase_nonce(ref self: ContractState, y: PubKey) {
+        /// Increases the nonce of the given Tongo account.
+        fn _increase_nonce(ref self: ContractState, y: PubKey) {
             let mut nonce = self.nonce.entry(y).read();
             nonce = nonce + 1;
             self.nonce.entry(y).write(nonce);
         }
 
-        fn overwrite_ae_balances(ref self: ContractState, y: PubKey, ae_hints: AEHints) {
-            self.ae_balance.entry(y).write(ae_hints.ae_balance);
-            self.ae_audit_balance.entry(y).write(ae_hints.ae_audit_balance);
+        /// Overwrites the auditor pub key and increases key_number
+        fn _set_auditor_key(ref self: ContractState, newAuditorKey: PubKey) {
+            let keyNumber = self.key_number.read() + 1_u128;
+            self.auditor_key.write(Option::Some(newAuditorKey));
+            self.emit(AuditorPubKeySet{keyNumber, AuditorPubKey: newAuditorKey});
+            self.key_number.write(keyNumber);
         }
 
-        fn unwrapTongoAmount(self:@ContractState, amount: felt252) -> u256 {
+        /// Overwrite the AE hint of the given account for the given one.
+        fn _overwrite_hint(ref self: ContractState, y: PubKey, hint: AEBalance) {
+            self.ae_balance.entry(y).write(hint);
+        }
+
+        /// Overwrite the AE hint for the auditor of the given account for the given one.
+        fn _overwrite_audit_hint(ref self: ContractState, y: PubKey, hint: AEBalance) {
+            self.ae_audit_balance.entry(y).write(hint);
+        }
+
+        /// Returns the ERC20 equivalent of the given Tongo amount.
+        ///
+        /// ERC20_amount = Tongo_amount*rate
+        fn _unwrap_tongo_amount(self:@ContractState, amount: felt252) -> u256 {
             let rate = self.rate.read();
             return (amount.into() * rate);
+        }
+
+        /// Verifies the given Audit with the zk proof are valid. Overwrites the audit Balance
+        /// and emits BalanceDeclared Event
+        fn _handle_audit_balance(ref self: ContractState,y:PubKey,nonce:u64, audit:Option<Audit>) {
+            assert!(audit.is_some(), "You must declare your balance");
+            let Audit {auditedBalance, proof: auditProof, hint}  = audit.unwrap();
+
+            let auditorPubKey = self.auditor_key.read().unwrap();
+            let storedBalance= self.get_balance(y);
+            let inputs: InputsAudit = InputsAudit {y, auditorPubKey, storedBalance, auditedBalance };
+            verifyAudit(inputs, auditProof);  
+
+            self._set_audit(y, auditedBalance);
+            self._overwrite_audit_hint(y, hint);
+            self.emit(BalanceDeclared{from: y,nonce,auditorPubKey, declaredCipherBalance: auditedBalance, hint});
+        }
+
+        /// Verifies the given Audit with the zk proof are valid.
+        ///
+        /// Emits TransferDeclared Event
+        fn _handle_audit_transfer(ref self: ContractState,from:PubKey,nonce:u64,to:PubKey, transferBalance: CipherBalance, audit:Option<Audit>) {
+            assert!(audit.is_some(), "You must declare your balance");
+            let auditorPubKey = self.auditor_key.read().unwrap();
+            let Audit {auditedBalance, proof: auditProof, hint: hint}  = audit.unwrap();
+            let inputs: InputsAudit = InputsAudit {y:from, auditorPubKey, storedBalance:transferBalance, auditedBalance };
+            verifyAudit(inputs, auditProof);  
+
+            self.emit(TransferDeclared{from, to, nonce, auditorPubKey,declaredCipherBalance: auditedBalance, hint});
         }
     }
 }

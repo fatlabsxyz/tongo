@@ -5,7 +5,6 @@ use tongo::verifier::verifier::{verify_withdraw, verify_ragequit};
 use tongo::structs::common::{
     cipherbalance::{CipherBalance,CipherBalanceTrait},
 };
-use crate::consts::AUDITOR_KEY;
 use crate::prover::utils::pubkey_from_secret;
 
 #[test]
@@ -25,14 +24,13 @@ fn test_withdraw() {
     let amount = 10;
     let nonce = 2;
 
-    let (inputs, proof) = prove_withdraw(
+    let (inputs, proof, _) = prove_withdraw(
         x,
-        initial_balance,
         amount,
         tranfer_address,
+        initial_balance,
         currentBalance,
         nonce,
-        AUDITOR_KEY(),
         generate_random(seed, 3)
     );
     verify_withdraw(inputs, proof);
@@ -58,7 +56,7 @@ fn test_ragequit() {
     let amount = 100;
     let nonce = 12;
 
-    let (inputs, proof) = prove_ragequit(
+    let (inputs, proof, _) = prove_ragequit(
         x, amount, tranfer_address, currentBalance, nonce, generate_random(seed, 3)
     );
     verify_ragequit(inputs, proof);

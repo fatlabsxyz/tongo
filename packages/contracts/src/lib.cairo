@@ -14,6 +14,7 @@ pub mod structs {
         pub mod pubkey;
         pub mod starkpoint;
         pub mod cipherbalance;
+        pub mod state;
     }
 
     pub mod operations {
@@ -22,6 +23,7 @@ pub mod structs {
         pub mod transfer;
         pub mod rollover;
         pub mod ragequit;
+        pub mod audit;
     }
 
     pub mod aecipher;

@@ -1,21 +1,51 @@
-use crate::structs::aecipher::AEHints;
-use crate::structs::common::{
-    starkpoint::StarkPoint,
-    pubkey::PubKey,
-};
-use crate::verifier::utils::{cast_in_order};
-use crate::structs::traits::{Prefix, Challenge};
 use core::poseidon::poseidon_hash_span;
+use crate::verifier::utils::{cast_in_order};
+use crate::structs::{
+    common::{
+        pubkey::PubKey,
+        starkpoint::StarkPoint,
+    },
+    traits::{
+        Prefix,
+        Challenge,
+        AppendPoint,
+    },
+    aecipher::AEBalance,
+};
 
-use crate::structs::traits::{AppendPoint};
+/// Represents the calldata of a fund operation.
+///
+/// - to: The Tongo account to rollover.
+/// - hint: AE encription of the final balance (tentative in this case) of the account.
+/// - proof: ZK proof for the rollover operation.
+#[derive(Drop, Destruct, Serde, Copy)]
+pub struct Rollover {
+    pub to: PubKey,
+    pub hint: AEBalance,
+    pub proof: ProofOfRollOver,
+}
 
+/// Public inputs of the verifier for the rollover operation.
+///
+/// - y: The Tongo account to fund.
+/// - nonce: The nonce of the Tongo account (from).
 #[derive(Serde, Drop, Copy)]
 pub struct InputsRollOver {
     pub y: PubKey,
     pub nonce: u64,
 }
 
+/// Proof of rollover operation.
+#[derive(Serde, Drop, Copy)]
+pub struct ProofOfRollOver {
+    pub Ax: StarkPoint,
+    pub sx: felt252,
+}
+
+/// Computes the prefix by hashing some public inputs.
 impl RollOverPrefix of Prefix<InputsRollOver> {
+    /// There is no need to compute the hash of all elements.
+    /// TODO: check this, read git issue
     fn prefix(self: @InputsRollOver) -> felt252 {
         let mut arr = array!['rollover'];         
         self.serialize(ref arr);
@@ -23,25 +53,12 @@ impl RollOverPrefix of Prefix<InputsRollOver> {
     }
 }
 
-#[derive(Serde, Drop, Copy)]
-pub struct ProofOfRollOver {
-    pub Ax: StarkPoint,
-    pub sx: felt252,
-}
-
-
+/// Computes the challenge to be ussed in the Non-Interactive protocol.
 impl ChallengeRollOver of Challenge<ProofOfRollOver> {
     fn compute_challenge(self: @ProofOfRollOver, prefix: felt252) -> felt252 {
         let mut arr: Array<felt252> = array![prefix];
         arr.append_coordinates(self.Ax);
         cast_in_order(poseidon_hash_span(arr.span()))
     }
-}
-
-#[derive(Drop, Destruct, Serde, Copy)]
-pub struct Rollover {
-    pub to: PubKey,
-    pub proof: ProofOfRollOver,
-    pub ae_hints: AEHints
 }
 

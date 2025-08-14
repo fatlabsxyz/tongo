@@ -1,6 +1,8 @@
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { bytesToNumberBE, numberToBytesBE } from '@noble/ciphers/utils.js';
 import { randomBytes } from '@noble/ciphers/webcrypto.js';
+import { uint256, Uint256, BigNumberish } from "starknet";
+import { isUint256 } from './utils.js';
 
 export interface AEBalance {
     ciphertext: bigint,
@@ -10,11 +12,6 @@ export interface AEBalance {
 export interface AEBalanceBytes {
     ciphertext: Uint8Array,
     nonce: Uint8Array;
-}
-
-export interface AEBalances {
-    ae_balance: AEBalance,
-    ae_audit_balance: AEBalance,
 }
 
 export function AEHintToBytes({ ciphertext, nonce }: AEBalance): AEBalanceBytes {
@@ -28,6 +25,19 @@ export function bytesToBigAEHint({ ciphertext, nonce }: AEBalanceBytes): AEBalan
     return {
         ciphertext: bytesToNumberBE(ciphertext),
         nonce: bytesToNumberBE(nonce),
+    };
+}
+
+export function parseAEBalance({ ciphertext, nonce }: { ciphertext: BigNumberish; nonce: number | bigint | Uint256; }): AEBalance {
+    let parsedNonce: bigint;
+    if (isUint256(nonce)) {
+        parsedNonce = uint256.uint256ToBN(nonce);
+    } else {
+        parsedNonce = BigInt(nonce);
+    }
+    return {
+        ciphertext: BigInt(ciphertext),
+        nonce: parsedNonce
     };
 }
 
@@ -67,5 +77,4 @@ export class AEChaCha {
             throw new Error("Malformed or tampered ciphertext");
         }
     }
-
 }

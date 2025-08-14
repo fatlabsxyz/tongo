@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateH, VIEW } from "../src/constants"
+import { generateH } from "../src/constants"
 
 import {
   cipherBalance,
@@ -21,7 +21,8 @@ import {
   verifyRagequit,
   verifyRollover,
   assertBalance,
-  computePrefix,
+  prove_audit,
+  verify_audit,
 } from "../src";
 
 import {
@@ -66,47 +67,11 @@ describe("Example test suit", () => {
     const currentBalance = cipherBalance(y,initialBalance,random);
     const nonce = 10n;
 
-    const { inputs, proof } = proveFund(x, amount,initialBalance, currentBalance,nonce, VIEW);
+    const { inputs, proof } = proveFund(x, amount,initialBalance, currentBalance,nonce);
     verifyFund(inputs, proof);
+
   });
 
-  it("prefix vs verifyFund", () => {
-    const x = 12n;
-    const y = GENERATOR.multiplyUnsafe(x);
-    const random = 1n;
-    const amount = 100n;
-    const initialBalance = 0n;
-    const currentBalance = cipherBalance(y,initialBalance,random);
-    const auxBalance = currentBalance;
-    const auditedBalance = currentBalance;
-    const auditorPubKey = y;
-    const nonce = 0n;
-
-  const fund_selector = 1718972004n;
-    const seq: bigint[] = [
-        fund_selector,
-        y.toAffine().x,
-        y.toAffine().y,
-        amount,
-        nonce,
-        currentBalance.L.toAffine().x,
-        currentBalance.L.toAffine().y,
-        currentBalance.R.toAffine().x,
-        currentBalance.R.toAffine().y,
-        auxBalance.L.toAffine().x,
-        auxBalance.L.toAffine().y,
-        auxBalance.R.toAffine().x,
-        auxBalance.R.toAffine().y,
-        auditedBalance.L.toAffine().x,
-        auditedBalance.L.toAffine().y,
-        auditedBalance.R.toAffine().x,
-        auditedBalance.R.toAffine().y,
-        auditorPubKey.toAffine().x,
-        auditorPubKey.toAffine().y,
-    ];
-    const prefix = computePrefix(seq);
-//     console.log("prefix: {}", prefix);
-  });
 
   it("proveWithdrawAll vs verifyWithdrawAll", () => {
     const x = 1234n;
@@ -142,7 +107,6 @@ describe("Example test suit", () => {
       to,
       currentBalance,
       nonce,
-      VIEW,
     );
     verifyWithdraw(inputs, proof);
   });
@@ -175,7 +139,6 @@ describe("Example test suit", () => {
       y_bar,
       initial_balance,
       amount,
-      VIEW,
       currentBalance,
       nonce,
     );
@@ -220,21 +183,6 @@ describe("Example test suit", () => {
 
     poeN(y, [GENERATOR, SECONDARY_GENERATOR], A, c, ss);
     });
-
-  it("expost", () => {
-    const x = 3809213n
-    const x_bar = 3809213n
-    const y = GENERATOR.multiplyUnsafe(x);
-    const y_bar = GENERATOR.multiplyUnsafe(x_bar);
-    const b = 65n
-    const r = 2930213809218n
-    const {L:TL, R:TR} = cipherBalance(y,b,r)
-    
-    const {inputs, proof} = proveExpost(x, y_bar, TL, TR)
-    verifyExpost(inputs,proof)
-    const b_bar = decipherBalance(x_bar, inputs.L_bar, inputs.R)
-    expect(b).toEqual(b_bar)
-  });
 });
 
 it("generateH", ()=> {
@@ -242,6 +190,19 @@ it("generateH", ()=> {
     expect(h_gen).toEqual(SECONDARY_GENERATOR)
 });
 
+
+it("audit", ()=> {
+    const x = 1928312n;
+    const y = GENERATOR.multiply(x);
+
+    const x_auditor = 239210n;
+    const auditorPubKey = GENERATOR.multiply(x_auditor);
+    const balance = 100n;
+    const storedBalance = cipherBalance(y, balance, 92873821n);
+    
+    const {inputs, proof} = prove_audit(x, balance, storedBalance, auditorPubKey);
+    verify_audit(inputs,proof);
+});
 
 // it("benchmarkDecipherOptimized", () => {
 //   const x = 1234n;

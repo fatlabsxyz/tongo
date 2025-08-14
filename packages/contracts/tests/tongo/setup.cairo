@@ -4,16 +4,16 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_caller_address,
 };
 use starknet::ContractAddress;
-use tongo::tongo::ITongo::ITongoDispatcher;
+use tongo::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
 use tongo::structs::{
-    aecipher::AEHints,
+    aecipher::AEBalance,
 };
 
 use crate::consts::{TONGO_ADDRESS,STRK_ADDRESS,USER_CALLER, AUDITOR_PRIVATE, OWNER_ADDRESS, RATE};
 use crate::prover::utils::pubkey_from_secret;
 
-pub fn empty_ae_hint() -> AEHints {
-    AEHints { ae_balance: Default::default(), ae_audit_balance: Default::default() }
+pub fn empty_ae_hint() -> AEBalance {
+    Default::default()
 }
 
 fn declare_class(contract_name: ByteArray) -> (ContractClass, felt252) {
@@ -37,7 +37,8 @@ pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
     let (tongo_contract, _tongo_class_hash) = declare_class("Tongo");
 
     let audit_key = pubkey_from_secret(AUDITOR_PRIVATE);
-    let constructor_calldata: Array<felt252> = array![OWNER_ADDRESS.into(), audit_key.x, audit_key.y, STRK_ADDRESS.into(), RATE.low.into(), RATE.high.into()];
+    // Option<PubKey> se serializa como [0, x, y] si es un some o [1] si es un none
+    let constructor_calldata: Array<felt252> = array![OWNER_ADDRESS.into(),  STRK_ADDRESS.into(), RATE.low.into(), RATE.high.into(), 0 , audit_key.x, audit_key.y,];
     let tongo_address = deploy_contract(
         tongo_contract, TONGO_ADDRESS.try_into().unwrap(), constructor_calldata,
     );
@@ -55,4 +56,25 @@ fn setup_erc20() -> IERC20Dispatcher {
     dispatcher.approve(TONGO_ADDRESS.try_into().unwrap(), 10000000_u256);
     stop_cheat_caller_address(STRK_ADDRESS);
     return dispatcher;
+}
+
+#[test]
+fn test_owner() {
+    let (_address, dispatcher) = setup_tongo();
+    let onwer = dispatcher.get_owner();
+    assert(onwer == OWNER_ADDRESS, 'nope');
+}
+
+#[test]
+fn test_asset() {
+    let (_address, dispatcher) = setup_tongo();
+    let asset = dispatcher.ERC20();
+    assert(asset== STRK_ADDRESS, 'nope');
+}
+
+#[test]
+fn test_rate() {
+    let (_address, dispatcher) = setup_tongo();
+    let rate= dispatcher.get_rate();
+    assert(rate == RATE, 'nope');
 }

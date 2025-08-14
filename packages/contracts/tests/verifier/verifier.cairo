@@ -4,8 +4,7 @@ use tongo::verifier::she::{poe, verify_range, oneORzero};
 
 use crate::prover::utils::{ generate_random, simPOE};
 use crate::prover::functions::{prove_bit, prove_range};
-use tongo::verifier::she::alternative_oneORzero;
-use crate::prover::functions::alternative_prove_bit;
+use crate::prover::functions::{alternative_prove_bit, alternative_oneORzero};
 
 
 
@@ -45,7 +44,6 @@ fn test_OR1() {
     oneORzero(pi);
 }
 
-
 #[test]
 fn test_range() {
     let seed = 128309213893;
@@ -63,7 +61,6 @@ fn alternative_OR1() {
 
     alternative_oneORzero(proof);
 }
-
 
 #[test]
 fn alternative_OR0() {

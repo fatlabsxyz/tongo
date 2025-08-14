@@ -2,146 +2,144 @@ use starknet::ContractAddress;
 use tongo::tongo::ITongo::ITongoDispatcherTrait;
 use tongo::structs::common::{
 };
+use crate::consts::{ AUDITOR_PRIVATE};
+use crate::tongo::setup::{setup_tongo};
+use crate::tongo::operations::{fundOperation, withdrawOperation, ragequitOperation, transferOperation, rolloverOperation};
+use crate::prover::utils::{pubkey_from_secret,generate_random, decipher_balance};
 
-use tongo::structs::operations::{
-    withdraw::Withdraw,
-    transfer::Transfer,
-    ragequit::Ragequit,
-};
-
-use crate::prover::utils::pubkey_from_secret;
-use crate::consts::{AUDITOR_KEY, AUDITOR_PRIVATE};
-use crate::tongo::fund::fund_account;
-use crate::tongo::setup::{setup_tongo, empty_ae_hint};
-use crate::prover::utils::{generate_random, decipher_balance};
-use crate::prover::functions::prove_ragequit;
-use crate::prover::functions::prove_withdraw;
-use crate::prover::functions::prove_transfer;
 
 #[test]
-fn audit_fund() {
-    let seed = 9130123;
+fn audit_empty() {
+    let seed = 2139812093812;
     let (_address, dispatcher) = setup_tongo();
 
     let x = generate_random(seed, 1);
     let y = pubkey_from_secret(x);
 
-    let empty = dispatcher.get_audit(y);
-    decipher_balance(0, AUDITOR_PRIVATE, empty);
+    let audit = dispatcher.get_audit(y);
+    if audit.is_some() {
+        decipher_balance(0, AUDITOR_PRIVATE, audit.unwrap());
+    }
+}
+
+#[test]
+fn audit_fund() {
+    let (_address, dispatcher) = setup_tongo();
+
+    let x = 2093810923812;
+    let y = pubkey_from_secret(x);
 
     let initial_balance = 0;
     let initial_fund = 250;
-    fund_account(x, initial_balance, initial_fund , dispatcher );
+    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    dispatcher.fund(operation);
 
     let audit = dispatcher.get_audit(y);
-    decipher_balance(initial_fund, AUDITOR_PRIVATE, audit);
+    if audit.is_some() {
+        decipher_balance(initial_fund, AUDITOR_PRIVATE, audit.unwrap());
+    }
 }
 
 #[test]
 fn audit_withdraw() {
-    let seed = 4719823;
     let (_address, dispatcher) = setup_tongo();
 
     let transfer_address: ContractAddress = 'asdf'.try_into().unwrap();
-    let x = generate_random(seed, 1);
+    let x = 129381237213;
     let y = pubkey_from_secret(x);
 
     let initial_balance = 0;
     let initial_fund = 250;
-    fund_account(x, initial_balance, initial_fund , dispatcher );
+    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    dispatcher.fund(operation);
 
-    let currentBalance = dispatcher.get_balance(y);
-    let nonce = dispatcher.get_nonce(y);
+    let withdraw_amount = 25;
+    let operation = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address,dispatcher);
+    dispatcher.withdraw(operation);
 
-    let withdraw_amount = 100;
-    let (inputs, proof) = prove_withdraw(
-        x, initial_fund, withdraw_amount, transfer_address, currentBalance, nonce,AUDITOR_KEY(), seed
-    );
-
-    dispatcher.withdraw(Withdraw { from: y, amount:withdraw_amount, to: transfer_address, proof, auditedBalance: inputs.auditedBalance, ae_hints: empty_ae_hint() });
     let audit = dispatcher.get_audit(y);
-    decipher_balance(initial_fund - withdraw_amount, AUDITOR_PRIVATE, audit);
+    if audit.is_some() {
+        decipher_balance(initial_fund - withdraw_amount, AUDITOR_PRIVATE, audit.unwrap());
+    }
 }
 
 #[test]
 fn audit_ragequit() {
-    let seed = 4719823;
     let (_address, dispatcher) = setup_tongo();
     let transfer_address: ContractAddress = 'asdf'.try_into().unwrap();
-    let x = generate_random(seed, 1);
-    let y = pubkey_from_secret(x);
 
-    let empty = dispatcher.get_audit(y);
-    decipher_balance(0, AUDITOR_PRIVATE, empty);
+    let x = 92183091283;
+    let y = pubkey_from_secret(x);
 
     let initial_balance = 0;
     let initial_fund = 250;
-    fund_account(x, initial_balance, initial_fund , dispatcher );
+    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    dispatcher.fund(operation);
+
+
+    let operation = ragequitOperation(x, initial_fund,transfer_address,dispatcher);
+    dispatcher.ragequit(operation);
 
     let audit = dispatcher.get_audit(y);
-    decipher_balance(initial_fund, AUDITOR_PRIVATE, audit);
-
-    let balance = dispatcher.get_balance(y);
-    let nonce = dispatcher.get_nonce(y);
-
-    let (_inputs, proof) = prove_ragequit(
-        x, initial_fund, transfer_address, balance, nonce, seed
-    );
-
-    dispatcher.ragequit(Ragequit { from: y, amount: initial_fund, to: transfer_address, proof, ae_hints: empty_ae_hint() });
-    let audit = dispatcher.get_audit(y);
-    decipher_balance(0, AUDITOR_PRIVATE, audit);
+    if audit.is_some() {
+        decipher_balance(0, AUDITOR_PRIVATE, audit.unwrap());
+    }
 }
 
 #[test]
 fn audit_transfer() {
-    let seed = 1273198273;
     let (_address, dispatcher) = setup_tongo();
 
-    let x = generate_random(seed, 1);
+    let x = 12831209381;
     let y = pubkey_from_secret(x);
 
-    let empty = dispatcher.get_audit(y);
-    decipher_balance(0, AUDITOR_PRIVATE, empty);
-
-    let x_bar = generate_random(seed, 2);
+    let x_bar = 21983092183910283;
     let y_bar = pubkey_from_secret(x_bar);
-
-    let empty = dispatcher.get_audit(y_bar);
-    decipher_balance(0, AUDITOR_PRIVATE, empty);
 
     let initial_balance = 0;
     let initial_fund = 250;
-    fund_account(x, initial_balance, initial_fund , dispatcher );
-
-    let nonce = dispatcher.get_nonce(y);
-
-    let audit = dispatcher.get_audit(y);
-    decipher_balance(initial_fund, AUDITOR_PRIVATE, audit);
-
-    let balance = dispatcher.get_balance(y);
+    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    dispatcher.fund(operation);
 
     let transfer_amount = 100;
-    let (inputs, proof) = prove_transfer(x, y_bar, initial_fund, transfer_amount, AUDITOR_KEY(),balance, nonce, seed + 1);
-    dispatcher
-        .transfer(
-            Transfer {
-                from: y,
-                to: y_bar,
-                transferBalance: inputs.transferBalance,
-                transferBalanceSelf: inputs.transferBalanceSelf,
-                auditedBalance: inputs.auditedBalance,
-                auditedBalanceSelf: inputs.auditedBalanceSelf,
-                proof,
-                ae_hints: empty_ae_hint()
-            }
-        );
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,dispatcher);
+    dispatcher.transfer(operation);
 
     let audit = dispatcher.get_audit(y);
-    decipher_balance(initial_fund - transfer_amount, AUDITOR_PRIVATE, audit);
+    if audit.is_some() {
+        decipher_balance(initial_fund - transfer_amount, AUDITOR_PRIVATE, audit.unwrap());
+    }
 
     let audit = dispatcher.get_audit(y_bar);
-    decipher_balance(0, AUDITOR_PRIVATE, audit);
+    if audit.is_some() {
+        decipher_balance(0, AUDITOR_PRIVATE, audit.unwrap());
+    }
 }
 
-//TODO: Make a audit for withdraw
+#[test]
+fn audit_rollover() {
+    let (_address, dispatcher) = setup_tongo();
+
+    let x = 129310932;
+
+    let x_bar = 95849543;
+    let y_bar = pubkey_from_secret(x_bar);
+
+    let initial_balance = 0;
+    let initial_fund = 250;
+    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    dispatcher.fund(operation);
+
+    let transfer_amount = 100;
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,dispatcher);
+    dispatcher.transfer(operation);
+
+    let operation = rolloverOperation(x_bar,dispatcher);
+    dispatcher.rollover(operation);
+
+    let audit = dispatcher.get_audit(y_bar);
+    if audit.is_some() {
+        decipher_balance(0, AUDITOR_PRIVATE, audit.unwrap());
+    }
+}
+

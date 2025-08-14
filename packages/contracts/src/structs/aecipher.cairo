@@ -7,12 +7,6 @@ pub struct AEBalance {
     nonce: u256,
 }
 
-#[derive(Drop, Serde, Copy)]
-pub struct AEHints {
-    pub ae_balance: AEBalance,
-    pub ae_audit_balance: AEBalance,
-}
-
 pub impl IntoOptionAEBalance of Into<AEBalance, Option<AEBalance>> {
     fn into(self: AEBalance) -> Option<AEBalance> {
         let zero = u512 { limb0: 0, limb1: 0, limb2: 0, limb3: 0 };
