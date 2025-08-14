@@ -1,5 +1,5 @@
 // import { bytesToHex } from "@noble/hashes/utils";
-import { BigNumberish, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
+import { BigNumberish, Contract, num, RpcProvider, TypedContractV2} from "starknet";
 import { decipherBalance, GENERATOR as g, InputsExPost, ProofExPost, proveExpost, proveFund, proveRollover, proveTransfer, proveWithdraw, proveRagequit, verifyExpost, ProjectivePoint, assertBalance } from "@fatlabsxyz/she-js";
 import { AEChaCha, AEBalance, AEHintToBytes, bytesToBigAEHint } from "./ae_balance.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
@@ -11,7 +11,10 @@ import { RagequitOperation } from "./operations/ragequit.js";
 import { tongoAbi } from "./tongo.abi.js";
 import { AUDITOR_PRIVATE } from "./auditor.js";
 import { CipherBalance, PubKey, TongoAddress } from "./types.js";
-import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint, castBigInt } from "./utils.js";
+import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint, castBigInt} from "./utils.js";
+
+import {ReaderEvent, StarknetEventReader} from "./data.service.js"
+
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
 interface FundDetails {
@@ -35,7 +38,7 @@ interface WithdrawDetails {
     amount: bigint;
 }
 
-interface AccountState {
+export interface AccountState {
     balance: CipherBalance;
     pending: CipherBalance;
     audit: CipherBalance;
@@ -56,6 +59,80 @@ interface ExPost {
     proof: ProofExPost;
 }
 
+//------------------------------- EVENTS ------------------------------------
+enum AccountEvent {
+    Fund  = "fund",
+    Withdraw = "withdraw",
+    Ragequit = "ragequit",
+    Rollover = "rollover",
+    TransferIn = "transferIn",
+    TransferOut = "transferOut",
+}
+
+const ReaderToAccountEvents = {
+   [ReaderEvent.Fund]: AccountEvent.Fund,
+   [ReaderEvent.Rollover]: AccountEvent.Rollover,
+   [ReaderEvent.Withdraw]: AccountEvent.Withdraw,
+   [ReaderEvent.Ragequit]: AccountEvent.Ragequit,
+   [ReaderEvent.TransferIn]: AccountEvent.TransferIn,
+   [ReaderEvent.TransferOut]: AccountEvent.TransferOut,
+};
+
+interface AccountBaseEvent {
+    type: AccountEvent,
+    tx_hash: string,
+    block_number: number,
+}
+
+interface AccountFundEvent extends AccountBaseEvent {
+    type: AccountEvent.Fund,
+    nonce: bigint;
+    amount: bigint;
+} 
+
+interface AccountRolloverEvent extends AccountBaseEvent {
+    type: AccountEvent.Rollover,
+    nonce: bigint;
+    amount: bigint;
+}
+
+interface AccountWithdrawEvent extends AccountBaseEvent {
+    type: AccountEvent.Withdraw,
+    nonce: bigint;
+    amount: bigint;
+    to: string;
+}
+
+interface AccountRagequitEvent extends AccountBaseEvent {
+    type: AccountEvent.Ragequit,
+    nonce: bigint;
+    amount: bigint;
+    to: string;
+}
+
+interface AccountTransferOutEvent extends AccountBaseEvent {
+    type: AccountEvent.TransferOut,
+    nonce: bigint;
+    amount: bigint;
+    to: TongoAddress;
+}
+
+interface AccountTransferInEvent extends AccountBaseEvent {
+    type: AccountEvent.TransferIn,
+    nonce: bigint;
+    amount: bigint;
+    from: TongoAddress;
+}
+
+type AccountEvents = AccountFundEvent
+   | AccountWithdrawEvent 
+   | AccountRagequitEvent
+   | AccountRolloverEvent
+   | AccountTransferOutEvent
+   | AccountTransferInEvent;
+
+
+// -------------------------------------------------------
 interface IAccount {
     publicKey: PubKey;
 
@@ -91,17 +168,28 @@ interface IAccount {
     // ex post
     generateExPost(to: ProjectivePoint, cipher: CipherBalance): ExPost;
     verifyExPost(expost: ExPost): bigint;
+
+    // events
+    getEventsFund(initialBlock: number): Promise<AccountFundEvent[]>;
+    getEventsRollover(initialBlock: number): Promise<AccountRolloverEvent[]>;
+    getEventsWithdraw(initialBlock: number): Promise<AccountWithdrawEvent[]>;
+    getEventsRagequit(initialBlock: number): Promise<AccountRagequitEvent[]>;
+    getEventsTransferOut(initialBlock: number): Promise<AccountTransferOutEvent[]>;
+    getEventsTransferIn(initialBlock: number): Promise<AccountTransferInEvent[]>;
+    getTxHistory(initialBlock:number): Promise<AccountEvents[]>;
 }
 
 export class Account implements IAccount {
     publicKey: PubKey;
     pk: bigint;
+    provider: RpcProvider;
     Tongo: TypedContractV2<typeof tongoAbi>;
 
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
         this.Tongo = new Contract(tongoAbi, contractAddress, provider).typedv2(tongoAbi);
         this.publicKey = projectivePointToStarkPoint(g.multiply(this.pk));
+        this.provider = provider;
     }
 
     tongoAddress(): TongoAddress {
@@ -164,6 +252,7 @@ export class Account implements IAccount {
         return tongoAmount * rate;
     }
 
+    //TODO: Warning, remove the decrypAudit, this is only for test
     async stateDeciphered(): Promise<AccountStateDeciphered> {
         const state = await this.Tongo.get_state(this.publicKey);
         const accountState = Account.parseAccountState(state);
@@ -406,7 +495,6 @@ export class Account implements IAccount {
         });
     }
 
-
     static parseAccountState(state: Awaited<ReturnType<TongoContract["get_state"]>>) {
         const {
             balance, pending, audit,
@@ -424,4 +512,94 @@ export class Account implements IAccount {
         };
     }
 
+    async getEventsFund(initialBlock: number): Promise<AccountFundEvent[]> {
+        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+        const events = await reader.getEventsFund(initialBlock, this.publicKey);
+        return events.map((event) => ({
+            type: ReaderToAccountEvents[event.type],
+            tx_hash: event.tx_hash,
+            block_number: event.block_number,
+            nonce: event.nonce,
+            amount: event.amount,
+        } as AccountFundEvent) )
+    }
+
+    async getEventsRollover(initialBlock: number): Promise<AccountRolloverEvent[]> {
+        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+        const events = await reader.getEventsRollover(initialBlock, this.publicKey);
+        return events.map((event) => ({
+            type: ReaderToAccountEvents[event.type],
+            tx_hash: event.tx_hash,
+            block_number: event.block_number,
+            nonce: event.nonce,
+            amount: this.decryptCipherBalance(parseCipherBalance(event.rollovered)),
+        } as AccountRolloverEvent) )
+    }
+
+    async getEventsWithdraw(initialBlock: number): Promise<AccountWithdrawEvent[]> {
+        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+        const events = await reader.getEventsWithdraw(initialBlock, this.publicKey);
+        return events.map((event) => ({
+            type: ReaderToAccountEvents[event.type],
+            tx_hash: event.tx_hash,
+            block_number: event.block_number,
+            nonce: event.nonce,
+            amount: event.amount,
+            to: num.toHex(event.to),
+        } as AccountWithdrawEvent) )
+    }
+
+    async getEventsRagequit(initialBlock: number): Promise<AccountRagequitEvent[]> {
+        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+        const events = await reader.getEventsRagequit(initialBlock, this.publicKey);
+        return events.map((event) => ({
+            type: ReaderToAccountEvents[event.type],
+            tx_hash: event.tx_hash,
+            block_number: event.block_number,
+            nonce: event.nonce,
+            amount: event.amount,
+            to: num.toHex(event.to),
+        } as AccountRagequitEvent) )
+    }
+
+
+    async getEventsTransferOut(initialBlock: number): Promise<AccountTransferOutEvent[]> {
+        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+        const events = await reader.getEventsTransferOut(initialBlock, this.publicKey);
+        return events.map((event) => ({
+            type: ReaderToAccountEvents[event.type],
+            tx_hash: event.tx_hash,
+            block_number: event.block_number,
+            nonce: event.nonce,
+            amount: this.decryptCipherBalance(parseCipherBalance(event.transferBalanceSelf)),
+            to: pubKeyAffineToBase58(event.to)
+        } as AccountTransferOutEvent) )
+    }
+
+    async getEventsTransferIn(initialBlock: number): Promise<AccountTransferInEvent[]> {
+        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+        const events = await reader.getEventsTransferIn(initialBlock, this.publicKey);
+        return events.map((event) => ({
+            type: ReaderToAccountEvents[event.type],
+            tx_hash: event.tx_hash,
+            block_number: event.block_number,
+            nonce: event.nonce,
+            amount: this.decryptCipherBalance(parseCipherBalance(event.transferBalance)),
+            from: pubKeyAffineToBase58(event.from)
+        } as AccountTransferInEvent) )
+    }
+
+    async getTxHistory(initialBlock: number): Promise<AccountEvents[]> {
+        let promises = Promise.all([
+            this.getEventsFund(initialBlock), 
+            this.getEventsRollover(initialBlock),
+            this.getEventsWithdraw(initialBlock),
+            this.getEventsRagequit(initialBlock),
+            this.getEventsTransferOut(initialBlock),
+            this.getEventsTransferIn(initialBlock),
+        ])
+
+        let events = (await promises).flat()
+        return events.sort((a,b) => (b.block_number - a.block_number))
+    }
 }

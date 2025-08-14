@@ -63,6 +63,7 @@ export class AEChaCha {
                 throw new Error("Malformed plaintext");
             return bytesToNumberBE(plaintext.slice(44, 48));
         } catch (e) {
+            //TODO: This gives an error I cannot reproduce. - ALBA
             throw new Error("Malformed or tampered ciphertext");
         }
     }

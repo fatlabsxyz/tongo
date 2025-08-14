@@ -1,4 +1,4 @@
-import { Account, Contract, RpcProvider, constants, num, RPC } from "starknet";
+import { Account, Contract, RpcProvider, constants, num, RPC, CallData, hash} from "starknet";
 import { tongoAbi } from "./tongo.abi.js";
 import { Account as TongoAccount } from "./account.js";
 
@@ -34,16 +34,15 @@ const tx_context = {
 };
 
 const wallet = deployerWallet(provider);
-const tongoAddress = "0x06cb70fdef8bf2fba9a0d3115955d7c44386da39022d1764e5a3d01738c8dee3"
+const tongoAddress = "0x050ff0c4fd418448d78003030fd6b322df87852dcb781127fd6df85d4129313f"
 export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoAbi);
 
 (async () => {
-    const sk = 8213103n;
+    const sk = 8213104n;
     const account = new TongoAccount(sk, tongoAddress, provider);
 
-    const sk2 = 1293095n;
+    const sk2 = 1293096n;
     const account2 = new TongoAccount(sk2, tongoAddress, provider);
-
 
     let stateDeciphered = await account.stateDeciphered();
     console.log("State user 1 Deciphered: ", stateDeciphered);
@@ -51,55 +50,60 @@ export const Tongo = new Contract(tongoAbi, tongoAddress, wallet).typedv2(tongoA
     stateDeciphered = await account2.stateDeciphered();
     console.log("State user 2: ", stateDeciphered);
 
-    console.log("------------------------ Funding user 1 --------------------------------");
-    const operation = await account.fund({ amount: 100n });
-    let response = await wallet.execute([operation.approve!, operation.toCalldata()], tx_context);
-    console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
-    let res = await provider.waitForTransaction(response.transaction_hash);
+    let events_account = await account.getTxHistory(0)
+    console.log("account evnets",events_account);
 
-    stateDeciphered = await account.stateDeciphered();
-    console.log("State user 1 Deciphered: ", stateDeciphered);
 
-    stateDeciphered = await account2.stateDeciphered();
-    console.log("State user 2: ", stateDeciphered);
-
-    console.log("------------------------ Trasnfering to user 2 --------------------------------");
-    const operation_transfer = await account.transfer({ amount: 23n, to: account2.publicKey });
-    response = await wallet.execute(operation_transfer.toCalldata(), tx_context);
-    console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
-    res = await provider.waitForTransaction(response.transaction_hash);
-
-    stateDeciphered = await account.stateDeciphered();
-    console.log("State user 1: ", stateDeciphered);
-
-    stateDeciphered = await account2.stateDeciphered();
-    console.log("State user 2: ", stateDeciphered);
-
-    console.log("------------------------ RollOver of user 2 --------------------------------");
-    const rollover_operation = await account2.rollover();
-    response = await wallet.execute(rollover_operation.toCalldata(), tx_context);
-    console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
-    res = await provider.waitForTransaction(response.transaction_hash);
-
-    stateDeciphered = await account2.stateDeciphered();
-    console.log("State user 2: ", stateDeciphered);
-
-    console.log("------------------------ withdraw some of  of user 1 --------------------------------");
-    const withdraw_operation = await account.withdraw({ amount: 1n, to: 839131273n });
-    response = await wallet.execute(withdraw_operation.toCalldata(), tx_context);
-    console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
-    res = await provider.waitForTransaction(response.transaction_hash);
-
-    stateDeciphered = await account.stateDeciphered();
-    console.log("State user 1: ", stateDeciphered);
-
-    console.log("------------------------ withdraw all of  of user 2 --------------------------------");
-    const withdraw_all_operation = await account2.ragequit({ to: 839131273n });
-
-    response = await wallet.execute(withdraw_all_operation.toCalldata(), tx_context);
-    console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
-    res = await provider.waitForTransaction(response.transaction_hash);
-
-    stateDeciphered = await account2.stateDeciphered();
-    console.log("State user 2: ", stateDeciphered);
+//     console.log("------------------------ Funding user 1 --------------------------------");
+//     const operation = await account.fund({ amount: 100n });
+//     let response = await wallet.execute([operation.approve!, operation.toCalldata()], tx_context);
+//     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
+//     let res = await provider.waitForTransaction(response.transaction_hash);
+// 
+//     stateDeciphered = await account.stateDeciphered();
+//     console.log("State user 1 Deciphered: ", stateDeciphered);
+// 
+//     stateDeciphered = await account2.stateDeciphered();
+//     console.log("State user 2: ", stateDeciphered);
+// 
+// 
+//     console.log("------------------------ Trasnfering to user 2 --------------------------------");
+//     const operation_transfer = await account.transfer({ amount: 23n, to: account2.publicKey });
+//     response = await wallet.execute(operation_transfer.toCalldata(), tx_context);
+//     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
+//     res = await provider.waitForTransaction(response.transaction_hash);
+// 
+//     stateDeciphered = await account.stateDeciphered();
+//     console.log("State user 1: ", stateDeciphered);
+// 
+//     stateDeciphered = await account2.stateDeciphered();
+//     console.log("State user 2: ", stateDeciphered);
+// 
+//     console.log("------------------------ RollOver of user 2 --------------------------------");
+//     const rollover_operation = await account2.rollover();
+//     response = await wallet.execute(rollover_operation.toCalldata(), tx_context);
+//     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
+//     res = await provider.waitForTransaction(response.transaction_hash);
+// 
+//     stateDeciphered = await account2.stateDeciphered();
+//     console.log("State user 2: ", stateDeciphered);
+// 
+//     console.log("------------------------ withdraw some of  of user 1 --------------------------------");
+//     const withdraw_operation = await account.withdraw({ amount: 1n, to: 839131273n });
+//     response = await wallet.execute(withdraw_operation.toCalldata(), tx_context);
+//     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
+//     res = await provider.waitForTransaction(response.transaction_hash);
+// 
+//     stateDeciphered = await account.stateDeciphered();
+//     console.log("State user 1: ", stateDeciphered);
+// 
+//     console.log("------------------------ withdraw all of  of user 2 --------------------------------");
+//     const withdraw_all_operation = await account2.ragequit({ to: 839131273n });
+// 
+//     response = await wallet.execute(withdraw_all_operation.toCalldata(), tx_context);
+//     console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
+//     res = await provider.waitForTransaction(response.transaction_hash);
+// 
+//     stateDeciphered = await account2.stateDeciphered();
+//     console.log("State user 2: ", stateDeciphered);
 })();
