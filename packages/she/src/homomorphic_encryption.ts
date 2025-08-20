@@ -1,8 +1,6 @@
-import { ProjectivePoint, utils, poseidonHashMany } from "@scure/starknet";
+import { ProjectivePoint} from "@scure/starknet";
 import { Affine } from "./types.js";
 import { CURVE_ORDER, GENERATOR, SECONDARY_GENERATOR } from "./constants.js";
-import { challengeCommits2, generateRandom } from "./she.js";
-
 
 
 function zip<T, U>(a: T[], b: U[]): [T, U][] {

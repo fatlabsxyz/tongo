@@ -18,7 +18,9 @@ import {
   Dependencies,
   provePoeN,
   proveBit,
-  oneOrZero
+  oneOrZero,
+  proveRange,
+  verifyRange
 } from "../src/homomorphic_encryption";
 
 
@@ -43,14 +45,23 @@ it("poe2", () => {
     poeN(y, [GENERATOR, SECONDARY_GENERATOR], A, c, ss);
     });
 
-    it("proveBit", () => {
-      // --- secret inputs ---
-      const bit: 0 | 1 = 1;
-      const random = 1234n;
-    
-      // --- prover ---
-      const proof = proveBit(bit, random, deps);
-    
-      // --- verifier ---
-      expect(() => oneOrZero(proof, deps)).not.toThrow();
-    });
+it("proveBit", () => {
+  const bit: 0 | 1 = 1;
+  const random = 1234n;
+  const proof = proveBit(bit, random, deps);
+
+  expect(() => oneOrZero(proof, deps)).not.toThrow();
+});
+
+it("proveRange", () => {
+  const b = 13n;
+  const bits = 4;
+  const { r, proof } = proveRange(b, bits, deps);
+  const V = verifyRange(proof, bits, deps);
+
+  // --- expected commitment: V = g^b * h^r ---
+  const expected = GENERATOR.multiplyUnsafe(b)
+    .add(SECONDARY_GENERATOR.multiplyUnsafe(r));
+
+  expect(V.equals(expected)).toBe(true);
+});
