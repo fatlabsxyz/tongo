@@ -14,31 +14,43 @@ import {
   } from "../src";
 
 import {
-  poeN
+  poeN,
+  Dependencies,
+  provePoeN,
+  proveBit,
+  oneOrZero
 } from "../src/homomorphic_encryption";
+
+
+const deps: Dependencies = {
+  generateRandom: generateRandom,
+  challengeCommits: challengeCommits2
+};
 
 it("poe", () => {
     const x = 12n;
-    const y = GENERATOR.multiply(x);
-    const k = generateRandom()
-    const A = GENERATOR.multiplyUnsafe(k);
+    const { y, A, ss } = provePoeN([x], [GENERATOR], deps)
     const c = challengeCommits2(0n, [A]);
-    const s = (k + x * c) % CURVE_ORDER;
-
-    poeN(y, [GENERATOR], A, c, [s]);
+    poeN(y, [GENERATOR], A, c, ss);
     });
 
 it("poe2", () => {
     const x1 = 12n;
     const x2 = 12412n;
-    
-    const k1 = generateRandom();
-    const k2 = generateRandom();
-    const A = GENERATOR.multiplyUnsafe(k1).add(SECONDARY_GENERATOR.multiplyUnsafe(k2));
+    const { y, A, ss } = provePoeN([x1, x2], [GENERATOR, SECONDARY_GENERATOR], deps);
     const c = challengeCommits2(0n, [A]);
-    const s1 = (k1 + x1 * c) % CURVE_ORDER;
-    const s2 = (k2 + x2 * c) % CURVE_ORDER;
-    const y = GENERATOR.multiply(x1).add(SECONDARY_GENERATOR.multiply(x2));
 
-    poeN(y, [GENERATOR, SECONDARY_GENERATOR], A, c, [s1, s2]);
+    poeN(y, [GENERATOR, SECONDARY_GENERATOR], A, c, ss);
+    });
+
+    it("proveBit", () => {
+      // --- secret inputs ---
+      const bit: 0 | 1 = 1;
+      const random = 1234n;
+    
+      // --- prover ---
+      const proof = proveBit(bit, random, deps);
+    
+      // --- verifier ---
+      expect(() => oneOrZero(proof, deps)).not.toThrow();
     });
