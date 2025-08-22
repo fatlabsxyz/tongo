@@ -169,14 +169,15 @@ pub mod Tongo {
         }
 
         fn rollover(ref self: ContractState, rollover: Rollover) {
-            let Rollover { to, proof } = rollover;
+            let Rollover { to, proof, ae_hints } = rollover;
             let nonce = self.get_nonce(to);
             let inputs: InputsRollOver = InputsRollOver { y: to, nonce: nonce };
             verify_rollover(inputs, proof);
             let rollovered = self.pending.entry(to).read();
             self.pending_to_balance(to);
             self.increase_nonce(to);
-            self.emit(RolloverEvent { to, nonce, rollovered});
+            self.overwrite_ae_balances(to, ae_hints);
+            self.emit(RolloverEvent { to, nonce, rollovered });
         }
 
         fn ERC20(self: @ContractState) -> ContractAddress {

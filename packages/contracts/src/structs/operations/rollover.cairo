@@ -1,3 +1,4 @@
+use crate::structs::aecipher::AEHints;
 use crate::structs::common::{
     starkpoint::StarkPoint,
     pubkey::PubKey,
@@ -41,5 +42,6 @@ impl ChallengeRollOver of Challenge<ProofOfRollOver> {
 pub struct Rollover {
     pub to: PubKey,
     pub proof: ProofOfRollOver,
+    pub ae_hints: AEHints
 }
 

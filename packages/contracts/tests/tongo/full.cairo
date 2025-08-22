@@ -116,7 +116,7 @@ fn full() {
     //We are going to rollover for y_bar
     let nonce = dispatcher.get_nonce(y_bar);
     let (_fund_inputs, fund_proof) = prove_rollover(x_bar, nonce, generate_random(seed + 1, 1));
-    dispatcher.rollover( Rollover{to:y_bar, proof: fund_proof} );
+    dispatcher.rollover( Rollover{to:y_bar, proof: fund_proof, ae_hints: empty_ae_hint() } );
 
     //now nonce for y_bar should be 1
     let nonce = dispatcher.get_nonce(y_bar);
