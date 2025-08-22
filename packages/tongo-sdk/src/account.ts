@@ -1,5 +1,5 @@
 // import { bytesToHex } from "@noble/hashes/utils";
-import { BigNumberish, Contract, num, RpcProvider, TypedContractV2} from "starknet";
+import { BigNumberish, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
 import { decipherBalance, GENERATOR as g, InputsExPost, ProofExPost, proveExpost, proveFund, proveRollover, proveTransfer, proveWithdraw, proveRagequit, verifyExpost, ProjectivePoint, assertBalance } from "@fatlabsxyz/she-js";
 import { AEChaCha, AEBalance, AEHintToBytes, bytesToBigAEHint } from "./ae_balance.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
@@ -11,9 +11,9 @@ import { RagequitOperation } from "./operations/ragequit.js";
 import { tongoAbi } from "./tongo.abi.js";
 import { AUDITOR_PRIVATE } from "./auditor.js";
 import { CipherBalance, PubKey, TongoAddress } from "./types.js";
-import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint, castBigInt} from "./utils.js";
+import { bytesOrNumToBigInt, parseAEBalance, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint, castBigInt } from "./utils.js";
 
-import {ReaderEvent, StarknetEventReader} from "./data.service.js"
+import { ReaderEvent, StarknetEventReader } from "./data.service.js";
 
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
@@ -61,7 +61,7 @@ interface ExPost {
 
 //------------------------------- EVENTS ------------------------------------
 enum AccountEvent {
-    Fund  = "fund",
+    Fund = "fund",
     Withdraw = "withdraw",
     Ragequit = "ragequit",
     Rollover = "rollover",
@@ -70,12 +70,12 @@ enum AccountEvent {
 }
 
 const ReaderToAccountEvents = {
-   [ReaderEvent.Fund]: AccountEvent.Fund,
-   [ReaderEvent.Rollover]: AccountEvent.Rollover,
-   [ReaderEvent.Withdraw]: AccountEvent.Withdraw,
-   [ReaderEvent.Ragequit]: AccountEvent.Ragequit,
-   [ReaderEvent.TransferIn]: AccountEvent.TransferIn,
-   [ReaderEvent.TransferOut]: AccountEvent.TransferOut,
+    [ReaderEvent.Fund]: AccountEvent.Fund,
+    [ReaderEvent.Rollover]: AccountEvent.Rollover,
+    [ReaderEvent.Withdraw]: AccountEvent.Withdraw,
+    [ReaderEvent.Ragequit]: AccountEvent.Ragequit,
+    [ReaderEvent.TransferIn]: AccountEvent.TransferIn,
+    [ReaderEvent.TransferOut]: AccountEvent.TransferOut,
 };
 
 interface AccountBaseEvent {
@@ -88,7 +88,7 @@ interface AccountFundEvent extends AccountBaseEvent {
     type: AccountEvent.Fund,
     nonce: bigint;
     amount: bigint;
-} 
+}
 
 interface AccountRolloverEvent extends AccountBaseEvent {
     type: AccountEvent.Rollover,
@@ -125,11 +125,11 @@ interface AccountTransferInEvent extends AccountBaseEvent {
 }
 
 type AccountEvents = AccountFundEvent
-   | AccountWithdrawEvent 
-   | AccountRagequitEvent
-   | AccountRolloverEvent
-   | AccountTransferOutEvent
-   | AccountTransferInEvent;
+    | AccountWithdrawEvent
+    | AccountRagequitEvent
+    | AccountRolloverEvent
+    | AccountTransferOutEvent
+    | AccountTransferInEvent;
 
 
 // -------------------------------------------------------
@@ -176,7 +176,7 @@ interface IAccount {
     getEventsRagequit(initialBlock: number): Promise<AccountRagequitEvent[]>;
     getEventsTransferOut(initialBlock: number): Promise<AccountTransferOutEvent[]>;
     getEventsTransferIn(initialBlock: number): Promise<AccountTransferInEvent[]>;
-    getTxHistory(initialBlock:number): Promise<AccountEvents[]>;
+    getTxHistory(initialBlock: number): Promise<AccountEvents[]>;
 }
 
 export class Account implements IAccount {
@@ -374,13 +374,15 @@ export class Account implements IAccount {
     }
 
     async rollover(): Promise<RollOverOperation> {
-        const { nonce, pending } = await this.state();
-        const amount = this.decryptCipherBalance(pending!);
-        if (amount == 0n) {
+        const { nonce, pending, balance } = await this.state();
+        const amountPending = this.decryptCipherBalance(pending!);
+        const amountUnlocked = this.decryptCipherBalance(balance!);
+        if (amountPending == 0n) {
             throw new Error("Your pending ammount is 0");
         }
+        const aeHints = await this.computeAEHints(amountPending + amountUnlocked);
         const { inputs, proof } = proveRollover(this.pk, nonce);
-        return new RollOverOperation(inputs.y, proof, this.Tongo);
+        return new RollOverOperation({ to: inputs.y, proof, Tongo: this.Tongo, aeHints });
     }
 
     async decryptAEBalance(aeBalance: AEBalance, accountNonce: bigint): Promise<bigint> {
@@ -521,7 +523,7 @@ export class Account implements IAccount {
             block_number: event.block_number,
             nonce: event.nonce,
             amount: event.amount,
-        } as AccountFundEvent) )
+        } as AccountFundEvent));
     }
 
     async getEventsRollover(initialBlock: number): Promise<AccountRolloverEvent[]> {
@@ -533,7 +535,7 @@ export class Account implements IAccount {
             block_number: event.block_number,
             nonce: event.nonce,
             amount: this.decryptCipherBalance(parseCipherBalance(event.rollovered)),
-        } as AccountRolloverEvent) )
+        } as AccountRolloverEvent));
     }
 
     async getEventsWithdraw(initialBlock: number): Promise<AccountWithdrawEvent[]> {
@@ -546,7 +548,7 @@ export class Account implements IAccount {
             nonce: event.nonce,
             amount: event.amount,
             to: num.toHex(event.to),
-        } as AccountWithdrawEvent) )
+        } as AccountWithdrawEvent));
     }
 
     async getEventsRagequit(initialBlock: number): Promise<AccountRagequitEvent[]> {
@@ -559,7 +561,7 @@ export class Account implements IAccount {
             nonce: event.nonce,
             amount: event.amount,
             to: num.toHex(event.to),
-        } as AccountRagequitEvent) )
+        } as AccountRagequitEvent));
     }
 
 
@@ -573,7 +575,7 @@ export class Account implements IAccount {
             nonce: event.nonce,
             amount: this.decryptCipherBalance(parseCipherBalance(event.transferBalanceSelf)),
             to: pubKeyAffineToBase58(event.to)
-        } as AccountTransferOutEvent) )
+        } as AccountTransferOutEvent));
     }
 
     async getEventsTransferIn(initialBlock: number): Promise<AccountTransferInEvent[]> {
@@ -586,20 +588,20 @@ export class Account implements IAccount {
             nonce: event.nonce,
             amount: this.decryptCipherBalance(parseCipherBalance(event.transferBalance)),
             from: pubKeyAffineToBase58(event.from)
-        } as AccountTransferInEvent) )
+        } as AccountTransferInEvent));
     }
 
     async getTxHistory(initialBlock: number): Promise<AccountEvents[]> {
         let promises = Promise.all([
-            this.getEventsFund(initialBlock), 
+            this.getEventsFund(initialBlock),
             this.getEventsRollover(initialBlock),
             this.getEventsWithdraw(initialBlock),
             this.getEventsRagequit(initialBlock),
             this.getEventsTransferOut(initialBlock),
             this.getEventsTransferIn(initialBlock),
-        ])
+        ]);
 
-        let events = (await promises).flat()
-        return events.sort((a,b) => (b.block_number - a.block_number))
+        let events = (await promises).flat();
+        return events.sort((a, b) => (b.block_number - a.block_number));
     }
 }
