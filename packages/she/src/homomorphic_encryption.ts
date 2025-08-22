@@ -1,5 +1,4 @@
-import { ProjectivePoint} from "@scure/starknet";
-import { Affine } from "./types.js";
+import { ProjectivePoint, utils, poseidonHashMany} from "@scure/starknet";
 import { CURVE_ORDER, GENERATOR, SECONDARY_GENERATOR } from "./constants.js";
 
 
@@ -9,35 +8,63 @@ function zip<T, U>(a: T[], b: U[]): [T, U][] {
   }
   return a.map((x, i) => [x, b[i]!]);
 }
-
-export function encrypt(sc: bigint): Affine {
-    return GENERATOR.multiplyUnsafe(sc).toAffine();
-  }
-
-  export interface CipherBalance {
-    L: ProjectivePoint;
-    R: ProjectivePoint;
+export function generateRandom(): bigint {
+  const random_bytes = utils.randomPrivateKey();
+  return utils.normPrivateKeyToScalar(random_bytes);
 }
 
-export function cipherBalance(
-    y: ProjectivePoint,
-    amount: bigint,
-    random: bigint,
-  ): CipherBalance  {
-    if (amount === 0n) {
-      const L = y.multiplyUnsafe(random);
-      const R = GENERATOR.multiplyUnsafe(random) ;
-      return {L,R}
-    }
-    const L = GENERATOR.multiply(amount).add(y.multiplyUnsafe(random));
-    const R = GENERATOR.multiplyUnsafe(random);
-    return {L, R}
+
+// This function coincides with cairo challengeCommits2
+export function challengeCommits2(prefix: bigint, commits: ProjectivePoint[]) {
+  const data: bigint[] = [prefix];
+  commits.forEach((commit, _index) => {
+    const temp = commit.toAffine();
+    data.push(temp.x);
+    data.push(temp.y);
+  });
+
+//   const base = PED2(data);
+  const base = poseidonHashMany(data);
+  let salt = 1n;
+  let c = CURVE_ORDER + 1n;
+  while (c >= CURVE_ORDER) {
+//     c = PED2([base, salt]);
+    c = poseidonHashMany([base, salt]);
+    salt = salt + 1n;
   }
+  return c;
+}
 
   export interface Dependencies {
     generateRandom: () => bigint;
     challengeCommits: (seed: bigint, commits: ProjectivePoint[]) => bigint;
   }
+
+const defaultDeps: Dependencies = {
+  generateRandom: generateRandom,
+  challengeCommits: challengeCommits2,
+};
+
+  export interface ElGamalEncryption {
+    L: ProjectivePoint;
+    R: ProjectivePoint;
+}
+
+export function elGamalEncryption(
+    y: ProjectivePoint,
+    message: bigint,
+    random: bigint,
+  ): ElGamalEncryption  {
+    if (message === 0n) {
+      const L = y.multiplyUnsafe(random);
+      const R = GENERATOR.multiplyUnsafe(random) ;
+      return {L,R}
+    }
+    const L = GENERATOR.multiply(message).add(y.multiplyUnsafe(random));
+    const R = GENERATOR.multiplyUnsafe(random);
+    return {L, R}
+  }
+
   
   interface PoeProof {
     y: ProjectivePoint;
@@ -70,7 +97,7 @@ export function cipherBalance(
   export function provePoeN(
     scalars: bigint[],
     bases: ProjectivePoint[],
-    deps: Dependencies
+    deps: Dependencies = defaultDeps
   ): PoeProof {
 
     const pairs = zip(scalars, bases);
@@ -116,7 +143,7 @@ export function cipherBalance(
   function simPOE(
     y: ProjectivePoint,
     gen: ProjectivePoint,
-    { generateRandom }: Dependencies
+    { generateRandom }: Dependencies = defaultDeps
   ) {
     const s = generateRandom();
     const c = generateRandom();
@@ -124,7 +151,7 @@ export function cipherBalance(
     return { A, c, s };
   }
 
-  function _proveBit0(random: bigint, deps: Dependencies): ProofOfBit {
+  function _proveBit0(random: bigint, deps: Dependencies = defaultDeps): ProofOfBit {
     const { generateRandom, challengeCommits } = deps;
   
     const V = SECONDARY_GENERATOR.multiplyUnsafe(random);
@@ -141,7 +168,7 @@ export function cipherBalance(
     return { V, A0, A1, c0, s0, s1 };
   }
   
-function _proveBit1(random: bigint, deps: Dependencies): ProofOfBit {
+function _proveBit1(random: bigint, deps: Dependencies = defaultDeps): ProofOfBit {
   const { generateRandom, challengeCommits } = deps;
 
   const V = GENERATOR.add(SECONDARY_GENERATOR.multiplyUnsafe(random));
@@ -158,7 +185,7 @@ function _proveBit1(random: bigint, deps: Dependencies): ProofOfBit {
   return { V, A0, A1, c0, s0, s1 };
 }
   
-export function proveBit(bit: 0 | 1, random: bigint, deps: Dependencies): ProofOfBit {
+export function proveBit(bit: 0 | 1, random: bigint, deps: Dependencies = defaultDeps): ProofOfBit {
   return bit === 0 ? _proveBit0(random, deps) : _proveBit1(random, deps);
 }
   
@@ -166,7 +193,7 @@ export function proveBit(bit: 0 | 1, random: bigint, deps: Dependencies): ProofO
   /// If b = 0 then V = h**r and a proof of exponet for r is enought. If b=1 then V/g = h**r could be
   /// also proven with a poe. This is combined in a OR statement and the protocol can valitates that
   /// one of the cases is valid without leak which one is valid.
-export function oneOrZero(pi: ProofOfBit, deps: Dependencies) {
+export function oneOrZero(pi: ProofOfBit, deps: Dependencies = defaultDeps) {
   const { challengeCommits } = deps;
 
   const c = challengeCommits(0n, [pi.A0, pi.A1]);
@@ -189,7 +216,7 @@ export function oneOrZero(pi: ProofOfBit, deps: Dependencies) {
 export function proveRange(
   b: bigint,
   bits: number,
-  deps: Dependencies
+  deps: Dependencies = defaultDeps
 ): { r: bigint; proof: ProofOfBit[] } {
   if (b >= 2 ** bits) {
     throw new Error("number not in range");
@@ -220,7 +247,7 @@ export function proveRange(
 /// those bi are indeed the binary decomposition b = sum_i b_i 2**i. With the b that
 /// is encoded in V = g**b h**r. (Note that r = sim_i r_i 2**i)
 /// TODO: This could (and probably should) be change to bulletproof.
-export function verifyRange(proof: ProofOfBit[], bits: number, deps: Dependencies): ProjectivePoint {
+export function verifyRange(proof: ProofOfBit[], bits: number, deps: Dependencies = defaultDeps): ProjectivePoint {
   let pi = proof[0]!;
   oneOrZero(pi, deps);
   let V = pi.V;

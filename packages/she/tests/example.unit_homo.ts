@@ -31,7 +31,7 @@ const deps: Dependencies = {
 
 it("poe", () => {
     const x = 12n;
-    const { y, A, ss } = provePoeN([x], [GENERATOR], deps)
+    const { y, A, ss } = provePoeN([x], [GENERATOR])
     const c = challengeCommits2(0n, [A]);
     poeN(y, [GENERATOR], A, c, ss);
     });
@@ -39,7 +39,7 @@ it("poe", () => {
 it("poe2", () => {
     const x1 = 12n;
     const x2 = 12412n;
-    const { y, A, ss } = provePoeN([x1, x2], [GENERATOR, SECONDARY_GENERATOR], deps);
+    const { y, A, ss } = provePoeN([x1, x2], [GENERATOR, SECONDARY_GENERATOR]);
     const c = challengeCommits2(0n, [A]);
 
     poeN(y, [GENERATOR, SECONDARY_GENERATOR], A, c, ss);
@@ -48,7 +48,7 @@ it("poe2", () => {
 it("proveBit", () => {
   const bit: 0 | 1 = 1;
   const random = 1234n;
-  const proof = proveBit(bit, random, deps);
+  const proof = proveBit(bit, random);
 
   expect(() => oneOrZero(proof, deps)).not.toThrow();
 });
@@ -56,8 +56,8 @@ it("proveBit", () => {
 it("proveRange", () => {
   const b = 13n;
   const bits = 4;
-  const { r, proof } = proveRange(b, bits, deps);
-  const V = verifyRange(proof, bits, deps);
+  const { r, proof } = proveRange(b, bits);
+  const V = verifyRange(proof, bits);
 
   // --- expected commitment: V = g^b * h^r ---
   const expected = GENERATOR.multiplyUnsafe(b)
