@@ -21,5 +21,5 @@ devnet = "bash -c '. ./localnet/variables && starknet-devnet --lite-mode --fork-
 
 [[target.starknet-contract]]
 build-external-contracts = [
-    "tongo::main::Tongo"
+    "tongo::tongo::Tongo::Tongo"
 ]
