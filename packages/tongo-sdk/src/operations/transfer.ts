@@ -32,10 +32,10 @@ export class TransferOperation implements ITransferOperation {
     constructor({ from, to, transferBalance, transferBalanceSelf, auditedBalance, auditedBalanceSelf, proof, Tongo, aeHints }: TransferOpParams) {
         this.from = from;
         this.to = to;
-        this.transferBalance = transferBalance,
-        this.transferBalanceSelf = transferBalanceSelf,
-        this.auditedBalance = auditedBalance,
-        this.auditedBalanceSelf = auditedBalanceSelf
+        this.transferBalance = transferBalance;
+        this.transferBalanceSelf = transferBalanceSelf;
+        this.auditedBalance = auditedBalance;
+        this.auditedBalanceSelf = auditedBalanceSelf;
         this.proof = proof;
         this.Tongo = Tongo;
         this.aeHints = aeHints;
@@ -46,10 +46,10 @@ export class TransferOperation implements ITransferOperation {
             {
                 from: this.from,
                 to: this.to,
-                transferBalance : this.transferBalance,
-                transferBalanceSelf : this.transferBalanceSelf,
-                auditedBalance : this.auditedBalance,
-                auditedBalanceSelf : this.auditedBalanceSelf,
+                transferBalance: this.transferBalance,
+                transferBalanceSelf: this.transferBalanceSelf,
+                auditedBalance: this.auditedBalance,
+                auditedBalanceSelf: this.auditedBalanceSelf,
                 ae_hints: this.aeHints,
                 proof: this.proof,
             },

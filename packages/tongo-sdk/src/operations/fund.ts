@@ -52,6 +52,7 @@ export class FundOperation implements IFundOperation {
         }]);
     }
 
+    // TODO: better ux for this. Maybe return the call?
     async populateApprove() {
         const erc20 = await this.Tongo.ERC20();
         const erc20_addres = num.toHex(erc20);

@@ -203,6 +203,10 @@ export const tongoAbi = [
             {
                 "name": "proof",
                 "type": "tongo::structs::operations::rollover::ProofOfRollOver"
+            },
+            {
+                "name": "ae_hints",
+                "type": "tongo::structs::aecipher::AEHints"
             }
         ]
     },
