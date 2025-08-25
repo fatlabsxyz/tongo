@@ -131,7 +131,7 @@ export function elGamalEncryption(
 
   // -------------------------- PROOF OF BIT ----------------------------------------------------
 
-  interface ProofOfBit {
+  export interface ProofOfBit {
     V: ProjectivePoint;
     A0: ProjectivePoint;
     A1: ProjectivePoint;

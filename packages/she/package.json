@@ -14,7 +14,6 @@
     "clean": "rm -rf lib",
     "build": "tsc -p ./tsconfig.json --outDir lib",
     "test": "vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
-    "test_homo": "vitest run --testTimeout 0 --config test_homo.config.ts --passWithNoTests",
     "lint": "eslint --config ../../eslint.config.mjs \"{src,test}/**/*.{js,ts,json}\"",
     "lint:fix": "eslint --config ../../eslint.config.mjs \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
     "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",

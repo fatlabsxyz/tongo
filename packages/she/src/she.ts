@@ -11,7 +11,7 @@ import { writeFileSync } from 'fs';
 import { Affine } from "./types.js";
 import { CURVE_ORDER, GENERATOR, SECONDARY_GENERATOR } from "./constants.js";
 
-
+import {poeN, proveRange, verifyRange, ProofOfBit} from "./homomorphic_encryption.js"
 export function encrypt(sc: bigint): Affine {
   return GENERATOR.multiplyUnsafe(sc).toAffine();
 }
@@ -44,6 +44,8 @@ export function cipherBalance(
 /// P:  s = k + c*x    sends    s
 /// The verifier asserts:
 /// - g**s == A * (y**c)
+
+
 export function poe(
   y: ProjectivePoint,
   g: ProjectivePoint,
@@ -77,6 +79,8 @@ export function verifyPoe(
     throw new Error("nope");
   }
 }
+
+
 // ----------------------------------- POE -------------------------------------------------
 
 // ----------------------------------- POE2 -------------------------------------------------
@@ -88,6 +92,8 @@ export function verifyPoe(
 /// P:  s2 = k2 + c*x1      send s1, s1
 /// The verifier asserts:
 /// - g1**s1 g2**s2 == A * (y**c)
+
+
 function poe2(
   y: ProjectivePoint,
   g1: ProjectivePoint,
@@ -176,7 +182,7 @@ export function verifyRollover(inputs: InputsRollover, proof: ProofOfRollover) {
   ];
   const prefix = computePrefix(seq);
   const c = challengeCommits2(prefix, [proof.Ax]);
-  const res = poe(inputs.y, GENERATOR, proof.Ax, c, proof.sx);
+  const res = poeN(inputs.y, [GENERATOR], proof.Ax, c, [proof.sx]);
   if (res == false) {
     throw new Error("verifyRollover failed");
   }
@@ -283,24 +289,24 @@ export function verifyFund(inputs: InputsFund, proof: ProofOfFund) {
     //TODO: assert R == R_audit
     if (!R.equals(R_audit))  { throw new Error("R is not R_audit") }
 
-  let res = poe(inputs.y, GENERATOR, proof.Ax, c, proof.sx);
+  let res = poeN(inputs.y, [GENERATOR], proof.Ax, c, [proof.sx]);
   if (res == false) {
     throw new Error("verifyFund failed");
   }
 
 
-  res = poe(R, GENERATOR, proof.Ar, c, proof.sr);
+  res = poeN(R, [GENERATOR], proof.Ar, c, [proof.sr]);
   if (res == false) {
     throw new Error("verifyFund failed");
   }
 
-  res = poe2(L, GENERATOR, inputs.y, proof.Ab, c, proof.sb, proof.sr);
+  res = poeN(L, [GENERATOR, inputs.y], proof.Ab, c, [proof.sb, proof.sr]);
   if (res == false) {
     throw new Error("error in poe2 fund");
   }
 
     const AUX_L_auditor =  L_audit.subtract(GENERATOR.multiplyUnsafe(inputs.amount));
-  res = poe2(AUX_L_auditor, GENERATOR, inputs.auditorPubKey, proof.A_auditor, c, proof.sb, proof.sr);
+  res = poeN(AUX_L_auditor, [GENERATOR, inputs.auditorPubKey], proof.A_auditor, c, [proof.sb, proof.sr]);
   if (res == false) {
     throw new Error("error in poe2 fund");
   }
@@ -308,7 +314,7 @@ export function verifyFund(inputs: InputsFund, proof: ProofOfFund) {
   const AUX_L = L0.subtract(L);
   const AUX_R = R0.subtract(R);
 
-  res = poe(AUX_L, AUX_R, proof.AUX_A, c, proof.sx);
+  res = poeN(AUX_L, [AUX_R], proof.AUX_A, c, [proof.sx]);
   if (res == false) {
     throw new Error("verifyFund failed");
   }
@@ -400,7 +406,7 @@ export function verifyRagequit(
 
   let {L, R} = inputs.currentBalance;
 
-  let res = poe(inputs.y, GENERATOR, proof.A_x, c, proof.s_x);
+  let res = poeN(inputs.y, [GENERATOR], proof.A_x, c, [proof.s_x]);
   if (res == false) {
     throw new Error("error in poe y");
   }
@@ -408,7 +414,7 @@ export function verifyRagequit(
   const g_b = GENERATOR.multiplyUnsafe(inputs.amount);
   const Y = L.subtract(g_b);
 
-  res = poe(Y, R, proof.A_cr, c, proof.s_x);
+  res = poeN(Y, [R], proof.A_cr, c, [proof.s_x]);
   if (res == false) {
     throw new Error("error in poe Y");
   }
@@ -530,17 +536,17 @@ export function verifyWithdraw(
 
     const {L:L0, R:R0} =inputs.currentBalance; 
     const {L:L_audit, R:R_audit} =inputs.auditedBalance; 
-  let res = poe(inputs.y, GENERATOR, proof.A_x, c, proof.sx);
+  let res = poeN(inputs.y, [GENERATOR], proof.A_x, c, [proof.sx]);
   if (res == false) {
     throw new Error("error in poe y");
   }
 
-  res = poe(R_audit, GENERATOR, proof.A_r, c, proof.sr);
+  res = poeN(R_audit, [GENERATOR], proof.A_r, c, [proof.sr]);
   if (res == false) {
     throw new Error("error in poe y");
   }
 
-  res = poe2(L_audit, GENERATOR, inputs.auditorPubKey, proof.A_auditor, c, proof.sb, proof.sr);
+  res = poeN(L_audit, [GENERATOR, inputs.auditorPubKey], proof.A_auditor, c, [proof.sb, proof.sr]);
   if (res == false) {
     throw new Error("error in poe2 Bal");
   }
@@ -548,14 +554,14 @@ export function verifyWithdraw(
   const g_b = GENERATOR.multiplyUnsafe(inputs.amount);
   const Y = L0.subtract(g_b);
 
-  res = poe2(Y, GENERATOR, R0, proof.A, c, proof.sb, proof.sx);
+  res = poeN(Y, [GENERATOR, R0], proof.A, c, [proof.sb, proof.sx]);
   if (res == false) {
     throw new Error("error in poe2 Y");
   }
 
   const V = verifyRange(proof.range, 32);
 
-  res = poe2(V, GENERATOR, SECONDARY_GENERATOR, proof.A_v, c, proof.sb, proof.sr);
+  res = poeN(V, [GENERATOR, SECONDARY_GENERATOR], proof.A_v, c, [proof.sb, proof.sr]);
   if (res == false) {
     throw new Error("error in poe2 V");
   }
@@ -767,196 +773,69 @@ export function verifyTransfer(
     const {L: L_audit_self, R: R_audit_self} = inputs.auditedBalanceSelf;
     //TODO assert R == R_bar == R_audit
 
-  let res = poe(inputs.y, GENERATOR, proof.A_x, c, proof.s_x);
+  let res = poeN(inputs.y, [GENERATOR], proof.A_x, c, [proof.s_x]);
   if (res == false) {
     throw new Error("error in poe for y");
   }
 
-  res = poe(R, GENERATOR, proof.A_r, c, proof.s_r);
+  res = poeN(R, [GENERATOR], proof.A_r, c, [proof.s_r]);
   if (res == false) {
     throw new Error("error in poe for R");
   }
 
-  res = poe2(L, GENERATOR, inputs.y, proof.A_b, c, proof.s_b, proof.s_r);
+  res = poeN(L, [GENERATOR, inputs.y], proof.A_b, c, [proof.s_b, proof.s_r]);
   if (res == false) {
     throw new Error("error in poe2 for L");
   }
 
-  res = poe2(
+  res = poeN(
     L_bar,
-    GENERATOR,
-    inputs.y_bar,
+    [GENERATOR,
+    inputs.y_bar],
     proof.A_bar,
     c,
-    proof.s_b,
-    proof.s_r,
+    [proof.s_b,
+    proof.s_r],
   );
   if (res == false) {
     throw new Error("error in poe2 for L_bar");
   }
 
-  res = poe2(L_audit, GENERATOR, inputs.auditorPubKey, proof.A_audit, c, proof.s_b, proof.s_r);
+  res = poeN(L_audit, [GENERATOR, inputs.auditorPubKey], proof.A_audit, c, [proof.s_b, proof.s_r]);
   if (res == false) {
     throw new Error("error in pore2 for L_audit");
   }
 
-  res = poe(R_audit_self, GENERATOR, proof.A_r2, c, proof.s_r2);
+  res = poeN(R_audit_self, [GENERATOR], proof.A_r2, c, [proof.s_r2]);
   if (res == false) {
     throw new Error("error in poe for R_audit_self");
   }
 
-  res = poe2(L_audit_self, GENERATOR, inputs.auditorPubKey, proof.A_self_audit, c, proof.s_b2, proof.s_r2);
+  res = poeN(L_audit_self, [GENERATOR, inputs.auditorPubKey], proof.A_self_audit, c, [proof.s_b2, proof.s_r2]);
   if (res == false) {
     throw new Error("error in pore2 for L_audit_self");
   }
 
   const V = verifyRange(proof.range, 32);
-  res = poe2(V, GENERATOR, SECONDARY_GENERATOR, proof.A_v, c, proof.s_b, proof.s_r);
+  res = poeN(V, [GENERATOR, SECONDARY_GENERATOR], proof.A_v, c, [proof.s_b, proof.s_r]);
   if (res == false) {
     throw new Error("erro in poe2 for V");
   }
 
   const Y = CL.subtract(L);
   const G = CR.subtract(R);
-  res = poe2(Y, GENERATOR, G, proof.A_b2, c, proof.s_b2, proof.s_x);
+  res = poeN(Y, [GENERATOR, G], proof.A_b2, c, [proof.s_b2, proof.s_x]);
   if (res == false) {
     throw new Error("error in poe2 for Y");
   }
 
   const V2 = verifyRange(proof.range2, 32);
-  res = poe2(V2, GENERATOR, SECONDARY_GENERATOR, proof.A_v2, c, proof.s_b2, proof.s_r2);
+  res = poeN(V2, [GENERATOR, SECONDARY_GENERATOR], proof.A_v2, c, [proof.s_b2, proof.s_r2]);
   if (res == false) {
     throw new Error("error in poe2 for V2");
   }
 }
 // -----------------------------  TRANSFER -------------------------------------------------------
-
-// -------------------------- PROOF OF BIT ----------------------------------------------------
-
-interface ProofOfBit {
-  V: ProjectivePoint;
-  A0: ProjectivePoint;
-  A1: ProjectivePoint;
-  c0: bigint;
-  s0: bigint;
-  s1: bigint;
-}
-
-function simPOE(y: ProjectivePoint, gen: ProjectivePoint) {
-  const s = generateRandom()
-  const c = generateRandom()
-  const A = gen.multiplyUnsafe(s).subtract(y.multiplyUnsafe(c));
-  return { A, c, s };
-}
-
-function _proveBit0(random: bigint): ProofOfBit {
-    const V = SECONDARY_GENERATOR.multiplyUnsafe(random);
-    const V_1 = V.subtract(GENERATOR);
-    const { A: A1, c: c1, s: s1 } = simPOE(V_1, SECONDARY_GENERATOR);
-
-    const k = generateRandom()
-    const A0 = SECONDARY_GENERATOR.multiplyUnsafe(k);
-
-    const c = challengeCommits2(0n, [A0, A1]);
-    const c0 = c ^ c1; //bitwisexor
-    const s0 = (k + c0 * random) % CURVE_ORDER;
-
-    return { V, A0, A1, c0, s0, s1 };
-}
-
-function _proveBit1 (random: bigint): ProofOfBit {
-    const V = GENERATOR.add(SECONDARY_GENERATOR.multiplyUnsafe(random));
-    const V0 = V;
-    const { A: A0, c: c0, s: s0 } = simPOE(V0, SECONDARY_GENERATOR);
-
-    const k = generateRandom()
-    const A1 = SECONDARY_GENERATOR.multiplyUnsafe(k);
-    const c = challengeCommits2(0n, [A0, A1]);
-    const c1 = c ^ c0; //bitwisexor
-    const s1 = (k + c1 * random) % CURVE_ORDER;
-
-    return { V, A0, A1, c0, s0, s1 };
-}
-
-
-function proveBit(bit: 0 | 1, random: bigint): ProofOfBit {
-  if (bit == 0) {
-    return _proveBit0(random)
-  } else {
-    return _proveBit1(random)
-  }
-}
-
-
-/// Proof of Bit: validate that a commited V = g**b h**r is the ciphertext of  either b=0 OR b=1.
-/// If b = 0 then V = h**r and a proof of exponet for r is enought. If b=1 then V/g = h**r could be
-/// also proven with a poe. This is combined in a OR statement and the protocol can valitates that
-/// one of the cases is valid without leak which one is valid.
-function oneOrZero(pi: ProofOfBit) {
-  const c = challengeCommits2(0n, [pi.A0, pi.A1]);
-  const c1 = c ^ pi.c0;
-  let res = poe(pi.V, SECONDARY_GENERATOR, pi.A0, pi.c0, pi.s0);
-  if (res == false) {
-    throw new Error("Failed 0 in proof of bit");
-  }
-  const V1 = pi.V.subtract(GENERATOR);
-  res = poe(V1, SECONDARY_GENERATOR, pi.A1, c1, pi.s1);
-  if (res == false) {
-    throw new Error("Failed 1 in proof of bit");
-  }
-}
-// -------------------------- PROOF OF BIT ----------------------------------------------------
-
-// --------------------------------------- RANGE ------------------------------------------------
-function proveRange(
-  b: bigint,
-  bits: number,
-): { r: bigint; proof: ProofOfBit[] } {
-  if (b >= 2 ** bits) {
-    throw new Error("number not in range");
-  }
-  const b_bin: (0|1)[] = b
-    .toString(2)
-    .padStart(bits, "0")
-    .split("")
-    .map(Number)
-    .map(x => x as (0|1))
-    .reverse();
-  const proof: ProofOfBit[] = [];
-  let pow = 1n;
-  let r = 0n;
-  let i = 0;
-  while (i < bits) {
-    const r_inn = generateRandom()
-    const pi = proveBit(b_bin[i]!, r_inn);
-    proof.push(pi);
-    r = (r + r_inn * pow) % CURVE_ORDER;
-    pow = 2n * pow;
-    i = i + 1;
-  }
-  return { r, proof };
-}
-
-/// Verify that a span of Vi = g**b_i h**r_i are encoding either b=1 or b=0 and that
-/// those bi are indeed the binary decomposition b = sum_i b_i 2**i. With the b that
-/// is encoded in V = g**b h**r. (Note that r = sim_i r_i 2**i)
-/// TODO: This could (and probably should) be change to bulletproof.
-function verifyRange(proof: ProofOfBit[], bits: number): ProjectivePoint {
-  let pi = proof[0]!;
-  oneOrZero(pi);
-  let V = pi.V;
-  let pow = 2n;
-  let i = 1;
-  while (i < bits) {
-    pi = proof[i]!;
-    oneOrZero(pi);
-    V = V.add(pi.V.multiplyUnsafe(pow));
-    i = i + 1;
-    pow = pow * 2n;
-  }
-  return V;
-}
-// --------------------------------------- RANGE ------------------------------------------------
 
 // --------------------------------------- AUDIT EX POST ------------------------------------------------
 export interface ProofExPost {
@@ -1016,13 +895,13 @@ export function proveExpost(
 }
 export function verifyExpost(inputs:InputsExPost, proof: ProofExPost) {
     const c = challengeCommits2(0n,[proof.Ax,proof.Ar,proof.At,proof.A,proof.A_bar])
-    poe(inputs.y, GENERATOR, proof.Ax, c, proof.sx)
-    poe(inputs.R, GENERATOR, proof.Ar, c, proof.sr)
+    poeN(inputs.y, [GENERATOR], proof.Ax, c, [proof.sx])
+    poeN(inputs.R, [GENERATOR], proof.Ar, c, [proof.sr])
     const Y = inputs.TL.subtract(inputs.L);
     const G = inputs.TR.subtract(inputs.R);
-    poe(Y, G, proof.At, c, proof.sx)
-    poe2(inputs.L,GENERATOR,inputs.y,proof.A, c, proof.sb,proof.sr)
-    poe2(inputs.L_bar,GENERATOR,inputs.y_bar,proof.A, c, proof.sb,proof.sr)
+    poeN(Y, [G], proof.At, c, [proof.sx])
+    poeN(inputs.L, [GENERATOR ,inputs.y], proof.A, c, [proof.sb, proof.sr])
+    poeN(inputs.L_bar, [GENERATOR, inputs.y_bar], proof.A, c, [proof.sb, proof.sr])
 }
 
 // --------------------------------------- AUDIT EX POST ------------------------------------------------
