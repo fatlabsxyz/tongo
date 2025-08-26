@@ -4,36 +4,36 @@ import {
   ProjectivePoint,
   utils,
 } from "@scure/starknet";
-import { poseidonHashMany } from "@scure/starknet"
+import { poseidonHashMany } from "@scure/starknet";
 
 import { writeFileSync } from 'fs';
 
 import { Affine } from "./types.js";
 import { CURVE_ORDER, GENERATOR, SECONDARY_GENERATOR } from "./constants.js";
 
-import {poeN, proveRange, verifyRange, ProofOfBit} from "./homomorphic_encryption.js"
+import { poeN, proveRange, verifyRange, ProofOfBit } from "./homomorphic_encryption.js";
 export function encrypt(sc: bigint): Affine {
   return GENERATOR.multiplyUnsafe(sc).toAffine();
 }
 
 export interface CipherBalance {
-    L: ProjectivePoint;
-    R: ProjectivePoint;
+  L: ProjectivePoint;
+  R: ProjectivePoint;
 }
 
 export function cipherBalance(
   y: ProjectivePoint,
   amount: bigint,
   random: bigint,
-): CipherBalance  {
+): CipherBalance {
   if (amount === 0n) {
     const L = y.multiplyUnsafe(random);
-    const R = GENERATOR.multiplyUnsafe(random) ;
-    return {L,R}
+    const R = GENERATOR.multiplyUnsafe(random);
+    return { L, R };
   }
   const L = GENERATOR.multiply(amount).add(y.multiplyUnsafe(random));
   const R = GENERATOR.multiplyUnsafe(random);
-  return {L, R}
+  return { L, R };
 }
 
 // ----------------------------------- POE -------------------------------------------------
@@ -60,7 +60,7 @@ export function poe(
 
 export function provePoe(x: bigint, g: ProjectivePoint) {
   const y = g.multiply(x);
-  const k = generateRandom()
+  const k = generateRandom();
   const A = g.multiplyUnsafe(k);
   const c = challengeCommits2(0n, [A]);
   const s = (k + x * c) % CURVE_ORDER;
@@ -115,8 +115,8 @@ export function provePoe2(
   g2: ProjectivePoint,
 ) {
   const y = g1.multiply(x1).add(g2.multiply(x2));
-  const k1 = generateRandom()
-  const k2 = generateRandom()
+  const k1 = generateRandom();
+  const k2 = generateRandom();
   const A = g1.multiplyUnsafe(k1).add(g2.multiplyUnsafe(k2));
   const c = challengeCommits2(0n, [A]);
   const s1 = (k1 + x1 * c) % CURVE_ORDER;
@@ -142,8 +142,8 @@ export function verifyPoe2(
 
 // ----------------------------------- ROLLOVER -------------------------------------------------
 export interface InputsRollover {
-    y: ProjectivePoint,
-    nonce: bigint,
+  y: ProjectivePoint,
+  nonce: bigint,
 }
 
 export interface ProofOfRollover {
@@ -154,7 +154,7 @@ export interface ProofOfRollover {
 export function proveRollover(
   x: bigint,
   nonce: bigint,
-): { inputs: InputsRollover; proof: ProofOfRollover } {
+): { inputs: InputsRollover; proof: ProofOfRollover; } {
   const rollover_selector = 8245928655720965490n;
   const y = GENERATOR.multiply(x);
   const inputs: InputsRollover = { y: y, nonce: nonce };
@@ -162,7 +162,7 @@ export function proveRollover(
   const seq: bigint[] = [rollover_selector, y.toAffine().x, y.toAffine().y, nonce];
   const prefix = computePrefix(seq);
 
-  const k = generateRandom()
+  const k = generateRandom();
   const Ax = GENERATOR.multiplyUnsafe(k);
   const c = challengeCommits2(prefix, [Ax]);
   const sx = (k + x * c) % CURVE_ORDER;
@@ -192,39 +192,39 @@ export function verifyRollover(inputs: InputsRollover, proof: ProofOfRollover) {
 
 // -----------------------------  FUND -------------------------------------------------------
 export interface InputsFund {
-    y: ProjectivePoint;
-    amount:bigint;
-    nonce: bigint;
-    currentBalance: CipherBalance,
-    auxBalance: CipherBalance,
-    auditorPubKey: ProjectivePoint,
-    auditedBalance: CipherBalance,
+  y: ProjectivePoint;
+  amount: bigint;
+  nonce: bigint;
+  currentBalance: CipherBalance,
+  auxBalance: CipherBalance,
+  auditorPubKey: ProjectivePoint,
+  auditedBalance: CipherBalance,
 }
 
 function prefixFund(inputs: InputsFund): bigint {
   const fund_selector = 1718972004n;
-    const seq: bigint[] = [
-        fund_selector,
-        inputs.y.toAffine().x,
-        inputs.y.toAffine().y,
-        inputs.amount,
-        inputs.nonce,
-        inputs.currentBalance.L.toAffine().x,
-        inputs.currentBalance.L.toAffine().y,
-        inputs.currentBalance.R.toAffine().x,
-        inputs.currentBalance.R.toAffine().y,
-        inputs.auxBalance.L.toAffine().x,
-        inputs.auxBalance.L.toAffine().y,
-        inputs.auxBalance.R.toAffine().x,
-        inputs.auxBalance.R.toAffine().y,
-        inputs.auditedBalance.L.toAffine().x,
-        inputs.auditedBalance.L.toAffine().y,
-        inputs.auditedBalance.R.toAffine().x,
-        inputs.auditedBalance.R.toAffine().y,
-        inputs.auditorPubKey.toAffine().x,
-        inputs.auditorPubKey.toAffine().y,
-    ];
-    return computePrefix(seq);
+  const seq: bigint[] = [
+    fund_selector,
+    inputs.y.toAffine().x,
+    inputs.y.toAffine().y,
+    inputs.amount,
+    inputs.nonce,
+    inputs.currentBalance.L.toAffine().x,
+    inputs.currentBalance.L.toAffine().y,
+    inputs.currentBalance.R.toAffine().x,
+    inputs.currentBalance.R.toAffine().y,
+    inputs.auxBalance.L.toAffine().x,
+    inputs.auxBalance.L.toAffine().y,
+    inputs.auxBalance.R.toAffine().x,
+    inputs.auxBalance.R.toAffine().y,
+    inputs.auditedBalance.L.toAffine().x,
+    inputs.auditedBalance.L.toAffine().y,
+    inputs.auditedBalance.R.toAffine().x,
+    inputs.auditedBalance.R.toAffine().y,
+    inputs.auditorPubKey.toAffine().x,
+    inputs.auditorPubKey.toAffine().y,
+  ];
+  return computePrefix(seq);
 }
 
 //TODO: Add challenge computation
@@ -240,54 +240,54 @@ export interface ProofOfFund {
 }
 
 export function proveFund(
-    x: bigint,
-    amount:bigint,
-    initialBalance:bigint,
-    currentBalance: CipherBalance,
-    nonce: bigint,
-    auditorPubKey: ProjectivePoint,
-): { inputs: InputsFund; proof: ProofOfFund } {
+  x: bigint,
+  amount: bigint,
+  initialBalance: bigint,
+  currentBalance: CipherBalance,
+  nonce: bigint,
+  auditorPubKey: ProjectivePoint,
+): { inputs: InputsFund; proof: ProofOfFund; } {
   const y = GENERATOR.multiply(x);
-    const r = generateRandom();
-    const auxBalance = cipherBalance(y, initialBalance,r);
-    const R = auxBalance.R;
+  const r = generateRandom();
+  const auxBalance = cipherBalance(y, initialBalance, r);
+  const R = auxBalance.R;
 
-    const auditedBalance = cipherBalance(auditorPubKey, initialBalance + amount, r);
-    const R0 = currentBalance.R;
-    const inputs: InputsFund = { y, nonce, amount, currentBalance,auxBalance, auditorPubKey, auditedBalance };
+  const auditedBalance = cipherBalance(auditorPubKey, initialBalance + amount, r);
+  const R0 = currentBalance.R;
+  const inputs: InputsFund = { y, nonce, amount, currentBalance, auxBalance, auditorPubKey, auditedBalance };
 
-    const prefix = prefixFund(inputs);
+  const prefix = prefixFund(inputs);
 
-  const kx = generateRandom()
-  const kb = generateRandom()
-  const kr = generateRandom()
+  const kx = generateRandom();
+  const kb = generateRandom();
+  const kr = generateRandom();
 
   const Ax = GENERATOR.multiplyUnsafe(kx);
   const Ar = GENERATOR.multiplyUnsafe(kr);
   const Ab = GENERATOR.multiplyUnsafe(kb).add(y.multiplyUnsafe(kr));
   const A_auditor = GENERATOR.multiplyUnsafe(kb).add(auditorPubKey.multiplyUnsafe(kr));
-  const AUX_R = R0.subtract(R)
+  const AUX_R = R0.subtract(R);
   const AUX_A = AUX_R.multiplyUnsafe(kx);
 
-  const c = challengeCommits2(prefix, [Ax, Ar, Ab, A_auditor,AUX_A]);
+  const c = challengeCommits2(prefix, [Ax, Ar, Ab, A_auditor, AUX_A]);
   const sx = (kx + x * c) % CURVE_ORDER;
   const sr = (kr + r * c) % CURVE_ORDER;
   const sb = (kb + initialBalance * c) % CURVE_ORDER;
 
-  const proof: ProofOfFund = { Ax, Ar, Ab, A_auditor, AUX_A, sx, sb,sr  };
+  const proof: ProofOfFund = { Ax, Ar, Ab, A_auditor, AUX_A, sx, sb, sr };
   return { inputs, proof };
 }
 
 
 export function verifyFund(inputs: InputsFund, proof: ProofOfFund) {
-    const prefix = prefixFund(inputs);
-    const c = challengeCommits2(prefix, [proof.Ax, proof.Ar, proof.Ab, proof.A_auditor,proof.AUX_A]);
-    
-    const {L,R} = inputs.auxBalance;
-    const {L:L_audit, R:R_audit} = inputs.auditedBalance;
-    const {L:L0, R:R0} = inputs.currentBalance;
-    //TODO: assert R == R_audit
-    if (!R.equals(R_audit))  { throw new Error("R is not R_audit") }
+  const prefix = prefixFund(inputs);
+  const c = challengeCommits2(prefix, [proof.Ax, proof.Ar, proof.Ab, proof.A_auditor, proof.AUX_A]);
+
+  const { L, R } = inputs.auxBalance;
+  const { L: L_audit, R: R_audit } = inputs.auditedBalance;
+  const { L: L0, R: R0 } = inputs.currentBalance;
+  //TODO: assert R == R_audit
+  if (!R.equals(R_audit)) { throw new Error("R is not R_audit"); }
 
   let res = poeN(inputs.y, [GENERATOR], proof.Ax, c, [proof.sx]);
   if (res == false) {
@@ -305,7 +305,7 @@ export function verifyFund(inputs: InputsFund, proof: ProofOfFund) {
     throw new Error("error in poe2 fund");
   }
 
-    const AUX_L_auditor =  L_audit.subtract(GENERATOR.multiplyUnsafe(inputs.amount));
+  const AUX_L_auditor = L_audit.subtract(GENERATOR.multiplyUnsafe(inputs.amount));
   res = poeN(AUX_L_auditor, [GENERATOR, inputs.auditorPubKey], proof.A_auditor, c, [proof.sb, proof.sr]);
   if (res == false) {
     throw new Error("error in poe2 fund");
@@ -332,20 +332,20 @@ export interface InputsRagequit {
 }
 
 function prefixRagequit(inputs: InputsRagequit): bigint {
-    const ragequit_selector= 8241982478457596276n;
-    const seq: bigint[] = [
-        ragequit_selector,
-        inputs.y.toAffine().x,
-        inputs.y.toAffine().y,
-        inputs.nonce,
-        inputs.to,
-        inputs.amount,
-        inputs.currentBalance.L.toAffine().x,
-        inputs.currentBalance.L.toAffine().y,
-        inputs.currentBalance.R.toAffine().x,
-        inputs.currentBalance.R.toAffine().y,
-    ];
-    return computePrefix(seq);
+  const ragequit_selector = 8241982478457596276n;
+  const seq: bigint[] = [
+    ragequit_selector,
+    inputs.y.toAffine().x,
+    inputs.y.toAffine().y,
+    inputs.nonce,
+    inputs.to,
+    inputs.amount,
+    inputs.currentBalance.L.toAffine().x,
+    inputs.currentBalance.L.toAffine().y,
+    inputs.currentBalance.R.toAffine().x,
+    inputs.currentBalance.R.toAffine().y,
+  ];
+  return computePrefix(seq);
 }
 
 export interface ProofOfRagequit {
@@ -361,7 +361,7 @@ export function proveRagequit(
   nonce: bigint,
   to: bigint,
   amount: bigint,
-): { inputs: InputsRagequit; proof: ProofOfRagequit } {
+): { inputs: InputsRagequit; proof: ProofOfRagequit; } {
   const y = GENERATOR.multiply(x);
   const inputs: InputsRagequit = {
     y: y,
@@ -372,7 +372,7 @@ export function proveRagequit(
   };
   const prefix = prefixRagequit(inputs);
 
-  const k = generateRandom()
+  const k = generateRandom();
   const A_x = GENERATOR.multiplyUnsafe(k);
 
   const R = currentBalance.R;
@@ -404,7 +404,7 @@ export function verifyRagequit(
   const prefix = prefixRagequit(inputs);
   const c = challengeCommits2(prefix, [proof.A_x, proof.A_cr]);
 
-  let {L, R} = inputs.currentBalance;
+  let { L, R } = inputs.currentBalance;
 
   let res = poeN(inputs.y, [GENERATOR], proof.A_x, c, [proof.s_x]);
   if (res == false) {
@@ -424,36 +424,36 @@ export function verifyRagequit(
 // -----------------------------  WITHDRAW -------------------------------------------------------
 
 export interface InputsWithdraw {
-    y: ProjectivePoint;
-    nonce: bigint;
-    to: bigint;
-    amount: bigint;
-    auditorPubKey: ProjectivePoint,
-    currentBalance: CipherBalance,
-    auditedBalance: CipherBalance,
+  y: ProjectivePoint;
+  nonce: bigint;
+  to: bigint;
+  amount: bigint;
+  auditorPubKey: ProjectivePoint,
+  currentBalance: CipherBalance,
+  auditedBalance: CipherBalance,
 }
 
 function prefixWithdraw(inputs: InputsWithdraw): bigint {
-    const withdraw_selector = 8604536554778681719n;
-    const seq: bigint[] = [
-        withdraw_selector,
-        inputs.y.toAffine().x,
-        inputs.y.toAffine().y,
-        inputs.nonce,
-        inputs.to,
-        inputs.amount,
-        inputs.auditorPubKey.toAffine().x,
-        inputs.auditorPubKey.toAffine().y,
-        inputs.currentBalance.L.toAffine().x,
-        inputs.currentBalance.L.toAffine().y,
-        inputs.currentBalance.R.toAffine().x,
-        inputs.currentBalance.R.toAffine().y,
-        inputs.auditedBalance.L.toAffine().x,
-        inputs.auditedBalance.L.toAffine().y,
-        inputs.auditedBalance.R.toAffine().x,
-        inputs.auditedBalance.R.toAffine().y,
+  const withdraw_selector = 8604536554778681719n;
+  const seq: bigint[] = [
+    withdraw_selector,
+    inputs.y.toAffine().x,
+    inputs.y.toAffine().y,
+    inputs.nonce,
+    inputs.to,
+    inputs.amount,
+    inputs.auditorPubKey.toAffine().x,
+    inputs.auditorPubKey.toAffine().y,
+    inputs.currentBalance.L.toAffine().x,
+    inputs.currentBalance.L.toAffine().y,
+    inputs.currentBalance.R.toAffine().x,
+    inputs.currentBalance.R.toAffine().y,
+    inputs.auditedBalance.L.toAffine().x,
+    inputs.auditedBalance.L.toAffine().y,
+    inputs.auditedBalance.R.toAffine().x,
+    inputs.auditedBalance.R.toAffine().y,
   ];
-    return computePrefix(seq);
+  return computePrefix(seq);
 }
 
 export interface ProofOfWithdraw {
@@ -476,29 +476,29 @@ export function proveWithdraw(
   currentBalance: CipherBalance,
   nonce: bigint,
   auditorPubKey: ProjectivePoint,
-): { inputs: InputsWithdraw; proof: ProofOfWithdraw } {
-    const y = GENERATOR.multiply(x);
-    const R = currentBalance.R;;
-    const left =  initial_balance - amount;
+): { inputs: InputsWithdraw; proof: ProofOfWithdraw; } {
+  const y = GENERATOR.multiply(x);
+  const R = currentBalance.R;;
+  const left = initial_balance - amount;
 
-    const { r, proof: range } = proveRange(left,32);
-    const auditedBalance = cipherBalance(auditorPubKey, left, r);
+  const { r, proof: range } = proveRange(left, 32);
+  const auditedBalance = cipherBalance(auditorPubKey, left, r);
 
-    const inputs: InputsWithdraw = {
-        y,
-        nonce,
-        currentBalance,
-        to: to,
-        amount: amount,
-        auditorPubKey,
-        auditedBalance,
-    };
+  const inputs: InputsWithdraw = {
+    y,
+    nonce,
+    currentBalance,
+    to: to,
+    amount: amount,
+    auditorPubKey,
+    auditedBalance,
+  };
 
   const prefix = prefixWithdraw(inputs);
 
-  const kb = generateRandom()
-  const kx = generateRandom()
-  const kr = generateRandom()
+  const kb = generateRandom();
+  const kx = generateRandom();
+  const kr = generateRandom();
 
   const A_x = GENERATOR.multiplyUnsafe(kx);
   const A_r = GENERATOR.multiplyUnsafe(kr);
@@ -506,7 +506,7 @@ export function proveWithdraw(
   const A_v = GENERATOR.multiplyUnsafe(kb).add(SECONDARY_GENERATOR.multiplyUnsafe(kr));
   const A_auditor = GENERATOR.multiplyUnsafe(kb).add(auditorPubKey.multiplyUnsafe(kr));
 
-  const c = challengeCommits2(prefix, [A_x,A_r, A, A_v, A_auditor]);
+  const c = challengeCommits2(prefix, [A_x, A_r, A, A_v, A_auditor]);
 
   const sb = (kb + left * c) % CURVE_ORDER;
   const sx = (kx + x * c) % CURVE_ORDER;
@@ -532,10 +532,10 @@ export function verifyWithdraw(
 ) {
 
   const prefix = prefixWithdraw(inputs);
-  const c = challengeCommits2(prefix, [proof.A_x,proof.A_r, proof.A, proof.A_v,proof.A_auditor]);
+  const c = challengeCommits2(prefix, [proof.A_x, proof.A_r, proof.A, proof.A_v, proof.A_auditor]);
 
-    const {L:L0, R:R0} =inputs.currentBalance; 
-    const {L:L_audit, R:R_audit} =inputs.auditedBalance; 
+  const { L: L0, R: R0 } = inputs.currentBalance;
+  const { L: L_audit, R: R_audit } = inputs.auditedBalance;
   let res = poeN(inputs.y, [GENERATOR], proof.A_x, c, [proof.sx]);
   if (res == false) {
     throw new Error("error in poe y");
@@ -571,51 +571,51 @@ export function verifyWithdraw(
 // -----------------------------  TRANSFER -------------------------------------------------------
 
 export interface InputsTransfer {
-    y: ProjectivePoint,
-    y_bar: ProjectivePoint,
-    nonce: bigint,
-    auditorPubKey: ProjectivePoint,
-    currentBalance: CipherBalance,
-    transferBalance: CipherBalance,
-    transferBalanceSelf: CipherBalance,
-    auditedBalance: CipherBalance,
-    auditedBalanceSelf: CipherBalance,
+  y: ProjectivePoint,
+  y_bar: ProjectivePoint,
+  nonce: bigint,
+  auditorPubKey: ProjectivePoint,
+  currentBalance: CipherBalance,
+  transferBalance: CipherBalance,
+  transferBalanceSelf: CipherBalance,
+  auditedBalance: CipherBalance,
+  auditedBalanceSelf: CipherBalance,
 }
 
 function prefixTransfer(inputs: InputsTransfer): bigint {
   const transfer_selector = 8390876182755042674n;
-    const seq = [
-        transfer_selector,
-        inputs.y.toAffine().x,
-        inputs.y.toAffine().y,
-        inputs.y_bar.toAffine().x,
-        inputs.y_bar.toAffine().y,
-        inputs.nonce,
-        inputs.auditorPubKey.toAffine().x,
-        inputs.auditorPubKey.toAffine().y,
-        inputs.currentBalance.L.toAffine().x,
-        inputs.currentBalance.L.toAffine().y,
-        inputs.currentBalance.R.toAffine().x,
-        inputs.currentBalance.R.toAffine().y,
-        inputs.transferBalance.L.toAffine().x,
-        inputs.transferBalance.L.toAffine().y,
-        inputs.transferBalance.R.toAffine().x,
-        inputs.transferBalance.R.toAffine().y,
-        inputs.transferBalanceSelf.L.toAffine().x,
-        inputs.transferBalanceSelf.L.toAffine().y,
-        inputs.transferBalanceSelf.R.toAffine().x,
-        inputs.transferBalanceSelf.R.toAffine().y,
-        inputs.auditedBalance.L.toAffine().x,
-        inputs.auditedBalance.L.toAffine().y,
-        inputs.auditedBalance.R.toAffine().x,
-        inputs.auditedBalance.R.toAffine().y,
-        inputs.auditedBalanceSelf.L.toAffine().x,
-        inputs.auditedBalanceSelf.L.toAffine().y,
-        inputs.auditedBalanceSelf.R.toAffine().x,
-        inputs.auditedBalanceSelf.R.toAffine().y,
+  const seq = [
+    transfer_selector,
+    inputs.y.toAffine().x,
+    inputs.y.toAffine().y,
+    inputs.y_bar.toAffine().x,
+    inputs.y_bar.toAffine().y,
+    inputs.nonce,
+    inputs.auditorPubKey.toAffine().x,
+    inputs.auditorPubKey.toAffine().y,
+    inputs.currentBalance.L.toAffine().x,
+    inputs.currentBalance.L.toAffine().y,
+    inputs.currentBalance.R.toAffine().x,
+    inputs.currentBalance.R.toAffine().y,
+    inputs.transferBalance.L.toAffine().x,
+    inputs.transferBalance.L.toAffine().y,
+    inputs.transferBalance.R.toAffine().x,
+    inputs.transferBalance.R.toAffine().y,
+    inputs.transferBalanceSelf.L.toAffine().x,
+    inputs.transferBalanceSelf.L.toAffine().y,
+    inputs.transferBalanceSelf.R.toAffine().x,
+    inputs.transferBalanceSelf.R.toAffine().y,
+    inputs.auditedBalance.L.toAffine().x,
+    inputs.auditedBalance.L.toAffine().y,
+    inputs.auditedBalance.R.toAffine().x,
+    inputs.auditedBalance.R.toAffine().y,
+    inputs.auditedBalanceSelf.L.toAffine().x,
+    inputs.auditedBalanceSelf.L.toAffine().y,
+    inputs.auditedBalanceSelf.R.toAffine().x,
+    inputs.auditedBalanceSelf.R.toAffine().y,
 
   ];
-    return computePrefix(seq);
+  return computePrefix(seq);
 }
 
 export interface ProofOfTransfer {
@@ -646,24 +646,24 @@ export function proveTransfer(
   auditorPubKey: ProjectivePoint,
   currentBalance: CipherBalance,
   nonce: bigint,
-): { inputs: InputsTransfer; proof: ProofOfTransfer } {
+): { inputs: InputsTransfer; proof: ProofOfTransfer; } {
   const y = GENERATOR.multiply(x);
 
   const { r, proof: range } = proveRange(b, 32);
   const transferBalanceSelf = cipherBalance(y, b, r);
   const transferBalance = cipherBalance(y_bar, b, r);
-  const auditedBalance = cipherBalance(auditorPubKey,b,r);
+  const auditedBalance = cipherBalance(auditorPubKey, b, r);
 
-    const b_left = b0 - b;
-  const { r: r2, proof: range2 } = proveRange( b_left, 32);
-  const auditedBalanceSelf = cipherBalance(auditorPubKey,b_left,r2);
+  const b_left = b0 - b;
+  const { r: r2, proof: range2 } = proveRange(b_left, 32);
+  const auditedBalanceSelf = cipherBalance(auditorPubKey, b_left, r2);
 
   const inputs: InputsTransfer = {
     y,
     y_bar,
     nonce,
     auditorPubKey,
-    currentBalance, 
+    currentBalance,
     transferBalance,
     transferBalanceSelf,
     auditedBalance,
@@ -674,11 +674,11 @@ export function proveTransfer(
 
   const G = currentBalance.R.subtract(transferBalanceSelf.R);
 
-  const kx = generateRandom()
-  const kb = generateRandom()
-  const kr = generateRandom()
-  const kb2 = generateRandom()
-  const kr2 = generateRandom()
+  const kx = generateRandom();
+  const kb = generateRandom();
+  const kr = generateRandom();
+  const kb2 = generateRandom();
+  const kr2 = generateRandom();
 
   const A_x = GENERATOR.multiplyUnsafe(kx);
   const A_r = GENERATOR.multiplyUnsafe(kr);
@@ -751,7 +751,7 @@ export function verifyTransfer(
   inputs: InputsTransfer,
   proof: ProofOfTransfer,
 ) {
-    const prefix = prefixTransfer(inputs);
+  const prefix = prefixTransfer(inputs);
   const c = challengeCommits2(prefix, [
     proof.A_x,
     proof.A_r,
@@ -765,13 +765,13 @@ export function verifyTransfer(
     proof.A_self_audit,
   ]);
 
-    const {L:CL, R:CR} = inputs.currentBalance;
-    const {L, R} = inputs.transferBalanceSelf;
-    const {L:L_bar, R:_R_bar} = inputs.transferBalance;
-    const {L: L_audit, R: _R_audit} = inputs.auditedBalance;
+  const { L: CL, R: CR } = inputs.currentBalance;
+  const { L, R } = inputs.transferBalanceSelf;
+  const { L: L_bar, R: _R_bar } = inputs.transferBalance;
+  const { L: L_audit, R: _R_audit } = inputs.auditedBalance;
 
-    const {L: L_audit_self, R: R_audit_self} = inputs.auditedBalanceSelf;
-    //TODO assert R == R_bar == R_audit
+  const { L: L_audit_self, R: R_audit_self } = inputs.auditedBalanceSelf;
+  //TODO assert R == R_bar == R_audit
 
   let res = poeN(inputs.y, [GENERATOR], proof.A_x, c, [proof.s_x]);
   if (res == false) {
@@ -791,7 +791,7 @@ export function verifyTransfer(
   res = poeN(
     L_bar,
     [GENERATOR,
-    inputs.y_bar],
+      inputs.y_bar],
     proof.A_bar,
     c,
     [proof.s_b,
@@ -839,69 +839,69 @@ export function verifyTransfer(
 
 // --------------------------------------- AUDIT EX POST ------------------------------------------------
 export interface ProofExPost {
-    Ax: ProjectivePoint,
-    Ar: ProjectivePoint,
-    At: ProjectivePoint,
-    A: ProjectivePoint,
-    A_bar: ProjectivePoint,
-    sx: bigint,
-    sb: bigint,
-    sr: bigint,
+  Ax: ProjectivePoint,
+  Ar: ProjectivePoint,
+  At: ProjectivePoint,
+  A: ProjectivePoint,
+  A_bar: ProjectivePoint,
+  sx: bigint,
+  sb: bigint,
+  sr: bigint,
 }
 export interface InputsExPost {
-    y: ProjectivePoint,
-    y_bar: ProjectivePoint,
-    L: ProjectivePoint,
-    L_bar: ProjectivePoint
-    R: ProjectivePoint,
-    TL: ProjectivePoint,
-    TR: ProjectivePoint,
+  y: ProjectivePoint,
+  y_bar: ProjectivePoint,
+  L: ProjectivePoint,
+  L_bar: ProjectivePoint;
+  R: ProjectivePoint,
+  TL: ProjectivePoint,
+  TR: ProjectivePoint,
 }
 
 export function proveExpost(
-    x:bigint,
-    y_bar:ProjectivePoint,
-    TL:ProjectivePoint,
-    TR:ProjectivePoint
-): {inputs: InputsExPost, proof:ProofExPost} {
-    const y = GENERATOR.multiply(x)
-    const b = decipherBalance(x, TL,TR)
-    const r = generateRandom()
-    const {L,R} = cipherBalance(y,b,r)
-    const {L:L_bar,R: _R_bar} = cipherBalance(y_bar,b,r)
-    const inputs: InputsExPost = {y, y_bar, L, L_bar, R, TL,TR}
+  x: bigint,
+  y_bar: ProjectivePoint,
+  TL: ProjectivePoint,
+  TR: ProjectivePoint
+): { inputs: InputsExPost, proof: ProofExPost; } {
+  const y = GENERATOR.multiply(x);
+  const b = decipherBalance(x, TL, TR);
+  const r = generateRandom();
+  const { L, R } = cipherBalance(y, b, r);
+  const { L: L_bar, R: _R_bar } = cipherBalance(y_bar, b, r);
+  const inputs: InputsExPost = { y, y_bar, L, L_bar, R, TL, TR };
 
-    const kx = generateRandom()
-    const kr = generateRandom()
-    const kb = generateRandom()
+  const kx = generateRandom();
+  const kr = generateRandom();
+  const kb = generateRandom();
 
-    const Ax = GENERATOR.multiplyUnsafe(kx)
-    const Ar = GENERATOR.multiplyUnsafe(kr)
+  const Ax = GENERATOR.multiplyUnsafe(kx);
+  const Ar = GENERATOR.multiplyUnsafe(kr);
 
-    const A = GENERATOR.multiplyUnsafe(kb).add(y.multiplyUnsafe(kr));
-    const A_bar = GENERATOR.multiplyUnsafe(kb).add(y_bar.multiplyUnsafe(kr));
+  const A = GENERATOR.multiplyUnsafe(kb).add(y.multiplyUnsafe(kr));
+  const A_bar = GENERATOR.multiplyUnsafe(kb).add(y_bar.multiplyUnsafe(kr));
 
-    const G = TR.subtract(R);
-    const At = G.multiplyUnsafe(kx)
+  const G = TR.subtract(R);
+  const At = G.multiplyUnsafe(kx);
 
-    const c = challengeCommits2(0n,[Ax,Ar,At,A,A_bar])
+  const c = challengeCommits2(0n, [Ax, Ar, At, A, A_bar]);
 
-    const sx = (kx + x * c) % CURVE_ORDER;
-    const sr = (kr + x * c) % CURVE_ORDER;
-    const sb = (kb + x * c) % CURVE_ORDER;
+  const sx = (kx + x * c) % CURVE_ORDER;
+  const sr = (kr + x * c) % CURVE_ORDER;
+  const sb = (kb + x * c) % CURVE_ORDER;
 
-    const proof: ProofExPost = {Ax, Ar, At, A, A_bar, sx,sr,sb}
-    return {inputs, proof}
+  const proof: ProofExPost = { Ax, Ar, At, A, A_bar, sx, sr, sb };
+  return { inputs, proof };
 }
-export function verifyExpost(inputs:InputsExPost, proof: ProofExPost) {
-    const c = challengeCommits2(0n,[proof.Ax,proof.Ar,proof.At,proof.A,proof.A_bar])
-    poeN(inputs.y, [GENERATOR], proof.Ax, c, [proof.sx])
-    poeN(inputs.R, [GENERATOR], proof.Ar, c, [proof.sr])
-    const Y = inputs.TL.subtract(inputs.L);
-    const G = inputs.TR.subtract(inputs.R);
-    poeN(Y, [G], proof.At, c, [proof.sx])
-    poeN(inputs.L, [GENERATOR ,inputs.y], proof.A, c, [proof.sb, proof.sr])
-    poeN(inputs.L_bar, [GENERATOR, inputs.y_bar], proof.A, c, [proof.sb, proof.sr])
+export function verifyExpost(inputs: InputsExPost, proof: ProofExPost) {
+  const c = challengeCommits2(0n, [proof.Ax, proof.Ar, proof.At, proof.A, proof.A_bar]);
+  poeN(inputs.y, [GENERATOR], proof.Ax, c, [proof.sx]);
+  poeN(inputs.R, [GENERATOR], proof.Ar, c, [proof.sr]);
+  const Y = inputs.TL.subtract(inputs.L);
+  const G = inputs.TR.subtract(inputs.R);
+  poeN(Y, [G], proof.At, c, [proof.sx]);
+  poeN(inputs.L, [GENERATOR, inputs.y], proof.A, c, [proof.sb, proof.sr]);
+  poeN(inputs.L_bar, [GENERATOR, inputs.y_bar], proof.A, c, [proof.sb, proof.sr]);
 }
 
 // --------------------------------------- AUDIT EX POST ------------------------------------------------
@@ -924,12 +924,12 @@ export function challengeCommits2(prefix: bigint, commits: ProjectivePoint[]) {
     data.push(temp.y);
   });
 
-//   const base = PED2(data);
+  //   const base = PED2(data);
   const base = poseidonHashMany(data);
   let salt = 1n;
   let c = CURVE_ORDER + 1n;
   while (c >= CURVE_ORDER) {
-//     c = PED2([base, salt]);
+    //     c = PED2([base, salt]);
     c = poseidonHashMany([base, salt]);
     salt = salt + 1n;
   }
@@ -938,8 +938,8 @@ export function challengeCommits2(prefix: bigint, commits: ProjectivePoint[]) {
 
 //This function coincides with cairo compure_prefix
 export function computePrefix(seq: bigint[]) {
-    return poseidonHashMany(seq)
-//   return PED2([0n, ...seq]);
+  return poseidonHashMany(seq);
+  //   return PED2([0n, ...seq]);
 }
 
 export function generateRandom(): bigint {
@@ -965,10 +965,10 @@ export function decipherBalance(
   L: ProjectivePoint,
   R: ProjectivePoint,
 ): bigint {
-  if (R.x === 0n || L.x === 0n) { return 0n }
+  if (R.x === 0n || L.x === 0n) { return 0n; }
 
   const Rx = R.multiply(x);
-  if (Rx.equals(L)) { return 0n }
+  if (Rx.equals(L)) { return 0n; }
 
   const g_b = L.subtract(Rx);
   let b = 1n;
@@ -994,11 +994,11 @@ export function assertBalance(
 ): boolean {
 
   // TODO: should throw error
-  if (R.x === 0n || L.x === 0n) { return false }
+  if (R.x === 0n || L.x === 0n) { return false; }
 
   const Rx = R.multiply(x);
   // TODO: should throw error
-  if (Rx.equals(L)) { return false }
+  if (Rx.equals(L)) { return false; }
 
   const g_b = L.subtract(Rx);
   const candidate_g_b = GENERATOR.multiply(balance);
@@ -1010,13 +1010,13 @@ export function decipherBalanceOptimized(
   L: ProjectivePoint,
   R: ProjectivePoint,
   precomputed: Map<string, string>
-): bigint {  
+): bigint {
   const Rx = R.multiply(x);
-    if (Rx.equals(L)) {return 0n}
+  if (Rx.equals(L)) { return 0n; }
 
   const g_b = L.subtract(Rx);
   let b = findLeastBits(GENERATOR, g_b, precomputed);
-  return b
+  return b;
 }
 
 function toKey(x: bigint, y: bigint): string {
@@ -1029,12 +1029,13 @@ export function createHashMap(g: ProjectivePoint): Map<string, bigint> {
 
   let gb = g.multiply(b);
   let current = gb;
-  precomputed.set(toKey(0n, 0n), 0n)
+  precomputed.set(toKey(0n, 0n), 0n);
   for (let i = 1n; i < b; i++) {
     const key = toKey(current.x, current.y);
     precomputed.set(key, i);
 
-    current = current.add(gb);  }
+    current = current.add(gb);
+  }
 
   return precomputed;
 }
@@ -1049,18 +1050,17 @@ export function findLeastBits(
   const g_neg = g.negate();
   let delta = g_neg;
   let current = c.add(delta);
-  let c_prec = precomputed.get(toKey(c.x, c.y))
-  if (c_prec !== undefined)
-    {
-      return BigInt(c_prec) * (2n ** 16n);
-    };
+  let c_prec = precomputed.get(toKey(c.x, c.y));
+  if (c_prec !== undefined) {
+    return BigInt(c_prec) * (2n ** 16n);
+  };
   for (let i = 1n; i < lim; i++) {
     const key = toKey(current.x, current.y);
     const msb = precomputed.get(key);
     if (msb !== undefined) {
       return i + BigInt(msb) * (2n ** 16n);
     }
-    current = current.add(delta);    
+    current = current.add(delta);
   }
 
   return 0n;
@@ -1075,8 +1075,8 @@ export function createAndSaveHashMap(): void {
       return `[${keyStr}, ${valStr}]`;
     })
     .join(',\n');
-    let tsCode = `export const hash_map = new Map([\n${entries}\n]);\n`;
-    writeFileSync("src/map.ts", tsCode, "utf8");
-    console.log("TypeScript file generated at src/map.ts");
+  let tsCode = `export const hash_map = new Map([\n${entries}\n]);\n`;
+  writeFileSync("src/map.ts", tsCode, "utf8");
+  console.log("TypeScript file generated at src/map.ts");
 }
 
