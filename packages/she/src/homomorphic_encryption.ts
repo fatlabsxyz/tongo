@@ -100,11 +100,10 @@ export function elGamalEncryption(
     deps: Dependencies = defaultDeps
   ): PoeProof {
 
-    const pairs = zip(scalars, bases);
     const { generateRandom, challengeCommits } = deps;
 
     // y = Σ (xᵢ · gᵢ)
-    const y = pairs.reduce(
+    const y = zip(scalars, bases).reduce(
       (acc, [x, g]) => acc.add(g.multiply(x)),
       ProjectivePoint.ZERO
     );
@@ -114,7 +113,7 @@ export function elGamalEncryption(
   
     // A = Σ (kᵢ · gᵢ)
     const A = zip(ks, bases).reduce(
-      (acc, [k, g]) => acc.add(g.multiplyUnsafe(k)),
+      (acc, [k, g]) => acc.add(g.multiply(k)),
       ProjectivePoint.ZERO
     );
   
@@ -140,7 +139,7 @@ export function elGamalEncryption(
     s1: bigint;
   }
   
-  function simPOE(
+  function simulatePOE(
     y: ProjectivePoint,
     gen: ProjectivePoint,
     { generateRandom }: Dependencies = defaultDeps
@@ -155,11 +154,11 @@ export function elGamalEncryption(
     const { generateRandom, challengeCommits } = deps;
   
     const V = SECONDARY_GENERATOR.multiplyUnsafe(random);
-    const V_1 = V.subtract(GENERATOR);
-    const { A: A1, c: c1, s: s1 } = simPOE(V_1, SECONDARY_GENERATOR, deps);
+    const V1 = V.subtract(GENERATOR);
+    const { A: A1, c: c1, s: s1 } = simulatePOE(V1, SECONDARY_GENERATOR, deps);
   
     const k = generateRandom();
-    const A0 = SECONDARY_GENERATOR.multiplyUnsafe(k);
+    const A0 = SECONDARY_GENERATOR.multiply(k);
   
     const c = challengeCommits(0n, [A0, A1]);
     const c0 = c ^ c1;
@@ -173,10 +172,10 @@ function _proveBit1(random: bigint, deps: Dependencies = defaultDeps): ProofOfBi
 
   const V = GENERATOR.add(SECONDARY_GENERATOR.multiplyUnsafe(random));
   const V0 = V;
-  const { A: A0, c: c0, s: s0 } = simPOE(V0, SECONDARY_GENERATOR, deps);
+  const { A: A0, c: c0, s: s0 } = simulatePOE(V0, SECONDARY_GENERATOR, deps);
 
   const k = generateRandom();
-  const A1 = SECONDARY_GENERATOR.multiplyUnsafe(k);
+  const A1 = SECONDARY_GENERATOR.multiply(k);
 
   const c = challengeCommits(0n, [A0, A1]);
   const c1 = c ^ c0;
