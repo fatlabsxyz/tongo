@@ -37,7 +37,7 @@ export function challengeCommits2(prefix: bigint, commits: ProjectivePoint[]) {
 
   export interface Dependencies {
     generateRandom: () => bigint;
-    challengeCommits: (seed: bigint, commits: ProjectivePoint[]) => bigint;
+    challengeCommits: (prefix: bigint, commits: ProjectivePoint[]) => bigint;
   }
 
 const defaultDeps: Dependencies = {
