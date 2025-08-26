@@ -7,20 +7,15 @@ import {
   decipherBalance,
   encrypt,
   GENERATOR,
-  generateRandom,
   SECONDARY_GENERATOR,
   proveExpost,
   proveFund,
-  provePoe,
-  provePoe2,
   proveTransfer,
   proveWithdraw,
   proveRagequit,
   proveRollover,
   verifyExpost,
   verifyFund,
-  verifyPoe,
-  verifyPoe2,
   verifyTransfer,
   verifyWithdraw,
   verifyRagequit,
@@ -28,6 +23,18 @@ import {
   assertBalance,
   computePrefix,
 } from "../src";
+
+import {
+  poeN,
+  Dependencies,
+  provePoeN,
+  proveBit,
+  oneOrZero,
+  proveRange,
+  verifyRange,
+  challengeCommits2,
+  generateRandom
+} from "../src/homomorphic_encryption";
 
 // import { find_least_bits, decipherBalanceOptimized} from "../src";
 // import { hash_map} from "../src/map";
@@ -199,16 +206,20 @@ describe("Example test suit", () => {
 
   it("poe", () => {
     const x = 12n;
-    const { y, A, s } = provePoe(x, GENERATOR);
-    verifyPoe(y, GENERATOR, A, s);
-  });
+    const { y, A, ss } = provePoeN([x], [GENERATOR])
+    const c = challengeCommits2(0n, [A]);
+    poeN(y, [GENERATOR], A, c, ss);
+    });
+
 
   it("poe2", () => {
     const x1 = 12n;
     const x2 = 12412n;
-    const { y, A, s1, s2 } = provePoe2(x1, x2, GENERATOR, SECONDARY_GENERATOR);
-    verifyPoe2(y, GENERATOR, SECONDARY_GENERATOR, A, s1, s2);
-  });
+    const { y, A, ss } = provePoeN([x1, x2], [GENERATOR, SECONDARY_GENERATOR]);
+    const c = challengeCommits2(0n, [A]);
+
+    poeN(y, [GENERATOR, SECONDARY_GENERATOR], A, c, ss);
+    });
 
   it("expost", () => {
     const x = 3809213n
@@ -241,3 +252,29 @@ it("generateH", ()=> {
 //   const b = decipherBalanceOptimized(x, L, R, hash_map);
 //   expect(b).toEqual(amount);
 // })
+
+const deps: Dependencies = {
+  generateRandom: generateRandom,
+  challengeCommits: challengeCommits2
+};
+
+it("proveBit", () => {
+  const bit: 0 | 1 = 1;
+  const random = 1234n;
+  const proof = proveBit(bit, random);
+
+  expect(() => oneOrZero(proof, deps)).not.toThrow();
+});
+
+it("proveRange", () => {
+  const b = 13n;
+  const bits = 4;
+  const { r, proof } = proveRange(b, bits);
+  const V = verifyRange(proof, bits);
+
+  // --- expected commitment: V = g^b * h^r ---
+  const expected = GENERATOR.multiplyUnsafe(b)
+    .add(SECONDARY_GENERATOR.multiplyUnsafe(r));
+
+  expect(V.equals(expected)).toBe(true);
+});

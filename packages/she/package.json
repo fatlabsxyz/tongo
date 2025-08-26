@@ -19,14 +19,12 @@
     "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
     "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.4.1",
-  "devDependencies": {
-  },
+  "devDependencies": {},
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/fatlabsxyz"
   }
