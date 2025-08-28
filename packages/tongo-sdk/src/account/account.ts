@@ -1,22 +1,22 @@
-// import { bytesToHex } from "@noble/hashes/utils";
-import { BigNumberish, Contract, num, RpcProvider, TypedContractV2, CairoOption, CairoOptionVariant} from "starknet";
-import { decipherBalance, GENERATOR as g, proveFund, proveRollover, proveTransfer, proveWithdraw, proveRagequit,  assertBalance, prove_audit, verify_audit, CipherBalance  } from "@fatlabsxyz/she-js";
-import { AEChaCha, AEBalance, AEHintToBytes, bytesToBigAEHint, parseAEBalance } from "../ae_balance.js";
+import { BigNumberish, CairoOption, CairoOptionVariant, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
+
+import { assertBalance, CipherBalance, decipherBalance, GENERATOR as g, prove_audit, proveFund, proveRagequit, proveRollover, proveTransfer, proveWithdraw, verify_audit } from "@fatlabsxyz/she-js";
+
+import { AEBalance, AEChaCha, AEHintToBytes, bytesToBigAEHint, parseAEBalance } from "../ae_balance.js";
+import { AUDITOR_PRIVATE } from "../auditor.js";
+import { StarknetEventReader } from "../data.service.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "../key.js";
+import { Audit, ExPost } from "../operations/audit.js";
 import { FundOperation } from "../operations/fund.js";
+import { RagequitOperation } from "../operations/ragequit.js";
 import { RollOverOperation } from "../operations/rollover.js";
 import { TransferOperation } from "../operations/transfer.js";
 import { WithdrawOperation } from "../operations/withdraw.js";
-import { RagequitOperation } from "../operations/ragequit.js";
 import { tongoAbi } from "../tongo.abi.js";
-import { Audit, ExPost } from "../operations/audit.js"
-import { AUDITOR_PRIVATE } from "../auditor.js";
-import { PubKey, TongoAddress, parseCipherBalance, projectivePointToStarkPoint, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint,} from "../types.js";
-import { bytesOrNumToBigInt,  castBigInt } from "../utils.js";
-
-import { StarknetEventReader } from "../data.service.js";
-import {AccountEvents, AccountFundEvent, AccountRagequitEvent, AccountRolloverEvent, AccountTransferInEvent,AccountTransferOutEvent, AccountWithdrawEvent, ReaderToAccountEvents} from "./events.js";
-import {IAccount, FundDetails, AccountState,AccountStateForTesting,RagequitDetails,RawAccountState,TransferDetails,WithdrawDetails} from "./IAccount.js"
+import { parseCipherBalance, projectivePointToStarkPoint, PubKey, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint, TongoAddress, } from "../types.js";
+import { bytesOrNumToBigInt, castBigInt } from "../utils.js";
+import { AccountEvents, AccountFundEvent, AccountRagequitEvent, AccountRolloverEvent, AccountTransferInEvent, AccountTransferOutEvent, AccountWithdrawEvent, ReaderToAccountEvents } from "./events.js";
+import { AccountState, AccountStateForTesting, FundDetails, IAccount, RagequitDetails, RawAccountState, TransferDetails, WithdrawDetails } from "./IAccount.js";
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
 
@@ -114,20 +114,20 @@ export class Account implements IAccount {
         return auditorKey;
     }
 
-    async createAuditPart(balance:bigint, storedCipherBalance: CipherBalance): Promise<CairoOption<Audit>>{
+    async createAuditPart(balance: bigint, storedCipherBalance: CipherBalance): Promise<CairoOption<Audit>> {
         let auditPart = new CairoOption<Audit>(CairoOptionVariant.None);
         const auditor = await this.auditorKey();
         if (auditor.isSome()) {
             const auditorPubKey = starkPointToProjectivePoint(auditor.unwrap()!);
-            const {inputs:inputsAudit, proof:proofAudit} = prove_audit(this.pk, balance, storedCipherBalance, auditorPubKey);
+            const { inputs: inputsAudit, proof: proofAudit } = prove_audit(this.pk, balance, storedCipherBalance, auditorPubKey);
 
             const nonce = await this.nonce() + 1n;
             const keyForAuditAEBal = await this.deriveSymmetricKeyForPubKey(nonce, auditorPubKey);
-            const hint = bytesToBigAEHint((new AEChaCha(keyForAuditAEBal)).encryptBalance(balance))
-            const audit: Audit = {auditedBalance: inputsAudit.auditedBalance,hint, proof:proofAudit};
+            const hint = bytesToBigAEHint((new AEChaCha(keyForAuditAEBal)).encryptBalance(balance));
+            const audit: Audit = { auditedBalance: inputsAudit.auditedBalance, hint, proof: proofAudit };
             auditPart = new CairoOption<Audit>(CairoOptionVariant.Some, audit);
         }
-        return auditPart
+        return auditPart;
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
@@ -140,10 +140,10 @@ export class Account implements IAccount {
         const { inputs, proof, newBalance} = proveFund(this.pk, amount, initialBalance, currentBalance, nonce);
         
         //audit
-        const auditPart = await this.createAuditPart( amount + initialBalance, newBalance,);
+        const auditPart = await this.createAuditPart(amount + initialBalance, newBalance,);
         const hint = await this.computeAEHint(amount + initialBalance);
 
-        const operation = new FundOperation({ to: inputs.y, amount,hint, proof, auditPart, Tongo: this.Tongo });
+        const operation = new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo });
         await operation.populateApprove();
         return operation;
     }
@@ -163,11 +163,11 @@ export class Account implements IAccount {
         const to = starkPointToProjectivePoint(transferDetails.to);
         const { inputs, proof, newBalance } = proveTransfer(this.pk, to, initialBalance, amount, currentBalance, nonce);
 
-        const hint = await this.computeAEHint(amount + initialBalance);
+        const hint = await this.computeAEHint(initialBalance - amount);
 
         //audit
-        const auditPart = await this.createAuditPart( initialBalance - amount, newBalance);
-        const auditPartTransfer = await this.createAuditPart( amount, inputs.transferBalanceSelf);
+        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance);
+        const auditPartTransfer = await this.createAuditPart(amount, inputs.transferBalanceSelf);
 
         return new TransferOperation({
             from: inputs.y,
@@ -196,9 +196,9 @@ export class Account implements IAccount {
         const { inputs, proof, newBalance } = proveRagequit(this.pk, currentBalance, nonce, ragequitDetails.to, initialBalance);
 
         const hint = await this.computeAEHint(0n);
-        const auditPart = await this.createAuditPart(0n , newBalance);
+        const auditPart = await this.createAuditPart(0n, newBalance);
 
-        return new RagequitOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount,hint, proof, Tongo: this.Tongo, auditPart });
+        return new RagequitOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, hint, proof, Tongo: this.Tongo, auditPart });
     }
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
@@ -223,9 +223,9 @@ export class Account implements IAccount {
         const hint = await this.computeAEHint(initialBalance - amount);
 
         //audit
-        const auditPart = await this.createAuditPart( initialBalance - amount, newBalance);
+        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance);
 
-        return new WithdrawOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount,hint, proof,auditPart, Tongo: this.Tongo });
+        return new WithdrawOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, hint, proof, auditPart, Tongo: this.Tongo });
     }
 
     async rollover(): Promise<RollOverOperation> {
@@ -262,7 +262,6 @@ export class Account implements IAccount {
         return decipherBalance(this.pk, L, R);
     }
 
-
     //TODO: rethink this to better ux
     generateExPost(to: PubKey, cipher: CipherBalance): ExPost {
         if (cipher.L == null) {
@@ -293,7 +292,7 @@ export class Account implements IAccount {
     async computeAEHint(amount: bigint): Promise<AEBalance> {
         const nonce = await this.nonce() + 1n;
         const keyAEBal = await this.deriveSymmetricKey(nonce);
-        return bytesToBigAEHint((new AEChaCha(keyAEBal)).encryptBalance(amount))
+        return bytesToBigAEHint((new AEChaCha(keyAEBal)).encryptBalance(amount));
     }
 
     async deriveSymmetricKeyForPubKey(nonce: bigint, other: PubKey) {
@@ -320,9 +319,9 @@ export class Account implements IAccount {
             nonce,
             ae_balance, ae_audit_balance,
         } = state;
-        
+
         let parsedAudit: CipherBalance | undefined;
-        if( audit.isSome()) { parsedAudit = parseCipherBalance(audit.unwrap()!) }
+        if (audit.isSome()) { parsedAudit = parseCipherBalance(audit.unwrap()!); }
 
         return {
             balance: parseCipherBalance(balance),

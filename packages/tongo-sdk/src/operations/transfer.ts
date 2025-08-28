@@ -24,9 +24,9 @@ interface TransferOpParams {
     transferBalance: CipherBalance;
     transferBalanceSelf: CipherBalance;
     proof: ProofOfTransfer;
-    hint: AEBalance,
-    auditPart: CairoOption<Audit>,
-    auditPartTransfer: CairoOption<Audit>,
+    hint: AEBalance;
+    auditPart: CairoOption<Audit>;
+    auditPartTransfer: CairoOption<Audit>;
     Tongo: Contract;
 }
 
@@ -41,15 +41,15 @@ export class TransferOperation implements ITransferOperation {
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
 
-    constructor({ from, to, transferBalance, transferBalanceSelf, proof, auditPart, auditPartTransfer, Tongo, hint}: TransferOpParams) {
+    constructor({ from, to, transferBalance, transferBalanceSelf, proof, auditPart, auditPartTransfer, Tongo, hint }: TransferOpParams) {
         this.from = from;
         this.to = to;
-        this.transferBalance = transferBalance,
-        this.transferBalanceSelf = transferBalanceSelf,
+        this.transferBalance = transferBalance;
+        this.transferBalanceSelf = transferBalanceSelf;
         this.hint = hint;
         this.proof = proof;
-        this.auditPart = auditPart,
-        this.auditPartTransfer = auditPartTransfer,
+        this.auditPart = auditPart;
+        this.auditPartTransfer = auditPartTransfer;
         this.Tongo = Tongo;
     }
 
@@ -58,8 +58,8 @@ export class TransferOperation implements ITransferOperation {
             {
                 from: this.from,
                 to: this.to,
-                transferBalance : this.transferBalance,
-                transferBalanceSelf : this.transferBalanceSelf,
+                transferBalance: this.transferBalance,
+                transferBalanceSelf: this.transferBalanceSelf,
                 hint: this.hint,
                 proof: this.proof,
                 auditPart: this.auditPart,
