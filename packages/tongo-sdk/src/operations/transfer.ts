@@ -1,9 +1,10 @@
-import { ProjectivePoint } from "@scure/starknet";
-import { CipherBalance, ProofOfTransfer } from "@fatlabsxyz/she-js";
-import { Call, Contract, CairoOption } from "starknet";
+import { CairoOption, Call, Contract } from "starknet";
+
+import { ProjectivePoint, CipherBalance, ProofOfTransfer } from "@fatlabsxyz/she-js";
+
 import { AEBalance } from "../ae_balance";
+import { Audit } from "./audit.js";
 import { IOperation } from "./operation";
-import { Audit } from "./audit.js"
 
 export interface ITransferOperation extends IOperation { }
 

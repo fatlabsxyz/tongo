@@ -1,10 +1,11 @@
-import { ProjectivePoint } from "@scure/starknet";
-import { ProofOfFund } from "@fatlabsxyz/she-js";
-import { cairo, Call, CallData, Contract, num, CairoOption } from "starknet";
-import { Audit } from "./audit.js"
-import { IOperation } from "./operation";
-import { castBigInt } from "../utils.js";
+import { cairo, CairoOption, Call, CallData, Contract, num } from "starknet";
+
+import { ProofOfFund, ProjectivePoint } from "@fatlabsxyz/she-js";
+
 import { AEBalance } from "../ae_balance.js";
+import { castBigInt } from "../utils.js";
+import { Audit } from "./audit.js";
+import { IOperation } from "./operation";
 
 interface IFundOperation extends IOperation {
     populateApprove(): Promise<void>;
