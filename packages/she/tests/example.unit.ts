@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateH } from "../src/constants"
+import { ProjectivePoint} from "@scure/starknet";
 
 import {
   cipherBalance,
@@ -8,13 +9,11 @@ import {
   encrypt,
   GENERATOR,
   SECONDARY_GENERATOR,
-  proveExpost,
   proveFund,
   proveTransfer,
   proveWithdraw,
   proveRagequit,
   proveRollover,
-  verifyExpost,
   verifyFund,
   verifyTransfer,
   verifyWithdraw,
@@ -34,7 +33,16 @@ import {
   proveRange,
   verifyRange,
   challengeCommits2,
-  generateRandom
+  generateRandom,
+  verifyElGammal,
+  elGamalEncryption,
+  proveElGammal,
+  verifySameEncryptionSameKey,
+  verifySameEncryptionKnownRandom,
+  proveSameEncryptionSameKey,
+  proveSameEncryptionDiffKey,
+  verifySameEncryptionUnknownRandom,
+  proveSameEncryptionDiffKeyUnknownRandom
 } from "../src/homomorphic_encryption";
 
 // import { find_least_bits, decipherBalanceOptimized} from "../src";
@@ -233,9 +241,313 @@ it("proveRange", () => {
   const { r, proof } = proveRange(b, bits);
   const V = verifyRange(proof, bits);
 
-  // --- expected commitment: V = g^b * h^r ---
   const expected = GENERATOR.multiplyUnsafe(b)
     .add(SECONDARY_GENERATOR.multiplyUnsafe(r));
 
   expect(V.equals(expected)).toBe(true);
+});
+
+it("verifyElGammal accepts a valid proof from the working prover", () => {
+  const message = 123n;
+  const random = 42n;
+  const y = SECONDARY_GENERATOR;
+  const g1 = GENERATOR;
+  const g2 = SECONDARY_GENERATOR;
+
+  const { L, R } = elGamalEncryption(y, message, random);
+
+  const proof = proveElGammal(message, random, y, g1, g2);
+
+  expect(() =>
+    verifyElGammal(L, R, g1, g2, proof.AL, proof.AR, proof.c, proof.sb, proof.sr)
+  ).not.toThrow();
+
+  expect(
+    verifyElGammal(L, R, g1, g2, proof.AL, proof.AR, proof.c, proof.sb, proof.sr)
+  ).toBe(true);
+});
+
+it("verifyElGammal rejects an invalid proof", () => {
+  const message = 123n;
+  const random = 42n;
+  const y = SECONDARY_GENERATOR;
+  const g1 = GENERATOR;
+  const g2 = SECONDARY_GENERATOR;
+
+  const { L, R } = elGamalEncryption(y, message, random);
+
+  const proof = proveElGammal(message, random, y, g1, g2);
+
+  const invalidProof = { ...proof, sb: (proof.sb + 1n) % CURVE_ORDER };
+
+  expect(() =>
+    verifyElGammal(L, R, g1, g2, invalidProof.AL, invalidProof.AR, invalidProof.c, invalidProof.sb, invalidProof.sr)
+  ).toThrow("Failed poe2 for L");
+});
+
+describe("verifySameEncryptionSameKey", () => {
+  const g = GENERATOR;
+  const x = 15n;
+  const y = g.multiplyUnsafe(x);
+
+  it("returns true when ciphertexts are identical (R1 === R2)", () => {
+    const message = 123n;
+    const random = 42n;
+
+    const { L: L1, R: R1 } = elGamalEncryption(y, message, random);
+    const { L: L2, R: R2 } = elGamalEncryption(y, message, random);
+
+    expect(
+      verifySameEncryptionSameKey(L1, R1, L2, R2, g, ProjectivePoint.ZERO, 0n, 0n)
+    ).toBe(true);
+  });
+
+  it("returns false when ciphertexts differ but R1 === R2", () => {
+    const message1 = 123n;
+    const message2 = 456n;
+    const random = 42n;
+
+    const { L: L1, R: R1 } = elGamalEncryption(y, message1, random);
+    const { L: L2, R: R2 } = elGamalEncryption(y, message2, random);
+
+    expect(
+      verifySameEncryptionSameKey(L1, R1, L2, R2, g, ProjectivePoint.ZERO, 0n, 0n)
+    ).toBe(false);
+  });
+
+  it("passes with valid PoE when R1 !== R2 but messages are the same", () => {
+    const message = 123n;
+    const random1 = 42n;
+    const random2 = 99n;
+
+    const { L: L1, R: R1 } = elGamalEncryption(y, message, random1);
+    const { L: L2, R: R2 } = elGamalEncryption(y, message, random2);
+
+    const { A, c, s } = proveSameEncryptionSameKey(L1, R1, L2, R2, x);
+
+    expect(
+      verifySameEncryptionSameKey(L1, R1, L2, R2, g, A, c, s)
+    ).toBe(true);
+  });
+
+  it("throws when PoE is invalid (tampered s) for R1 !== R2", () => {
+    const message = 123n;
+    const random1 = 42n;
+    const random2 = 99n;
+
+    const { L: L1, R: R1 } = elGamalEncryption(y, message, random1);
+    const { L: L2, R: R2 } = elGamalEncryption(y, message, random2);
+
+    // Generate valid PoE first
+    const { A, c, s } = proveSameEncryptionSameKey(L1, R1, L2, R2, x);
+
+    // Tamper s to invalidate the PoE
+    const invalidS = (s + 1n) % CURVE_ORDER;
+
+    expect(() =>
+      verifySameEncryptionSameKey(L1, R1, L2, R2, g, A, c, invalidS)
+    ).toThrow("Q1");
+  });
+});
+
+
+
+describe("verifySameEncryptionKnownRandom", () => {
+  const g = GENERATOR;
+  const y1 = GENERATOR.multiplyUnsafe(5n);
+  const y2 = GENERATOR.multiplyUnsafe(19n);
+  const r1 = 42n;
+  const r2 = 99n;
+  const message = 123n;
+  
+  it("accepts valid proof when two ciphertexts encrypt the same message with different keys", () => {
+    
+    const { L: L1, R: R1 } = elGamalEncryption(y1, message, r1);
+    const { L: L2, R: R2 } = elGamalEncryption(y2, message, r2);
+
+
+    const { AL1, AR1, AL2, AR2, c, sb, sr1, sr2 } = proveSameEncryptionDiffKey(y1, y2, r1, r2, message);
+
+    expect(() =>
+      verifySameEncryptionKnownRandom(
+        L1,
+        R1,
+        L2,
+        R2,
+        g,
+        y1,
+        y2,
+        AL1,
+        AR1,
+        AL2,
+        AR2,
+        c,
+        sb,
+        sr1,
+        sr2
+      )
+    ).not.toThrow();
+  });
+
+  it("accepts valid proof when two ciphertexts encrypt the same message with the same key", () => {
+    const y2 = GENERATOR.multiplyUnsafe(5n);
+    const { L: L1, R: R1 } = elGamalEncryption(y1, message, r1);
+    const { L: L2, R: R2 } = elGamalEncryption(y2, message, r2);
+
+
+    const { AL1, AR1, AL2, AR2, c, sb, sr1, sr2 } = proveSameEncryptionDiffKey(y1, y2, r1, r2, message);
+
+    expect(() =>
+      verifySameEncryptionKnownRandom(
+        L1,
+        R1,
+        L2,
+        R2,
+        g,
+        y1,
+        y2,
+        AL1,
+        AR1,
+        AL2,
+        AR2,
+        c,
+        sb,
+        sr1,
+        sr2
+      )
+    ).not.toThrow();
+  });
+
+  it("throws if R1 === R2 but the message is different", () => {
+    const message = 123n;
+    const r = 42n;
+
+    const { L: L1, R: R1 } = elGamalEncryption(y1, message, r1);
+    const { L: L2, R: R2 } = elGamalEncryption(y2, message, r2);
+
+    const { AL1, AR1, AL2, AR2, c, sb, sr1, sr2 } = proveSameEncryptionDiffKey(y1, y2, r1, r2, message);
+    // tamper sr2
+    expect(() =>
+    verifySameEncryptionKnownRandom(
+      L1,
+      R1,
+      L2,
+      R1,
+      g,
+      y1,
+      y2,
+      AL1,
+      AR1,
+      AL2,
+      AR2,
+      c,
+      sb,
+      sr1,
+      (sr2 + 1n) % CURVE_ORDER,
+    )
+    ).toThrow("sr1 != sr2");
+  });
+
+  
+  it("throws if ElGamal verification fails (tampered proof)", () => {
+    const message = 123n;
+    const r1 = 42n;
+    const r2 = 99n;
+
+    const { L: L1, R: R1 } = elGamalEncryption(y1, message, r1);
+    const { L: L2, R: R2 } = elGamalEncryption(y2, message, r2);
+
+    const { AL1, AR1, AL2, AR2, c, sb, sr1, sr2 } = proveSameEncryptionDiffKey(y1, y2, r1, r2, message);
+
+    // tamper s so that ElGamal check fails
+    expect(() =>
+    verifySameEncryptionKnownRandom(
+      L1,
+      R1,
+      L2,
+      R2,
+      g,
+      y1,
+      y2,
+      AL1,
+      AR1,
+      AL2,
+      AR2,
+      c,
+      (sb + 1n) % CURVE_ORDER,
+      sr1,
+      sr2,
+    )
+    ).toThrow("W1");
+  });
+});
+
+
+describe("verifySameEncryptionUnknownRandom", () => {
+  const g = GENERATOR;
+  const x1 = 5n
+  const y1 = GENERATOR.multiplyUnsafe(x1);
+  const y2 = GENERATOR.multiplyUnsafe(19n);
+  const r1 = 42n;
+  const r2 = 99n;
+  const message = 123n;
+  
+  it("accepts valid proof when two ciphertexts encrypt the same message with different keys", () => {
+    
+    const { L: L1, R: R1 } = elGamalEncryption(y1, message, r1);
+    const { L: L2, R: R2 } = elGamalEncryption(y2, message, r2);
+
+
+    const { Ax, AL1, R1: _R1, AL2, AR2, c, sb, sx1, sr2 } = proveSameEncryptionDiffKeyUnknownRandom(y2, R1, x1, r2, message);
+
+    expect(() =>
+      verifySameEncryptionUnknownRandom(
+        L1,
+        _R1,
+        L2,
+        R2,
+        g,
+        y1,
+        y2,
+        Ax,
+        AL1,
+        AL2,
+        AR2,
+        c,
+        sb,
+        sx1,
+        sr2
+      )
+    ).not.toThrow();
+  });
+
+  it("throws if ElGamal verification fails (tampered proof)", () => {
+    
+    const { L: L1, R: R1 } = elGamalEncryption(y1, message, r1);
+    const { L: L2, R: R2 } = elGamalEncryption(y2, message, r2);
+
+
+    const { Ax, AL1, R1: _R1, AL2, AR2, c, sb, sx1, sr2 } = proveSameEncryptionDiffKeyUnknownRandom(y2, R1, x1, r2, message);
+
+    // tamper s so that ElGamal check fails
+    expect(() =>
+      verifySameEncryptionUnknownRandom(
+        L1,
+        _R1,
+        L2,
+        R2,
+        g,
+        y1,
+        y2,
+        Ax,
+        AL1,
+        AL2,
+        AR2,
+        c,
+        (sb + 1n) % CURVE_ORDER,
+        sx1,
+        sr2
+      )
+    ).toThrow("E2");
+  });
 });

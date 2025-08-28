@@ -14,7 +14,7 @@ export function generateRandom(): bigint {
 }
 
 
-// This function coincides with cairo challengeCommits2
+// This function matches cairo challengeCommits2
 export function challengeCommits2(prefix: bigint, commits: ProjectivePoint[]) {
   const data: bigint[] = [prefix];
   commits.forEach((commit, _index) => {
@@ -40,7 +40,7 @@ export interface Dependencies {
   challengeCommits: (prefix: bigint, commits: ProjectivePoint[]) => bigint;
 }
 
-const defaultDeps: Dependencies = {
+export const defaultDeps: Dependencies = {
   generateRandom: generateRandom,
   challengeCommits: challengeCommits2,
 };
@@ -65,6 +65,39 @@ export function elGamalEncryption(
   return { L, R };
 }
 
+interface ElGamalProof {
+  AL: ProjectivePoint;
+  AR: ProjectivePoint;
+  c: bigint;
+  sb: bigint;
+  sr: bigint;
+}
+
+export function proveElGammal(
+  message: bigint,
+  random: bigint,
+  y: ProjectivePoint,
+  g1: ProjectivePoint,
+  g2: ProjectivePoint,
+  deps: Dependencies = defaultDeps
+): ElGamalProof {
+  const { generateRandom, challengeCommits } = deps;
+
+  const L = g1.multiply(message).add(y.multiplyUnsafe(random));
+  const R = g1.multiplyUnsafe(random);
+
+  const k = generateRandom();
+
+  const AR = R.multiplyUnsafe(0n).add(g1.multiplyUnsafe(k));
+  const AL = L.multiplyUnsafe(0n).add(g1.multiplyUnsafe(k)).add(y.multiplyUnsafe(k));
+
+  const c = challengeCommits(0n, [AL, AR]);
+
+  const sr = (k + c * random) % CURVE_ORDER;
+  const sb = (k + c * message) % CURVE_ORDER;
+
+  return { AL, AR, c, sb, sr };
+}
 
 interface PoeProof {
   y: ProjectivePoint;
@@ -92,6 +125,16 @@ export function poeN(
   const RHS = A.add(y.multiplyUnsafe(c));
 
   return LHS.equals(RHS);
+}
+
+export function poe(
+  y: ProjectivePoint,
+  base: ProjectivePoint,
+  A: ProjectivePoint,
+  c: bigint,
+  s: bigint,
+) {
+  return poeN(y, [base], A, c, [s])
 }
 
 export function provePoeN(
@@ -262,3 +305,250 @@ export function verifyRange(proof: ProofOfBit[], bits: number, deps: Dependencie
   return V;
 }
 // --------------------------------------- RANGE ------------------------------------------------
+
+// --------------------------------------- VERIFIER ------------------------------------------------
+//Verifier
+
+/// Proof that a cipherbalance is a well formed ElGammal encription of the form
+/// (L, R) = (g1**b g2**r , g1**r). The sigma protocol consists in a poe and a poe2. Runs as follows:
+///
+/// P:  kb,kr <-- R        sends    AL = g1**kb g2**kr, AR=g1**kr
+/// V:  c <-- R            sends    c
+/// P:  sb = kb + c*b
+/// P:  sr = kr + c*r      send s1, s1
+/// The verifier asserts:
+/// - g1**sr        == AR * (R**c)  (poe)
+/// - g1**sb g2**sr == AL * (L**c)  (poe2)
+/// 
+/// EC_MUL: 5
+/// EC_ADD: 3
+
+export function verifyElGammal(
+  L: ProjectivePoint,
+  R: ProjectivePoint,
+  g1: ProjectivePoint,
+  g2: ProjectivePoint,
+  AL: ProjectivePoint,
+  AR: ProjectivePoint,
+  c: bigint,
+  sb: bigint,
+  sr: bigint
+): boolean {
+  let res = poe(R, g1, AR, c, sr);
+  if (res == false) {
+    throw new Error("Failed poe for R");
+  }
+
+  res = poeN(L, [g1, g2], AL, c, [sb, sr])
+  if (res == false) {
+    throw new Error("Failed poe2 for L");
+  }
+  return true
+}
+
+/// Verifies that two valid ElGammal encryption (L1,R1) = (g**b y**r1, g**r1) and (L2, R2) = (g**b y**r2, g**r2) 
+/// for the same publick key y=g**x encrypt the same balance. This is done by noting that
+/// L1/L2 = y**r1/y**r2 = (R1/R2)**x. We need to prove a poe for Y=G**x with Y=L1/L2 and G=R1/R2
+///
+/// P:  k <-- R        sends    A=G**k
+/// V:  c <-- R        sends    c
+/// P:  s = k + c*x    send     s
+/// The verifier asserts:
+/// - G**sr == A * (Y**c)  (poe)
+/// 
+/// EC_MUL: 2
+/// EC_ADD: 3
+export function verifySameEncryptionSameKey(
+  L1: ProjectivePoint,
+  R1: ProjectivePoint,
+  L2: ProjectivePoint,
+  R2: ProjectivePoint,
+  g: ProjectivePoint,
+  A: ProjectivePoint,
+  c: bigint,
+  s: bigint
+): boolean {
+  if (R1.equals(R2)) {return L1.equals(L2)};
+  let Y = L1.subtract(L2);
+  let G = R1.subtract(R2);
+  let res = poe(Y, G, A, c, s);
+  if (res == false) {
+    throw new Error("Q1");
+  }
+  return true
+}
+
+/// Verifies that two encription of an amount b for two different keys are valid and that they are indeed encrypting the same 
+/// amount b. Note: We assume here that the two randoms r1 and r2 are known by the proover. If they are the same this could be a little more efficient.
+/// (L1, R2) = (g**b y1**r1, g**r1),  (L2, R2) = (g**b y2**r2, g**r2). The protocol runs as follows
+///
+/// P:  kb,kr1,kr2 <-- R        sends    AL1=g**kb y1**kr1, AR1=g**kr1, AL2=g**kb y2**kr2, AR2=g**kr2
+/// V:          c  <-- R        sends    c
+/// P:  sb = kb  + c*b          send     sb
+/// P:  sr1 = kr1 + c*r1        send     sr1
+/// P:  sr2 = kr2 + c*r2        send     sr2
+/// The verifier asserts:
+///  - The correct encription of (L1,R1)
+///  - The correct encription of (L2,R2)
+/// 
+/// EC_MUL: 10
+/// EC_ADD: 6
+
+export function verifySameEncryptionKnownRandom(
+  L1: ProjectivePoint,
+  R1: ProjectivePoint,
+  L2: ProjectivePoint,
+  R2: ProjectivePoint,
+  g: ProjectivePoint,
+  y1: ProjectivePoint,
+  y2: ProjectivePoint,
+  AL1: ProjectivePoint,
+  AR1: ProjectivePoint,
+  AL2: ProjectivePoint,
+  AR2: ProjectivePoint,
+  c: bigint,
+  sb: bigint,
+  sr1: bigint,
+  sr2: bigint
+) {
+  if (R1.equals(R2)) {
+    if (sr1 != sr2) {
+      throw new Error("sr1 != sr2");
+    }
+    if (!AR1.equals(AR2)) {
+      throw new Error("AR1 != AR2");
+    }
+  }
+  try {
+    if (!verifyElGammal(L1, R1, g, y1, AL1, AR1, c, sb, sr1)) {
+      throw new Error("W1");
+    }
+  } catch (err) {
+    throw new Error("W1", { cause: err });
+  }
+  
+  try {
+    if (!verifyElGammal(L2, R2, g, y2, AL2, AR2, c, sb, sr2)) {
+      throw new Error("W2");
+    }
+  } catch (err) {
+    throw new Error("W2", { cause: err });
+  }
+}
+
+/// We want to show that the cipher balance that x can decryp but does not know the random (usual in cipherbalance stored),
+/// encrypts the same ammount that a cipherbalance (L2,R2) given by x and encrypted to maybe another pubkey (ussualy to an auditor).
+/// 
+/// EC_MUL: 10
+/// EC_ADD: 6
+
+export function verifySameEncryptionUnknownRandom(
+  L1: ProjectivePoint,
+  R1: ProjectivePoint,
+  L2: ProjectivePoint,
+  R2: ProjectivePoint,
+  g: ProjectivePoint,
+  y1: ProjectivePoint,
+  y2: ProjectivePoint,
+  Ax: ProjectivePoint,
+  AL1: ProjectivePoint,
+  AL2: ProjectivePoint,
+  AR2: ProjectivePoint,
+  c: bigint,
+  sb: bigint,
+  sx: bigint,
+  sr2: bigint
+) {
+  if (!poe(y1, g, Ax, c, sx)) {
+    throw new Error("E1");
+  }
+  if (!poeN(L1, [g, R1], AL1, c, [sb, sx])) {
+    throw new Error("E2");
+  }
+  try {
+    if (!verifyElGammal(L2, R2, g, y2, AL2, AR2, c, sb, sr2)) {
+      throw new Error("E3");
+    }
+  } catch (err) {
+    throw new Error("E3 failed", { cause: err });
+  }
+}
+
+// --------------------------------------- VERIFIER ------------------------------------------------
+
+// --------------------------------------- PROVER ------------------------------------------------
+
+export function proveSameEncryptionSameKey(
+  L1: ProjectivePoint,
+  R1: ProjectivePoint,
+  L2: ProjectivePoint,
+  R2: ProjectivePoint,
+  x: bigint,
+  deps: Dependencies = defaultDeps
+) {
+  const { generateRandom, challengeCommits } = deps;
+
+  const Ydiff = L1.subtract(L2); // Not necessary for the prover
+  const Gdiff = R1.subtract(R2);
+
+  const k = generateRandom();
+  const A = Gdiff.multiplyUnsafe(k);
+
+  const c = challengeCommits(0n, [A]);
+
+  const s = (k + c * x) % CURVE_ORDER;
+
+  return { A, c, s };
+}
+
+export function proveSameEncryptionDiffKey(
+  y1: ProjectivePoint,
+  y2: ProjectivePoint,
+  r1: bigint,
+  r2: bigint,
+  b: bigint,
+  deps: Dependencies = defaultDeps
+) {
+  const { generateRandom, challengeCommits } = deps;
+  
+  const kb = generateRandom();
+  const kr1 = generateRandom();
+  const kr2 = generateRandom();
+
+  const { L: AL1, R: AR1 } = elGamalEncryption(y1, kb, kr1);
+  const { L: AL2, R: AR2 } = elGamalEncryption(y2, kb, kr2);
+
+  const c = challengeCommits(0n, [AL1, AR1, AL2, AR2]);
+
+  const sb = (kb + c * b) % CURVE_ORDER;
+  const sr1 = (kr1 + c * r1) % CURVE_ORDER;
+  const sr2 = (kr2 + c * r2) % CURVE_ORDER;
+
+  return { AL1, AR1, AL2, AR2, c, sb, sr1, sr2 };
+}
+
+export function proveSameEncryptionDiffKeyUnknownRandom(
+  y2: ProjectivePoint,
+  R1: ProjectivePoint,
+  x1: bigint,
+  r2: bigint,
+  b: bigint,
+  deps: Dependencies = defaultDeps) {
+  const { generateRandom, challengeCommits } = deps;
+
+  const kx1 = generateRandom();
+  const kb = generateRandom();
+  const kr2 = generateRandom();
+
+  const { L: AL1, R: _ } = elGamalEncryption(R1, kb, kx1);
+  const { L: AL2, R: AR2 } = elGamalEncryption(y2, kb, kr2);
+  const Ax = GENERATOR.multiply(kx1);
+  const c = challengeCommits(0n, [Ax, AL1, R1, AL2, AR2]);
+
+  const sx1 = (kx1 + c * x1) % CURVE_ORDER;
+  const sb = (kb + c * b) % CURVE_ORDER;
+  const sr2 = (kr2 + c * r2) % CURVE_ORDER;
+
+  return { Ax, AL1, R1, AL2, AR2, c, sb, sx1, sr2 };
+  }
+// --------------------------------------- PROVER ------------------------------------------------
