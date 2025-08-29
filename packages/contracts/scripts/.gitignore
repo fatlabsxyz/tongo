@@ -1,3 +1,4 @@
 target/
+.env
 *alpha-sepolia_state.json
 
