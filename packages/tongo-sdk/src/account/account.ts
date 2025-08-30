@@ -120,10 +120,8 @@ export class Account implements IAccount {
         if (auditor.isSome()) {
             const auditorPubKey = starkPointToProjectivePoint(auditor.unwrap()!);
             const { inputs: inputsAudit, proof: proofAudit } = prove_audit(this.pk, balance, storedCipherBalance, auditorPubKey);
-
             const nonce = await this.nonce() + 1n;
-            const keyForAuditAEBal = await this.deriveSymmetricKeyForPubKey(nonce, auditorPubKey);
-            const hint = bytesToBigAEHint((new AEChaCha(keyForAuditAEBal)).encryptBalance(balance));
+            const hint = await this.computeAEHintForPubKey(balance, nonce, auditorPubKey);
             const audit: Audit = { auditedBalance: inputsAudit.auditedBalance, hint, proof: proofAudit };
             auditPart = new CairoOption<Audit>(CairoOptionVariant.Some, audit);
         }
@@ -141,7 +139,7 @@ export class Account implements IAccount {
         
         //audit
         const auditPart = await this.createAuditPart(amount + initialBalance, newBalance,);
-        const hint = await this.computeAEHint(amount + initialBalance);
+        const hint = await this.computeAEHintForSelf(amount + initialBalance, nonce + 1n);
 
         const operation = new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo });
         await operation.populateApprove();
@@ -163,7 +161,7 @@ export class Account implements IAccount {
         const to = starkPointToProjectivePoint(transferDetails.to);
         const { inputs, proof, newBalance } = proveTransfer(this.pk, to, initialBalance, amount, currentBalance, nonce);
 
-        const hint = await this.computeAEHint(initialBalance - amount);
+        const hint = await this.computeAEHintForSelf(initialBalance - amount, nonce + 1n);
 
         //audit
         const auditPart = await this.createAuditPart(initialBalance - amount, newBalance);
@@ -187,15 +185,16 @@ export class Account implements IAccount {
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
         
         const current_hint =  aeBalance ? await this.decryptAEBalance(aeBalance, nonce): undefined;
-        const initialBalance= this.decryptCipherBalance(currentBalance, current_hint);
+        const currentBalanceAmount= this.decryptCipherBalance(currentBalance, current_hint);
 
-        if (initialBalance === 0n) {
+        if (currentBalanceAmount === 0n) {
             throw new Error("You dont have enough balance");
         }
 
-        const { inputs, proof, newBalance } = proveRagequit(this.pk, currentBalance, nonce, ragequitDetails.to, initialBalance);
+        const { inputs, proof, newBalance } = proveRagequit(this.pk, currentBalance, nonce, BigInt(ragequitDetails.to), currentBalanceAmount);
 
-        const hint = await this.computeAEHint(0n);
+        // zeroing out aehints
+        const hint = await this.computeAEHintForSelf(0n, nonce + 1n);
         const auditPart = await this.createAuditPart(0n, newBalance);
 
         return new RagequitOperation({ from: inputs.y, to: inputs.to, amount: inputs.amount, hint, proof, Tongo: this.Tongo, auditPart });
@@ -216,11 +215,11 @@ export class Account implements IAccount {
             this.pk,
             initialBalance,
             withdrawDetails.amount,
-            withdrawDetails.to,
+            BigInt(withdrawDetails.to),
             currentBalance,
             nonce,
         );
-        const hint = await this.computeAEHint(initialBalance - amount);
+        const hint = await this.computeAEHintForSelf(initialBalance - amount, nonce + 1n);
 
         //audit
         const auditPart = await this.createAuditPart(initialBalance - amount, newBalance);
@@ -233,7 +232,7 @@ export class Account implements IAccount {
         const { nonce, balance: currentBalance, aeBalance, pending } = state;
         
         const current_hint =  aeBalance ? await this.decryptAEBalance(aeBalance, nonce): undefined;
-        const initialBalance = this.decryptCipherBalance(currentBalance, current_hint);
+        const unlockedAmount = this.decryptCipherBalance(currentBalance, current_hint);
 
         const pendingAmount = this.decryptCipherBalance(pending!);
 
@@ -242,12 +241,12 @@ export class Account implements IAccount {
         }
         const { inputs, proof } = proveRollover(this.pk, nonce);
 
-        const hint = await this.computeAEHint(pendingAmount + initialBalance);
+        const hint = await this.computeAEHintForSelf(pendingAmount + unlockedAmount, nonce + 1n);
         return new RollOverOperation({ to: inputs.y, proof, Tongo: this.Tongo, hint });
     }
 
     async decryptAEBalance(aeBalance: AEBalance, accountNonce: bigint): Promise<bigint> {
-        const keyAEBal = await this.deriveSymmetricKey(accountNonce);
+        const keyAEBal = await this.deriveSymmetricKeyForSelf(accountNonce);
         const { ciphertext, nonce: cipherNonce } = AEHintToBytes(aeBalance);
         const balance = (new AEChaCha(keyAEBal)).decryptBalance({ ciphertext, nonce: cipherNonce });
         return balance;
@@ -289,10 +288,13 @@ export class Account implements IAccount {
         return ECDiffieHellman(this.pk, otherPublicKey);
     }
 
-    async computeAEHint(amount: bigint): Promise<AEBalance> {
-        const nonce = await this.nonce() + 1n;
-        const keyAEBal = await this.deriveSymmetricKey(nonce);
+    async computeAEHintForPubKey(amount: bigint, nonce: bigint, pubKey: PubKey): Promise<AEBalance> {
+        const keyAEBal = await this.deriveSymmetricKeyForPubKey(nonce, pubKey);
         return bytesToBigAEHint((new AEChaCha(keyAEBal)).encryptBalance(amount));
+    }
+
+    async computeAEHintForSelf(amount: bigint, nonce: bigint): Promise<AEBalance> {
+        return this.computeAEHintForPubKey(amount, nonce, this.publicKey);
     }
 
     async deriveSymmetricKeyForPubKey(nonce: bigint, other: PubKey) {
@@ -304,13 +306,8 @@ export class Account implements IAccount {
         });
     }
 
-    async deriveSymmetricKey(nonce: bigint) {
-        const secret = ECDiffieHellman(this.pk, pubKeyAffineToHex(this.publicKey));
-        return deriveSymmetricEncryptionKey({
-            contractAddress: this.Tongo.address,
-            nonce,
-            secret
-        });
+    async deriveSymmetricKeyForSelf(nonce: bigint) {
+        return this.deriveSymmetricKeyForPubKey(nonce, this.publicKey);
     }
 
     static parseAccountState(state: Awaited<ReturnType<TongoContract["get_state"]>>) {
