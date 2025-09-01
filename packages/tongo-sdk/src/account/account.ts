@@ -16,7 +16,7 @@ import { tongoAbi } from "../tongo.abi.js";
 import { parseCipherBalance, projectivePointToStarkPoint, PubKey, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, starkPointToProjectivePoint, TongoAddress, } from "../types.js";
 import { bytesOrNumToBigInt, castBigInt } from "../utils.js";
 import { AccountEvents, AccountFundEvent, AccountRagequitEvent, AccountRolloverEvent, AccountTransferInEvent, AccountTransferOutEvent, AccountWithdrawEvent, ReaderToAccountEvents } from "./events.js";
-import { AccountState, AccountStateForTesting, FundDetails, IAccount, RagequitDetails, RawAccountState, TransferDetails, WithdrawDetails } from "./IAccount.js";
+import { AccountState, AccountStateForTesting, FundDetails, IAccount, RagequitDetails, RawAccountState, TransferDetails, WithdrawDetails } from "./account.interface.js";
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
 
@@ -49,13 +49,13 @@ export class Account implements IAccount {
     /// Returns the State of the account. This functions decrypts the balance and pending
     /// CipherBalances.
     async state(): Promise<AccountState> {
-        const {balance, pending, aeBalance, nonce } = await this.rawState();
+        const { balance, pending, aeBalance, nonce } = await this.rawState();
 
-        const hint =  aeBalance ? await this.decryptAEBalance(aeBalance, nonce): undefined;
-        const balanceAmount = this.decryptCipherBalance(balance,hint);
+        const hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const balanceAmount = this.decryptCipherBalance(balance, hint);
         const pendingAmount = this.decryptCipherBalance(pending);
-         
-        return {balance: balanceAmount, pending: pendingAmount, nonce}
+
+        return { balance: balanceAmount, pending: pendingAmount, nonce };
     }
 
     /// Retunrs the `almost` raw account state. The only handing that happens here is type
@@ -92,17 +92,17 @@ export class Account implements IAccount {
     //These two are only for testing
     async stateForTesting(): Promise<AccountStateForTesting> {
 
-        const {audit, aeBalance, nonce} = await this.rawState();
+        const { audit, aeBalance, nonce } = await this.rawState();
 
-        const audited = audit ? await this.decryptAuditForTesting(audit): undefined ;
-        const ae_hint = aeBalance? await this.decryptAEBalance(aeBalance, nonce): undefined;
-       
-        const {balance, pending } = await this.state();
-        return {balance, pending, nonce, audited, ae_hint}
+        const audited = audit ? await this.decryptAuditForTesting(audit) : undefined;
+        const ae_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+
+        const { balance, pending } = await this.state();
+        return { balance, pending, nonce, audited, ae_hint };
     }
 
-    async decryptAuditForTesting(audit: CipherBalance): Promise<bigint|undefined> {
-        if ( !audit ) { return undefined }
+    async decryptAuditForTesting(audit: CipherBalance): Promise<bigint | undefined> {
+        if (!audit) { return undefined; }
         const { L, R } = audit;
         return decipherBalance(AUDITOR_PRIVATE, L, R);
     }
@@ -130,13 +130,13 @@ export class Account implements IAccount {
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
         const { amount } = fundDetails;
-        const {nonce, balance:currentBalance, aeBalance } = await this.rawState();
-        
-        const current_hint =  aeBalance ? await this.decryptAEBalance(aeBalance, nonce): undefined;
-        const initialBalance= this.decryptCipherBalance(currentBalance, current_hint);
+        const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
-        const { inputs, proof, newBalance} = proveFund(this.pk, amount, initialBalance, currentBalance, nonce);
-        
+        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialBalance = this.decryptCipherBalance(currentBalance, current_hint);
+
+        const { inputs, proof, newBalance } = proveFund(this.pk, amount, initialBalance, currentBalance, nonce);
+
         //audit
         const auditPart = await this.createAuditPart(amount + initialBalance, newBalance);
         const hint = await this.computeAEHintForSelf(amount + initialBalance, nonce + 1n);
@@ -150,9 +150,9 @@ export class Account implements IAccount {
         const { amount } = transferDetails;
 
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
-        
-        const current_hint =  aeBalance ? await this.decryptAEBalance(aeBalance, nonce): undefined;
-        const initialBalance= this.decryptCipherBalance(currentBalance, current_hint);
+
+        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialBalance = this.decryptCipherBalance(currentBalance, current_hint);
 
         if (initialBalance < amount) {
             throw new Error("You dont have enough balance");
@@ -183,9 +183,9 @@ export class Account implements IAccount {
 
     async ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation> {
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
-        
-        const current_hint =  aeBalance ? await this.decryptAEBalance(aeBalance, nonce): undefined;
-        const currentBalanceAmount= this.decryptCipherBalance(currentBalance, current_hint);
+
+        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const currentBalanceAmount = this.decryptCipherBalance(currentBalance, current_hint);
 
         if (currentBalanceAmount === 0n) {
             throw new Error("You dont have enough balance");
@@ -201,11 +201,11 @@ export class Account implements IAccount {
     }
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
-        const {amount} = withdrawDetails;
+        const { amount } = withdrawDetails;
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
-        
-        const current_hint =  aeBalance ? await this.decryptAEBalance(aeBalance, nonce): undefined;
-        const initialBalance= this.decryptCipherBalance(currentBalance, current_hint);
+
+        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialBalance = this.decryptCipherBalance(currentBalance, current_hint);
 
         if (initialBalance < amount) {
             throw new Error("You dont have enought balance");
@@ -230,8 +230,8 @@ export class Account implements IAccount {
     async rollover(): Promise<RollOverOperation> {
         const state = await this.rawState();
         const { nonce, balance: currentBalance, aeBalance, pending } = state;
-        
-        const current_hint =  aeBalance ? await this.decryptAEBalance(aeBalance, nonce): undefined;
+
+        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
         const unlockedAmount = this.decryptCipherBalance(currentBalance, current_hint);
 
         const pendingAmount = this.decryptCipherBalance(pending!);
@@ -253,7 +253,7 @@ export class Account implements IAccount {
     }
 
     decryptCipherBalance({ L, R }: CipherBalance, hint?: bigint): bigint {
-        if (hint) { 
+        if (hint) {
             if (assertBalance(this.pk, hint, L, R)) {
                 return hint;
             }
@@ -270,14 +270,14 @@ export class Account implements IAccount {
             throw new Error('R is null');
         }
 
-        const balance =  this.decryptCipherBalance(cipher);
-        const { inputs, proof } = prove_audit(this.pk, balance,cipher, starkPointToProjectivePoint(to));
+        const balance = this.decryptCipherBalance(cipher);
+        const { inputs, proof } = prove_audit(this.pk, balance, cipher, starkPointToProjectivePoint(to));
         return { inputs, proof };
     }
 
     verifyExPost(expost: ExPost): bigint {
-        const y = projectivePointToStarkPoint(expost.inputs.y)
-        if (y != this.publicKey) { throw new Error("The expost is not for you")}
+        const y = projectivePointToStarkPoint(expost.inputs.y);
+        if (y != this.publicKey) { throw new Error("The expost is not for you"); }
         verify_audit(expost.inputs, expost.proof);
         let amount = this.decryptCipherBalance({ L: expost.inputs.auditedBalance.L, R: expost.inputs.auditedBalance.R });
         return amount;

@@ -7,7 +7,7 @@ import { CipherBalance, decipherBalance } from "@fatlabsxyz/she-js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key";
 import { AEChaCha, AEHintToBytes } from "./ae_balance";
 import {ReaderEvent, StarknetEventReader} from "./data.service.js"
-import { RawAccountState } from "./account/IAccount.js";
+import { RawAccountState } from "./account/account.interface.js";
 
 //TODO: This is for testing
 export const AUDITOR_PRIVATE: bigint = 1242079909984902665305n;
