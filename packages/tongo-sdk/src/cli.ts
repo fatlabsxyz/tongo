@@ -144,7 +144,7 @@ program
         const signer = newOzAccount(ctx.starknetAccount, ctx.signerPrivateKey, provider);
         const { amount, to } = opts;
 
-        const withdrawOp = await account.withdraw({ amount: BigInt(amount), to: BigInt(to) });
+        const withdrawOp = await account.withdraw({ amount: BigInt(amount), to });
         const tx = await signer.execute([withdrawOp.toCalldata()]);
         console.log(tx.transaction_hash);
     });

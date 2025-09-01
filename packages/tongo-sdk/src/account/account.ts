@@ -138,7 +138,7 @@ export class Account implements IAccount {
         const { inputs, proof, newBalance} = proveFund(this.pk, amount, initialBalance, currentBalance, nonce);
         
         //audit
-        const auditPart = await this.createAuditPart(amount + initialBalance, newBalance,);
+        const auditPart = await this.createAuditPart(amount + initialBalance, newBalance);
         const hint = await this.computeAEHintForSelf(amount + initialBalance, nonce + 1n);
 
         const operation = new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo });
