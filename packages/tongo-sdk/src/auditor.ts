@@ -17,7 +17,7 @@ import { ReaderEvent, StarknetEventReader } from "./data.service.js";
 import { RawAccountState } from "./account/account.interface.js";
 
 //TODO: This is for testing
-export const AUDITOR_PRIVATE: bigint = 1242079909984902665305n;
+export const AUDITOR_PRIVATE = 1242079909984902665305n;
 
 enum AuditorEvent {
     Fund = "fund",

@@ -114,7 +114,7 @@ export class Account implements IAccount {
     // of tongos that corresponds to erc20Amount
     async erc20ToTongo(erc20Amount: bigint): Promise<bigint> {
         const rate = await this.rate();
-        let temp = erc20Amount / rate;
+        const temp = erc20Amount / rate;
         if (erc20Amount % rate != 0n) {
             return temp + 1n;
         } else {
@@ -346,7 +346,7 @@ export class Account implements IAccount {
             throw new Error("The expost is not for you");
         }
         verify_audit(expost.inputs, expost.proof);
-        let amount = this.decryptCipherBalance({
+        const amount = this.decryptCipherBalance({
             L: expost.inputs.auditedBalance.L,
             R: expost.inputs.auditedBalance.R,
         });
@@ -493,7 +493,7 @@ export class Account implements IAccount {
     }
 
     async getTxHistory(initialBlock: number): Promise<AccountEvents[]> {
-        let promises = Promise.all([
+        const promises = Promise.all([
             this.getEventsFund(initialBlock),
             this.getEventsRollover(initialBlock),
             this.getEventsWithdraw(initialBlock),
@@ -502,7 +502,7 @@ export class Account implements IAccount {
             this.getEventsTransferIn(initialBlock),
         ]);
 
-        let events = (await promises).flat();
+        const events = (await promises).flat();
         return events.sort((a, b) => b.block_number - a.block_number);
     }
 }

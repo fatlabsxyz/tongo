@@ -282,7 +282,7 @@ export class StarknetEventReader {
     }
 
     async getAllEvents(initialBlock: number, otherPubKey: PubKey): Promise<any[]> {
-        let promises = Promise.all([
+        const promises = Promise.all([
             this.getEventsFund(initialBlock, otherPubKey),
             this.getEventsRollover(initialBlock, otherPubKey),
             this.getEventsWithdraw(initialBlock, otherPubKey),
@@ -291,7 +291,7 @@ export class StarknetEventReader {
             this.getEventsTransferIn(initialBlock, otherPubKey),
         ]);
 
-        let events = (await promises).flat();
+        const events = (await promises).flat();
         return events.sort((a, b) => b.block_number - a.block_number);
     }
 
