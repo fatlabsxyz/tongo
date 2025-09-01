@@ -3,11 +3,11 @@ import { BigNumberish } from "starknet";
 import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";
 
-export type TongoAddress = string & { __type: "tongo" }
+export type TongoAddress = string & { __type: "tongo" };
 
 /// This struct is inteded to wrap the coordinates of a NonZeroEcPoint.
 export interface StarkPoint {
-    x: BigNumberish,
+    x: BigNumberish;
     y: BigNumberish;
 }
 
@@ -45,7 +45,7 @@ export function pubKeyAffineToBase58(pub: PubKey): TongoAddress {
 }
 
 // assumes compressed format
-export function pubKeyBase58ToAffine(b58string: string): { x: bigint, y: bigint; } {
+export function pubKeyBase58ToAffine(b58string: string): { x: bigint; y: bigint } {
     const bytes = base58.decode(b58string);
     return ProjectivePoint.fromHex(bytesToHex(bytes));
 }
@@ -57,9 +57,9 @@ export function pubKeyBase58ToHex(b58string: string): string {
 }
 
 /// Converts a pairs of StarkPoints to a CipherBalance.
-export function parseCipherBalance({ L, R }: { L: StarkPoint, R: StarkPoint; }): CipherBalance {
+export function parseCipherBalance({ L, R }: { L: StarkPoint; R: StarkPoint }): CipherBalance {
     return {
         L: starkPointToProjectivePoint(L),
-        R: starkPointToProjectivePoint(R)
+        R: starkPointToProjectivePoint(R),
     };
 }

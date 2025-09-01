@@ -20,8 +20,8 @@
     "test:integration": "source ./test/envvars && vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
     "lint": "eslint --config ../../eslint.config.mjs \"{src,test}/**/*.{js,ts,json}\"",
     "lint:fix": "eslint --config ../../eslint.config.mjs \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
-    "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
-    "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
+    "format": "prettier --config ./prettier.config.js --check \"{src,test}/**/*.{js,ts,json}\"",
+    "format:fix": "prettier --config ./prettier.config.js --write \"{src,test,tests}/**/*.{js,ts,json}\""
   },
   "keywords": [],
   "author": "",

@@ -19,52 +19,53 @@ export const ReaderToAccountEvents = {
 };
 
 interface AccountBaseEvent {
-    type: AccountEvent,
-    tx_hash: string,
-    block_number: number,
+    type: AccountEvent;
+    tx_hash: string;
+    block_number: number;
 }
 
 export interface AccountFundEvent extends AccountBaseEvent {
-    type: AccountEvent.Fund,
+    type: AccountEvent.Fund;
     nonce: bigint;
     amount: bigint;
 }
 
 export interface AccountRolloverEvent extends AccountBaseEvent {
-    type: AccountEvent.Rollover,
+    type: AccountEvent.Rollover;
     nonce: bigint;
     amount: bigint;
 }
 
 export interface AccountWithdrawEvent extends AccountBaseEvent {
-    type: AccountEvent.Withdraw,
+    type: AccountEvent.Withdraw;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountRagequitEvent extends AccountBaseEvent {
-    type: AccountEvent.Ragequit,
+    type: AccountEvent.Ragequit;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountTransferOutEvent extends AccountBaseEvent {
-    type: AccountEvent.TransferOut,
+    type: AccountEvent.TransferOut;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountTransferInEvent extends AccountBaseEvent {
-    type: AccountEvent.TransferIn,
+    type: AccountEvent.TransferIn;
     nonce: bigint;
     amount: bigint;
     from: string;
 }
 
-export type AccountEvents = AccountFundEvent
+export type AccountEvents =
+    | AccountFundEvent
     | AccountWithdrawEvent
     | AccountRagequitEvent
     | AccountRolloverEvent

@@ -1,16 +1,16 @@
-import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
-import { bytesToNumberBE, numberToBytesBE } from '@noble/ciphers/utils.js';
-import { randomBytes } from '@noble/ciphers/webcrypto.js';
+import { xchacha20poly1305 } from "@noble/ciphers/chacha.js";
+import { bytesToNumberBE, numberToBytesBE } from "@noble/ciphers/utils.js";
+import { randomBytes } from "@noble/ciphers/webcrypto.js";
 import { uint256, Uint256, BigNumberish } from "starknet";
-import { isUint256 } from './utils.js';
+import { isUint256 } from "./utils.js";
 
 export interface AEBalance {
-    ciphertext: bigint,
+    ciphertext: bigint;
     nonce: bigint;
 }
 
 export interface AEBalanceBytes {
-    ciphertext: Uint8Array,
+    ciphertext: Uint8Array;
     nonce: Uint8Array;
 }
 
@@ -28,7 +28,13 @@ export function bytesToBigAEHint({ ciphertext, nonce }: AEBalanceBytes): AEBalan
     };
 }
 
-export function parseAEBalance({ ciphertext, nonce }: { ciphertext: BigNumberish; nonce: number | bigint | Uint256; }): AEBalance {
+export function parseAEBalance({
+    ciphertext,
+    nonce,
+}: {
+    ciphertext: BigNumberish;
+    nonce: number | bigint | Uint256;
+}): AEBalance {
     let parsedNonce: bigint;
     if (isUint256(nonce)) {
         parsedNonce = uint256.uint256ToBN(nonce);
@@ -37,7 +43,7 @@ export function parseAEBalance({ ciphertext, nonce }: { ciphertext: BigNumberish
     }
     return {
         ciphertext: BigInt(ciphertext),
-        nonce: parsedNonce
+        nonce: parsedNonce,
     };
 }
 
@@ -45,7 +51,6 @@ export function parseAEBalance({ ciphertext, nonce }: { ciphertext: BigNumberish
 // AEBalance's. This way we can decouple the cipher from the balance and its
 // serialization.
 export class AEChaCha {
-
     constructor(readonly key: Uint8Array) {
         // 32 B
         if (this.key.length != 32) {
@@ -65,12 +70,11 @@ export class AEChaCha {
         return { ciphertext, nonce };
     }
 
-    decryptBalance({ciphertext, nonce}: AEBalanceBytes): bigint {
+    decryptBalance({ ciphertext, nonce }: AEBalanceBytes): bigint {
         const chacha = xchacha20poly1305(this.key, nonce);
         try {
             const plaintext = chacha.decrypt(ciphertext);
-            if (plaintext.length !== 48)
-                throw new Error("Malformed plaintext");
+            if (plaintext.length !== 48) throw new Error("Malformed plaintext");
             return bytesToNumberBE(plaintext.slice(44, 48));
         } catch (e) {
             //TODO: This gives an error I cannot reproduce. - ALBA

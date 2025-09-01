@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
-import * as dotenv from 'dotenv';
-import { Account as TongoAccount } from './account/account.js';
-import { Account, constants, RpcProvider } from 'starknet';
-import { pubKeyBase58ToAffine } from './types.js';
+import { Command } from "commander";
+import * as dotenv from "dotenv";
+import { Account as TongoAccount } from "./account/account.js";
+import { Account, constants, RpcProvider } from "starknet";
+import { pubKeyBase58ToAffine } from "./types.js";
 
 dotenv.config();
 
@@ -13,7 +13,7 @@ const program = new Command();
 const getContext = () => {
     const { RPC_URL, TONGO_PRIVATE_KEY, SIGNER_PRIVATE_KEY, STARKNET_ACCOUNT, TONGO_CONTRACT_ADDRESS } = process.env;
     if (!RPC_URL || !TONGO_PRIVATE_KEY || !SIGNER_PRIVATE_KEY || !STARKNET_ACCOUNT) {
-        console.error('Missing required environment variables.');
+        console.error("Missing required environment variables.");
         process.exit(1);
     }
 
@@ -22,7 +22,7 @@ const getContext = () => {
         rpcUrl: RPC_URL,
         tongoPrivateKey: TONGO_PRIVATE_KEY,
         signerPrivateKey: SIGNER_PRIVATE_KEY,
-        starknetAccount: STARKNET_ACCOUNT
+        starknetAccount: STARKNET_ACCOUNT,
     };
 };
 
@@ -35,67 +35,57 @@ function newProvider(url: string): RpcProvider {
 }
 
 program
-    .name('tongo-cli')
-    .description('A simple CLI utility')
-    .version('0.0.1')
-    .option('--tongo <address>', 'Tongo contract address');
+    .name("tongo-cli")
+    .description("A simple CLI utility")
+    .version("0.0.1")
+    .option("--tongo <address>", "Tongo contract address");
 
 program
-    .command('address')
-    .description('Derives address')
+    .command("address")
+    .description("Derives address")
     .action((options) => {
         const ctx = getContext();
-        const address = TongoAccount.tongoAddress(
-            ctx.tongoPrivateKey,
-        );
+        const address = TongoAccount.tongoAddress(ctx.tongoPrivateKey);
         console.log("Tongo address |", address);
     });
 
 program
-    .command('balance')
-    .description('Check balance')
+    .command("balance")
+    .description("Check balance")
     .action(async () => {
         const ctx = getContext();
         const gOpts = program.opts();
         const provider = newProvider(ctx.rpcUrl);
-        const account = new TongoAccount(
-            ctx.tongoPrivateKey,
-            gOpts.tongo || ctx.tongoContractAddress,
-            provider
-        );
-        const {balance:availableBalance, pending }= await account.state();
+        const account = new TongoAccount(ctx.tongoPrivateKey, gOpts.tongo || ctx.tongoContractAddress, provider);
+        const { balance: availableBalance, pending } = await account.state();
         console.log("Unlocked balance |", availableBalance);
         console.log("Pending balance  |", pending);
     });
 
 program
-    .command('state')
-    .description('Returns current account state')
+    .command("state")
+    .description("Returns current account state")
     .action(async () => {
         const ctx = getContext();
         const gOpts = program.opts();
         const provider = newProvider(ctx.rpcUrl);
-        const account = new TongoAccount(
-            ctx.tongoPrivateKey,
-            gOpts.tongo || ctx.tongoContractAddress,
-            provider
-        );
+        const account = new TongoAccount(ctx.tongoPrivateKey, gOpts.tongo || ctx.tongoContractAddress, provider);
         console.log(await account.state());
     });
 
 program
-    .command('history')
-    .description('Check transaction history')
+    .command("history")
+    .description("Check transaction history")
     .action(() => {
         const ctx = getContext();
         // TODO: Implement your logic here
-        console.log('Fetching history with context:', ctx);
+        console.log("Fetching history with context:", ctx);
     });
 
 program
-    .command('fund')
-    .description('Fund account')
-    .requiredOption('--amount <number>', 'Amount to transfer', parseInt)
+    .command("fund")
+    .description("Fund account")
+    .requiredOption("--amount <number>", "Amount to transfer", parseInt)
     .action(async (opts) => {
         const ctx = getContext();
         const gOpts = program.opts();
@@ -104,17 +94,17 @@ program
         const account = new TongoAccount(ctx.tongoPrivateKey, tongoAddress, provider);
         const signer = newOzAccount(ctx.starknetAccount, ctx.signerPrivateKey, provider);
         const fundOp = await account.fund({
-            amount: opts.amount
+            amount: opts.amount,
         });
         const tx = await signer.execute([fundOp.approve!, fundOp.toCalldata()]);
         console.log(tx.transaction_hash);
     });
 
 program
-    .command('transfer')
-    .description('Transfer tokens')
-    .requiredOption('--to <base58>', 'Recipient address (Base58)')
-    .requiredOption('--amount <number>', 'Amount to transfer', (n) => BigInt(parseInt(n)))
+    .command("transfer")
+    .description("Transfer tokens")
+    .requiredOption("--to <base58>", "Recipient address (Base58)")
+    .requiredOption("--amount <number>", "Amount to transfer", (n) => BigInt(parseInt(n)))
     .action(async (opts) => {
         const ctx = getContext();
         const gOpts = program.opts();
@@ -131,10 +121,10 @@ program
     });
 
 program
-    .command('withdraw')
-    .description('Withdraw funds')
-    .requiredOption('--to <hex>', 'Withdrawal address (Hex)')
-    .requiredOption('--amount <number>', 'Amount to transfer', (n) => BigInt(parseInt(n)))
+    .command("withdraw")
+    .description("Withdraw funds")
+    .requiredOption("--to <hex>", "Withdrawal address (Hex)")
+    .requiredOption("--amount <number>", "Amount to transfer", (n) => BigInt(parseInt(n)))
     .action(async (opts) => {
         const ctx = getContext();
         const gOpts = program.opts();
@@ -150,8 +140,8 @@ program
     });
 
 program
-    .command('rollover')
-    .description('Rollover pending account\'s funds')
+    .command("rollover")
+    .description("Rollover pending account's funds")
     .action(async () => {
         const ctx = getContext();
         const gOpts = program.opts();

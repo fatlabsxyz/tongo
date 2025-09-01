@@ -3,9 +3,9 @@ import { ProofOfWithdraw } from "@fatlabsxyz/she-js";
 import { Call, Contract, num, CairoOption } from "starknet";
 import { AEBalance } from "../ae_balance";
 import { IOperation } from "./operation";
-import { Audit } from "./audit.js"
+import { Audit } from "./audit.js";
 
-export interface IWithdrawOperation extends IOperation { }
+export interface IWithdrawOperation extends IOperation {}
 
 /// Represents the calldata of a withdraw operation.
 ///
@@ -35,13 +35,13 @@ export class WithdrawOperation implements IWithdrawOperation {
     auditPart: CairoOption<Audit>;
     Tongo: Contract;
 
-    constructor({ from, to, amount, proof, auditPart, Tongo, hint}: WithdrawOpParams) {
+    constructor({ from, to, amount, proof, auditPart, Tongo, hint }: WithdrawOpParams) {
         this.from = from;
         this.to = to;
         this.amount = amount;
         this.hint = hint;
         this.proof = proof;
-        this.auditPart =  auditPart;
+        this.auditPart = auditPart;
         this.Tongo = Tongo;
     }
 
@@ -58,4 +58,3 @@ export class WithdrawOperation implements IWithdrawOperation {
         ]);
     }
 }
-

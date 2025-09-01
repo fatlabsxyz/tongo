@@ -1,11 +1,10 @@
 import { ProjectivePoint } from "@scure/starknet";
-import { Call, Contract} from "starknet";
+import { Call, Contract } from "starknet";
 import { IOperation } from "./operation";
 import { ProofOfRollover } from "@fatlabsxyz/she-js";
-import { AEBalance} from "../ae_balance";
+import { AEBalance } from "../ae_balance";
 
-
-export interface IRollOverOperation extends IOperation { }
+export interface IRollOverOperation extends IOperation {}
 
 /// Represents the calldata of a fund operation.
 ///

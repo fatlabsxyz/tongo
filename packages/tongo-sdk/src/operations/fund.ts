@@ -47,13 +47,15 @@ export class FundOperation implements IFundOperation {
     }
 
     toCalldata(): Call {
-        return this.Tongo.populate("fund", [{
-            to: this.to,
-            amount: this.amount,
-            hint: this.hint,
-            proof: this.proof,
-            auditPart: this.auditPart
-        }]);
+        return this.Tongo.populate("fund", [
+            {
+                to: this.to,
+                amount: this.amount,
+                hint: this.hint,
+                proof: this.proof,
+                auditPart: this.auditPart,
+            },
+        ]);
     }
 
     // TODO: better ux for this. Maybe return the call?
@@ -63,8 +65,7 @@ export class FundOperation implements IFundOperation {
         const tongo_address = this.Tongo.address;
         const rate = await this.Tongo.get_rate();
         const amount = cairo.uint256(this.amount * castBigInt(rate));
-        let calldata = CallData.compile({ "spender": tongo_address, "amount": amount });
+        let calldata = CallData.compile({ spender: tongo_address, amount: amount });
         this.approve = { contractAddress: erc20_addres, entrypoint: "approve", calldata };
     }
 }
-

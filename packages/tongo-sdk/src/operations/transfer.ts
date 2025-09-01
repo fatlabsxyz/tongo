@@ -6,7 +6,7 @@ import { AEBalance } from "../ae_balance";
 import { Audit } from "./audit.js";
 import { IOperation } from "./operation";
 
-export interface ITransferOperation extends IOperation { }
+export interface ITransferOperation extends IOperation {}
 
 /// Represents the calldata of a transfer operation.
 ///
@@ -42,7 +42,17 @@ export class TransferOperation implements ITransferOperation {
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
 
-    constructor({ from, to, transferBalance, transferBalanceSelf, proof, auditPart, auditPartTransfer, Tongo, hint }: TransferOpParams) {
+    constructor({
+        from,
+        to,
+        transferBalance,
+        transferBalanceSelf,
+        proof,
+        auditPart,
+        auditPartTransfer,
+        Tongo,
+        hint,
+    }: TransferOpParams) {
         this.from = from;
         this.to = to;
         this.transferBalance = transferBalance;
