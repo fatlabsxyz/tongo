@@ -1,22 +1,29 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfFund } from "@fatlabsxyz/she-js";
-import { cairo, Call, CallData, Contract, num } from "starknet";
-import { AEBalances } from "../ae_balance";
+import { cairo, Call, CallData, Contract, num, CairoOption } from "starknet";
+import { Audit } from "./audit.js"
 import { IOperation } from "./operation";
-import { CipherBalance } from "../types.js";
 import { castBigInt } from "../utils.js";
+import { AEBalance } from "../ae_balance.js";
 
 interface IFundOperation extends IOperation {
     populateApprove(): Promise<void>;
 }
 
+/// Represents the calldata of a fund operation.
+///
+/// - to: The Tongo account to fund.
+/// - amount: The ammount of tongo to fund.
+/// - hint: AE encription of the final balance of the account.
+/// - proof: ZK proof for the fund operation.
+/// - auditPart: Optional Audit to declare the balance of the account after the tx.
+/// - Tongo: The Tongo instance to interact with.
 interface FundOpParams {
     to: ProjectivePoint;
     amount: bigint;
-    auditedBalance: CipherBalance;
-    auxBalance: CipherBalance;
+    hint: AEBalance;
     proof: ProofOfFund;
-    aeHints: AEBalances;
+    auditPart: CairoOption<Audit>;
     Tongo: Contract;
 }
 
@@ -24,31 +31,27 @@ export class FundOperation implements IFundOperation {
     Tongo: Contract;
     to: ProjectivePoint;
     amount: bigint;
-    auditedBalance: CipherBalance;
-    auxBalance: CipherBalance;
+    hint: AEBalance;
     proof: ProofOfFund;
+    auditPart: CairoOption<Audit>;
     approve?: Call;
-    aeHints: AEBalances;
 
-    constructor({ to, amount, proof, Tongo, aeHints, auditedBalance, auxBalance}: FundOpParams) {
+    constructor({ to, amount, proof, auditPart, Tongo, hint }: FundOpParams) {
         this.to = to;
         this.amount = amount;
-
-        this.auditedBalance = auditedBalance;
-        this.auxBalance = auxBalance;
+        this.hint = hint;
+        this.auditPart = auditPart;
         this.proof = proof;
         this.Tongo = Tongo;
-        this.aeHints = aeHints;
     }
 
     toCalldata(): Call {
         return this.Tongo.populate("fund", [{
             to: this.to,
-            auditedBalance: this.auditedBalance,
-            auxBalance:  this.auxBalance,
             amount: this.amount,
+            hint: this.hint,
             proof: this.proof,
-            ae_hints: this.aeHints
+            auditPart: this.auditPart
         }]);
     }
 

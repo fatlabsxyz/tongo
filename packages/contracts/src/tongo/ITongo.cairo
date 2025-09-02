@@ -1,5 +1,10 @@
-
 use starknet::ContractAddress;
+use crate::structs::common::{
+    pubkey::PubKey,
+    cipherbalance::CipherBalance,
+    state::State,
+};
+
 use crate::structs::operations::{
     fund::Fund,
     withdraw::Withdraw,
@@ -8,38 +13,71 @@ use crate::structs::operations::{
     rollover::Rollover,
 };
     
-use crate::structs::{
-    aecipher::AEBalance,
-    common::{
-        pubkey::PubKey,
-        cipherbalance::CipherBalance,
-    },
-};
-
-#[derive(Serde, Drop, Copy)]
-pub struct State {
-    pub balance: CipherBalance,
-    pub pending: CipherBalance,
-    pub audit: CipherBalance,
-    pub nonce: u64,
-    pub ae_balance: Option<AEBalance>,
-    pub ae_audit_balance: Option<AEBalance>,
-}
-
 #[starknet::interface]
 pub trait ITongo<TContractState> {
-    fn fund(ref self: TContractState, fund: Fund);
-    fn rollover(ref self: TContractState, rollover: Rollover);
-    fn ragequit(ref self: TContractState, ragequit: Ragequit);
-    fn withdraw(ref self: TContractState, withdraw: Withdraw);
-    fn transfer(ref self: TContractState, transfer: Transfer);
-    fn get_balance(self: @TContractState, y: PubKey) -> CipherBalance;
-    fn get_audit(self: @TContractState, y: PubKey) -> CipherBalance;
-    fn get_pending(self: @TContractState, y: PubKey) -> CipherBalance;
-    fn get_nonce(self: @TContractState, y: PubKey) -> u64;
+    // Tongo general setup:
+    /// Returns the contract address that Tongo is wraping.
     fn ERC20(self: @TContractState) -> ContractAddress;
-    fn get_state(self: @TContractState, y: PubKey) -> State;
-    fn change_auditor_key(ref self: TContractState, new_auditor_key:PubKey);
-    fn auditor_key(self: @TContractState) -> PubKey;
+
+    /// Returns the rate of conversion between the wrapped ERC20 a tongo:
+    ///
+    /// ERC20_amount = Tongo_amount*rate
+    ///
+    /// The amount variable in all operation refers to the amount of Tongos.
     fn get_rate(self:@TContractState) -> u256;
+
+    /// TODO: At the moment the only thing the owner can do is to rotate the auditor key.
+    /// 
+    /// Returns the contract address of the owner of the Tongo account.
+    fn get_owner(self:@TContractState) -> ContractAddress;
+
+    // User operations:
+    /// Funds a tongo account. Callable only by the account owner
+    ///
+    /// Emits FundEvent
+    fn fund(ref self: TContractState, fund: Fund);
+
+    /// Withdraw Tongos and send the ERC20 to a starknet address.
+    ///
+    /// Emits WithdrawEvent
+    fn withdraw(ref self: TContractState, withdraw: Withdraw);
+
+    /// Withdraw all the balance of an account and send the ERC20 to a starknet address. This proof avoids
+    /// the limitations of the range prove that are present in the regular withdraw.
+    ///
+    /// Emits RagequitEvent
+    fn ragequit(ref self: TContractState, ragequit: Ragequit);
+
+    /// Transfer Tongos from the balanca of te sender to the pending of the receiver
+    ///
+    /// Emits TransferEvent
+    fn transfer(ref self: TContractState, transfer: Transfer);
+
+    /// Moves to the balance the amount stored in the pending. Callable only by the account owner.
+    ///
+    /// Emits RolloverEvent
+    fn rollover(ref self: TContractState, rollover: Rollover);
+
+    // State reading functions
+    /// Returns the curretn stored balance of a Tongo account
+    fn get_balance(self: @TContractState, y: PubKey) -> CipherBalance;
+
+    /// Returns the current pending balance of a Tongo account
+    fn get_pending(self: @TContractState, y: PubKey) -> CipherBalance;
+
+    /// Return, if the Tongo instance allows, the current declared balance of a Tongo account for the auditor
+    fn get_audit(self: @TContractState, y: PubKey) -> Option<CipherBalance>;
+
+    /// Returns the current nonce of a Tongo account
+    fn get_nonce(self: @TContractState, y: PubKey) -> u64;
+
+    /// Returns the current state of a Tongo account.
+    fn get_state(self: @TContractState, y: PubKey) -> State;
+
+    // Auditor handling
+    /// Returns the current auditor public key.
+    fn auditor_key(self: @TContractState) -> Option<PubKey>;
+
+    /// Rotates the current auditor public key.
+    fn change_auditor_key(ref self: TContractState, new_auditor_key:PubKey);
 }

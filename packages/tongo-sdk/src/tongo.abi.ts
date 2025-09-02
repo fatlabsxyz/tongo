@@ -6,6 +6,20 @@ export const tongoAbi = [
     },
     {
         "type": "struct",
+        "name": "core::integer::u256",
+        "members": [
+            {
+                "name": "low",
+                "type": "core::integer::u128"
+            },
+            {
+                "name": "high",
+                "type": "core::integer::u128"
+            }
+        ]
+    },
+    {
+        "type": "struct",
         "name": "tongo::structs::common::pubkey::PubKey",
         "members": [
             {
@@ -15,34 +29,6 @@ export const tongoAbi = [
             {
                 "name": "y",
                 "type": "core::felt252"
-            }
-        ]
-    },
-    {
-        "type": "struct",
-        "name": "tongo::structs::common::starkpoint::StarkPoint",
-        "members": [
-            {
-                "name": "x",
-                "type": "core::felt252"
-            },
-            {
-                "name": "y",
-                "type": "core::felt252"
-            }
-        ]
-    },
-    {
-        "type": "struct",
-        "name": "tongo::structs::common::cipherbalance::CipherBalance",
-        "members": [
-            {
-                "name": "L",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
-            },
-            {
-                "name": "R",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
             }
         ]
     },
@@ -70,20 +56,6 @@ export const tongoAbi = [
     },
     {
         "type": "struct",
-        "name": "core::integer::u256",
-        "members": [
-            {
-                "name": "low",
-                "type": "core::integer::u128"
-            },
-            {
-                "name": "high",
-                "type": "core::integer::u128"
-            }
-        ]
-    },
-    {
-        "type": "struct",
         "name": "tongo::structs::aecipher::AEBalance",
         "members": [
             {
@@ -98,15 +70,15 @@ export const tongoAbi = [
     },
     {
         "type": "struct",
-        "name": "tongo::structs::aecipher::AEHints",
+        "name": "tongo::structs::common::starkpoint::StarkPoint",
         "members": [
             {
-                "name": "ae_balance",
-                "type": "tongo::structs::aecipher::AEBalance"
+                "name": "x",
+                "type": "core::felt252"
             },
             {
-                "name": "ae_audit_balance",
-                "type": "tongo::structs::aecipher::AEBalance"
+                "name": "y",
+                "type": "core::felt252"
             }
         ]
     },
@@ -119,19 +91,43 @@ export const tongoAbi = [
                 "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
-                "name": "Ar",
+                "name": "sx",
+                "type": "core::felt252"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::common::cipherbalance::CipherBalance",
+        "members": [
+            {
+                "name": "L",
                 "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
-                "name": "Ab",
+                "name": "R",
+                "type": "tongo::structs::common::starkpoint::StarkPoint"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::audit::ProofOfAudit",
+        "members": [
+            {
+                "name": "Ax",
                 "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
-                "name": "A_auditor",
+                "name": "AL0",
                 "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
-                "name": "AUX_A",
+                "name": "AL1",
+                "type": "tongo::structs::common::starkpoint::StarkPoint"
+            },
+            {
+                "name": "AR1",
                 "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
@@ -139,12 +135,44 @@ export const tongoAbi = [
                 "type": "core::felt252"
             },
             {
-                "name": "sr",
+                "name": "sb",
                 "type": "core::felt252"
             },
             {
-                "name": "sb",
+                "name": "sr",
                 "type": "core::felt252"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::audit::Audit",
+        "members": [
+            {
+                "name": "auditedBalance",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance"
+            },
+            {
+                "name": "hint",
+                "type": "tongo::structs::aecipher::AEBalance"
+            },
+            {
+                "name": "proof",
+                "type": "tongo::structs::operations::audit::ProofOfAudit"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::operations::audit::Audit>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::operations::audit::Audit"
+            },
+            {
+                "name": "None",
+                "type": "()"
             }
         ]
     },
@@ -157,100 +185,20 @@ export const tongoAbi = [
                 "type": "tongo::structs::common::pubkey::PubKey"
             },
             {
-                "name": "auxBalance",
-                "type": "tongo::structs::common::cipherbalance::CipherBalance"
-            },
-            {
-                "name": "auditedBalance",
-                "type": "tongo::structs::common::cipherbalance::CipherBalance"
-            },
-            {
                 "name": "amount",
                 "type": "core::felt252"
             },
             {
-                "name": "ae_hints",
-                "type": "tongo::structs::aecipher::AEHints"
+                "name": "hint",
+                "type": "tongo::structs::aecipher::AEBalance"
             },
             {
                 "name": "proof",
                 "type": "tongo::structs::operations::fund::ProofOfFund"
-            }
-        ]
-    },
-    {
-        "type": "struct",
-        "name": "tongo::structs::operations::rollover::ProofOfRollOver",
-        "members": [
-            {
-                "name": "Ax",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
-                "name": "sx",
-                "type": "core::felt252"
-            }
-        ]
-    },
-    {
-        "type": "struct",
-        "name": "tongo::structs::operations::rollover::Rollover",
-        "members": [
-            {
-                "name": "to",
-                "type": "tongo::structs::common::pubkey::PubKey"
-            },
-            {
-                "name": "proof",
-                "type": "tongo::structs::operations::rollover::ProofOfRollOver"
-            },
-            {
-                "name": "ae_hints",
-                "type": "tongo::structs::aecipher::AEHints"
-            }
-        ]
-    },
-    {
-        "type": "struct",
-        "name": "tongo::structs::operations::ragequit::ProofOfRagequit",
-        "members": [
-            {
-                "name": "A_x",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
-            },
-            {
-                "name": "A_cr",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
-            },
-            {
-                "name": "s_x",
-                "type": "core::felt252"
-            }
-        ]
-    },
-    {
-        "type": "struct",
-        "name": "tongo::structs::operations::ragequit::Ragequit",
-        "members": [
-            {
-                "name": "from",
-                "type": "tongo::structs::common::pubkey::PubKey"
-            },
-            {
-                "name": "amount",
-                "type": "core::felt252"
-            },
-            {
-                "name": "to",
-                "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-                "name": "ae_hints",
-                "type": "tongo::structs::aecipher::AEHints"
-            },
-            {
-                "name": "proof",
-                "type": "tongo::structs::operations::ragequit::ProofOfRagequit"
+                "name": "auditPart",
+                "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
             }
         ]
     },
@@ -315,10 +263,6 @@ export const tongoAbi = [
                 "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
-                "name": "A_auditor",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
-            },
-            {
                 "name": "sx",
                 "type": "core::felt252"
             },
@@ -329,6 +273,10 @@ export const tongoAbi = [
             {
                 "name": "sr",
                 "type": "core::felt252"
+            },
+            {
+                "name": "R_aux",
+                "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
                 "name": "range",
@@ -353,16 +301,64 @@ export const tongoAbi = [
                 "type": "core::felt252"
             },
             {
-                "name": "auditedBalance",
-                "type": "tongo::structs::common::cipherbalance::CipherBalance"
-            },
-            {
-                "name": "ae_hints",
-                "type": "tongo::structs::aecipher::AEHints"
+                "name": "hint",
+                "type": "tongo::structs::aecipher::AEBalance"
             },
             {
                 "name": "proof",
                 "type": "tongo::structs::operations::withdraw::ProofOfWithdraw"
+            },
+            {
+                "name": "auditPart",
+                "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::ragequit::ProofOfRagequit",
+        "members": [
+            {
+                "name": "A_x",
+                "type": "tongo::structs::common::starkpoint::StarkPoint"
+            },
+            {
+                "name": "A_cr",
+                "type": "tongo::structs::common::starkpoint::StarkPoint"
+            },
+            {
+                "name": "s_x",
+                "type": "core::felt252"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::ragequit::Ragequit",
+        "members": [
+            {
+                "name": "from",
+                "type": "tongo::structs::common::pubkey::PubKey"
+            },
+            {
+                "name": "to",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "amount",
+                "type": "core::felt252"
+            },
+            {
+                "name": "hint",
+                "type": "tongo::structs::aecipher::AEBalance"
+            },
+            {
+                "name": "proof",
+                "type": "tongo::structs::operations::ragequit::ProofOfRagequit"
+            },
+            {
+                "name": "auditPart",
+                "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
             }
         ]
     },
@@ -403,14 +399,6 @@ export const tongoAbi = [
                 "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
-                "name": "A_audit",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
-            },
-            {
-                "name": "A_self_audit",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
-            },
-            {
                 "name": "s_x",
                 "type": "core::felt252"
             },
@@ -431,8 +419,16 @@ export const tongoAbi = [
                 "type": "core::felt252"
             },
             {
+                "name": "R_aux",
+                "type": "tongo::structs::common::starkpoint::StarkPoint"
+            },
+            {
                 "name": "range",
                 "type": "core::array::Span::<tongo::structs::proofbit::ProofOfBit>"
+            },
+            {
+                "name": "R_aux2",
+                "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
                 "name": "range2",
@@ -461,20 +457,66 @@ export const tongoAbi = [
                 "type": "tongo::structs::common::cipherbalance::CipherBalance"
             },
             {
-                "name": "auditedBalance",
-                "type": "tongo::structs::common::cipherbalance::CipherBalance"
-            },
-            {
-                "name": "auditedBalanceSelf",
-                "type": "tongo::structs::common::cipherbalance::CipherBalance"
-            },
-            {
-                "name": "ae_hints",
-                "type": "tongo::structs::aecipher::AEHints"
+                "name": "hint",
+                "type": "tongo::structs::aecipher::AEBalance"
             },
             {
                 "name": "proof",
                 "type": "tongo::structs::operations::transfer::ProofOfTransfer"
+            },
+            {
+                "name": "auditPart",
+                "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
+            },
+            {
+                "name": "auditPartTransfer",
+                "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::rollover::ProofOfRollOver",
+        "members": [
+            {
+                "name": "Ax",
+                "type": "tongo::structs::common::starkpoint::StarkPoint"
+            },
+            {
+                "name": "sx",
+                "type": "core::felt252"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::rollover::Rollover",
+        "members": [
+            {
+                "name": "to",
+                "type": "tongo::structs::common::pubkey::PubKey"
+            },
+            {
+                "name": "hint",
+                "type": "tongo::structs::aecipher::AEBalance"
+            },
+            {
+                "name": "proof",
+                "type": "tongo::structs::operations::rollover::ProofOfRollOver"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::common::cipherbalance::CipherBalance>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance"
+            },
+            {
+                "name": "None",
+                "type": "()"
             }
         ]
     },
@@ -494,7 +536,7 @@ export const tongoAbi = [
     },
     {
         "type": "struct",
-        "name": "tongo::tongo::ITongo::State",
+        "name": "tongo::structs::common::state::State",
         "members": [
             {
                 "name": "balance",
@@ -505,12 +547,12 @@ export const tongoAbi = [
                 "type": "tongo::structs::common::cipherbalance::CipherBalance"
             },
             {
-                "name": "audit",
-                "type": "tongo::structs::common::cipherbalance::CipherBalance"
-            },
-            {
                 "name": "nonce",
                 "type": "core::integer::u64"
+            },
+            {
+                "name": "audit",
+                "type": "core::option::Option::<tongo::structs::common::cipherbalance::CipherBalance>"
             },
             {
                 "name": "ae_balance",
@@ -523,9 +565,56 @@ export const tongoAbi = [
         ]
     },
     {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::common::pubkey::PubKey>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::common::pubkey::PubKey"
+            },
+            {
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
         "type": "interface",
         "name": "tongo::tongo::ITongo::ITongo",
         "items": [
+            {
+                "type": "function",
+                "name": "ERC20",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::starknet::contract_address::ContractAddress"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_rate",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::integer::u256"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_owner",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::starknet::contract_address::ContractAddress"
+                    }
+                ],
+                "state_mutability": "view"
+            },
             {
                 "type": "function",
                 "name": "fund",
@@ -533,30 +622,6 @@ export const tongoAbi = [
                     {
                         "name": "fund",
                         "type": "tongo::structs::operations::fund::Fund"
-                    }
-                ],
-                "outputs": [],
-                "state_mutability": "external"
-            },
-            {
-                "type": "function",
-                "name": "rollover",
-                "inputs": [
-                    {
-                        "name": "rollover",
-                        "type": "tongo::structs::operations::rollover::Rollover"
-                    }
-                ],
-                "outputs": [],
-                "state_mutability": "external"
-            },
-            {
-                "type": "function",
-                "name": "ragequit",
-                "inputs": [
-                    {
-                        "name": "ragequit",
-                        "type": "tongo::structs::operations::ragequit::Ragequit"
                     }
                 ],
                 "outputs": [],
@@ -576,6 +641,18 @@ export const tongoAbi = [
             },
             {
                 "type": "function",
+                "name": "ragequit",
+                "inputs": [
+                    {
+                        "name": "ragequit",
+                        "type": "tongo::structs::operations::ragequit::Ragequit"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
                 "name": "transfer",
                 "inputs": [
                     {
@@ -588,23 +665,19 @@ export const tongoAbi = [
             },
             {
                 "type": "function",
-                "name": "get_balance",
+                "name": "rollover",
                 "inputs": [
                     {
-                        "name": "y",
-                        "type": "tongo::structs::common::pubkey::PubKey"
+                        "name": "rollover",
+                        "type": "tongo::structs::operations::rollover::Rollover"
                     }
                 ],
-                "outputs": [
-                    {
-                        "type": "tongo::structs::common::cipherbalance::CipherBalance"
-                    }
-                ],
-                "state_mutability": "view"
+                "outputs": [],
+                "state_mutability": "external"
             },
             {
                 "type": "function",
-                "name": "get_audit",
+                "name": "get_balance",
                 "inputs": [
                     {
                         "name": "y",
@@ -636,6 +709,22 @@ export const tongoAbi = [
             },
             {
                 "type": "function",
+                "name": "get_audit",
+                "inputs": [
+                    {
+                        "name": "y",
+                        "type": "tongo::structs::common::pubkey::PubKey"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "type": "core::option::Option::<tongo::structs::common::cipherbalance::CipherBalance>"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
                 "name": "get_nonce",
                 "inputs": [
                     {
@@ -652,17 +741,6 @@ export const tongoAbi = [
             },
             {
                 "type": "function",
-                "name": "ERC20",
-                "inputs": [],
-                "outputs": [
-                    {
-                        "type": "core::starknet::contract_address::ContractAddress"
-                    }
-                ],
-                "state_mutability": "view"
-            },
-            {
-                "type": "function",
                 "name": "get_state",
                 "inputs": [
                     {
@@ -672,7 +750,18 @@ export const tongoAbi = [
                 ],
                 "outputs": [
                     {
-                        "type": "tongo::tongo::ITongo::State"
+                        "type": "tongo::structs::common::state::State"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "auditor_key",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::option::Option::<tongo::structs::common::pubkey::PubKey>"
                     }
                 ],
                 "state_mutability": "view"
@@ -688,28 +777,6 @@ export const tongoAbi = [
                 ],
                 "outputs": [],
                 "state_mutability": "external"
-            },
-            {
-                "type": "function",
-                "name": "auditor_key",
-                "inputs": [],
-                "outputs": [
-                    {
-                        "type": "tongo::structs::common::pubkey::PubKey"
-                    }
-                ],
-                "state_mutability": "view"
-            },
-            {
-                "type": "function",
-                "name": "get_rate",
-                "inputs": [],
-                "outputs": [
-                    {
-                        "type": "core::integer::u256"
-                    }
-                ],
-                "state_mutability": "view"
             }
         ]
     },
@@ -722,16 +789,16 @@ export const tongoAbi = [
                 "type": "core::starknet::contract_address::ContractAddress"
             },
             {
-                "name": "auditor_key",
-                "type": "tongo::structs::common::pubkey::PubKey"
-            },
-            {
                 "name": "ERC20",
                 "type": "core::starknet::contract_address::ContractAddress"
             },
             {
                 "name": "rate",
                 "type": "core::integer::u256"
+            },
+            {
+                "name": "auditor_key",
+                "type": "core::option::Option::<tongo::structs::common::pubkey::PubKey>"
             }
         ]
     },
@@ -756,21 +823,6 @@ export const tongoAbi = [
                 "kind": "key"
             },
             {
-                "name": "auditorPubKey",
-                "type": "tongo::structs::common::pubkey::PubKey",
-                "kind": "data"
-            },
-            {
-                "name": "auditedBalanceSelf",
-                "type": "tongo::structs::common::cipherbalance::CipherBalance",
-                "kind": "data"
-            },
-            {
-                "name": "auditedBalance",
-                "type": "tongo::structs::common::cipherbalance::CipherBalance",
-                "kind": "data"
-            },
-            {
                 "name": "transferBalance",
                 "type": "tongo::structs::common::cipherbalance::CipherBalance",
                 "kind": "data"
@@ -778,6 +830,11 @@ export const tongoAbi = [
             {
                 "name": "transferBalanceSelf",
                 "type": "tongo::structs::common::cipherbalance::CipherBalance",
+                "kind": "data"
+            },
+            {
+                "name": "hint",
+                "type": "tongo::structs::aecipher::AEBalance",
                 "kind": "data"
             }
         ]
@@ -800,16 +857,6 @@ export const tongoAbi = [
             {
                 "name": "amount",
                 "type": "core::integer::u64",
-                "kind": "data"
-            },
-            {
-                "name": "auditorPubKey",
-                "type": "tongo::structs::common::pubkey::PubKey",
-                "kind": "data"
-            },
-            {
-                "name": "auditedBalanceLeft",
-                "type": "tongo::structs::common::cipherbalance::CipherBalance",
                 "kind": "data"
             }
         ]
@@ -860,16 +907,6 @@ export const tongoAbi = [
                 "name": "to",
                 "type": "core::starknet::contract_address::ContractAddress",
                 "kind": "data"
-            },
-            {
-                "name": "auditorPubKey",
-                "type": "tongo::structs::common::pubkey::PubKey",
-                "kind": "data"
-            },
-            {
-                "name": "auditedBalanceLeft",
-                "type": "tongo::structs::common::cipherbalance::CipherBalance",
-                "kind": "data"
             }
         ]
     },
@@ -902,6 +939,92 @@ export const tongoAbi = [
     },
     {
         "type": "event",
+        "name": "tongo::structs::events::BalanceDeclared",
+        "kind": "struct",
+        "members": [
+            {
+                "name": "from",
+                "type": "tongo::structs::common::pubkey::PubKey",
+                "kind": "key"
+            },
+            {
+                "name": "nonce",
+                "type": "core::integer::u64",
+                "kind": "key"
+            },
+            {
+                "name": "auditorPubKey",
+                "type": "tongo::structs::common::pubkey::PubKey",
+                "kind": "data"
+            },
+            {
+                "name": "declaredCipherBalance",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance",
+                "kind": "data"
+            },
+            {
+                "name": "hint",
+                "type": "tongo::structs::aecipher::AEBalance",
+                "kind": "data"
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "name": "tongo::structs::events::TransferDeclared",
+        "kind": "struct",
+        "members": [
+            {
+                "name": "from",
+                "type": "tongo::structs::common::pubkey::PubKey",
+                "kind": "key"
+            },
+            {
+                "name": "to",
+                "type": "tongo::structs::common::pubkey::PubKey",
+                "kind": "key"
+            },
+            {
+                "name": "nonce",
+                "type": "core::integer::u64",
+                "kind": "key"
+            },
+            {
+                "name": "auditorPubKey",
+                "type": "tongo::structs::common::pubkey::PubKey",
+                "kind": "data"
+            },
+            {
+                "name": "declaredCipherBalance",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance",
+                "kind": "data"
+            },
+            {
+                "name": "hint",
+                "type": "tongo::structs::aecipher::AEBalance",
+                "kind": "data"
+            }
+        ]
+    },
+    {
+        "type": "event",
+        "name": "tongo::structs::events::AuditorPubKeySet",
+        "kind": "struct",
+        "members": [
+            {
+                "name": "keyNumber",
+                "type": "core::integer::u128",
+                "kind": "key"
+            },
+            {
+                "name": "AuditorPubKey",
+                "type": "tongo::structs::common::pubkey::PubKey",
+                "kind": "data"
+            }
+        ]
+    },
+    {
+        "type": "event",
         "name": "tongo::tongo::Tongo::Tongo::Event",
         "kind": "enum",
         "variants": [
@@ -928,6 +1051,21 @@ export const tongoAbi = [
             {
                 "name": "RagequitEvent",
                 "type": "tongo::structs::events::RagequitEvent",
+                "kind": "nested"
+            },
+            {
+                "name": "BalanceDeclared",
+                "type": "tongo::structs::events::BalanceDeclared",
+                "kind": "nested"
+            },
+            {
+                "name": "TransferDeclared",
+                "type": "tongo::structs::events::TransferDeclared",
+                "kind": "nested"
+            },
+            {
+                "name": "AuditorPubKeySet",
+                "type": "tongo::structs::events::AuditorPubKeySet",
                 "kind": "nested"
             }
         ]

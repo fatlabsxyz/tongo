@@ -1,5 +1,8 @@
-use core::ec::{ EcPointTrait, NonZeroEcPoint};
-use core::ec::stark_curve::{GEN_X, GEN_Y};
+use core::ec::{
+    EcPointTrait,
+    NonZeroEcPoint,
+    stark_curve::{GEN_X, GEN_Y},
+};
 use crate::verifier::utils::{generator_h};
 use crate::structs::operations::{
     fund::{ InputsFund, ProofOfFund },
@@ -9,272 +12,203 @@ use crate::structs::operations::{
     ragequit::{ InputsRagequit, ProofOfRagequit },
 };
 use crate::structs::common::{
-    cipherbalance::CipherBalanceTrait,
+    cipherbalance::{CipherBalanceTrait, CipherBalance},
+    pubkey::PubKey,
+    starkpoint::StarkPoint,
 };
-use crate::structs::errors::{FUND, WITHDRAW, TRANSFER};
 use crate::structs::traits::{Prefix, Challenge};
 
-use crate::verifier::she::{
-    poe,
-    poe2,
-    verify_range,
-};
+use crate::verifier::she;
 
 
-/// Verify knowledge of x such that y = g**x
+/// Verifies the knowledge of the private key of the given public key.
+/// Note: The proof is only a she::POE, we decided to wrap the functinon
+/// for readabillity. The protocol runs as follow:
+///
+/// P:  kx <-- R        sends    Ax = g ** kx
+/// V:  c <-- R         sends    c
+/// P:  sk = kx + c*x   sends    sk
+/// The verifier asserts:
+/// - g**sx == Ax * (y**c)
+///
+/// EC_MUL: 2
+/// EC_ADD: 1
+fn verifyOwnership(y:PubKey, Ax:StarkPoint, c:felt252, sx:felt252) {
+    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
+    let res = she::poe(y.try_into().unwrap(), g, Ax.try_into().unwrap(), c, sx);
+    assert!(res, "NowOwner");
+}
+
+/// Verify the rollover operation. In this case, users have to only show the knowledge
+/// of the private key.
+/// 
+/// EC_MUL: 2
+/// EC_ADD: 1
 pub fn verify_rollover(inputs: InputsRollOver, proof: ProofOfRollOver) {
     let prefix = inputs.prefix();
     let c = proof.compute_challenge(prefix);
-
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let res = poe(inputs.y.try_into().unwrap(), g, proof.Ax.try_into().unwrap(), c, proof.sx);
-    //TODO: Handle the error code
-    assert(res, FUND::F100);
+    verifyOwnership(inputs.y, proof.Ax, c, proof.sx);
 }
 
-//TODO: Doc
+/// Verify the fund operation. In this case, users have to only show the knowledge
+/// of the private key.
+///
+/// EC_MUL: 2
+/// EC_ADD: 1
 pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund) {
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-
-
-    let (L,R) = inputs.auxBalance.points_nz();
-    let (L_audit, R_audit) = inputs.auditedBalance.points();
-    let (L0, R0) = inputs.currentBalance.points();
-    //TODO: handle this errorcode
-    assert!(R_audit.try_into().unwrap().coordinates() == R.try_into().unwrap().coordinates(),"nope");
-    
+    //TODO: verify amount is u32
     let prefix = inputs.prefix();
-//    let mut commits: Array<StarkPoint> = array![proof.Ax.into(), proof.Ar.into(), proof.Ab.into(),proof.A_auditor.into(), proof.AUX_A.into()];
     let c = proof.compute_challenge(prefix);
-//    let c = challenge_commits2(prefix, ref commits);
-
-
-    let res = poe(inputs.y.try_into().unwrap(), g, proof.Ax.try_into().unwrap(), c, proof.sx);
-    assert(res, FUND::F100);
-
-    let res = poe(R,g,proof.Ar.try_into().unwrap(),c, proof.sr);
-    assert(res, 'Error 1');
-
-    let res =  poe2(L,g,inputs.y.try_into().unwrap(),proof.Ab.try_into().unwrap(), c, proof.sb,proof.sr);
-    assert(res, 'Error 2');
-
-
-    let g_amount = g.into().mul(inputs.amount);
-    let AUX_L_auditor:NonZeroEcPoint = (L_audit.into() - g_amount).try_into().unwrap();
-    let res =  poe2(AUX_L_auditor, g, inputs.auditorPubKey.try_into().unwrap(), proof.A_auditor.try_into().unwrap(), c, proof.sb,proof.sr);
-    assert(res, 'Error 3');
-
-
-    let AUX_L:NonZeroEcPoint = (L0 - L.into()).try_into().unwrap();
-    let AUX_R:NonZeroEcPoint = (R0 - R.into()).try_into().unwrap();
-    let res =  poe(AUX_L, AUX_R,proof.AUX_A.try_into().unwrap(),c, proof.sx);
-    //TODO: Handle Error
-    assert(res, 'Error 4');
-
-
+    verifyOwnership(inputs.y, proof.Ax, c, proof.sx);
 }
 
-
-///TODO: Update
-/// Proof of Withdraw All: validate the proof needed for withdraw all balance b. The cipher balance is
-/// (L, R) = ( g**b_0 * y **r, g**r). Note that L/g**b = y**r = (g**r)**x. So we can check for the
-/// correct balance proving that we know the exponent x of y' = g'**x with y'=L/g**b and g'= g**r =
-/// R. The protocol runs as follow:
-/// P:  k <-- R        sends    Ax = g**k, Acr = R**k
+/// Verifies the ragequit operation. First, ussers have to show knowledge of the private key. Then, users  have to provide 
+/// a cleartext of the amount b stored in their balances. The contract will construct a cipher balance 
+/// (L2, R2) = (g**b y, g) with randomness r=1. Users have to provide a zk proof that (L2,R2) is encrypting
+/// the same amount that the stored cipher balance (L1,R1). This is done by noting that
+/// L1/L2 = y**r1/y**r2 = (R1/R2)**x. We need to prove a poe for Y=G**x with Y=L1/L2 and G=R1/R2
+///
+/// P:  k <-- R        sends    A=G**k
 /// V:  c <-- R        sends    c
-/// P:  s = k + c*x    sends    s
+/// P:  s = k + c*x    send     s
 /// The verifier asserts:
-/// - g**s == Ax * (y**c)
-/// - R**s == Acr * (L/g**b)**c
+/// - G**sr == A * (Y**c)
+///
+/// EC_MUL: 7
+/// EC_ADD: 5
 pub fn verify_ragequit(inputs: InputsRagequit, proof: ProofOfRagequit) {
     let prefix = inputs.prefix();
     let c = proof.compute_challenge(prefix);
 
+    verifyOwnership(inputs.y, proof.A_x, c, proof.s_x);
+
+    let cipher: CipherBalance = CipherBalanceTrait::new(inputs.y, inputs.amount, 1);
+    let (L2, R2) = cipher.points_nz();
+    let (L1, R1) = inputs.currentBalance.points_nz();
+
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let (L, R) = inputs.currentBalance.points_nz();
-    let res = poe(inputs.y.try_into().unwrap(), g, proof.A_x.try_into().unwrap(), c, proof.s_x);
-    assert(res, WITHDRAW::W100);
-
-
-    let g_b = EcPointTrait::mul(g.into(), inputs.amount);
-    let Y: NonZeroEcPoint = (L.into() - g_b).try_into().unwrap();
-
-    let res = poe(Y, R, proof.A_cr.try_into().unwrap(), c, proof.s_x);
-    assert(res, WITHDRAW::W101);
+    she::verifySameEncryptionSameKey(L1,R1,L2,R2,g, proof.A_cr.try_into().unwrap(),c, proof.s_x );
 }
 
 
-//TODO: Check this function 
+/// Verifies the withdraw operation. First, ussers have to show knowledge of the private key. Then, users  have to provide 
+/// a cleartext of the amount b to withdraw. The contract will construct a cipher balance (L2, R2) = (g**b y**r2, g**r2)
+/// with randomness r2='withdraw'. The contract will subtract (L2,R2) to the stored balance of the user. The user have
+/// provide a zk proof that the final cipher balance is encrypting a positive (a value in (0, u**32)) amount b_left. To do
+/// this when the RangeProof is verified, it returns a V = g**b_left h**r, with b_left positive. V is used as a L part of
+/// a cipher blalance, users have to prove that the cipher balance (V, R_aux = g**r) is encrypting the same amount
+/// that the final cipher balance.
+///
+/// EC_MUL: 12 + n*5 = 172 for u32 
+/// EC_ADD: 8 + n*4  = 136 for u32
 pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
     let prefix = inputs.prefix();
     let c = proof.compute_challenge(prefix);
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
+    verifyOwnership(inputs.y, proof.A_x, c, proof.sx);
+
     let (L0,R0) = inputs.currentBalance.points_nz();
-    let (L_audit, R_audit) = inputs.auditedBalance.points_nz();
+    let L0 =  L0.into() - g.into().mul(inputs.amount);
 
-    //This is to assert knowledge of x such that y = g**x
-    let res = poe(inputs.y.try_into().unwrap(), g, proof.A_x.try_into().unwrap(), c, proof.sx);
-    assert(res, WITHDRAW::W100);
-
-    //This is to assert knowledge of r such that R_audit = g**r
-    let res = poe(R_audit, g, proof.A_r.try_into().unwrap(), c, proof.sr);
-    assert(res, 'nope1');
-
-    //This is to assert knowledge of amount_left and r (the same) such thad L_audit == g**amount_left y_audit**r
-    let res = poe2(L_audit, g, inputs.auditorPubKey.try_into().unwrap(),proof.A_auditor.try_into().unwrap(),c,proof.sb,proof.sr);
-    assert(res, 'nope2');
-
-    //This to assert that amount_left+b is the amount actually stored in the balance of the account
-    let g_b = g.into().mul(inputs.amount);
-    let Y: NonZeroEcPoint = (L0.into() - g_b).try_into().unwrap();
-    let res = poe2(
-        Y, g, R0, proof.A.try_into().unwrap(), c, proof.sb, proof.sx
-    );
-    assert(res, WITHDRAW::W103);
-
-    //This assert that V = g**amount h**r (with the same r as before, and amount>0)
-    let V = verify_range(proof.range);
-    //This is to assert that V == g**amount_left * h**r with the same amount_left as before (this proves that amount_left==amount > 0)
-    let res = poe2(
+    let V = she::verify_range(proof.range);
+    she::verifySameEncryptionUnKnownRandom(
+        L0.try_into().unwrap(),
+        R0.try_into().unwrap(),
         V,
+        proof.R_aux.try_into().unwrap(),
         g,
+        inputs.y.try_into().unwrap(),
         generator_h(),
+        proof.A_x.try_into().unwrap(),
+        proof.A.try_into().unwrap(),
         proof.A_v.try_into().unwrap(),
+        proof.A_r.try_into().unwrap(),
         c,
         proof.sb,
-        proof.sr
+        proof.sx,
+        proof.sr,
     );
-    assert(res, WITHDRAW::W102);
 }
 
-/// Transfer b from y = g**x to y_bar.  Public inputs: y, y_bar L = g**b y**r, L_bar = g**b
-/// y_bar**r, R = g**r.
-/// We need to prove:
-/// 1) knowlede of x in y = g**x.
-/// 2) knowlede of r in R = g**r.
-/// 3) knowlede of b and r in L = g**b y**r with the same r that 2)
-/// 4) knowlede of b and r in L_bar = g**b y_bar**r with the same r that 2) and same b that 3)
-/// 4b) knowlede of b and r in L_audit = g**b y_audit**r with the same r that 2) and same b that 3)
-/// 5) b is in range [0,2**n-1]. For this we commit V = g**b h**r and an array of n  V_i = g**bi
-/// h**ri. r = sum 2**i r_i 5b) proof that bi are either 0 or 1.
-/// 5c) knowledge of b and r in V = g**b y**r with the same r that 2) and b that 3)
-/// 6) The proof neceary to show that the remaining balance is in range.
-/// TODO: finish the doc
+/// Verifies the withdraw operation. First, ussers have to show knowledge of the private key. Then, users  have to provide 
+/// two cipher balance, one (L,R) is a encryption of the transfer amount b under its public key, the other (L_bar, R_bar)
+/// a encryption of the trasnfer amount b under the receiver public key. Users have to provide a ZK proof that both encryption
+/// are indeed encrypting the same amount for the correct public keys. To show the transfer amount b is positive,
+/// when the first RangeProof is verified, it returns a V1 = g**b h**r1, with b positive. V1 is used as a L part 
+/// of a cipher blalance, users have to prove that the cipher balance (V1, R_aux1 = g**r1) is encrypting the same
+/// amount that (L,R). The cipher balance after the operation would be (L0,R0) = (CL/L, CR/R) where (CL,CR) is the 
+/// current balance. To show that (L0, R0) is encrypting an amount b_left positive, when the second RangeProof is
+/// verified, it returns a V2 = g**b_left h**r2, with b_left positive. V2 is used as a L part 
+/// of a cipher blalance, users have to prove that the cipher balance (V2, R_aux2 = g**r2) is encrypting the same
+/// amount that (L0,R0)
+///
+/// EC_MUL: 27 + 2*n*5  = 347 for u32
+/// EC_ADD: 18  + 2*n*4 = 274 for u32
 pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let (CL, CR) = inputs.currentBalance.points();
     let (L,R) = inputs.transferBalanceSelf.points_nz();
     let (L_bar,R_bar) = inputs.transferBalance.points_nz();
-    //TODO: errorcode maybe write this in the validate
-    assert(R.coordinates() == R_bar.coordinates(), 'Nope');
-
-    let (L_audit,R_audit) = inputs.auditedBalance.points_nz();
-    //TODO: errorcode maybe write this in the validate
-    assert(R.coordinates() == R_audit.coordinates(), 'Nope');
-
-    //TODO: add POE for R_audit == g**r2
-    let (L_audit_self,R_audit_self) = inputs.auditedBalanceSelf.points_nz();
 
     //TODO: add things to this
     let prefix = inputs.prefix();
     let c = proof.compute_challenge(prefix);
-
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
-    // This is for asserting knowledge of x
-    let res = poe(inputs.y.try_into().unwrap(), g, proof.A_x.try_into().unwrap(), c, proof.s_x);
-    assert(res, TRANSFER::T100);
+    verifyOwnership(inputs.y, proof.A_x, c, proof.s_x);
 
-    // This is for asserting R = g**r
-    let res = poe(R, g, proof.A_r.try_into().unwrap(), c, proof.s_r);
-    assert(res, TRANSFER::T101);
-
-    //This is for asserting L = g**b y**r
-    let res = poe2(
+    she::verifySameEncryptionKnownRandom(
         L,
+        R,
+        L_bar,
+        R_bar,
         g,
         inputs.y.try_into().unwrap(),
-        proof.A_b.try_into().unwrap(),
-        c,
-        proof.s_b,
-        proof.s_r
-    );
-    assert(res, TRANSFER::T102);
-
-    //This is for asserting L_bar = g**b y_bar**r
-    let res = poe2(
-        L_bar,
-        g,
         inputs.y_bar.try_into().unwrap(),
+        proof.A_b.try_into().unwrap(),
+        proof.A_r.try_into().unwrap(),
         proof.A_bar.try_into().unwrap(),
+        proof.A_r.try_into().unwrap(),
         c,
         proof.s_b,
-        proof.s_r
+        proof.s_r,
+        proof.s_r,
     );
-    assert(res, TRANSFER::T103);
-
-    //This is for asserting L_audit= g**b y_audit*r
-    let res = poe2(
-        L_audit,
-        g,
-        inputs.auditorPubKey.try_into().unwrap(),
-        proof.A_audit.try_into().unwrap(),
-        c,
-        proof.s_b,
-        proof.s_r
-    );
-    assert(res, TRANSFER::T104);
-
-
-    // This is for asserting R = g**r
-    let res = poe(R_audit_self, g, proof.A_r2.try_into().unwrap(), c, proof.s_r2);
-    assert!(res, "Nope");
-
-    //This is for asserting L_self_audit= g**b2 y_audit*r2
-    let res = poe2(
-        L_audit_self,
-        g,
-        inputs.auditorPubKey.try_into().unwrap(),
-        proof.A_self_audit.try_into().unwrap(),
-        c,
-        proof.s_b2,
-        proof.s_r2
-    );
-    //TODO: error code
-    assert!(res, "Nope");
 
     // Now we need to show that V = g**b h**r with the same b and r.
-    let V = verify_range(proof.range);
-    let res = poe2(
+    let V = she::verify_range(proof.range);
+    she::verifyElGammal(
         V,
+        proof.R_aux.try_into().unwrap(),
         g,
         generator_h(),
         proof.A_v.try_into().unwrap(),
+        proof.A_r.try_into().unwrap(),
         c,
         proof.s_b,
-        proof.s_r
+        proof.s_r,
     );
-    assert(res, TRANSFER::T105);
 
-    let Y: NonZeroEcPoint = (CL - L.into()).try_into().unwrap();
 
-    let G: NonZeroEcPoint = (CR - R.into()).try_into().unwrap();
-    let res = poe2(Y, g, G, proof.A_b2.try_into().unwrap(), c, proof.s_b2, proof.s_x);
-    assert(res, TRANSFER::T106);
+    let L0: NonZeroEcPoint = (CL - L.into()).try_into().unwrap();
+    let R0: NonZeroEcPoint = (CR - R.into()).try_into().unwrap();
 
-    // Now we need to show that V = g**b h**r2 with the same b2
-    // This is for asserting that b2 is in range
-    let V2 = verify_range(proof.range2);
-    let res = poe2(
+    let V2 = she::verify_range(proof.range2);
+    she::verifySameEncryptionUnKnownRandom(
+        L0,
+        R0,
         V2,
+        proof.R_aux2.try_into().unwrap(),
         g,
+        inputs.y.try_into().unwrap(),
         generator_h(),
+        proof.A_x.try_into().unwrap(),
+        proof.A_b2.try_into().unwrap(),
         proof.A_v2.try_into().unwrap(),
+        proof.A_r2.try_into().unwrap(),
         c,
         proof.s_b2,
-        proof.s_r2
+        proof.s_x,
+        proof.s_r2,
     );
-    assert(res, TRANSFER::T107);
 }
-
-

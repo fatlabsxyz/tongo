@@ -24,23 +24,3 @@ impl ChallengeBit of Challenge<ProofOfBit> {
        cast_in_order(poseidon_hash_span(arr.span()))
     }
 }
-
-#[derive(Serde, Drop, Copy)]
-pub struct ProofOfBit2 {
-    pub V: StarkPoint,
-    pub A: StarkPoint,
-    pub B: StarkPoint,
-    pub sb: felt252,
-    pub sr: felt252,
-    pub z: felt252,
-}
-
-
-impl ChallengeBit2 of Challenge<ProofOfBit2> {
-    fn compute_challenge(self: @ProofOfBit2, prefix:felt252) -> felt252 {
-       let mut arr = array![prefix];
-       arr.append_coordinates(self.A);
-       arr.append_coordinates(self.B);
-       cast_in_order(poseidon_hash_span(arr.span()))
-    }
-}

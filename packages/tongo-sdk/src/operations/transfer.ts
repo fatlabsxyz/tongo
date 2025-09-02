@@ -1,20 +1,32 @@
 import { ProjectivePoint } from "@scure/starknet";
-import { ProofOfTransfer } from "@fatlabsxyz/she-js";
-import { Call, Contract } from "starknet";
-import { AEBalances } from "../ae_balance";
+import { CipherBalance, ProofOfTransfer } from "@fatlabsxyz/she-js";
+import { Call, Contract, CairoOption } from "starknet";
+import { AEBalance } from "../ae_balance";
 import { IOperation } from "./operation";
-import { CipherBalance } from "../types.js";
+import { Audit } from "./audit.js"
 
 export interface ITransferOperation extends IOperation { }
+
+/// Represents the calldata of a transfer operation.
+///
+/// - from: The Tongo account to take tongos from.
+/// - to: The Tongo account to send tongos to.
+/// - transferBalance: The amount to transfer encrypted for the pubkey of `to`.
+/// - transferBalanceSelf: The amount to transfer encrypted for the pubkey of `from`.
+/// - hint: AE encription of the final balance of the account.
+/// - proof: ZK proof for the transfer operation.
+/// - auditPart: Optional Audit to declare the balance of the account after the tx.
+/// - auditPartTransfer: Optional Audit to declare the transfer amount.
+/// - Tongo: The tongo instance to interact with.
 interface TransferOpParams {
     from: ProjectivePoint;
     to: ProjectivePoint;
     transferBalance: CipherBalance;
     transferBalanceSelf: CipherBalance;
-    auditedBalance: CipherBalance;
-    auditedBalanceSelf: CipherBalance;
     proof: ProofOfTransfer;
-    aeHints: AEBalances;
+    hint: AEBalance,
+    auditPart: CairoOption<Audit>,
+    auditPartTransfer: CairoOption<Audit>,
     Tongo: Contract;
 }
 
@@ -24,21 +36,21 @@ export class TransferOperation implements ITransferOperation {
     to: ProjectivePoint;
     transferBalance: CipherBalance;
     transferBalanceSelf: CipherBalance;
-    auditedBalance: CipherBalance;
-    auditedBalanceSelf: CipherBalance;
+    hint: AEBalance;
     proof: ProofOfTransfer;
-    aeHints: AEBalances;
+    auditPart: CairoOption<Audit>;
+    auditPartTransfer: CairoOption<Audit>;
 
-    constructor({ from, to, transferBalance, transferBalanceSelf, auditedBalance, auditedBalanceSelf, proof, Tongo, aeHints }: TransferOpParams) {
+    constructor({ from, to, transferBalance, transferBalanceSelf, proof, auditPart, auditPartTransfer, Tongo, hint}: TransferOpParams) {
         this.from = from;
         this.to = to;
-        this.transferBalance = transferBalance;
-        this.transferBalanceSelf = transferBalanceSelf;
-        this.auditedBalance = auditedBalance;
-        this.auditedBalanceSelf = auditedBalanceSelf;
+        this.transferBalance = transferBalance,
+        this.transferBalanceSelf = transferBalanceSelf,
+        this.hint = hint;
         this.proof = proof;
+        this.auditPart = auditPart,
+        this.auditPartTransfer = auditPartTransfer,
         this.Tongo = Tongo;
-        this.aeHints = aeHints;
     }
 
     toCalldata(): Call {
@@ -46,12 +58,12 @@ export class TransferOperation implements ITransferOperation {
             {
                 from: this.from,
                 to: this.to,
-                transferBalance: this.transferBalance,
-                transferBalanceSelf: this.transferBalanceSelf,
-                auditedBalance: this.auditedBalance,
-                auditedBalanceSelf: this.auditedBalanceSelf,
-                ae_hints: this.aeHints,
+                transferBalance : this.transferBalance,
+                transferBalanceSelf : this.transferBalanceSelf,
+                hint: this.hint,
                 proof: this.proof,
+                auditPart: this.auditPart,
+                auditPartTransfer: this.auditPartTransfer,
             },
         ]);
     }

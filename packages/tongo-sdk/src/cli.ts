@@ -2,9 +2,9 @@
 
 import { Command } from 'commander';
 import * as dotenv from 'dotenv';
-import { Account as TongoAccount } from './account';
+import { Account as TongoAccount } from './account/account.js';
 import { Account, constants, RpcProvider } from 'starknet';
-import { pubKeyBase58ToAffine } from './utils';
+import { pubKeyBase58ToAffine } from './types.js';
 
 dotenv.config();
 
@@ -63,8 +63,7 @@ program
             gOpts.tongo || ctx.tongoContractAddress,
             provider
         );
-        const availableBalance = await account.balance();
-        const pending = await account.pending();
+        const {balance:availableBalance, pending }= await account.state();
         console.log("Unlocked balance |", availableBalance);
         console.log("Pending balance  |", pending);
     });

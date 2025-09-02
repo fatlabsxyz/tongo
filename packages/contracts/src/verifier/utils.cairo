@@ -5,7 +5,6 @@ use core::ec::{EcPointTrait, NonZeroEcPoint};
 // 2**32
 const MAX: u128 = 4294967296;
 
-
 ///Checks if given number is less than curve order.
 pub fn in_order(number: felt252) -> bool {
     let number: u256 = number.try_into().unwrap();
@@ -16,6 +15,12 @@ pub fn in_order(number: felt252) -> bool {
     return false;
 }
 
+/// This is used to cast a felt252 into the curve order. It is ussed mainlly in challenge computation.
+/// We could simply use a integer division number % CURVE_ORDER but this leads to a non-uniform distribution.
+/// We decided to hash the number if it is bigger that CURVE_ORDER until it is in the correct range.
+/// 
+/// Note: The diference between a felt252 and CURVE_ORDER is ~ 2**70. So the chances of hashing anything
+/// and not to land inside CURVE_ORDER are ~ 2**70/2**252.
 pub fn cast_in_order(number: felt252) -> felt252 {
     let mut output = ORDER + 1;
     let mut salt = 1;
@@ -26,9 +31,6 @@ pub fn cast_in_order(number: felt252) -> felt252 {
     return output;
 }
 
-pub fn validate_felt(felt:felt252) {
-    assert!(in_order(felt), "felt not in curve order");
-}
 
 /// Checks if given number is in the range of the balance.
 /// Warning: be carefull if MAX is changed. It HAS to be 2**n
@@ -40,25 +42,12 @@ pub fn in_range(number: felt252) -> bool {
     return false;
 }
 
-
-pub fn validate_range(felt:felt252) {
-    assert!(in_range(felt), "number not in balance range");
-}
-
 /// Computes the bitwise XOR between lhs and rhs.
 pub fn feltXOR(lhs: felt252, rhs: felt252) -> felt252 {
     let l: u256 = lhs.try_into().unwrap();
     let r: u256 = rhs.try_into().unwrap();
     u256 { low: l.low ^ r.low, high: l.high ^ r.high }.try_into().unwrap()
 }
-
-/// Checks if given pair of felts are the coordinates [x,y] of a point in the stark curve.
-pub fn on_curve(coordinates: [felt252; 2]) -> bool {
-    let point = EcPointTrait::new(*coordinates.span()[0], *coordinates.span()[1]);
-    return point.is_some();
-}
-
-
 
 /// This generatos has been computed hashing:
 /// x = poseidon(input, nonce) for nonce from 1,... until x is a coordinate of a valid point

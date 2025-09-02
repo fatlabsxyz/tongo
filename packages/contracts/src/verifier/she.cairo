@@ -1,7 +1,6 @@
 use core::ec::{EcPoint, EcPointTrait, EcStateTrait, NonZeroEcPoint};
 use core::ec::stark_curve::{GEN_X, GEN_Y};
-use core::poseidon::poseidon_hash_span;
-use crate::structs::proofbit::{ProofOfBit, ProofOfBit2};
+use crate::structs::proofbit::{ProofOfBit};
 use crate::verifier::utils::in_order;
 use crate::verifier::utils::{feltXOR, generator_h};
 use crate::structs::traits::Challenge;
@@ -13,6 +12,9 @@ use crate::structs::traits::Challenge;
 /// P:  s = k + c*x    sends    s
 /// The verifier asserts:
 /// - g**s == A * (y**c)
+///
+/// EC_MUL: 2
+/// EC_ADD: 1
 pub fn poe(
     y: NonZeroEcPoint, g: NonZeroEcPoint, A: NonZeroEcPoint, c: felt252, s: felt252
 ) -> bool {
@@ -31,12 +33,16 @@ pub fn poe(
 
 /// Proof of Exponent 2: validate a proof of knowledge of the exponent y = g1**x1 g2**x2. The sigma
 /// protocol runs as follows:
+///
 /// P:  k1,k2 <-- R        sends    A = g1**k1 g2**k2
 /// V:  c <-- R            sends    c
 /// P:  s1 = k1 + c*x1
-/// P:  s2 = k2 + c*x1      send s1, s1
+/// P:  s2 = k2 + c*x2      send s1, s2
 /// The verifier asserts:
 /// - g1**s1 g2**s2 == A * (y**c)
+///
+/// EC_MUL: 3
+/// EC_ADD: 2
 pub fn poe2(
     y: NonZeroEcPoint,
     g1: NonZeroEcPoint,
@@ -59,33 +65,171 @@ pub fn poe2(
     LHS.coordinates() == RHS.coordinates()
 }
 
+/// Proof that a cipherbalance is a well formed ElGammal encription of the form
+/// (L, R) = (g1**b g2**r , g1**r). The sigma protocol consists in a poe and a poe2. Runs as follows:
+///
+/// P:  kb,kr <-- R        sends    AL = g1**kb g2**kr, AR=g1**kr
+/// V:  c <-- R            sends    c
+/// P:  sb = kb + c*b
+/// P:  sr = kr + c*r      send s1, s1
+/// The verifier asserts:
+/// - g1**sr        == AR * (R**c)  (poe)
+/// - g1**sb g2**sr == AL * (L**c)  (poe2)
+/// 
+/// EC_MUL: 5
+/// EC_ADD: 3
+pub fn verifyElGammal(
+    L:NonZeroEcPoint,
+    R:NonZeroEcPoint,
+    g1:NonZeroEcPoint,
+    g2:NonZeroEcPoint,
+    AL:NonZeroEcPoint,
+    AR:NonZeroEcPoint,
+    c:felt252,
+    sb:felt252,
+    sr:felt252,
+) -> bool {
+    let res = poe(R, g1, AR, c, sr);
+    assert!(res, "Failed poe for R");
+
+    let res = poe2(L, g1,g2,AL, c, sb,sr);
+    assert!(res, "Failed poe2 for L");
+    true
+}
+
+/// Verifies that two valid ElGammal encryption (L1,R1) = (g**b y**r1, g**r1) and (L2, R2) = (g**b y**r2, g**r2) 
+/// for the same publick key y=g**x encrypt the same balance. This is done by noting that
+/// L1/L2 = y**r1/y**r2 = (R1/R2)**x. We need to prove a poe for Y=G**x with Y=L1/L2 and G=R1/R2
+///
+/// P:  k <-- R        sends    A=G**k
+/// V:  c <-- R        sends    c
+/// P:  s = k + c*x    send     s
+/// The verifier asserts:
+/// - G**sr == A * (Y**c)  (poe)
+/// 
+/// EC_MUL: 2
+/// EC_ADD: 3
+pub fn verifySameEncryptionSameKey(
+    L1:NonZeroEcPoint,
+    R1:NonZeroEcPoint,
+    L2:NonZeroEcPoint,
+    R2:NonZeroEcPoint,
+    g:NonZeroEcPoint,
+    A:NonZeroEcPoint,
+    c:felt252,
+    s:felt252,
+) -> bool {
+    if (R1.coordinates() == R2.coordinates()) { return L1.coordinates() == L2.coordinates(); }
+    let L1: EcPoint = L1.into();
+    let R1: EcPoint = R1.into();
+    let Y:NonZeroEcPoint = (L1 - L2.into()).try_into().unwrap();
+    let G:NonZeroEcPoint = (R1 - R2.into()).try_into().unwrap();
+    assert!(poe(Y, G, A, c, s),"Q1");
+    true
+}
 
 
+/// Verifies that two encription of an amount b for two different keys are valid and that they are indeed encrypting the same 
+/// amount b. Note: We assume here that the two randoms r1 and r2 are known by the proover. If they are the same this could be a little more efficient.
+/// (L1, R2) = (g**b y1**r1, g**r1),  (L2, R2) = (g**b y2**r2, g**r2). The protocol runs as follows
+///
+/// P:  kb,kr1,kr2 <-- R        sends    AL1=g**kb y1**kr1, AR1=g**kb, AL2=g**kb y2**kr2, AR2=g**kr2
+/// V:          c  <-- R        sends    c
+/// P:  sb = kb  + c*b          send     sb
+/// P:  sr1 = kr1 + c*r1        send     sr1
+/// P:  sr2 = kr2 + c*r2        send     sr2
+/// The verifier asserts:
+///  - The correct encription of (L1,R1)
+///  - The correct encription of (L2,R2)
+/// 
+/// EC_MUL: 10
+/// EC_ADD: 6
+pub fn verifySameEncryptionKnownRandom(
+    L1:NonZeroEcPoint,
+    R1:NonZeroEcPoint,
+    L2:NonZeroEcPoint,
+    R2:NonZeroEcPoint,
+    g:NonZeroEcPoint,
+    y1:NonZeroEcPoint,
+    y2:NonZeroEcPoint,
+    AL1:NonZeroEcPoint,
+    AR1:NonZeroEcPoint,
+    AL2:NonZeroEcPoint,
+    AR2:NonZeroEcPoint,
+    c:felt252,
+    sb:felt252,
+    sr1:felt252,
+    sr2:felt252,
+){
+    if (R1.coordinates() == R2.coordinates()) {
+        assert!(sr1 == sr2, "nope");
+        assert!(AR1.coordinates() == AR2.coordinates());
+    }
+    assert!(verifyElGammal(L1,R1,g,y1,AL1,AR1,c,sb,sr1), "W1");
+    assert!(verifyElGammal(L2,R2,g,y2,AL2,AR2,c,sb,sr2), "W2");
+}
+
+/// We want to show that the cipher balance that x can decryp but does not know the random (usual in cipherbalance stored),
+/// encrypts the same ammount that a cipherbalance (L2,R2) given by x and encrypted to maybe another pubkey (ussualy to an auditor).
+/// 
+/// EC_MUL: 10
+/// EC_ADD: 6
+pub fn verifySameEncryptionUnKnownRandom(
+    L1:NonZeroEcPoint,
+    R1:NonZeroEcPoint,
+    L2:NonZeroEcPoint,
+    R2:NonZeroEcPoint,
+    g:NonZeroEcPoint,
+    y1:NonZeroEcPoint,
+    y2:NonZeroEcPoint,
+    Ax:NonZeroEcPoint,
+    AL1:NonZeroEcPoint,
+    AL2:NonZeroEcPoint,
+    AR2:NonZeroEcPoint,
+    c:felt252,
+    sb:felt252,
+    sx:felt252,
+    sr2:felt252,
+){
+    assert!(poe(y1,g,Ax,c,sx),"E1");
+    assert!(poe2(L1,g, R1,AL1,c, sb,sx), "E2");
+    assert!(verifyElGammal(L2,R2,g, y2,AL2,AR2,c,sb,sr2),"E3");
+}
+
+//TODO: fn expost
 
 /// Proof of Bit: validate that a commited V = g**b h**r is the ciphertext of  either b=0 OR b=1.
 /// If b = 0 then V = h**r and a proof of exponet for r is enought. If b=1 then V/g = h**r could be
 /// also proven with a poe. This is combined in a OR statement and the protocol can valitates that
 /// one of the cases is valid without leak which one is valid.
+/// 
+/// EC_MUL: 4
+/// EC_ADD: 3
 pub fn oneORzero(pi: ProofOfBit) {
-
     let c = pi.compute_challenge(0);
     //TODO: update this challenge
     let c1 = feltXOR(c, pi.c0);
 
-    poe(pi.V.try_into().unwrap(), generator_h(), pi.A0.try_into().unwrap(), pi.c0, pi.s0);
+    let res = poe(pi.V.try_into().unwrap(), generator_h(), pi.A0.try_into().unwrap(), pi.c0, pi.s0);
+    assert!(res,"OR 1");
 
     let gen = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     //TODO: Precompute -gen
     let V_0: EcPoint = pi.V.try_into().unwrap();
     let V1: NonZeroEcPoint = (V_0 - gen).try_into().unwrap();
 
-    poe(V1.try_into().unwrap(), generator_h(), pi.A1.try_into().unwrap(), c1, pi.s1);
+    let res = poe(V1.try_into().unwrap(), generator_h(), pi.A1.try_into().unwrap(), c1, pi.s1);
+    assert!(res,"OR 2");
 }
 
 /// Verify that a span of Vi = g**b_i h**r_i are encoding either b=1 or b=0 and that
 /// those bi are indeed the binary decomposition b = sum_i b_i 2**i. With the b that
 /// is encoded in V = g**b h**r. (Note that r = sim_i r_i 2**i)
 /// TODO: This could (and probably should) be change to bulletproof.
+///
+///
+/// EC_MUL: bits ( 4 +1 ) (160 for u32) 
+/// EC_ADD: bits ( 3 +1 ) (128 for u32)
 pub fn verify_range(proof: Span<ProofOfBit>) -> NonZeroEcPoint {
     let mut i: u32 = 0;
     let mut state = EcStateTrait::init();
@@ -99,91 +243,4 @@ pub fn verify_range(proof: Span<ProofOfBit>) -> NonZeroEcPoint {
         i = i + 1;
     };
     state.finalize_nz().unwrap()
-}
-
-
-///////////////////////////////////////////////////////////// NEW TBD //////////////////////////////////////////////
-//TODO: Documentation Decide and finish
-pub fn SHEbit(g1:NonZeroEcPoint, g2:NonZeroEcPoint, V: NonZeroEcPoint, A0:NonZeroEcPoint, A1:NonZeroEcPoint, c0:felt252, s0:felt252, s1:felt252) {
-    
-    let c = poseidon_hash_span( array![A0.x(), A0.y(), A1.x(), A1.y() ].span() );
-    let c1 = feltXOR(c, c0);
-
-    poe(V, g2, A0, c0, s0);
-
-    let V_0: EcPoint = V.into();
-    let V1: NonZeroEcPoint = (V_0 - g1.into()).try_into().unwrap();
-    poe(V1, g2, A1, c1, s1);
-}
-
-// DECIDE where to put this in tongo//she
-impl SerdeNonZeroEcPoint of Serde<NonZeroEcPoint> {
-    fn serialize(self: @NonZeroEcPoint, ref output: Array<felt252>) {
-        let (x,y) = self.coordinates();
-        output.append(x);
-        output.append(y);
-    }
-
-    fn deserialize(ref serialized: Span<felt252>) -> Option<NonZeroEcPoint> {
-        let x  = (*serialized.pop_front()?);
-        let y = (*serialized.pop_front()?);
-        return EcPointTrait::new_nz(x,y);
-    }
-}
-
-#[derive(Serde, Drop, Copy)]
-/// Proof that V = g**b h**r with b either one or zero is well formed. The proof use a OR protocol
-/// to assert that one of the two is valid without revealing which one.
-pub struct SHEProofBit {
-    pub V: NonZeroEcPoint,
-    pub A0: NonZeroEcPoint,
-    pub A1: NonZeroEcPoint,
-    pub c0: felt252,
-    pub s0: felt252,
-    pub s1: felt252,
-}
-pub struct SHEInputsBit {
-    pub gen1: NonZeroEcPoint,
-    pub gen2: NonZeroEcPoint,
-    pub bits: u32,
-}
-
-
-pub fn SHEverify_range(inputs:SHEInputsBit, proof: Span<SHEProofBit>) -> NonZeroEcPoint {
-    assert(inputs.bits == proof.len(),'Nope');
-    let mut i: u32 = 0;
-    let mut state = EcStateTrait::init();
-    let mut pow: felt252 = 1;
-    let gen1 = inputs.gen1;
-    let gen2 = inputs.gen2;
-    while i < inputs.bits {
-        let pi = *proof[i];
-        SHEbit(gen1, gen2, pi.V, pi.A0, pi.A1, pi.c0, pi.s0,pi.s1);
-        let vi: NonZeroEcPoint = pi.V.try_into().unwrap();
-        state.add_mul(pow, vi);
-        pow = 2 * pow;
-        i = i + 1;
-    };
-    state.finalize_nz().unwrap()
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-/// Alternative proof of commit a bit or one or zero. It seems it is not as efficient
-/// as the proof we are ussing now but this can be check all at one. This could be log(n)
-/// instead linear in n as the other one.
-/// TODO: test and decide (If we change to bulletproof this has no sense)
-pub fn alternative_oneORzero(proof: ProofOfBit2) {
-    let h = generator_h();
-
-    let c = proof.compute_challenge(0);
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-
-    poe2(proof.V.try_into().unwrap(), g, h, proof.A.try_into().unwrap(), c, proof.sb, proof.sr);
-
-    let V: EcPoint = proof.V.try_into().unwrap();
-    let B: EcPoint = proof.B.try_into().unwrap();
-    let LHS = h.into().mul(proof.z);
-    let RHS = V.mul(c) - V.mul(proof.sb) + B;
-    assert!(LHS.try_into().unwrap().coordinates() == RHS.try_into().unwrap().coordinates(), "asd2");
 }
