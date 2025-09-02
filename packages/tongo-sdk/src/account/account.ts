@@ -63,7 +63,7 @@ export class Account implements IAccount {
     publicKey: PubKey;
     pk: bigint;
     provider: RpcProvider;
-    Tongo: TypedContractV2<typeof tongoAbi>;
+    Tongo: TongoContract;
 
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
