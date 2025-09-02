@@ -258,7 +258,7 @@ export class Account implements IAccount {
     }
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
-        const { amount } = withdrawDetails;
+        const { amount, to } = withdrawDetails;
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
         const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
@@ -271,8 +271,8 @@ export class Account implements IAccount {
         const { inputs, proof, newBalance } = proveWithdraw(
             this.pk,
             initialBalance,
-            withdrawDetails.amount,
-            BigInt(withdrawDetails.to),
+            amount,
+            BigInt(to),
             currentBalance,
             nonce,
         );

@@ -43,7 +43,7 @@ program
 program
     .command("address")
     .description("Derives address")
-    .action((options) => {
+    .action(() => {
         const ctx = getContext();
         const address = TongoAccount.tongoAddress(ctx.tongoPrivateKey);
         console.log("Tongo address |", address);

@@ -1,20 +1,19 @@
-import { num, BigNumberish, Contract, RpcProvider, TypedContractV2 } from "starknet";
-import { tongoAbi } from "./tongo.abi";
-import {
-    PubKey,
-    TongoAddress,
-    derivePublicKey,
-    pubKeyAffineToHex,
-    pubKeyAffineToBase58,
-    parseCipherBalance,
-} from "./types";
-import { bytesOrNumToBigInt } from "./utils";
-import { Account } from "./account/account.js";
 import { CipherBalance, decipherBalance } from "@fatlabsxyz/she-js";
-import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key";
-import { AEChaCha, AEHintToBytes } from "./ae_balance";
-import { ReaderEvent, StarknetEventReader } from "./data.service.js";
+import { BigNumberish, Contract, RpcProvider, TypedContractV2 } from "starknet";
+
 import { RawAccountState } from "./account/account.interface.js";
+import { Account } from "./account/account.js";
+import { AEChaCha, AEHintToBytes } from "./ae_balance.js";
+import { ReaderEventType } from "./data.service.js";
+import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
+import { tongoAbi } from "./tongo.abi.js";
+import {
+    derivePublicKey,
+    PubKey,
+    pubKeyAffineToHex,
+    TongoAddress
+} from "./types.js";
+import { bytesOrNumToBigInt } from "./utils.js";
 
 //TODO: This is for testing
 export const AUDITOR_PRIVATE = 1242079909984902665305n;
@@ -29,12 +28,12 @@ enum AuditorEvent {
 }
 
 const ReaderToAuditorEvents = {
-    [ReaderEvent.Fund]: AuditorEvent.Fund,
-    [ReaderEvent.Rollover]: AuditorEvent.Rollover,
-    [ReaderEvent.Withdraw]: AuditorEvent.Withdraw,
-    [ReaderEvent.Ragequit]: AuditorEvent.Ragequit,
-    [ReaderEvent.TransferIn]: AuditorEvent.TransferIn,
-    [ReaderEvent.TransferOut]: AuditorEvent.TransferOut,
+    [ReaderEventType.Fund]: AuditorEvent.Fund,
+    [ReaderEventType.Rollover]: AuditorEvent.Rollover,
+    [ReaderEventType.Withdraw]: AuditorEvent.Withdraw,
+    [ReaderEventType.Ragequit]: AuditorEvent.Ragequit,
+    [ReaderEventType.TransferIn]: AuditorEvent.TransferIn,
+    [ReaderEventType.TransferOut]: AuditorEvent.TransferOut,
 };
 
 interface AuditorBaseEvent {

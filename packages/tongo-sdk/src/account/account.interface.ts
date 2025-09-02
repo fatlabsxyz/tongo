@@ -70,11 +70,11 @@ export interface TransferDetails {
 }
 
 export interface RagequitDetails {
-    to: bigint;
+    to: string;
 }
 
 export interface WithdrawDetails {
-    to: bigint;
+    to: string;
     amount: bigint;
 }
 

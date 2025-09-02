@@ -1,11 +1,13 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfWithdraw } from "@fatlabsxyz/she-js";
 import { Call, Contract, num, CairoOption } from "starknet";
-import { AEBalance } from "../ae_balance";
-import { IOperation } from "./operation";
+import { AEBalance } from "../ae_balance.js";
+import { IOperation, OperationType } from "./operation.js";
 import { Audit } from "./audit.js";
 
-export interface IWithdrawOperation extends IOperation {}
+export interface IWithdrawOperation extends IOperation {
+    type: typeof OperationType.Withdraw;
+}
 
 /// Represents the calldata of a withdraw operation.
 ///
@@ -27,6 +29,7 @@ interface WithdrawOpParams {
 }
 
 export class WithdrawOperation implements IWithdrawOperation {
+    type: typeof OperationType.Withdraw = OperationType.Withdraw;
     from: ProjectivePoint;
     to: bigint;
     amount: bigint;

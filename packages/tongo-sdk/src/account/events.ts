@@ -1,4 +1,4 @@
-import { ReaderEvent } from "../data.service.js";
+import { ReaderEventType } from "../data.service.js";
 
 enum AccountEvent {
     Fund = "fund",
@@ -10,12 +10,12 @@ enum AccountEvent {
 }
 
 export const ReaderToAccountEvents = {
-    [ReaderEvent.Fund]: AccountEvent.Fund,
-    [ReaderEvent.Rollover]: AccountEvent.Rollover,
-    [ReaderEvent.Withdraw]: AccountEvent.Withdraw,
-    [ReaderEvent.Ragequit]: AccountEvent.Ragequit,
-    [ReaderEvent.TransferIn]: AccountEvent.TransferIn,
-    [ReaderEvent.TransferOut]: AccountEvent.TransferOut,
+    [ReaderEventType.Fund]: AccountEvent.Fund,
+    [ReaderEventType.Rollover]: AccountEvent.Rollover,
+    [ReaderEventType.Withdraw]: AccountEvent.Withdraw,
+    [ReaderEventType.Ragequit]: AccountEvent.Ragequit,
+    [ReaderEventType.TransferIn]: AccountEvent.TransferIn,
+    [ReaderEventType.TransferOut]: AccountEvent.TransferOut,
 };
 
 interface AccountBaseEvent {

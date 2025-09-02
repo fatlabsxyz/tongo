@@ -5,9 +5,10 @@ import { ProofOfFund, ProjectivePoint } from "@fatlabsxyz/she-js";
 import { AEBalance } from "../ae_balance.js";
 import { castBigInt } from "../utils.js";
 import { Audit } from "./audit.js";
-import { IOperation } from "./operation";
+import { IOperation, OperationType } from "./operation.js";
 
 interface IFundOperation extends IOperation {
+    type: typeof OperationType.Fund;
     populateApprove(): Promise<void>;
 }
 
@@ -29,6 +30,7 @@ interface FundOpParams {
 }
 
 export class FundOperation implements IFundOperation {
+    type: typeof OperationType.Fund;
     Tongo: Contract;
     to: ProjectivePoint;
     amount: bigint;
@@ -38,6 +40,7 @@ export class FundOperation implements IFundOperation {
     approve?: Call;
 
     constructor({ to, amount, proof, auditPart, Tongo, hint }: FundOpParams) {
+        this.type = OperationType.Fund;
         this.to = to;
         this.amount = amount;
         this.hint = hint;

@@ -1,7 +1,6 @@
-import { Account, Contract, RpcProvider, constants, num, RPC } from "starknet";
 import { tongoAbi } from "@/tongo.abi.js";
-import { Account as TongoAccount } from "@/account.js";
 import { keccak } from "@scure/starknet";
+import { Account, constants, Contract, RpcProvider } from "starknet";
 
 export const provider = new RpcProvider({
     nodeUrl: "http://127.0.0.1:5050/rpc",

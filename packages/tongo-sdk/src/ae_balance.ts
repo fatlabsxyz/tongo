@@ -76,8 +76,7 @@ export class AEChaCha {
             const plaintext = chacha.decrypt(ciphertext);
             if (plaintext.length !== 48) throw new Error("Malformed plaintext");
             return bytesToNumberBE(plaintext.slice(44, 48));
-        } catch (e) {
-            //TODO: This gives an error I cannot reproduce. - ALBA
+        } catch {
             throw new Error("Malformed or tampered ciphertext");
         }
     }

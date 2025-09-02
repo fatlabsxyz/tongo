@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
-import { AEHintToBytes, bytesToBigAEHint, AEChaCha } from "@/ae_balance.js";
+import { AEChaCha, AEHintToBytes, bytesToBigAEHint } from "@/ae_balance.js";
+import { describe, expect, it } from "vitest";
 
 describe("[ae_balance] conversions", () => {
     it("encodes to ciphertext to 64 bytes and nonce to 24 bytes", async () => {

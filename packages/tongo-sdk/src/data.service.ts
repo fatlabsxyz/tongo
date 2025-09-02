@@ -1,6 +1,6 @@
 import { num, RpcProvider, hash, events, CallData, ParsedEvent } from "starknet";
 import { tongoAbi } from "./tongo.abi.js";
-import { PubKey } from "./types";
+import { PubKey } from "./types.js";
 import { StarkPoint } from "./types.js";
 import { AEBalance } from "./ae_balance.js";
 
@@ -24,19 +24,20 @@ const RAGEQUIT_EVENT_PATH = "tongo::structs::events::RagequitEvent";
 const BALANCE_DECLARED_EVENT_PATH = "tongo::structs::events::BalanceDeclared";
 const TRANSFER_DECLARED_EVENT_PATH = "tongo::structs::events::TransferDeclared";
 
-export enum ReaderEvent {
-    Fund = "fund",
-    Withdraw = "withdraw",
-    Ragequit = "ragequit",
-    Rollover = "rollover",
-    TransferIn = "transferIn",
-    TransferOut = "transferOut",
-    BalanceDeclared = "balanceDeclared",
-    TransferDeclared = "transferDeclared",
-}
+export const ReaderEventType = {
+    Fund: "fund",
+    Withdraw: "withdraw",
+    Ragequit: "ragequit",
+    Rollover: "rollover",
+    TransferIn: "transferIn",
+    TransferOut: "transferOut",
+    BalanceDeclared: "balanceDeclared",
+    TransferDeclared: "transferDeclared",
+} as const;
+type ReaderEventType = typeof ReaderEventType[keyof typeof ReaderEventType];
 
 interface BaseEvent {
-    type: ReaderEvent;
+    type: ReaderEventType;
     tx_hash: string;
     block_number: number;
 }
@@ -64,15 +65,15 @@ interface RagequitEventData {
 interface RolloverEventData {
     to: StarkPoint;
     nonce: bigint;
-    rollovered: { L: StarkPoint; R: StarkPoint };
+    rollovered: { L: StarkPoint; R: StarkPoint; };
 }
 
 interface TransferEventData {
     to: StarkPoint;
     from: StarkPoint;
     nonce: bigint;
-    transferBalance: { L: StarkPoint; R: StarkPoint };
-    transferBalanceSelf: { L: StarkPoint; R: StarkPoint };
+    transferBalance: { L: StarkPoint; R: StarkPoint; };
+    transferBalanceSelf: { L: StarkPoint; R: StarkPoint; };
     hint: AEBalance;
 }
 
@@ -80,7 +81,7 @@ interface BalanceDeclaredEventData {
     from: StarkPoint;
     nonce: bigint;
     auditorPubKey: StarkPoint;
-    declaredCipherBalance: { L: StarkPoint; R: StarkPoint };
+    declaredCipherBalance: { L: StarkPoint; R: StarkPoint; };
     hint: AEBalance;
 }
 
@@ -89,23 +90,33 @@ interface TransferDeclaredEventData {
     to: StarkPoint;
     nonce: bigint;
     auditorPubKey: StarkPoint;
-    declaredCipherBalance: { L: StarkPoint; R: StarkPoint };
+    declaredCipherBalance: { L: StarkPoint; R: StarkPoint; };
     hint: AEBalance;
 }
 
-type ReaderFundEvent = FundEventData & BaseEvent & { type: ReaderEvent.Fund };
-type ReaderWithdrawEvent = WithdrawEventData & BaseEvent & { type: ReaderEvent.Withdraw };
-type ReaderRagequitEvent = RagequitEventData & BaseEvent & { type: ReaderEvent.Ragequit };
-type ReaderRolloverEvent = RolloverEventData & BaseEvent & { type: ReaderEvent.Rollover };
-type ReaderTransferInEvent = TransferEventData & BaseEvent & { type: ReaderEvent.TransferIn };
-type ReaderTransferOutEvent = TransferEventData & BaseEvent & { type: ReaderEvent.TransferOut };
-type ReaderBalanceDeclaredEvent = BalanceDeclaredEventData & BaseEvent & { type: ReaderEvent.BalanceDeclared };
-type ReaderTransferDeclaredEvent = TransferDeclaredEventData & BaseEvent & { type: ReaderEvent.TransferDeclared };
+type ReaderFundEvent = FundEventData & BaseEvent & { type: typeof ReaderEventType.Fund; };
+type ReaderWithdrawEvent = WithdrawEventData & BaseEvent & { type: typeof ReaderEventType.Withdraw; };
+type ReaderRagequitEvent = RagequitEventData & BaseEvent & { type: typeof ReaderEventType.Ragequit; };
+type ReaderRolloverEvent = RolloverEventData & BaseEvent & { type: typeof ReaderEventType.Rollover; };
+type ReaderTransferInEvent = TransferEventData & BaseEvent & { type: typeof ReaderEventType.TransferIn; };
+type ReaderTransferOutEvent = TransferEventData & BaseEvent & { type: typeof ReaderEventType.TransferOut; };
+type ReaderBalanceDeclaredEvent = BalanceDeclaredEventData & BaseEvent & { type: typeof ReaderEventType.BalanceDeclared; };
+type ReaderTransferDeclaredEvent = TransferDeclaredEventData & BaseEvent & { type: typeof ReaderEventType.TransferDeclared; };
+
+type ReaderEvent =
+    ReaderFundEvent |
+    ReaderWithdrawEvent |
+    ReaderRagequitEvent |
+    ReaderRolloverEvent |
+    ReaderTransferInEvent |
+    ReaderTransferOutEvent |
+    ReaderBalanceDeclaredEvent |
+    ReaderTransferDeclaredEvent;
 
 function parseTransferEventOut(event: ParsedEvent): ReaderTransferOutEvent {
     const data = event[TRANSFER_EVENT_PATH] as unknown as TransferEventData;
     return {
-        type: ReaderEvent.TransferOut,
+        type: ReaderEventType.TransferOut,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
         ...data,
@@ -115,7 +126,7 @@ function parseTransferEventOut(event: ParsedEvent): ReaderTransferOutEvent {
 function parseTransferEventIn(event: ParsedEvent): ReaderTransferInEvent {
     const data = event[TRANSFER_EVENT_PATH] as unknown as TransferEventData;
     return {
-        type: ReaderEvent.TransferIn,
+        type: ReaderEventType.TransferIn,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
         ...data,
@@ -125,7 +136,7 @@ function parseTransferEventIn(event: ParsedEvent): ReaderTransferInEvent {
 function parseFundEvent(event: ParsedEvent): ReaderFundEvent {
     const data = event[FUND_EVENT_PATH] as unknown as FundEventData;
     return {
-        type: ReaderEvent.Fund,
+        type: ReaderEventType.Fund,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
         ...data,
@@ -135,7 +146,7 @@ function parseFundEvent(event: ParsedEvent): ReaderFundEvent {
 function parseWithdrawEvent(event: ParsedEvent): ReaderWithdrawEvent {
     const data = event[WITHDRAW_EVENT_PATH] as unknown as WithdrawEventData;
     return {
-        type: ReaderEvent.Withdraw,
+        type: ReaderEventType.Withdraw,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
         ...data,
@@ -145,7 +156,7 @@ function parseWithdrawEvent(event: ParsedEvent): ReaderWithdrawEvent {
 function parseRagequitEvent(event: ParsedEvent): ReaderRagequitEvent {
     const data = event[RAGEQUIT_EVENT_PATH] as unknown as RagequitEventData;
     return {
-        type: ReaderEvent.Ragequit,
+        type: ReaderEventType.Ragequit,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
         ...data,
@@ -155,7 +166,7 @@ function parseRagequitEvent(event: ParsedEvent): ReaderRagequitEvent {
 function parseRolloverEvent(event: ParsedEvent): ReaderRolloverEvent {
     const data = event[ROLLOVER_EVENT_PATH] as unknown as RolloverEventData;
     return {
-        type: ReaderEvent.Rollover,
+        type: ReaderEventType.Rollover,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
         ...data,
@@ -165,7 +176,7 @@ function parseRolloverEvent(event: ParsedEvent): ReaderRolloverEvent {
 function parseBalanceDeclaredEvent(event: ParsedEvent): ReaderBalanceDeclaredEvent {
     const data = event[ROLLOVER_EVENT_PATH] as unknown as BalanceDeclaredEventData;
     return {
-        type: ReaderEvent.BalanceDeclared,
+        type: ReaderEventType.BalanceDeclared,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
         ...data,
@@ -175,7 +186,7 @@ function parseBalanceDeclaredEvent(event: ParsedEvent): ReaderBalanceDeclaredEve
 function parseTransferDeclaredEvent(event: ParsedEvent): ReaderTransferDeclaredEvent {
     const data = event[ROLLOVER_EVENT_PATH] as unknown as TransferDeclaredEventData;
     return {
-        type: ReaderEvent.TransferDeclared,
+        type: ReaderEventType.TransferDeclared,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
         ...data,
@@ -281,7 +292,7 @@ export class StarknetEventReader {
             .map((event) => parseTransferEventIn(event));
     }
 
-    async getAllEvents(initialBlock: number, otherPubKey: PubKey): Promise<any[]> {
+    async getAllEvents(initialBlock: number, otherPubKey: PubKey): Promise<ReaderEvent[]> {
         const promises = Promise.all([
             this.getEventsFund(initialBlock, otherPubKey),
             this.getEventsRollover(initialBlock, otherPubKey),

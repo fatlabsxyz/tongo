@@ -2,11 +2,13 @@ import { CairoOption, Call, Contract } from "starknet";
 
 import { ProjectivePoint, CipherBalance, ProofOfTransfer } from "@fatlabsxyz/she-js";
 
-import { AEBalance } from "../ae_balance";
+import { AEBalance } from "../ae_balance.js";
 import { Audit } from "./audit.js";
-import { IOperation } from "./operation";
+import { IOperation, OperationType } from "./operation.js";
 
-export interface ITransferOperation extends IOperation {}
+export interface ITransferOperation extends IOperation {
+    type: typeof OperationType.Transfer;
+}
 
 /// Represents the calldata of a transfer operation.
 ///
@@ -32,6 +34,7 @@ interface TransferOpParams {
 }
 
 export class TransferOperation implements ITransferOperation {
+    type: typeof OperationType.Transfer = OperationType.Transfer;
     Tongo: Contract;
     from: ProjectivePoint;
     to: ProjectivePoint;
