@@ -2,6 +2,19 @@
   "name": "@fatlabsxyz/tongo-sdk",
   "version": "1.0.0",
   "description": "An SDK for interacting with Tongo contracts",
+  "homepage": "https://github.com/fatlabsxyz/tongo",
+  "author": {
+      "name": "Fat Solutions",
+      "email": "root@fatlabs.xyz",
+      "url": "https://fatsolutions.xyz/"
+  },
+  "keywords": [
+      "starknet",
+      "tongo",
+      "confidential",
+      "erc20",
+      "payments"
+  ],
   "main": "index.js",
   "bin": {
     "tongo": "./dist/cli.js"
@@ -23,17 +36,16 @@
     "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
     "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.4.1",
   "dependencies": {
     "commander": "^11.0.0",
     "dotenv": "^16.3.1",
-    "@fatlabsxyz/she-js": "workspace:*",
+    "@fatlabsxyz/she": "workspace:*",
     "starknet": "^7.0.0"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com/fatlabsxyz"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   }
 }

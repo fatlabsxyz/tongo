@@ -1,7 +1,18 @@
 {
-  "name": "@fatlabsxyz/she-js",
+  "name": "@fatlabsxyz/she",
   "version": "0.0.1",
   "description": "Homomorphic Encryption over the Stark curve",
+  "homepage": "https://github.com/fatlabsxyz/tongo",
+  "author": {
+      "name": "Fat Solutions",
+      "email": "root@fatlabs.xyz",
+      "url": "https://fatsolutions.xyz/"
+  },
+  "keywords": [
+      "starknet",
+      "homomorphic",
+      "elgamal"
+  ],
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "exports": {
@@ -19,13 +30,17 @@
     "format": "prettier --check \"{src,test}/**/*.{js,ts,json}\"",
     "format:fix": "prettier --write \"{src,test,tests}/**/*.{js,ts,json}\""
   },
-  "dependencies": {},
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "dependencies": {
+    "@noble/ciphers": "catalog:",
+    "@noble/hashes": "catalog:",
+    "@noble/curves": "catalog:",
+    "@scure/base": "catalog:",
+    "@scure/starknet": "catalog:"
+  },
   "packageManager": "pnpm@10.4.1",
   "devDependencies": {},
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com/fatlabsxyz"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   }
 }
