@@ -13,6 +13,12 @@
       "homomorphic",
       "elgamal"
   ],
+  "files": [
+    "lib/*",
+    "src",
+    "package.json",
+    "!**/*.tsbuildinfo"
+  ],
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "exports": {

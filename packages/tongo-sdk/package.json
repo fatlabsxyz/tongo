@@ -15,6 +15,12 @@
       "erc20",
       "payments"
   ],
+  "files": [
+    "dist/*",
+    "src",
+    "package.json",
+    "!**/*.tsbuildinfo"
+  ],
   "main": "index.js",
   "bin": {
     "tongo": "./dist/cli.js"
