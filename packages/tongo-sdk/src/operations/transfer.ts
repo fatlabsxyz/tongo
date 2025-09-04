@@ -1,11 +1,14 @@
-import { ProjectivePoint } from "@scure/starknet";
-import { CipherBalance, ProofOfTransfer } from "@fatlabsxyz/she-js";
-import { Call, Contract, CairoOption } from "starknet";
-import { AEBalance } from "../ae_balance";
-import { IOperation } from "./operation";
-import { Audit } from "./audit.js"
+import { CairoOption, Call, Contract } from "starknet";
 
-export interface ITransferOperation extends IOperation { }
+import { ProjectivePoint, CipherBalance, ProofOfTransfer } from "@fatlabsxyz/she-js";
+
+import { AEBalance } from "../ae_balance.js";
+import { Audit } from "./audit.js";
+import { IOperation, OperationType } from "./operation.js";
+
+export interface ITransferOperation extends IOperation {
+    type: typeof OperationType.Transfer;
+}
 
 /// Represents the calldata of a transfer operation.
 ///
@@ -24,13 +27,14 @@ interface TransferOpParams {
     transferBalance: CipherBalance;
     transferBalanceSelf: CipherBalance;
     proof: ProofOfTransfer;
-    hint: AEBalance,
-    auditPart: CairoOption<Audit>,
-    auditPartTransfer: CairoOption<Audit>,
+    hint: AEBalance;
+    auditPart: CairoOption<Audit>;
+    auditPartTransfer: CairoOption<Audit>;
     Tongo: Contract;
 }
 
 export class TransferOperation implements ITransferOperation {
+    type: typeof OperationType.Transfer = OperationType.Transfer;
     Tongo: Contract;
     from: ProjectivePoint;
     to: ProjectivePoint;
@@ -41,15 +45,25 @@ export class TransferOperation implements ITransferOperation {
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
 
-    constructor({ from, to, transferBalance, transferBalanceSelf, proof, auditPart, auditPartTransfer, Tongo, hint}: TransferOpParams) {
+    constructor({
+        from,
+        to,
+        transferBalance,
+        transferBalanceSelf,
+        proof,
+        auditPart,
+        auditPartTransfer,
+        Tongo,
+        hint,
+    }: TransferOpParams) {
         this.from = from;
         this.to = to;
-        this.transferBalance = transferBalance,
-        this.transferBalanceSelf = transferBalanceSelf,
+        this.transferBalance = transferBalance;
+        this.transferBalanceSelf = transferBalanceSelf;
         this.hint = hint;
         this.proof = proof;
-        this.auditPart = auditPart,
-        this.auditPartTransfer = auditPartTransfer,
+        this.auditPart = auditPart;
+        this.auditPartTransfer = auditPartTransfer;
         this.Tongo = Tongo;
     }
 
@@ -58,8 +72,8 @@ export class TransferOperation implements ITransferOperation {
             {
                 from: this.from,
                 to: this.to,
-                transferBalance : this.transferBalance,
-                transferBalanceSelf : this.transferBalanceSelf,
+                transferBalance: this.transferBalance,
+                transferBalanceSelf: this.transferBalanceSelf,
                 hint: this.hint,
                 proof: this.proof,
                 auditPart: this.auditPart,

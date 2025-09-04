@@ -1,4 +1,4 @@
-import { ReaderEvent } from "../data.service.js";
+import { ReaderEventType } from "../data.service.js";
 
 enum AccountEvent {
     Fund = "fund",
@@ -10,61 +10,62 @@ enum AccountEvent {
 }
 
 export const ReaderToAccountEvents = {
-    [ReaderEvent.Fund]: AccountEvent.Fund,
-    [ReaderEvent.Rollover]: AccountEvent.Rollover,
-    [ReaderEvent.Withdraw]: AccountEvent.Withdraw,
-    [ReaderEvent.Ragequit]: AccountEvent.Ragequit,
-    [ReaderEvent.TransferIn]: AccountEvent.TransferIn,
-    [ReaderEvent.TransferOut]: AccountEvent.TransferOut,
+    [ReaderEventType.Fund]: AccountEvent.Fund,
+    [ReaderEventType.Rollover]: AccountEvent.Rollover,
+    [ReaderEventType.Withdraw]: AccountEvent.Withdraw,
+    [ReaderEventType.Ragequit]: AccountEvent.Ragequit,
+    [ReaderEventType.TransferIn]: AccountEvent.TransferIn,
+    [ReaderEventType.TransferOut]: AccountEvent.TransferOut,
 };
 
 interface AccountBaseEvent {
-    type: AccountEvent,
-    tx_hash: string,
-    block_number: number,
+    type: AccountEvent;
+    tx_hash: string;
+    block_number: number;
 }
 
 export interface AccountFundEvent extends AccountBaseEvent {
-    type: AccountEvent.Fund,
+    type: AccountEvent.Fund;
     nonce: bigint;
     amount: bigint;
 }
 
 export interface AccountRolloverEvent extends AccountBaseEvent {
-    type: AccountEvent.Rollover,
+    type: AccountEvent.Rollover;
     nonce: bigint;
     amount: bigint;
 }
 
 export interface AccountWithdrawEvent extends AccountBaseEvent {
-    type: AccountEvent.Withdraw,
+    type: AccountEvent.Withdraw;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountRagequitEvent extends AccountBaseEvent {
-    type: AccountEvent.Ragequit,
+    type: AccountEvent.Ragequit;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountTransferOutEvent extends AccountBaseEvent {
-    type: AccountEvent.TransferOut,
+    type: AccountEvent.TransferOut;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountTransferInEvent extends AccountBaseEvent {
-    type: AccountEvent.TransferIn,
+    type: AccountEvent.TransferIn;
     nonce: bigint;
     amount: bigint;
     from: string;
 }
 
-export type AccountEvents = AccountFundEvent
+export type AccountEvents =
+    | AccountFundEvent
     | AccountWithdrawEvent
     | AccountRagequitEvent
     | AccountRolloverEvent

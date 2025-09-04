@@ -1,11 +1,13 @@
 import { ProjectivePoint } from "@scure/starknet";
 import { ProofOfRagequit } from "@fatlabsxyz/she-js";
 import { Call, Contract, CairoOption } from "starknet";
-import { IOperation } from "./operation";
+import { IOperation, OperationType } from "./operation.js";
 import { AEBalance } from "../ae_balance.js";
-import { Audit } from "./audit.js"
+import { Audit } from "./audit.js";
 
-export interface IRagequitOperation extends IOperation { }
+export interface IRagequitOperation extends IOperation {
+    type: typeof OperationType.Ragequit;
+}
 
 /// Represents the calldata of a ragequit operation.
 ///
@@ -28,6 +30,7 @@ interface RagequitOpParams {
 }
 
 export class RagequitOperation implements IRagequitOperation {
+    type: typeof OperationType.Ragequit = OperationType.Ragequit;
     from: ProjectivePoint;
     to: bigint;
     amount: bigint;
@@ -42,7 +45,7 @@ export class RagequitOperation implements IRagequitOperation {
         this.amount = amount;
         this.hint = hint;
         this.proof = proof;
-        this.auditPart =  auditPart;
+        this.auditPart = auditPart;
         this.Tongo = Tongo;
     }
 

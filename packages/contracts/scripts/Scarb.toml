@@ -15,6 +15,7 @@ sierra = true
 casm = true
 
 [scripts]
+deploy_mainnet = ". ./.env && sncast --account $ACCOUNT --accounts-file $ACCOUNTS_FILE_PATH script run -u $RPC_URL deploy_mainnet"
 deploy_local = "sncast --profile localnet5151 script run deploy_local"
 devnet5151 = "bash -c '. ./localnet/variables && starknet-devnet --port 5151'"
 devnet = "bash -c '. ./localnet/variables && starknet-devnet --lite-mode --fork-network http://127.0.0.1:5151'"

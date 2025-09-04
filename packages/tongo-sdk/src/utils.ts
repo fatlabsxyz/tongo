@@ -12,13 +12,13 @@ export function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
 export function isUint256(x: number | bigint | Uint256): x is Uint256 {
     const low = (x as Uint256).low;
     const high = (x as Uint256).high;
-    return (low !== undefined) && (high !== undefined);
+    return low !== undefined && high !== undefined;
 }
 
 export function castBigInt(x: number | bigint | Uint256) {
-  if (num.isBigNumberish(x)) {
-    return num.toBigInt(x);
-  } else {
-    return uint256.uint256ToBN(x);
-  }
+    if (num.isBigNumberish(x)) {
+        return num.toBigInt(x);
+    } else {
+        return uint256.uint256ToBN(x);
+    }
 }

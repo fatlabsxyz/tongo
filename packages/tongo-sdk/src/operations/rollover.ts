@@ -1,11 +1,12 @@
 import { ProjectivePoint } from "@scure/starknet";
-import { Call, Contract} from "starknet";
-import { IOperation } from "./operation";
+import { Call, Contract } from "starknet";
+import { IOperation, OperationType } from "./operation.js";
 import { ProofOfRollover } from "@fatlabsxyz/she-js";
-import { AEBalance} from "../ae_balance";
+import { AEBalance } from "../ae_balance.js";
 
-
-export interface IRollOverOperation extends IOperation { }
+export interface IRollOverOperation extends IOperation {
+    type: typeof OperationType.Rollover;
+}
 
 /// Represents the calldata of a fund operation.
 ///
@@ -21,6 +22,7 @@ interface RollOverOpParams {
 }
 
 export class RollOverOperation implements IRollOverOperation {
+    type: typeof OperationType.Rollover = OperationType.Rollover;
     to: ProjectivePoint;
     proof: ProofOfRollover;
     Tongo: Contract;
