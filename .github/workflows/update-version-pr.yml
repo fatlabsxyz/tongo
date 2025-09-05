@@ -1,0 +1,86 @@
+name: Update package version after publish
+
+on:
+  workflow_run:
+    workflows: ["Release on Github and publish to npm"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-version:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract package and version from tag
+        id: extract-info
+        run: |
+          TAG_NAME="${{ github.event.workflow_run.head_branch }}"
+          if [[ $TAG_NAME == sdk-v* ]]; then
+            PACKAGE="tongo-sdk"
+            VERSION=${TAG_NAME#sdk-v}
+            PACKAGE_PATH="packages/tongo-sdk"
+          elif [[ $TAG_NAME == she-v* ]]; then
+            PACKAGE="she" 
+            VERSION=${TAG_NAME#she-v}
+            PACKAGE_PATH="packages/she"
+          else
+            echo "Unknown tag format: $TAG_NAME"
+            exit 1
+          fi
+          
+          echo "package=$PACKAGE" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "package-path=$PACKAGE_PATH" >> $GITHUB_OUTPUT
+
+      - name: Create branch and update version
+        id: update
+        run: |
+          BRANCH_NAME="chore/update-${{ steps.extract-info.outputs.package }}-version-to-${{ steps.extract-info.outputs.version }}"
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git checkout -b "$BRANCH_NAME"
+          
+          # Update package.json version
+          cd "${{ steps.extract-info.outputs.package-path }}"
+          npm version "${{ steps.extract-info.outputs.version }}" --no-git-tag-version
+          
+          git add package.json
+          git commit -m "chore: update ${{ steps.extract-info.outputs.package }} version to ${{ steps.extract-info.outputs.version }}"
+          git push origin "$BRANCH_NAME"
+          
+          echo "branch-name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `chore: update ${{ steps.extract-info.outputs.package }} version to ${{ steps.extract-info.outputs.version }}`,
+              head: '${{ steps.update.outputs.branch-name }}',
+              base: 'master',
+              body: `
+                ## Summary
+                - Updates ${{ steps.extract-info.outputs.package }} package.json version to ${{ steps.extract-info.outputs.version }}
+                - This PR was automatically created after successful package publication
+                
+                ## Changes
+                - \`${{ steps.extract-info.outputs.package-path }}/package.json\`: version updated to ${{ steps.extract-info.outputs.version }}
+                
+                🤖 This PR was automatically generated after publishing tag \`${{ github.event.workflow_run.head_branch }}\`
+              `
+            });
+            
+            console.log(`Created PR #${pr.number}: ${pr.html_url}`);
