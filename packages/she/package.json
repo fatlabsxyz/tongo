@@ -1,6 +1,6 @@
 {
   "name": "@fatsolutions/she",
-  "version": "0.0.2",
+  "version": "0.0.1",
   "description": "Homomorphic Encryption over the Stark curve",
   "homepage": "https://github.com/fatlabsxyz/tongo",
   "repository": {
