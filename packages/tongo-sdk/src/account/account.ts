@@ -12,7 +12,7 @@ import {
     proveTransfer,
     proveWithdraw,
     verify_audit,
-} from "@fatlabsxyz/she-js";
+} from "@fatsolutions/she";
 
 import { AEBalance, AEChaCha, AEHintToBytes, bytesToBigAEHint, parseAEBalance } from "../ae_balance.js";
 import { AUDITOR_PRIVATE } from "../auditor.js";

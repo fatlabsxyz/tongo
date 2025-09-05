@@ -1,4 +1,4 @@
-import { ProjectivePoint, GENERATOR as g, CipherBalance } from "@fatlabsxyz/she-js";
+import { ProjectivePoint, GENERATOR as g, CipherBalance } from "@fatsolutions/she";
 import { BigNumberish } from "starknet";
 import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";

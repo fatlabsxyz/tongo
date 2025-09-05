@@ -52,8 +52,12 @@
   "dependencies": {
     "commander": "^11.0.0",
     "dotenv": "^16.3.1",
-    "@fatlabsxyz/she": "workspace:*",
-    "starknet": "^7.0.0"
+    "starknet": "^7.0.0",
+    "@fatsolutions/she": "workspace:*",
+    "@noble/ciphers": "catalog:",
+    "@noble/hashes": "catalog:",
+    "@scure/base": "catalog:",
+    "@scure/starknet": "catalog:"
   },
   "publishConfig": {
     "access": "public",

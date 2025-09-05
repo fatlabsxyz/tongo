@@ -1,6 +1,6 @@
 import { cairo, CairoOption, Call, CallData, Contract, num } from "starknet";
 
-import { ProofOfFund, ProjectivePoint } from "@fatlabsxyz/she-js";
+import { ProofOfFund, ProjectivePoint } from "@fatsolutions/she";
 
 import { AEBalance } from "../ae_balance.js";
 import { castBigInt } from "../utils.js";

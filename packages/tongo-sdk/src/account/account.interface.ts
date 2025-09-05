@@ -16,7 +16,7 @@ import {
     AccountWithdrawEvent,
 } from "./events.js";
 import { CairoOption } from "starknet";
-import { CipherBalance } from "@fatlabsxyz/she-js";
+import { CipherBalance } from "@fatsolutions/she";
 
 export interface IAccount {
     publicKey: PubKey;

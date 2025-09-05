@@ -1,4 +1,4 @@
-import { CipherBalance, InputsAudit, ProofOfAudit } from "@fatlabsxyz/she-js";
+import { CipherBalance, InputsAudit, ProofOfAudit } from "@fatsolutions/she";
 import { AEBalance } from "../ae_balance.js";
 
 export interface Audit {
