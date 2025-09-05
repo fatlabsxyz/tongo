@@ -1,6 +1,6 @@
-use starknet::ContractAddress;
 use core::poseidon::poseidon_hash_span;
-use crate::verifier::utils::{cast_in_order};
+use starknet::ContractAddress;
+use she::utils::reduce_modulo_order;
 use crate::structs::{
     common::{
         cipherbalance::CipherBalance,
@@ -8,6 +8,7 @@ use crate::structs::{
         starkpoint::StarkPoint,
     },
     traits::{
+        GeneralPrefixData,
         Prefix,
         Challenge,
         AppendPoint,
@@ -42,7 +43,7 @@ pub struct Ragequit {
 /// - nonce: The nonce of the Tongo account.
 /// - to: The starknet contract address to send the funds to.
 /// - amount: The ammount of tongo to ragequit (the total amount of tongos in the account).
-/// - currentBalance: The current CipherBalance stored for the account. TODO: This is not needed anymore
+/// - currentBalance: The current CipherBalance stored for the account.
 #[derive(Serde, Drop, Copy)]
 pub struct InputsRagequit {
     pub y: PubKey,
@@ -50,6 +51,26 @@ pub struct InputsRagequit {
     pub to: ContractAddress,
     pub amount: felt252,
     pub currentBalance: CipherBalance,
+    pub prefix_data: GeneralPrefixData,
+}
+
+/// Computes the prefix by hashing some public inputs.
+impl RagequitPrefix of Prefix<InputsRagequit> {
+    fn compute_prefix(self: @InputsRagequit) -> felt252 {
+        let ragequit_selector = 'ragequit';
+        let GeneralPrefixData {chain_id, tongo_address} = self.prefix_data;
+        let array: Array<felt252> = array![
+            *chain_id,
+            (*tongo_address).into(),
+            ragequit_selector,
+            *self.y.x,
+            *self.y.y,
+            (*self.nonce).into(),
+            *self.amount,
+            (*self.to).into(),
+        ];
+        poseidon_hash_span(array.span())
+    }
 }
 
 /// Proof of ragequit operation.
@@ -61,16 +82,6 @@ pub struct ProofOfRagequit {
 }
 
 
-/// Computes the prefix by hashing some public inputs.
-impl RagequitPrefix of Prefix<InputsRagequit> {
-    /// There is no need to compute the hash of all elements.
-    /// TODO: check this, read git issue
-    fn prefix(self: @InputsRagequit) -> felt252 {
-        let mut arr = array!['ragequit'];         
-        self.serialize(ref arr);
-        poseidon_hash_span(arr.span())
-    }
-}
 
 /// Computes the challenge to be ussed in the Non-Interactive protocol.
 impl ChallengeRagequit of Challenge<ProofOfRagequit> {
@@ -78,6 +89,6 @@ impl ChallengeRagequit of Challenge<ProofOfRagequit> {
        let mut arr = array![prefix];
        arr.append_coordinates(self.Ax);
        arr.append_coordinates(self.AR);
-       cast_in_order(poseidon_hash_span(arr.span()))
+       reduce_modulo_order(poseidon_hash_span(arr.span()))
     }
 }

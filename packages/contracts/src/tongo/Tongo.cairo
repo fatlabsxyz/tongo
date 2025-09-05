@@ -1,12 +1,22 @@
 #[starknet::contract]
 pub mod Tongo {
-    //TODO: Decidir en donde meter STate
-    use crate::tongo::ITongo::{ITongo};
     use starknet::storage::{
-        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+        Map,
+        StoragePathEntry,
+        StoragePointerReadAccess,
+        StoragePointerWriteAccess,
     };
-    use starknet::{ContractAddress, get_caller_address, get_contract_address};
-    use crate::structs::aecipher::{AEBalance, IntoOptionAEBalance};
+    use starknet::{
+        ContractAddress,
+        get_caller_address,
+        get_contract_address,
+        get_tx_info
+    };
+    use crate::tongo::ITongo::ITongo;
+    use crate::structs::{
+        traits::GeneralPrefixData,
+        aecipher::{AEBalance, IntoOptionAEBalance}
+    };
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::structs::common::{
         cipherbalance::{CipherBalance, CipherBalanceTrait},
@@ -20,10 +30,14 @@ pub mod Tongo {
         ragequit::{InputsRagequit, Ragequit},
         rollover::{InputsRollOver, Rollover},
         audit::{InputsAudit, Audit},
-        audit::{verifyAudit},
     };
-    use crate::verifier::verifier::{
-        verify_fund, verify_transfer, verify_withdraw, verify_ragequit,verify_rollover
+    use crate::verifier::{
+        fund::verify_fund,
+        rollover::verify_rollover,
+        ragequit::verify_ragequit,
+        withdraw::verify_withdraw,
+        transfer::verify_transfer,
+        audit::verify_audit,
     };
     use crate::structs::events::{
         TransferEvent,
@@ -35,6 +49,7 @@ pub mod Tongo {
         TransferDeclared,
         AuditorPubKeySet,
     };
+
 
     #[storage]
     struct Storage {
@@ -48,6 +63,13 @@ pub mod Tongo {
         ///
         /// ERC20_amount = Tongo_amount*rate
         rate: u256,
+
+        /// The bit size this contract will work with. This limites the values that cant be proven
+        /// by a range proof. If is set to 32 that means that range proof will only work for values
+        /// between 0 and 2**32-1. 
+        /// Note: The computational cost of verifying a tranfers operation (the most expensive one)
+        /// is about (30 + 10*n) ec_muls and (20 + 8n) ec_adds, where n is the bit_size
+        bit_size: u32,
 
         /// The encrypted balance for the given pubkey.
         balance: Map<PubKey, CipherBalance>,
@@ -64,7 +86,6 @@ pub mod Tongo {
         /// knowledge of the private key and it is only usefull for attempting a fast decryption of `balance.
         ae_balance: Map<PubKey, AEBalance>,
 
-        //TODO: call it last declared balance? think if we need to just use events.
         /// The balance of the given pubkey enrypted for the auditor key.
         ///
         /// If the contract was deployed witouth an auditor, the map is empty and all keys return the Default CipherBalance
@@ -85,10 +106,18 @@ pub mod Tongo {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, owner: ContractAddress,  ERC20:ContractAddress, rate: u256, auditor_key: Option<PubKey>) {
+    fn constructor(
+        ref self: ContractState,
+        owner: ContractAddress,
+        ERC20:ContractAddress,
+        rate: u256,
+        bit_size: u32,
+        auditor_key: Option<PubKey>
+    ) {
         self.owner.write(owner);
         self.ERC20.write(ERC20);
         self.rate.write(rate);
+        self.bit_size.write(bit_size);
 
         if auditor_key.is_some(){
             self._set_auditor_key(auditor_key.unwrap());
@@ -125,8 +154,11 @@ pub mod Tongo {
             self.rate.read()
         }
 
-        /// TODO: At the moment the only thing the owner can do is to rotate the auditor key.
-        /// 
+        /// Returns the bit_size set for this Tongo contract.
+        fn get_bit_size(self: @ContractState) -> u32 {
+            self.bit_size.read()
+        }
+
         /// Returns the contract address of the owner of the Tongo account.
         fn get_owner(self: @ContractState) -> ContractAddress {
             self.owner.read()
@@ -138,9 +170,9 @@ pub mod Tongo {
         fn fund(ref self: ContractState, fund: Fund) {
             let Fund { to, amount, proof, auditPart, hint} = fund;
             let nonce = self.get_nonce(to);
-            let currentBalance = self.get_balance(to);
+            let prefix_data = self._get_general_prefix_data();
 
-            let inputs: InputsFund = InputsFund { y: to, nonce, amount,  currentBalance };
+            let inputs: InputsFund = InputsFund { y: to, nonce, amount, prefix_data };
             verify_fund(inputs, proof);
 
             self._transfer_from_caller(self._unwrap_tongo_amount(amount));
@@ -164,8 +196,10 @@ pub mod Tongo {
             let Withdraw { from, amount, to, proof, auditPart, hint } = withdraw;
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
+            let prefix_data = self._get_general_prefix_data();
+            let bit_size = self.get_bit_size();
             
-            let inputs: InputsWithdraw = InputsWithdraw { y: from, amount, nonce, to, currentBalance };
+            let inputs: InputsWithdraw = InputsWithdraw { y: from, amount, nonce, to, currentBalance,bit_size, prefix_data };
             verify_withdraw(inputs, proof);
 
             let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
@@ -189,7 +223,9 @@ pub mod Tongo {
             let Ragequit { from, amount, to, proof, hint, auditPart } = ragequit;
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
-            let inputs: InputsRagequit = InputsRagequit { y: from, amount, nonce, to, currentBalance };
+            let prefix_data = self._get_general_prefix_data();
+
+            let inputs: InputsRagequit = InputsRagequit { y: from, amount, nonce, to, currentBalance, prefix_data};
             verify_ragequit(inputs, proof);
 
             let zeroBalance: CipherBalance  = CipherBalanceTrait::new(from, 0, 1);
@@ -215,14 +251,18 @@ pub mod Tongo {
 
             let currentBalance= self.get_balance(from);
             let nonce = self.get_nonce(from);
+            let bit_size = self.get_bit_size();
+            let prefix_data = self._get_general_prefix_data();
 
             let inputs: InputsTransfer = InputsTransfer {
-                y: from,
-                y_bar: to,
+                from,
+                to,
                 nonce,
                 currentBalance,
                 transferBalance,
                 transferBalanceSelf,
+                bit_size,
+                prefix_data,
             };
 
             verify_transfer(inputs, proof);
@@ -248,7 +288,9 @@ pub mod Tongo {
         fn rollover(ref self: ContractState, rollover: Rollover) {
             let Rollover { to, proof, hint } = rollover;
             let nonce = self.get_nonce(to);
-            let inputs: InputsRollOver = InputsRollOver { y: to, nonce: nonce };
+            let prefix_data = self._get_general_prefix_data();
+
+            let inputs: InputsRollOver = InputsRollOver { y: to, nonce, prefix_data };
             verify_rollover(inputs, proof);
             let rollovered = self.pending.entry(to).read();
 
@@ -301,7 +343,7 @@ pub mod Tongo {
 
         /// Rotates the current auditor public key.
         fn change_auditor_key(ref self: ContractState, new_auditor_key:PubKey) {
-            assert!(get_caller_address() == self.owner.read(), "Caller not owner");
+            assert!(get_caller_address() == self.owner.read(), "Caller is not owner");
             assert!(self.auditor_key.read().is_some(), "This contract was deployed without an auditor");
             self._set_auditor_key(new_auditor_key);
         }
@@ -407,7 +449,7 @@ pub mod Tongo {
             let auditorPubKey = self.auditor_key.read().unwrap();
             let storedBalance= self.get_balance(y);
             let inputs: InputsAudit = InputsAudit {y, auditorPubKey, storedBalance, auditedBalance };
-            verifyAudit(inputs, auditProof);  
+            verify_audit(inputs, auditProof);  
 
             self._set_audit(y, auditedBalance);
             self._overwrite_audit_hint(y, hint);
@@ -422,9 +464,16 @@ pub mod Tongo {
             let auditorPubKey = self.auditor_key.read().unwrap();
             let Audit {auditedBalance, proof: auditProof, hint: hint}  = audit.unwrap();
             let inputs: InputsAudit = InputsAudit {y:from, auditorPubKey, storedBalance:transferBalance, auditedBalance };
-            verifyAudit(inputs, auditProof);  
+            verify_audit(inputs, auditProof);  
 
             self.emit(TransferDeclared{from, to, nonce, auditorPubKey,declaredCipherBalance: auditedBalance, hint});
+        }
+
+        fn _get_general_prefix_data(self: @ContractState) -> GeneralPrefixData {
+            let tongo_address = get_contract_address();
+            let chain_id = get_tx_info().unbox().chain_id;
+
+            GeneralPrefixData {chain_id, tongo_address}
         }
     }
 }

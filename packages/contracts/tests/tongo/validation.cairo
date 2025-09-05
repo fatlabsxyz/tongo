@@ -7,7 +7,7 @@ use crate::tongo::operations::fundOperation;
 use crate::tongo::setup::{setup_tongo};
 
 #[test]
-#[should_panic(expected: 'PubKey not an EcPoint')]
+#[should_panic(expected: "PubKey is not an EcPoint")]
 fn tamperPubKey() {
     let (_tongo_address, dispatcher) = setup_tongo();
 

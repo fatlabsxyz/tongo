@@ -1,5 +1,9 @@
 use core::traits::{Into, TryInto};
-use core::ec::{NonZeroEcPoint, EcPointTrait, EcPoint};
+use core::ec::{
+    NonZeroEcPoint,
+    EcPointTrait,
+    EcPoint
+};
 
 /// Represents a user public key. Private keys are numbers  x \in (0, core::ec::stark_curve::CURVE_ORDER) and
 /// public keys are the NonZeroEcPoint y = g**x where g is the starknet curve generator.
@@ -53,7 +57,7 @@ pub impl SerdePubKey of Serde<PubKey> {
         let x  = (*serialized.pop_front()?);
         let y = (*serialized.pop_front()?);
         let option = EcPointTrait::new_nz(x,y);
-        assert(option.is_some(),'PubKey not an EcPoint');
+        assert!(option.is_some(),"PubKey is not an EcPoint");
         return Some(PubKey{x, y});
     }
 }

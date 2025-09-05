@@ -26,8 +26,9 @@ pub trait ITongo<TContractState> {
     /// The amount variable in all operation refers to the amount of Tongos.
     fn get_rate(self:@TContractState) -> u256;
 
-    /// TODO: At the moment the only thing the owner can do is to rotate the auditor key.
-    /// 
+    /// Returns the bit_size set for this Tongo contract.
+    fn get_bit_size(self: @TContractState) -> u32;
+
     /// Returns the contract address of the owner of the Tongo account.
     fn get_owner(self:@TContractState) -> ContractAddress;
 

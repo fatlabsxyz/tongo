@@ -1,6 +1,9 @@
 use core::traits::{Into, TryInto};
-use core::ec::{NonZeroEcPoint, EcPointTrait, EcPoint};
-
+use core::ec::{
+    NonZeroEcPoint,
+    EcPointTrait,
+    EcPoint
+};
 
 /// This struct is inteded to wrap the coordinates of a NonZeroEcPoint.
 #[derive(Drop, Debug, Copy, starknet::Store, Default)]
@@ -22,7 +25,7 @@ pub impl SerdeStarkPoint of Serde<StarkPoint> {
         let x  = (*serialized.pop_front()?);
         let y = (*serialized.pop_front()?);
         let option: Option<NonZeroEcPoint> = EcPointTrait::new_nz(x,y);
-        assert(option.is_some(),'StarkPoint not an EcPoint');
+        assert!(option.is_some(),"StarkPoint is not an EcPoint");
         return Some(StarkPoint{x, y});
     }
 }

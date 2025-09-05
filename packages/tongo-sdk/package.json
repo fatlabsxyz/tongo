@@ -57,7 +57,7 @@
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.4.1",
   "dependencies": {
-    "@fatsolutions/she": "workspace:*",
+    "@fatsolutions/she": "0.1.0",
     "@noble/ciphers": "catalog:",
     "@noble/hashes": "catalog:",
     "@scure/base": "catalog:",

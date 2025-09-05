@@ -1,5 +1,5 @@
 use core::poseidon::poseidon_hash_span;
-use crate::verifier::utils::{cast_in_order};
+use she::utils::reduce_modulo_order;
 use crate::structs::{
     common::{
         cipherbalance::CipherBalance,
@@ -7,6 +7,7 @@ use crate::structs::{
         starkpoint::StarkPoint,
     },
     traits::{
+        GeneralPrefixData,
         Prefix,
         Challenge,
         AppendPoint,
@@ -15,7 +16,7 @@ use crate::structs::{
     aecipher::AEBalance,
 };
 
-use crate::structs::proofbit::ProofOfBit;
+use crate::verifier::range::Range;
 
 /// Represents the calldata of a transfer operation.
 ///
@@ -44,21 +45,41 @@ pub struct Transfer {
 
 /// Public inputs of the verifier for the transfer operation.
 ///
-/// - y: The Tongo account to take tongos from.
-/// - y_bar: The Tongo account to send tongos to.
+/// - from: The Tongo account to take tongos from.
+/// - to: The Tongo account to send tongos to.
 /// - nonce: The nonce of the Tongo account (y).
-/// - currentBalance: The current CipherBalance stored for the account (y)
-/// - transferBalance: The amount to transfer encrypted for the pubkey of `y_bar`.
-/// - transferBalanceSelf: The amount to transfer encrypted for the pubkey of `y`.
-/// TODO: Change y/y_bar for from/to
+/// - currentBalance: The current CipherBalance stored for the account (from)
+/// - transferBalance: The amount to transfer encrypted for the pubkey of `to`.
+/// - transferBalanceSelf: The amount to transfer encrypted for the pubkey of `from`.
 #[derive(Serde, Drop, Copy)]
 pub struct InputsTransfer {
-    pub y: PubKey,
-    pub y_bar: PubKey,
+    pub from: PubKey,
+    pub to: PubKey,
     pub nonce: u64,
     pub currentBalance: CipherBalance,
     pub transferBalance: CipherBalance,
     pub transferBalanceSelf: CipherBalance,
+    pub bit_size:u32,
+    pub prefix_data: GeneralPrefixData,
+}
+
+/// Computes the prefix by hashing some public inputs.
+impl TransferPrefix of Prefix<InputsTransfer> {
+    fn compute_prefix(self: @InputsTransfer) -> felt252 {
+        let transfer_selector = 'transfer';
+        let GeneralPrefixData {chain_id, tongo_address} = self.prefix_data;
+        let array: Array<felt252> = array![
+            *chain_id,
+            (*tongo_address).into(),
+            transfer_selector,
+            *self.from.x,
+            *self.from.y,
+            *self.to.x,
+            *self.to.y,
+            (*self.nonce).into(),
+        ];
+        poseidon_hash_span(array.span())
+    }
 }
 
 /// Proof of withdraw operation.
@@ -78,20 +99,9 @@ pub struct ProofOfTransfer {
     pub s_b2: felt252,
     pub s_r2: felt252,
     pub R_aux: StarkPoint,
-    pub range: Span<ProofOfBit>,
+    pub range: Range,
     pub R_aux2: StarkPoint,
-    pub range2: Span<ProofOfBit>,
-}
-
-/// Computes the prefix by hashing some public inputs.
-impl TransferPrefix of Prefix<InputsTransfer> {
-    /// There is no need to compute the hash of all elements.
-    /// TODO: check this, read git issue
-    fn prefix(self: @InputsTransfer) -> felt252 {
-        let mut arr = array!['transfer'];         
-        self.serialize(ref arr);
-        poseidon_hash_span(arr.span())
-    }
+    pub range2: Range,
 }
 
 /// Computes the challenge to be ussed in the Non-Interactive protocol.
@@ -106,6 +116,6 @@ impl ChallengeTransfer of Challenge<ProofOfTransfer> {
        arr.append_coordinates(self.A_v);
        arr.append_coordinates(self.A_v2);
        arr.append_coordinates(self.A_bar);
-       cast_in_order(poseidon_hash_span(arr.span()))
+       reduce_modulo_order(poseidon_hash_span(arr.span()))
     }
 }

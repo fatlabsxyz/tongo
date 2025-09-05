@@ -1,13 +1,15 @@
 pub mod verifier {
     pub mod utils;
-    pub mod verifier;
-    //contract
-    pub mod she;
-
+    pub mod range;
+    pub mod fund;
+    pub mod rollover;
+    pub mod ragequit;
+    pub mod withdraw;
+    pub mod transfer;
+    pub mod audit;
 }
 pub mod structs {
     pub mod traits;
-    pub mod errors;
     pub mod events;
 
     pub mod common {
@@ -28,7 +30,6 @@ pub mod structs {
 
     pub mod aecipher;
 
-    pub mod proofbit;
 }
 
 

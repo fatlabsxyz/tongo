@@ -1,6 +1,8 @@
 import { CairoOption, Call, Contract } from "starknet";
+import { CipherBalance } from "../types.js";
 
-import { ProjectivePoint, CipherBalance, ProofOfTransfer } from "@fatsolutions/she";
+import { ProjectivePoint } from "@fatsolutions/she"
+import {ProofOfTransfer} from "../provers/transfer";
 
 import { AEBalance } from "../ae_balance.js";
 import { Audit } from "./audit.js";

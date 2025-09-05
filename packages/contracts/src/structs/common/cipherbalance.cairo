@@ -4,7 +4,7 @@ use core::ec::{
     NonZeroEcPoint,
     EcPointTrait,
     EcStateTrait,
-    stark_curve:: { GEN_X, GEN_Y},
+    stark_curve::{GEN_X, GEN_Y},
 };
 
 use crate::structs::common::{

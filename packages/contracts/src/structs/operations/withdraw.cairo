@@ -1,6 +1,6 @@
-use starknet::ContractAddress;
 use core::poseidon::poseidon_hash_span;
-use crate::verifier::utils::{cast_in_order};
+use starknet::ContractAddress;
+use she::utils::reduce_modulo_order;
 use crate::structs::{
     common::{
         cipherbalance::CipherBalance,
@@ -8,6 +8,7 @@ use crate::structs::{
         starkpoint::StarkPoint,
     },
     traits::{
+        GeneralPrefixData,
         Prefix,
         Challenge,
         AppendPoint,
@@ -16,7 +17,7 @@ use crate::structs::{
     aecipher::AEBalance,
 };
 
-use crate::structs::proofbit::ProofOfBit;
+use crate::verifier::range::Range;
 
 /// Represents the calldata of a withdraw operation.
 ///
@@ -51,7 +52,30 @@ pub struct InputsWithdraw {
     pub to: ContractAddress,
     pub amount: felt252,
     pub currentBalance: CipherBalance,
+    pub bit_size: u32,
+    pub prefix_data: GeneralPrefixData,
 }
+
+/// Computes the prefix by hashing some public inputs.
+impl WithdrawPrefix of Prefix<InputsWithdraw> {
+    fn compute_prefix(self: @InputsWithdraw) -> felt252 {
+        let withdraw_selector = 'withdraw';
+        let GeneralPrefixData {chain_id, tongo_address} = self.prefix_data;
+        let array: Array<felt252> = array![
+            *chain_id,
+            (*tongo_address).into(),
+            withdraw_selector,
+            *self.y.x,
+            *self.y.y,
+            (*self.nonce).into(),
+            *self.amount,
+            (*self.to).into(),
+        ];
+        poseidon_hash_span(array.span())
+    }
+}
+
+
 
 /// Proof of withdraw operation.
 #[derive(Serde, Drop, Copy)]
@@ -64,18 +88,7 @@ pub struct ProofOfWithdraw {
     pub sb: felt252,
     pub sr: felt252,
     pub R_aux: StarkPoint,
-    pub range: Span<ProofOfBit>,
-}
-
-/// Computes the prefix by hashing some public inputs.
-impl WithdrawPrefix of Prefix<InputsWithdraw> {
-    /// There is no need to compute the hash of all elements.
-    /// TODO: check this, read git issue
-    fn prefix(self: @InputsWithdraw) -> felt252 {
-        let mut arr = array!['withdraw'];         
-        self.serialize(ref arr);
-        poseidon_hash_span(arr.span())
-    }
+    pub range: Range,
 }
 
 /// Computes the challenge to be ussed in the Non-Interactive protocol.
@@ -86,7 +99,7 @@ impl ChallengeWithdraw of Challenge<ProofOfWithdraw> {
        arr.append_coordinates(self.A_r);
        arr.append_coordinates(self.A);
        arr.append_coordinates(self.A_v);
-       cast_in_order(poseidon_hash_span(arr.span()))
+       reduce_modulo_order(poseidon_hash_span(arr.span()))
     }
 }
 

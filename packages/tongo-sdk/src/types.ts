@@ -1,7 +1,25 @@
-import { ProjectivePoint, GENERATOR as g, CipherBalance } from "@fatsolutions/she";
+import { ProjectivePoint} from "@fatsolutions/she";
 import { BigNumberish } from "starknet";
 import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";
+
+import {
+  CURVE,
+  poseidonHashMany,
+} from "@scure/starknet";
+
+export interface GeneralPrefixData{
+    chain_id: bigint,
+    tongo_address:bigint,
+}
+
+export const CURVE_ORDER = CURVE.n;
+export const GENERATOR: ProjectivePoint = new ProjectivePoint(CURVE.Gx, CURVE.Gy, 1n);
+export const SECONDARY_GENERATOR: ProjectivePoint = new ProjectivePoint(
+  627088272801405713560985229077786158610581355215145837257248988047835443922n,
+  962306405833205337611861169387935900858447421343428280515103558221889311122n,
+  1n
+);
 
 export type TongoAddress = string & { __type: "tongo" };
 
@@ -9,6 +27,35 @@ export type TongoAddress = string & { __type: "tongo" };
 export interface StarkPoint {
     x: BigNumberish;
     y: BigNumberish;
+}
+
+/// Balances are encrypted with ElGammal, which consists in a tuple of curve points (L, R). Internally the points
+/// are constructed with L = g**b y**r, R = g**r where g is the generator of the starknet curve, y is a pubkey, r is 
+/// a random value and b is the balance to encrypt.
+export interface CipherBalance {
+  L: ProjectivePoint;
+  R: ProjectivePoint;
+}
+
+export function createCipherBalance(
+  y: ProjectivePoint,
+  amount: bigint,
+  random: bigint,
+): CipherBalance {
+  if (amount === 0n) {
+    const L = y.multiplyUnsafe(random);
+    const R = GENERATOR.multiplyUnsafe(random);
+    return { L, R };
+  }
+  const L = GENERATOR.multiply(amount).add(y.multiplyUnsafe(random));
+  const R = GENERATOR.multiplyUnsafe(random);
+  return { L, R };
+}
+
+
+//This function coincides with cairo compure_prefix
+export function compute_prefix(seq: bigint[]) {
+  return poseidonHashMany(seq);
 }
 
 /// Converts a StarkPoint to a ProjectivePoint. This operation could throw an error
@@ -29,7 +76,7 @@ export type PubKey = StarkPoint;
 
 /// Constructs a public key from a given private key.
 export function derivePublicKey(privateKey: bigint) {
-    return projectivePointToStarkPoint(g.multiply(privateKey));
+    return projectivePointToStarkPoint(GENERATOR.multiply(privateKey));
 }
 
 // assumes compressed format
@@ -63,3 +110,4 @@ export function parseCipherBalance({ L, R }: { L: StarkPoint; R: StarkPoint }): 
         R: starkPointToProjectivePoint(R),
     };
 }
+

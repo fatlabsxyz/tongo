@@ -1,7 +1,6 @@
 use starknet::ContractAddress;
 
 /// Minimal interface of an ERC20 ussed by Tongo.
-/// TODO: Replace this interface for the standar OZ ERC20 interface.
 #[starknet::interface]
 pub trait IERC20<TContractState> {
     fn transfer_from( ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;

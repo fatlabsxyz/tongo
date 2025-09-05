@@ -16,7 +16,7 @@ import {
     AccountWithdrawEvent,
 } from "./events.js";
 import { CairoOption } from "starknet";
-import { CipherBalance } from "@fatsolutions/she";
+import { CipherBalance } from "../types";
 
 export interface IAccount {
     publicKey: PubKey;
@@ -93,10 +93,3 @@ export interface AccountState {
     nonce: bigint;
 }
 
-export interface AccountStateForTesting {
-    balance: bigint;
-    ae_hint: bigint | undefined;
-    pending: bigint;
-    audited: bigint | undefined;
-    nonce: bigint;
-}

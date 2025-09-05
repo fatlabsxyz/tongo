@@ -1,7 +1,7 @@
 use tongo::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
 use snforge_std::{
     ContractClass, ContractClassTrait, DeclareResultTrait, Token, declare, set_balance,
-    start_cheat_caller_address, stop_cheat_caller_address,
+    start_cheat_caller_address, stop_cheat_caller_address, start_cheat_chain_id_global,
 };
 use starknet::ContractAddress;
 use tongo::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
@@ -9,7 +9,7 @@ use tongo::structs::{
     aecipher::AEBalance,
 };
 
-use crate::consts::{TONGO_ADDRESS,STRK_ADDRESS,USER_CALLER, AUDITOR_PRIVATE, OWNER_ADDRESS, RATE};
+use crate::consts::{TONGO_ADDRESS,STRK_ADDRESS,USER_CALLER, AUDITOR_PRIVATE, OWNER_ADDRESS, RATE, CHAIN_ID, BIT_SIZE};
 use crate::prover::utils::pubkey_from_secret;
 
 pub fn empty_ae_hint() -> AEBalance {
@@ -38,12 +38,22 @@ pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
 
     let audit_key = pubkey_from_secret(AUDITOR_PRIVATE);
     // Option<PubKey> se serializa como [0, x, y] si es un some o [1] si es un none
-    let constructor_calldata: Array<felt252> = array![OWNER_ADDRESS.into(),  STRK_ADDRESS.into(), RATE.low.into(), RATE.high.into(), 0 , audit_key.x, audit_key.y,];
+    let constructor_calldata: Array<felt252> = array![
+        OWNER_ADDRESS.into(),
+        STRK_ADDRESS.into(),
+        RATE.low.into(),
+        RATE.high.into(),
+        BIT_SIZE.into(),
+        0,
+        audit_key.x,
+        audit_key.y
+    ];
     let tongo_address = deploy_contract(
         tongo_contract, TONGO_ADDRESS.try_into().unwrap(), constructor_calldata,
     );
     let tongo_dispatcher = ITongoDispatcher { contract_address: tongo_address };
     start_cheat_caller_address(TONGO_ADDRESS, USER_CALLER);
+    start_cheat_chain_id_global(CHAIN_ID);
 
     (tongo_address, tongo_dispatcher)
 }

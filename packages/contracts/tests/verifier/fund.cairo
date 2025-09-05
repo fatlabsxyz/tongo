@@ -1,6 +1,6 @@
 use crate::prover::utils::{generate_random};
 use crate::prover::functions::{prove_fund};
-use tongo::verifier::verifier::{verify_fund};
+use tongo::verifier::fund::{verify_fund};
 
 use tongo::structs::common::{
     cipherbalance::CipherBalanceTrait,

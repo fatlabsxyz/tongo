@@ -15,9 +15,9 @@ pub mod tongo {
 }
 
 pub mod verifier {
-    pub mod verifier;
     pub mod fund;
     pub mod withdraw;
+    pub mod ragequit;
     pub mod transfer;
 }
 
