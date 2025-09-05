@@ -1,4 +1,4 @@
-import { CipherBalance, decipherBalance } from "@fatlabsxyz/she-js";
+import { CipherBalance, decipherBalance } from "@fatsolutions/she";
 import { BigNumberish, Contract, RpcProvider, TypedContractV2 } from "starknet";
 
 import { RawAccountState } from "./account/account.interface.js";
