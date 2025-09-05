@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "An SDK for interacting with Tongo contracts",
   "homepage": "https://github.com/fatlabsxyz/tongo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fatlabsxyz/tongo.git",
+    "directory": "packages/tongo-sdk"
+  },
   "author": {
       "name": "Fat Solutions",
       "email": "root@fatlabs.xyz",
@@ -21,7 +26,7 @@
     "package.json",
     "!**/*.tsbuildinfo"
   ],
-  "main": "index.js",
+  "main": "dist/index.js",
   "bin": {
     "tongo": "./dist/cli.js"
   },
@@ -42,7 +47,7 @@
     "format": "prettier --config ./prettier.config.js --check \"{src,test}/**/*.{js,ts,json}\"",
     "format:fix": "prettier --config ./prettier.config.js --write \"{src,test,tests}/**/*.{js,ts,json}\""
   },
-  "license": "ISC",
+  "license": "Apache-2.0",
   "packageManager": "pnpm@10.4.1",
   "dependencies": {
     "commander": "^11.0.0",
