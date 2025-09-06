@@ -1,6 +1,6 @@
 {
   "name": "@fatsolutions/tongo-sdk",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "An SDK for interacting with Tongo contracts",
   "homepage": "https://github.com/fatlabsxyz/tongo",
   "repository": {
@@ -9,16 +9,16 @@
     "directory": "packages/tongo-sdk"
   },
   "author": {
-      "name": "Fat Solutions",
-      "email": "root@fatlabs.xyz",
-      "url": "https://fatsolutions.xyz/"
+    "name": "Fat Solutions",
+    "email": "root@fatlabs.xyz",
+    "url": "https://fatsolutions.xyz/"
   },
   "keywords": [
-      "starknet",
-      "tongo",
-      "confidential",
-      "erc20",
-      "payments"
+    "starknet",
+    "tongo",
+    "confidential",
+    "erc20",
+    "payments"
   ],
   "files": [
     "dist/*",
