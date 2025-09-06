@@ -70,12 +70,11 @@ jobs:
           run_install: false
 
       - name: Set-up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20.x'
-          cache: "pnpm"
-          cache-dependency-path: "../../pnpm-lock.yaml"
           registry-url: "https://registry.npmjs.org/"
+          package-manager-cache: false
 
       - name: Update package.json version from tag
         env:
