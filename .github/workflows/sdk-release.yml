@@ -8,10 +8,6 @@ on:
 permissions:
   contents: read
 
-defaults:
-  run:
-    working-directory: packages/tongo-sdk
-
 jobs:
   build:
     name: Build, Test and generate artifacts
@@ -32,15 +28,16 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Install 
+      - name: Install
         run: pnpm install --frozen-lockfile
-        working-directory: ../../
 
-      - name: Build
+      - name: Build she
         run: pnpm build
+        working-directory: packages/she
 
-      # - name: Test
-      #   run: node test/index.js
+      - name: Build sdk
+        run: pnpm build
+        working-directory: packages/tongo-sdk
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -75,7 +72,7 @@ jobs:
         with:
           node-version: '20.x'
           cache: "pnpm"
-          cache-dependency-path: "../../pnpm-lock.yaml"
+          cache-dependency-path: "pnpm-lock.yaml"
           registry-url: "https://registry.npmjs.org/"
 
       - name: Update package.json version from tag
@@ -84,8 +81,10 @@ jobs:
         run: |
           VERSION=${TAG#sdk-v}
           pnpm version $VERSION --no-git-tag-version
+        working-directory: packages/tongo-sdk
 
       - name: Publish
         run: pnpm publish --access public --verbose --no-git-checks
+        working-directory: packages/tongo-sdk
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
