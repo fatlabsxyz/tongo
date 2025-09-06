@@ -8,8 +8,6 @@ on:
 permissions:
   contents: read
 
-# Removed global working-directory to allow workspace root installs
-
 jobs:
   build:
     name: Build, Test and generate artifacts
@@ -30,15 +28,16 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Install 
+      - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Build
+      - name: Build she
+        run: pnpm build
+        working-directory: packages/she
+
+      - name: Build sdk
         run: pnpm build
         working-directory: packages/tongo-sdk
-
-      # - name: Test
-      #   run: node test/index.js
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
