@@ -27,12 +27,15 @@
     "!**/*.tsbuildinfo"
   ],
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "tongo": "./dist/cli.js"
   },
   "exports": {
     ".": {
-      "import": "./dist/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
     }
   },
   "scripts": {
