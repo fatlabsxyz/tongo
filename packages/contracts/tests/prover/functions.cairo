@@ -147,24 +147,25 @@ pub fn prove_ragequit(
     let y = pubkey_from_secret(x);
     decipher_balance(amount, x, currentBalance);
 
+
     let ( _ , R) = currentBalance.points_nz();
-    let G = R.into() - g;
     let inputs: InputsRagequit = InputsRagequit {y:y.try_into().unwrap(), amount, to, nonce, currentBalance };
 
     let prefix = inputs.prefix();
 
     //poe for y = g**x and L/g**b = R**x
-    let k = generate_random(seed, 1);
-    let A_x: NonZeroEcPoint = EcPointTrait::mul(g, k).try_into().unwrap();
-    let A_cr: NonZeroEcPoint = EcPointTrait::mul(G, k).try_into().unwrap();
+    let kx = generate_random(seed, 1);
 
-    let mut commits: Array<NonZeroEcPoint> = array![A_x, A_cr];
+    let Ax: NonZeroEcPoint = (g.into().mul(kx)).try_into().unwrap();
+    let AR: NonZeroEcPoint = R.into().mul(kx).try_into().unwrap();
+
+    let mut commits: Array<NonZeroEcPoint> = array![Ax,AR];
 
     let c = challenge_commits(prefix, ref commits);
-    let s = compute_s(c, x, k);
+    let sx = compute_s(c, x, kx);
 
     let proof: ProofOfRagequit = ProofOfRagequit {
-        A_x: A_x.into(), A_cr: A_cr.into(), s_x: s,
+        Ax: Ax.into(), AR: AR.into(),  sx: sx
     };
 
     let newBalance: CipherBalance  = CipherBalanceTrait::new(y, 0, 1);

@@ -11,7 +11,7 @@ import { writeFileSync } from 'fs';
 import { Affine } from "./types.js";
 import { CURVE_ORDER, GENERATOR, SECONDARY_GENERATOR } from "./constants.js";
 
-import { poeN, proveRange, verifyRange, ProofOfBit } from "./homomorphic_encryption.js";
+import { poeN, proveRange, verifyRange, ProofOfBit, verifySameEncryptionSameKey } from "./homomorphic_encryption.js";
 export function encrypt(sc: bigint): Affine {
   return GENERATOR.multiplyUnsafe(sc).toAffine();
 }
@@ -340,9 +340,9 @@ function prefixRagequit(inputs: InputsRagequit): bigint {
 /// Proof of ragequit operation.
 /// TODO: remove _ in names?
 export interface ProofOfRagequit {
-  A_x: ProjectivePoint;
-  A_cr: ProjectivePoint;
-  s_x: bigint;
+  Ax: ProjectivePoint;
+  AR: ProjectivePoint;
+  sx: bigint;
 }
 
 
@@ -362,8 +362,6 @@ export function proveRagequit(
     const temp = GENERATOR.multiplyUnsafe(amount)
     if (!g_b.equals(temp)) {throw new Error("storedBalance is not an encryption of balance")}; 
 
-    const G = R0.subtract(GENERATOR);
-
     const inputs: InputsRagequit = {
         y,
         nonce,
@@ -373,14 +371,15 @@ export function proveRagequit(
     };
     const prefix = prefixRagequit(inputs);
 
-    const k = generateRandom()
-    const A_x = GENERATOR.multiplyUnsafe(k);
-    const A_cr = G.multiplyUnsafe(k);
+    const kx = generateRandom()
 
-    const c = challengeCommits2(prefix, [A_x, A_cr]);
-    const s_x = (k + x * c) % CURVE_ORDER;
+    const Ax = GENERATOR.multiply(kx);
+    const AR = R0.multiplyUnsafe(kx);
 
-    const proof: ProofOfRagequit = { A_x: A_x, A_cr: A_cr, s_x: s_x };
+    const c = challengeCommits2(prefix, [Ax, AR]);
+    const sx = (kx + x * c) % CURVE_ORDER;
+
+    const proof: ProofOfRagequit = {Ax,AR,sx};
 
     const newBalance = cipherBalance(y, 0n, 1n);
     return { inputs, proof, newBalance};
@@ -407,23 +406,21 @@ export function verifyRagequit(
 ) {
 
   const prefix = prefixRagequit(inputs);
-  const c = challengeCommits2(prefix, [proof.A_x, proof.A_cr]);
+  const c = challengeCommits2(prefix, [proof.Ax,proof.AR]);
 
-  let {L: L0, R:R0} = inputs.currentBalance;
 
-  let res = poeN(inputs.y, [GENERATOR], proof.A_x, c, [proof.s_x]);
+  let res = poeN(inputs.y, [GENERATOR], proof.Ax, c, [proof.sx]);
   if (res == false) {
     throw new Error("error in poe y");
   }
 
-  const {L: L1, R: R1} = cipherBalance(inputs.y, inputs.amount, 1n); 
+  let {L: L1, R:R1} = inputs.currentBalance;
 
-  const Y = L0.subtract(L1);
-  const G = R0.subtract(R1);
+  let L = L1.subtract(GENERATOR.multiply(inputs.amount));
 
-  res = poe(Y, G, proof.A_cr, c, proof.s_x);
+  res = poeN(L, [R1], proof.AR, c, [proof.sx]);
   if (res == false) {
-    throw new Error("error in poe Y");
+    throw new Error("error in poe R");
   }
 }
 // -----------------------------  RAGEQUIT  -------------------------------------------------------
