@@ -319,15 +319,15 @@ export const tongoAbi = [
         "name": "tongo::structs::operations::ragequit::ProofOfRagequit",
         "members": [
             {
-                "name": "A_x",
+                "name": "Ax",
                 "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
-                "name": "A_cr",
+                "name": "AR",
                 "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
-                "name": "s_x",
+                "name": "sx",
                 "type": "core::felt252"
             }
         ]

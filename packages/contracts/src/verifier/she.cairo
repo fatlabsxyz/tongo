@@ -97,54 +97,25 @@ pub fn verifyElGammal(
     true
 }
 
-/// Verifies that two valid ElGammal encryption (L1,R1) = (g**b y**r1, g**r1) and (L2, R2) = (g**b y**r2, g**r2) 
-/// for the same publick key y=g**x encrypt the same balance. This is done by noting that
-/// L1/L2 = y**r1/y**r2 = (R1/R2)**x. We need to prove a poe for Y=G**x with Y=L1/L2 and G=R1/R2
-///
-/// P:  k <-- R        sends    A=G**k
-/// V:  c <-- R        sends    c
-/// P:  s = k + c*x    send     s
-/// The verifier asserts:
-/// - G**sr == A * (Y**c)  (poe)
-/// 
-/// EC_MUL: 2
-/// EC_ADD: 3
-pub fn verifySameEncryptionSameKey(
-    L1:NonZeroEcPoint,
-    R1:NonZeroEcPoint,
-    L2:NonZeroEcPoint,
-    R2:NonZeroEcPoint,
-    g:NonZeroEcPoint,
-    A:NonZeroEcPoint,
-    c:felt252,
-    s:felt252,
-) -> bool {
-    if (R1.coordinates() == R2.coordinates()) { return L1.coordinates() == L2.coordinates(); }
-    let L1: EcPoint = L1.into();
-    let R1: EcPoint = R1.into();
-    let Y:NonZeroEcPoint = (L1 - L2.into()).try_into().unwrap();
-    let G:NonZeroEcPoint = (R1 - R2.into()).try_into().unwrap();
-    assert!(poe(Y, G, A, c, s),"Q1");
-    true
-}
 
 
-/// Verifies that two encription of an amount b for two different keys are valid and that they are indeed encrypting the same 
-/// amount b. Note: We assume here that the two randoms r1 and r2 are known by the proover. If they are the same this could be a little more efficient.
-/// (L1, R2) = (g**b y1**r1, g**r1),  (L2, R2) = (g**b y2**r2, g**r2). The protocol runs as follows
+/// Verifies that two encryptions for two different keys are valid and that they are encrypting the same 
+/// amount b. Note: We assume here that the two randoms r1 and r2 are known by the proover. This proof
+/// is just two proof of ElGammal encryption which both use the same value sb.
+/// (L1, R1) = (g**b y1**r1, g**r1),  (L2, R2) = (g**b y2**r2, g**r2). The protocol runs as follows
 ///
 /// P:  kb,kr1,kr2 <-- R        sends    AL1=g**kb y1**kr1, AR1=g**kb, AL2=g**kb y2**kr2, AR2=g**kr2
 /// V:          c  <-- R        sends    c
-/// P:  sb = kb  + c*b          send     sb
-/// P:  sr1 = kr1 + c*r1        send     sr1
-/// P:  sr2 = kr2 + c*r2        send     sr2
+/// P:  sb  = kb  + c*b          sends    sb
+/// P:  sr1 = kr1 + c*r1        sends    sr1
+/// P:  sr2 = kr2 + c*r2        sends    sr2
 /// The verifier asserts:
 ///  - The correct encription of (L1,R1)
 ///  - The correct encription of (L2,R2)
 /// 
 /// EC_MUL: 10
 /// EC_ADD: 6
-pub fn verifySameEncryptionKnownRandom(
+pub fn verifySameEncryption(
     L1:NonZeroEcPoint,
     R1:NonZeroEcPoint,
     L2:NonZeroEcPoint,
@@ -169,10 +140,73 @@ pub fn verifySameEncryptionKnownRandom(
     assert!(verifyElGammal(L2,R2,g,y2,AL2,AR2,c,sb,sr2), "W2");
 }
 
-/// We want to show that the cipher balance that x can decryp but does not know the random (usual in cipherbalance stored),
-/// encrypts the same ammount that a cipherbalance (L2,R2) given by x and encrypted to maybe another pubkey (ussualy to an auditor).
+
+/// Verifies that two encryptions for the same keys are valid and that they are encrypting the same 
+/// amount b. For this proof, the prover knows the secret of the key. This is equivalent to verifySameEncription 
+/// but with an optimization based in the knowledge of the secret x. If the secret is not know to the prover,
+/// verifySameEncription can be used.
+///
+/// We prove first, the correctness of one of the cipherBalances (L1, R1) = (g**b y1**r1, g**r1),
+/// (L2, R2) = (g**b y2**r2, g**r2)., then by noting that L1/L2 = y**r1/y**r2 = (R1/R2)**x. 
+/// We need to prove a poe for Y=G**x with Y=L1/L2 and G=R1/R2
+///
+/// P:  k,kb,kr <-- R        sends    A=G**k, AL1 = g**kby**kr, AR1 = g**kr
+/// V:  c <-- R              sends    c
+/// P:  s = k + c*x          sends    s
+/// P:  sb = kb  + c*b       sends    sb
+/// P:  sr = kr + c*r        sends    sr
+/// The verifier asserts:
+/// - verifyElGammal for (L1,R1)
+/// - G**sr == A * (Y**c)  (poe)
 /// 
-/// EC_MUL: 10
+/// EC_MUL: 7
+/// EC_ADD: 6
+pub fn verifySameEncryptionSameKey(
+    L1:NonZeroEcPoint,
+    R1:NonZeroEcPoint,
+    L2:NonZeroEcPoint,
+    R2:NonZeroEcPoint,
+    g:NonZeroEcPoint,
+    y: NonZeroEcPoint,
+    AL1: NonZeroEcPoint,
+    AR1: NonZeroEcPoint,
+    A:NonZeroEcPoint,
+    c:felt252,
+    s:felt252,
+    sb:felt252,
+    sr:felt252,
+) -> bool {
+    assert!(verifyElGammal(L1,R1,g,y,AL1,AR1,c,sb,sr), "W1");
+    if (R1.coordinates() == R2.coordinates()) { return L1.coordinates() == L2.coordinates(); }
+    let L2: EcPoint = L2.into();
+    let R2: EcPoint = R2.into();
+    let Y:NonZeroEcPoint = (L2 - L1.into()).try_into().unwrap();
+    let G:NonZeroEcPoint = (R2 - R1.into()).try_into().unwrap();
+    assert!(poe(Y, G, A, c, s),"Q1");
+    true
+}
+
+
+/// Verifies that two encryptions for two keys are valid and that they are encrypting the same 
+/// amount b. For this proof, the prover knows only one of the randoms values and  knows the secret of the key 
+/// that does not know the random for. . This case is common when a cipherBalance is decrypted, the decryptor knows
+/// the secret x and the amount encrypted in the cipherBalance, but does not know the random. 
+/// Let (L1,R1) = (g**b y**_r, g**_r), _r is unknown to the prover. The prover can decrypt b with the knowledge of x.
+/// By ussing that L1 = g**b R**x whe can show that the cipherBalance encrypts b proving that L1 is of this form.
+/// The protocol runs as follows
+///
+/// P:  kx,kb,kr <-- R       sends    Ax=g**kx, AL1 = g**kb R**kx, AL2 = g**kb y2**kr AR2 = g**kr
+/// V:  c <-- R              sends    c
+/// P:  sx = k + c*x         sends    s
+/// P:  sb = kb  + c*b       sends    sb
+/// P:  sr = kr + c*r        sends    sr
+/// The verifier asserts:
+/// - g**sx  == Ax * (y**c)          (poe)
+/// - g**sb R1**sx  == AL1 * (L1**c) (poe2)
+/// - verifyElGammal for (L2,R2)
+///
+/// 
+/// EC_MUL: 10 
 /// EC_ADD: 6
 pub fn verifySameEncryptionUnKnownRandom(
     L1:NonZeroEcPoint,

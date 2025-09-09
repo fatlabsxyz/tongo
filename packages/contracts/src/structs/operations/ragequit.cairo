@@ -53,12 +53,11 @@ pub struct InputsRagequit {
 }
 
 /// Proof of ragequit operation.
-/// TODO: remove _ in names?
 #[derive(Serde, Drop, Copy)]
 pub struct ProofOfRagequit {
-    pub A_x: StarkPoint,
-    pub A_cr: StarkPoint,
-    pub s_x: felt252,
+    pub Ax: StarkPoint,
+    pub AR: StarkPoint,
+    pub sx: felt252,
 }
 
 
@@ -77,8 +76,8 @@ impl RagequitPrefix of Prefix<InputsRagequit> {
 impl ChallengeRagequit of Challenge<ProofOfRagequit> {
     fn compute_challenge(self: @ProofOfRagequit, prefix: felt252) -> felt252 {
        let mut arr = array![prefix];
-       arr.append_coordinates(self.A_x);
-       arr.append_coordinates(self.A_cr);
+       arr.append_coordinates(self.Ax);
+       arr.append_coordinates(self.AR);
        cast_in_order(poseidon_hash_span(arr.span()))
     }
 }

@@ -12,7 +12,7 @@ use crate::structs::operations::{
     ragequit::{ InputsRagequit, ProofOfRagequit },
 };
 use crate::structs::common::{
-    cipherbalance::{CipherBalanceTrait, CipherBalance},
+    cipherbalance::{CipherBalanceTrait},
     pubkey::PubKey,
     starkpoint::StarkPoint,
 };
@@ -74,20 +74,20 @@ pub fn verify_fund(inputs: InputsFund, proof: ProofOfFund) {
 /// The verifier asserts:
 /// - G**sr == A * (Y**c)
 ///
-/// EC_MUL: 7
-/// EC_ADD: 5
+/// EC_MUL: 5
+/// EC_ADD: 3
 pub fn verify_ragequit(inputs: InputsRagequit, proof: ProofOfRagequit) {
     let prefix = inputs.prefix();
     let c = proof.compute_challenge(prefix);
 
-    verifyOwnership(inputs.y, proof.A_x, c, proof.s_x);
+    verifyOwnership(inputs.y, proof.Ax, c, proof.sx);
 
-    let cipher: CipherBalance = CipherBalanceTrait::new(inputs.y, inputs.amount, 1);
-    let (L2, R2) = cipher.points_nz();
     let (L1, R1) = inputs.currentBalance.points_nz();
 
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    she::verifySameEncryptionSameKey(L1,R1,L2,R2,g, proof.A_cr.try_into().unwrap(),c, proof.s_x );
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+    let L:NonZeroEcPoint = (L1.into() - g.mul(inputs.amount)).try_into().unwrap();
+    let res = she::poe(L, R1, proof.AR.try_into().unwrap(),c,proof.sx);
+    assert(res, 'nope');
 }
 
 
@@ -157,7 +157,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
     verifyOwnership(inputs.y, proof.A_x, c, proof.s_x);
 
-    she::verifySameEncryptionKnownRandom(
+    she::verifySameEncryption(
         L,
         R,
         L_bar,
