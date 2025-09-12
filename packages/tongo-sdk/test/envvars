@@ -4,4 +4,4 @@ SCRIPTS_PATH=../contracts/scripts
 ## integration tests
 export ACCOUNT_ADDRESS=$(jq -r '."alpha-sepolia".localnet.address' < $ACCOUNT_PATH)
 export ACCOUNT_PRIVATE_KEY=$(jq -r '."alpha-sepolia".localnet.private_key' < $ACCOUNT_PATH)
-export TONGO_CONTRACT_ADDRESS=$(jq -r '.transactions.transactions[] | select (.name == "deploy") | .output.contract_address' < $SCRIPTS_PATH/deploy_local_alpha-sepolia_state.json)
+export TONGO_CONTRACT_ADDRESS=$(jq -r '.contracts.Tongo.address' < ./test/state/devnet.json)
