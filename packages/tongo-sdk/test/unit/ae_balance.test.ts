@@ -1,4 +1,4 @@
-import { AEChaCha, AEHintToBytes, bytesToBigAEHint } from "@/ae_balance.js";
+import { AEChaCha, AEHintToBytes, bytesToBigAEHint } from "../../src/ae_balance.js";
 import { describe, expect, it } from "vitest";
 
 describe("[ae_balance] conversions", () => {

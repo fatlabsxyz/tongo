@@ -1,6 +1,17 @@
 {
   "alpha-sepolia": {
-    "localnet": {
+    "local": {
+      "address": "0x726095178d1d310e0abeab7264e3fa76f9360a71417d553b6e51889b5b4a590",
+      "class_hash": "0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f",
+      "deployed": true,
+      "legacy": false,
+      "private_key": "0x21b26befb13f5d5496ab1eb84497342b",
+      "public_key": "0x4aed3b380ad1854d986833ea5d2885611ce2fbb9e6cb8ca75b6d3a28aed7d51",
+      "type": "open_zeppelin"
+    }
+  },
+  "alpha-mainnet": {
+    "local": {
       "address": "0x726095178d1d310e0abeab7264e3fa76f9360a71417d553b6e51889b5b4a590",
       "class_hash": "0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f",
       "deployed": true,
