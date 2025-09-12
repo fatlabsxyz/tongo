@@ -2,6 +2,7 @@
 ## starknet-devnet
 export ACCOUNTS=5
 export SEED=1244846250
+export RUST_LOG="REQUEST,RESPONSE,INFO"
 
 # export GAS_PRICE=1
 # export GAS_PRICE_FRI=1

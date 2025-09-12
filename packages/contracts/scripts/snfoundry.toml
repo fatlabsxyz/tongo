@@ -1,9 +1,9 @@
-[sncast.localnet]
+[sncast.local]
 url = "http://127.0.0.1:5050"
 accounts-file = "./localnet/accounts.json"
-account = "localnet"
+account = "local"
 
-[sncast.localnet5151]
+[sncast.local5151]
 url = "http://127.0.0.1:5151"
 accounts-file = "./localnet/accounts.json"
-account = "localnet"
+account = "local"
