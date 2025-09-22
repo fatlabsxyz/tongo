@@ -74,7 +74,8 @@ interface TransferEventData {
     nonce: bigint;
     transferBalance: { L: StarkPoint; R: StarkPoint; };
     transferBalanceSelf: { L: StarkPoint; R: StarkPoint; };
-    hint: AEBalance;
+    hintTransfer: AEBalance;
+    hintLeftover: AEBalance;
 }
 
 interface BalanceDeclaredEventData {

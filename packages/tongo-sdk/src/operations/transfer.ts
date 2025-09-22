@@ -16,7 +16,8 @@ export interface ITransferOperation extends IOperation {
 /// - to: The Tongo account to send tongos to.
 /// - transferBalance: The amount to transfer encrypted for the pubkey of `to`.
 /// - transferBalanceSelf: The amount to transfer encrypted for the pubkey of `from`.
-/// - hint: AE encription of the final balance of the account.
+/// - hintTransfer: AE encryption of the amount to transfer to `to`.
+/// - hintLeftover: AE encryption of the leftover balance of `from`.
 /// - proof: ZK proof for the transfer operation.
 /// - auditPart: Optional Audit to declare the balance of the account after the tx.
 /// - auditPartTransfer: Optional Audit to declare the transfer amount.
@@ -27,7 +28,8 @@ interface TransferOpParams {
     transferBalance: CipherBalance;
     transferBalanceSelf: CipherBalance;
     proof: ProofOfTransfer;
-    hint: AEBalance;
+    hintTransfer: AEBalance;
+    hintLeftover: AEBalance;
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
     Tongo: Contract;
@@ -40,7 +42,8 @@ export class TransferOperation implements ITransferOperation {
     to: ProjectivePoint;
     transferBalance: CipherBalance;
     transferBalanceSelf: CipherBalance;
-    hint: AEBalance;
+    hintTransfer: AEBalance;
+    hintLeftover: AEBalance;
     proof: ProofOfTransfer;
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
@@ -54,13 +57,15 @@ export class TransferOperation implements ITransferOperation {
         auditPart,
         auditPartTransfer,
         Tongo,
-        hint,
+        hintTransfer,
+        hintLeftover,
     }: TransferOpParams) {
         this.from = from;
         this.to = to;
         this.transferBalance = transferBalance;
         this.transferBalanceSelf = transferBalanceSelf;
-        this.hint = hint;
+        this.hintTransfer = hintTransfer;
+        this.hintLeftover = hintLeftover;
         this.proof = proof;
         this.auditPart = auditPart;
         this.auditPartTransfer = auditPartTransfer;
@@ -74,7 +79,8 @@ export class TransferOperation implements ITransferOperation {
                 to: this.to,
                 transferBalance: this.transferBalance,
                 transferBalanceSelf: this.transferBalanceSelf,
-                hint: this.hint,
+                hintTransfer: this.hintTransfer,
+                hintLeftover: this.hintLeftover,
                 proof: this.proof,
                 auditPart: this.auditPart,
                 auditPartTransfer: this.auditPartTransfer,

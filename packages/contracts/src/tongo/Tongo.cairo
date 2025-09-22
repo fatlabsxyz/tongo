@@ -211,7 +211,7 @@ pub mod Tongo {
         ///
         /// Emits TransferEvent
         fn transfer(ref self: ContractState, transfer: Transfer) {
-            let Transfer { from, to, transferBalance, transferBalanceSelf, proof, auditPart, auditPartTransfer, hint} = transfer;
+            let Transfer { from, to, transferBalance, transferBalanceSelf, proof, auditPart, auditPartTransfer, hintTransfer, hintLeftover} = transfer;
 
             let currentBalance= self.get_balance(from);
             let nonce = self.get_nonce(from);
@@ -228,10 +228,10 @@ pub mod Tongo {
             verify_transfer(inputs, proof);
 
             self._remove_balance(from, transferBalanceSelf);
-            self._overwrite_hint(from, hint);
+            self._overwrite_hint(from, hintLeftover);
 
             self._add_pending(to, transferBalance);
-            self .emit( TransferEvent { to, from, nonce, transferBalance, transferBalanceSelf, hint});
+            self .emit( TransferEvent { to, from, nonce, transferBalance, transferBalanceSelf, hintTransfer, hintLeftover});
 
             if self.auditor_key.read().is_some() {
                 self._handle_audit_balance(from, nonce, auditPart);
