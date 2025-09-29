@@ -58,7 +58,8 @@ pub struct WithdrawEvent {
 /// - nonce: The nonce of the Tongo account (from).
 /// - transferBalance: The amount to transfer encrypted for the pubkey of `to`.
 /// - transferBalanceSelf: The amount to transfer encrypted for the pubkey of `from`.
-/// - hint: AE encription of the transfer amount for the user fast decryption.
+/// - hintTransfer: AE encryption of the amount to transfer to `to`.
+/// - hintLeftover: AE encryption of the leftover balance of `from`.
 #[derive(Drop, starknet::Event)]
 pub struct TransferEvent {
     #[key]
@@ -69,7 +70,8 @@ pub struct TransferEvent {
     pub nonce: u64,
     pub transferBalance: CipherBalance,
     pub transferBalanceSelf: CipherBalance,
-    pub hint: AEBalance,
+    pub hintTransfer: AEBalance,
+    pub hintLeftover: AEBalance,
 }
 
 

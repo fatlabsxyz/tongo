@@ -23,7 +23,8 @@ use crate::structs::proofbit::ProofOfBit;
 /// - to: The Tongo account to send tongos to.
 /// - transferBalance: The amount to transfer encrypted for the pubkey of `to`.
 /// - transferBalanceSelf: The amount to transfer encrypted for the pubkey of `from`.
-/// - hint: AE encription of the final balance of the account.
+/// - hintTransfer: AE encryption of the amount to transfer to `to`.
+/// - hintLeftover: AE encryption of the leftover balance of `from`.
 /// - proof: ZK proof for the transfer operation.
 /// - auditPart: Optional Audit to declare the balance of the account after the tx.
 /// - auditPartTransfer: Optional Audit to declare the transfer amount.
@@ -33,7 +34,8 @@ pub struct Transfer {
     pub to: PubKey,
     pub transferBalance: CipherBalance,
     pub transferBalanceSelf: CipherBalance,
-    pub hint: AEBalance,
+    pub hintTransfer: AEBalance,
+    pub hintLeftover: AEBalance,
     pub proof: ProofOfTransfer,
     pub auditPart: Option<Audit>,
     pub auditPartTransfer: Option<Audit>,

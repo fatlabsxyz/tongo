@@ -457,7 +457,11 @@ export const tongoAbi = [
                 "type": "tongo::structs::common::cipherbalance::CipherBalance"
             },
             {
-                "name": "hint",
+                "name": "hintTransfer",
+                "type": "tongo::structs::aecipher::AEBalance"
+            },
+            {
+                "name": "hintLeftover",
                 "type": "tongo::structs::aecipher::AEBalance"
             },
             {
@@ -833,7 +837,12 @@ export const tongoAbi = [
                 "kind": "data"
             },
             {
-                "name": "hint",
+                "name": "hintTransfer",
+                "type": "tongo::structs::aecipher::AEBalance",
+                "kind": "data"
+            },
+            {
+                "name": "hintLeftover",
                 "type": "tongo::structs::aecipher::AEBalance",
                 "kind": "data"
             }

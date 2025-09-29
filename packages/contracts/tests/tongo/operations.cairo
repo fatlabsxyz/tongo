@@ -132,12 +132,12 @@ pub fn transferOperation(
 
     let auditPart = generateAuditPart(pk, initialBalance-amount, newBalance,dispatcher);
     let auditPartTransfer = generateAuditPart(pk, amount, inputs.transferBalanceSelf,dispatcher);
-    let hint = empty_ae_hint();
 
     return Transfer {
         from:y,
         to,
-        hint,
+        hintTransfer: empty_ae_hint(),
+        hintLeftover: empty_ae_hint(),
         transferBalance: inputs.transferBalance,
         transferBalanceSelf: inputs.transferBalanceSelf,
         auditPart,

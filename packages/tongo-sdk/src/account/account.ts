@@ -205,7 +205,8 @@ export class Account implements IAccount {
         const to = starkPointToProjectivePoint(transferDetails.to);
         const { inputs, proof, newBalance } = proveTransfer(this.pk, to, initialBalance, amount, currentBalance, nonce);
 
-        const hint = await this.computeAEHintForSelf(initialBalance - amount, nonce + 1n);
+        const hintTransfer = await this.computeAEHintForPubKey(amount, nonce, to);
+        const hintLeftover = await this.computeAEHintForSelf(initialBalance - amount, nonce + 1n);
 
         //audit
         const auditPart = await this.createAuditPart(initialBalance - amount, newBalance);
@@ -216,7 +217,8 @@ export class Account implements IAccount {
             to: inputs.y_bar,
             transferBalance: inputs.transferBalance,
             transferBalanceSelf: inputs.transferBalanceSelf,
-            hint,
+            hintTransfer,
+            hintLeftover,
             proof,
             auditPart,
             auditPartTransfer,
@@ -311,9 +313,13 @@ export class Account implements IAccount {
     }
 
     async decryptAEBalance(aeBalance: AEBalance, accountNonce: bigint): Promise<bigint> {
-        const keyAEBal = await this.deriveSymmetricKeyForSelf(accountNonce);
-        const { ciphertext, nonce: cipherNonce } = AEHintToBytes(aeBalance);
-        const balance = new AEChaCha(keyAEBal).decryptBalance({ ciphertext, nonce: cipherNonce });
+        return this.decryptAEHintForPubKey(aeBalance, accountNonce, this.publicKey);
+    }
+
+    async decryptAEHintForPubKey(aeHint: AEBalance, accountNonce: bigint, other: PubKey): Promise<bigint> {
+        const keyAEHint = await this.deriveSymmetricKeyForPubKey(accountNonce, other);
+        const { ciphertext, nonce: cipherNonce } = AEHintToBytes(aeHint);
+        const balance = new AEChaCha(keyAEHint).decryptBalance({ ciphertext, nonce: cipherNonce });
         return balance;
     }
 
@@ -374,10 +380,6 @@ export class Account implements IAccount {
             nonce,
             secret: sharedSecret,
         });
-    }
-
-    async deriveSymmetricKeyForSelf(nonce: bigint) {
-        return this.deriveSymmetricKeyForPubKey(nonce, this.publicKey);
     }
 
     static parseAccountState(state: Awaited<ReturnType<TongoContract["get_state"]>>) {
@@ -463,33 +465,39 @@ export class Account implements IAccount {
     async getEventsTransferOut(initialBlock: number): Promise<AccountTransferOutEvent[]> {
         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
         const events = await reader.getEventsTransferOut(initialBlock, this.publicKey);
-        return events.map(
-            (event) =>
+        return Promise.all(events.map(
+            async (event) =>
                 ({
                     type: ReaderToAccountEvents[event.type],
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     nonce: event.nonce,
-                    amount: this.decryptCipherBalance(parseCipherBalance(event.transferBalanceSelf)),
+                    amount: this.decryptCipherBalance(
+                        parseCipherBalance(event.transferBalanceSelf),
+                        await this.decryptAEHintForPubKey(event.hintTransfer, event.nonce, event.to)
+                    ),
                     to: pubKeyAffineToBase58(event.to),
                 }) as AccountTransferOutEvent,
-        );
+        ));
     }
 
     async getEventsTransferIn(initialBlock: number): Promise<AccountTransferInEvent[]> {
         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
         const events = await reader.getEventsTransferIn(initialBlock, this.publicKey);
-        return events.map(
-            (event) =>
+        return Promise.all(events.map(
+            async (event) =>
                 ({
                     type: ReaderToAccountEvents[event.type],
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     nonce: event.nonce,
-                    amount: this.decryptCipherBalance(parseCipherBalance(event.transferBalance)),
+                    amount: this.decryptCipherBalance(
+                        parseCipherBalance(event.transferBalance),
+                        await this.decryptAEHintForPubKey(event.hintTransfer, event.nonce, event.from)
+                    ),
                     from: pubKeyAffineToBase58(event.from),
                 }) as AccountTransferInEvent,
-        );
+	));
     }
 
     async getTxHistory(initialBlock: number): Promise<AccountEvents[]> {
