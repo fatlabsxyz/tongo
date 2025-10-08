@@ -89,8 +89,8 @@ pub mod Tongo {
         self.rate.write(rate);
         self.bit_size.write(bit_size);
 
-        if auditor_key.is_some() {
-            self._set_auditor_key(auditor_key.unwrap());
+        if let Some(key) = auditor_key {
+            self._set_auditor_key(key);
         }
     }
 
@@ -175,7 +175,7 @@ pub mod Tongo {
             verify_withdraw(inputs, proof);
 
             let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
-            self._remove_balance(from, cipher);
+            self._subtract_balance(from, cipher);
             self._overwrite_hint(from, hint);
             self._transfer_to(to, self._unwrap_tongo_amount(amount));
             self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce });
@@ -203,8 +203,8 @@ pub mod Tongo {
             };
             verify_ragequit(inputs, proof);
 
-            let zeroBalance: CipherBalance = CipherBalanceTrait::new(from, 0, 1);
-            self.balance.entry(from).write(zeroBalance.into());
+            let zero_balance: CipherBalance = CipherBalanceTrait::new(from, 0, 1);
+            self.balance.entry(from).write(zero_balance.into());
             self._overwrite_hint(from, hint);
 
             self._transfer_to(to, self._unwrap_tongo_amount(amount));
@@ -213,12 +213,11 @@ pub mod Tongo {
             if self.auditor_key.read().is_some() {
                 self._handle_audit_balance(from, nonce, auditPart);
             }
-            //end of audit
 
             self._increase_nonce(from);
         }
 
-        /// Transfer Tongos from the balanca of te sender to the pending of the receiver
+        /// Transfer Tongos from the balance of the sender to the pending of the receiver
         ///
         /// Emits TransferEvent
         fn transfer(ref self: ContractState, transfer: Transfer) {
@@ -252,7 +251,7 @@ pub mod Tongo {
 
             verify_transfer(inputs, proof);
 
-            self._remove_balance(from, transferBalanceSelf);
+            self._subtract_balance(from, transferBalanceSelf);
             self._overwrite_hint(from, hintLeftover);
 
             self._add_pending(to, transferBalance);
@@ -276,7 +275,6 @@ pub mod Tongo {
                         from, nonce, to, transferBalanceSelf, auditPartTransfer,
                     );
             }
-            //end of audit
 
             self._increase_nonce(from);
         }
@@ -361,8 +359,8 @@ pub mod Tongo {
             self.balance.entry(y).write(sum);
         }
 
-        /// Substract the given balance to the current balance of the given Tongo account.
-        fn _remove_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
+        /// Subtract the given balance to the current balance of the given Tongo account.
+        fn _subtract_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
             let old_balance = self.get_balance(y);
             let sum = old_balance.subtract(new_balance.into());
             self.balance.entry(y).write(sum);
@@ -475,12 +473,12 @@ pub mod Tongo {
             audit: Option<Audit>,
         ) {
             assert!(audit.is_some(), "You must declare your balance");
+            let Audit { auditedBalance, proof, hint } = audit.unwrap();
             let auditorPubKey = self.auditor_key.read().unwrap();
-            let Audit { auditedBalance, proof: auditProof, hint: hint } = audit.unwrap();
             let inputs: InputsAudit = InputsAudit {
                 y: from, auditorPubKey, storedBalance: transferBalance, auditedBalance,
             };
-            verify_audit(inputs, auditProof);
+            verify_audit(inputs, proof);
 
             self
                 .emit(
