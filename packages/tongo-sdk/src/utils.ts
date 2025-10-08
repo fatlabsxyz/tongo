@@ -1,6 +1,8 @@
 import { bytesToHex } from "@noble/hashes/utils";
 import { BigNumberish, num, uint256, Uint256 } from "starknet";
-import { GENERATOR, ProjectivePoint, projectivePointToStarkPoint } from "./types";
+
+import { GENERATOR } from "./constants";
+import { ProjectivePoint, projectivePointToStarkPoint } from "./types";
 
 export function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
     if (x instanceof Uint8Array) {

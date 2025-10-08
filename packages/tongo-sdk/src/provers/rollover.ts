@@ -1,6 +1,8 @@
 import { compute_challenge } from "@fatsolutions/she";
 import { poe } from "@fatsolutions/she/protocols";
-import { compute_prefix, GENERATOR as g, GeneralPrefixData, ProjectivePoint } from "../types";
+
+import { GENERATOR as g } from "../constants";
+import { compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
 
 
 // cairo string 'rollover'
@@ -43,7 +45,6 @@ export function proveRollover(
     const y = g.multiply(x);
     const inputs: InputsRollover = { y: y, nonce: nonce, prefix_data };
     const prefix = prefixRollover(inputs);
-
     const { proof: { A: Ax, s: sx } } = poe.prove(x, g, prefix);
     return { inputs, proof: { Ax, sx } };
 }

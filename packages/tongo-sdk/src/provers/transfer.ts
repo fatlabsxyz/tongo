@@ -1,8 +1,9 @@
-import { CipherBalance, createCipherBalance, GENERATOR as g, SECONDARY_GENERATOR as h, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
-import { poe } from "@fatsolutions/she/protocols";
-import { poe2 } from "@fatsolutions/she/protocols";
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
-import { Range, generateRangeProof, verifyRangeProof } from "../provers/range";
+import { poe, poe2 } from "@fatsolutions/she/protocols";
+
+import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
+import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
+import { CipherBalance, compute_prefix, createCipherBalance, GeneralPrefixData, ProjectivePoint } from "../types";
 
 // cairo string 'transfer'
 export const TRANSFER_CAIRO_STRING = 8390876182755042674n;

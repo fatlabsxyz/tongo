@@ -4,9 +4,9 @@ import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";
 
 import {
-    CURVE,
     poseidonHashMany,
 } from "@scure/starknet";
+import { GENERATOR } from "./constants";
 
 export interface GeneralPrefixData {
     chain_id: bigint,
@@ -15,14 +15,6 @@ export interface GeneralPrefixData {
 
 export const ProjectivePoint: typeof SheProjectivePoint = SheProjectivePoint;
 export type ProjectivePoint = SheProjectivePointType;
-
-export const CURVE_ORDER = CURVE.n;
-export const GENERATOR: ProjectivePoint = new ProjectivePoint(CURVE.Gx, CURVE.Gy, 1n);
-export const SECONDARY_GENERATOR: ProjectivePoint = new ProjectivePoint(
-    627088272801405713560985229077786158610581355215145837257248988047835443922n,
-    962306405833205337611861169387935900858447421343428280515103558221889311122n,
-    1n
-);
 
 export type TongoAddress = string & { __type: "tongo"; };
 
@@ -113,4 +105,3 @@ export function parseCipherBalance({ L, R }: { L: StarkPoint; R: StarkPoint; }):
         R: starkPointToProjectivePoint(R),
     };
 }
-

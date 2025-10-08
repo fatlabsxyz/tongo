@@ -1,6 +1,7 @@
-import { CipherBalance, createCipherBalance, GENERATOR as g, ProjectivePoint } from "../types";
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 import { SameEncryptUnknownRandom } from "@fatsolutions/she/protocols";
+import { GENERATOR as g } from "../constants";
+import { CipherBalance, createCipherBalance, ProjectivePoint } from "../types";
 
 // cairo string 'audit'
 export const AUDIT_CAIRO_STRING = 418581342580n;

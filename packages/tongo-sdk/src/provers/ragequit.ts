@@ -1,6 +1,7 @@
 import { poe } from "@fatsolutions/she/protocols";
 
-import { CipherBalance, compute_prefix, createCipherBalance, GENERATOR as g, GeneralPrefixData, ProjectivePoint } from "../types";
+import { CipherBalance, compute_prefix, createCipherBalance, GeneralPrefixData, ProjectivePoint } from "../types";
+import { GENERATOR as g } from "../constants";
 
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 

@@ -1,6 +1,8 @@
-import { CipherBalance, createCipherBalance, GENERATOR as g, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
-import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
+import { compute_challenge } from "@fatsolutions/she";
 import { poe } from "@fatsolutions/she/protocols";
+
+import { GENERATOR as g } from "../constants";
+import { CipherBalance, compute_prefix, createCipherBalance, GeneralPrefixData, ProjectivePoint } from "../types";
 
 // cairo string 'fund'
 export const FUND_CAIRO_STRING = 1718972004n;
