@@ -1,7 +1,10 @@
-import { GENERATOR as g, compute_prefix, GeneralPrefixData, ProjectivePoint} from "../types"
-import { compute_challenge, compute_s, generateRandom} from "@fatsolutions/she"
-import { poe } from "@fatsolutions/she/protocols"
+import { compute_challenge } from "@fatsolutions/she";
+import { poe } from "@fatsolutions/she/protocols";
+import { compute_prefix, GENERATOR as g, GeneralPrefixData, ProjectivePoint } from "../types";
 
+
+// cairo string 'rollover'
+export const ROLLOVER_CAIRO_STRING = 8245928655720965490n;
 
 /// Public inputs of the verifier for the rollover operation.
 ///
@@ -20,12 +23,11 @@ export interface ProofOfRollover {
 }
 
 function prefixRollover(inputs: InputsRollover): bigint {
-    const rollover_selector = 8245928655720965490n;
-    const {chain_id, tongo_address} = inputs.prefix_data;
+    const { chain_id, tongo_address } = inputs.prefix_data;
     const seq: bigint[] = [
         chain_id,
         tongo_address,
-        rollover_selector,
+        ROLLOVER_CAIRO_STRING,
         inputs.y.toAffine().x,
         inputs.y.toAffine().y,
         inputs.nonce
@@ -39,17 +41,11 @@ export function proveRollover(
     prefix_data: GeneralPrefixData,
 ): { inputs: InputsRollover; proof: ProofOfRollover; } {
     const y = g.multiply(x);
-    const inputs: InputsRollover = { y: y, nonce: nonce, prefix_data};
-
+    const inputs: InputsRollover = { y: y, nonce: nonce, prefix_data };
     const prefix = prefixRollover(inputs);
 
-    const k = generateRandom();
-    const Ax = g.multiplyUnsafe(k);
-    const c = compute_challenge(prefix, [Ax]);
-    const sx = compute_s(k,x,c);
-
-    const proof: ProofOfRollover = { Ax: Ax, sx: sx };
-    return { inputs, proof };
+    const { proof: { A: Ax, s: sx } } = poe.prove(x, g, prefix);
+    return { inputs, proof: { Ax, sx } };
 }
 
 
@@ -59,17 +55,16 @@ export function proveRollover(
 /// EC_MUL: 2
 /// EC_ADD: 1
 export function verifyRollover(inputs: InputsRollover, proof: ProofOfRollover) {
-  const rollover_selector = 8245928655720965490n;
-  const seq: bigint[] = [
-    rollover_selector,
-    inputs.y.toAffine().x,
-    inputs.y.toAffine().y,
-    inputs.nonce,
-  ];
-  const prefix = compute_prefix(seq);
-  const c = compute_challenge(prefix, [proof.Ax]);
-  const res = poe._verify(inputs.y, g, proof.Ax, c, proof.sx);
-  if (res == false) {
-    throw new Error("verifyRollover failed");
-  }
+    const seq: bigint[] = [
+        ROLLOVER_CAIRO_STRING,
+        inputs.y.toAffine().x,
+        inputs.y.toAffine().y,
+        inputs.nonce,
+    ];
+    const prefix = compute_prefix(seq);
+    const c = compute_challenge(prefix, [proof.Ax]);
+    const res = poe._verify(inputs.y, g, proof.Ax, c, proof.sx);
+    if (res == false) {
+        throw new Error("verifyRollover failed");
+    }
 }

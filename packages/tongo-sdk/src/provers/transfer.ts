@@ -1,9 +1,11 @@
-import { CipherBalance, createCipherBalance, GENERATOR as g, SECONDARY_GENERATOR as h, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types"
-import { poe } from "@fatsolutions/she/protocols"
-import { poe2 } from "@fatsolutions/she/protocols"
-import { compute_challenge, compute_s, generateRandom} from "@fatsolutions/she"
-import {Range, generateRangeProof, verifyRangeProof} from "../provers/range"
+import { CipherBalance, createCipherBalance, GENERATOR as g, SECONDARY_GENERATOR as h, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
+import { poe } from "@fatsolutions/she/protocols";
+import { poe2 } from "@fatsolutions/she/protocols";
+import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
+import { Range, generateRangeProof, verifyRangeProof } from "../provers/range";
 
+// cairo string 'transfer'
+export const TRANSFER_CAIRO_STRING = 8390876182755042674n;
 
 /// Public inputs of the verifier for the transfer operation.
 ///
@@ -26,24 +28,23 @@ export interface InputsTransfer {
 
 /// Computes the prefix by hashing some public inputs.
 function prefixTransfer(
-    general_prefix_data:GeneralPrefixData,
-    from:ProjectivePoint,
-    to:ProjectivePoint,
-    nonce:bigint,
+    general_prefix_data: GeneralPrefixData,
+    from: ProjectivePoint,
+    to: ProjectivePoint,
+    nonce: bigint,
 ): bigint {
-    const transfer_selector = 8390876182755042674n;
-    const {chain_id, tongo_address} = general_prefix_data;
+    const { chain_id, tongo_address } = general_prefix_data;
     const seq: bigint[] = [
         chain_id,
         tongo_address,
-        transfer_selector,
+        TRANSFER_CAIRO_STRING,
         from.toAffine().x,
         from.toAffine().y,
         to.toAffine().x,
         to.toAffine().y,
         nonce,
-  ];
-  return compute_prefix(seq);
+    ];
+    return compute_prefix(seq);
 }
 
 export interface ProofOfTransfer {
@@ -75,44 +76,43 @@ export function proveTransfer(
     nonce: bigint,
     bit_size: number,
     prefix_data: GeneralPrefixData,
-):{
+): {
     inputs: InputsTransfer;
     proof: ProofOfTransfer;
     newBalance: CipherBalance;
-}{
+} {
     const y = g.multiply(x);
-    const {L:L0, R:R0} = currentBalance;
+    const { L: L0, R: R0 } = currentBalance;
 
-    const prefix = prefixTransfer(prefix_data,y,to,nonce);
+    const prefix = prefixTransfer(prefix_data, y, to, nonce);
 
-    const {r, range} = generateRangeProof(b,bit_size, prefix);
+    const { r, range } = generateRangeProof(b, bit_size, prefix);
     const transferBalanceSelf = createCipherBalance(y, b, r);
     const transferBalance = createCipherBalance(to, b, r);
     const R_aux = g.multiply(r);
 
     const b_left = b0 - b;
-    const {r:r2, range:range2} = generateRangeProof(b_left,bit_size, prefix);
+    const { r: r2, range: range2 } = generateRangeProof(b_left, bit_size, prefix);
     const R_aux2 = g.multiply(r2);
 
     const inputs: InputsTransfer = {
-        from:y,
+        from: y,
         to,
         nonce,
-        currentBalance, 
+        currentBalance,
         transferBalance,
         transferBalanceSelf,
         bit_size,
         prefix_data,
     };
 
-
     const G = R0.subtract(transferBalanceSelf.R);
 
-    const kx = generateRandom()
-    const kb = generateRandom()
-    const kr = generateRandom()
-    const kb2 = generateRandom()
-    const kr2 = generateRandom()
+    const kx = generateRandom();
+    const kb = generateRandom();
+    const kr = generateRandom();
+    const kb2 = generateRandom();
+    const kr2 = generateRandom();
 
     const A_x = g.multiplyUnsafe(kx);
     const A_r = g.multiplyUnsafe(kr);
@@ -132,15 +132,15 @@ export function proveTransfer(
         A_v,
         A_v2,
         A_bar,
-    ]
+    ];
 
     const c = compute_challenge(prefix, commitments);
 
-    const s_x = compute_s(kx,x,c);
-    const s_b = compute_s(kb,b,c);
-    const s_r = compute_s(kr,r,c);
-    const s_b2 = compute_s(kb2,b_left,c);
-    const s_r2 = compute_s(kr2,r2,c);
+    const s_x = compute_s(kx, x, c);
+    const s_b = compute_s(kb, b, c);
+    const s_r = compute_s(kr, r, c);
+    const s_b2 = compute_s(kb2, b_left, c);
+    const s_r2 = compute_s(kr2, r2, c);
 
     const proof: ProofOfTransfer = {
         A_x,
@@ -161,8 +161,8 @@ export function proveTransfer(
         R_aux2,
         range2,
     };
-    
-    const newBalance: CipherBalance = {L: L0.subtract(transferBalanceSelf.L), R: R0.subtract(transferBalanceSelf.R)};
+
+    const newBalance: CipherBalance = { L: L0.subtract(transferBalanceSelf.L), R: R0.subtract(transferBalanceSelf.R) };
     return { inputs, proof, newBalance };
 }
 
@@ -204,16 +204,16 @@ export function verifyTransfer(
         proof.A_bar,
     ]);
 
-    const {L:CL, R:CR} = inputs.currentBalance;
-    const {L, R} = inputs.transferBalanceSelf;
-    const {L:L_bar, R:_R_bar} = inputs.transferBalance;
+    const { L: CL, R: CR } = inputs.currentBalance;
+    const { L, R } = inputs.transferBalanceSelf;
+    const { L: L_bar, R: _R_bar } = inputs.transferBalance;
 
 
     let res = poe._verify(inputs.from, g, proof.A_x, c, proof.s_x);
-    if (res == false) { throw new Error("error in poe for y") }
+    if (res == false) { throw new Error("error in poe for y"); }
 
     res = poe._verify(R, g, proof.A_r, c, proof.s_r);
-    if (res == false) { throw new Error("error in poe for R") }
+    if (res == false) { throw new Error("error in poe for R"); }
 
     res = poe2._verify(L, g, inputs.from, proof.A_b, c, proof.s_b, proof.s_r);
     if (res == false) { throw new Error("error in poe2 for L"); }
@@ -227,24 +227,23 @@ export function verifyTransfer(
         proof.s_b,
         proof.s_r,
     );
-    if (res == false) { throw new Error("error in poe2 for L_bar") }
+    if (res == false) { throw new Error("error in poe2 for L_bar"); }
 
 
-    const range_prefix = 0n;
-    const V = verifyRangeProof(proof.range,bit_size, range_prefix);
-    if (V == false) { throw new Error("erro in range for V") }
+    const V = verifyRangeProof(proof.range, bit_size, prefix);
+    if (V == false) { throw new Error("erro in range for V"); }
 
     res = poe2._verify(V, g, h, proof.A_v, c, proof.s_b, proof.s_r);
-    if (res == false) { throw new Error("erro in poe2 for V") }
+    if (res == false) { throw new Error("erro in poe2 for V"); }
 
     const Y = CL.subtract(L);
     const G = CR.subtract(R);
     res = poe2._verify(Y, g, G, proof.A_b2, c, proof.s_b2, proof.s_x);
-    if (res == false) { throw new Error("error in poe2 for Y") }
+    if (res == false) { throw new Error("error in poe2 for Y"); }
 
-    const V2 = verifyRangeProof(proof.range2,bit_size, range_prefix);
-    if (V2 == false) { throw new Error("erro in range for V") }
+    const V2 = verifyRangeProof(proof.range2, bit_size, prefix);
+    if (V2 == false) { throw new Error("erro in range for V"); }
 
     res = poe2._verify(V2, g, h, proof.A_v2, c, proof.s_b2, proof.s_r2);
-  if (res == false) { throw new Error("error in poe2 for V2") }
+    if (res == false) { throw new Error("error in poe2 for V2"); }
 }

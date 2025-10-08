@@ -1,9 +1,11 @@
-import { CipherBalance, createCipherBalance, GENERATOR as g, SECONDARY_GENERATOR as h, compute_prefix, GeneralPrefixData, ProjectivePoint} from "../types"
-import { poe } from "@fatsolutions/she/protocols"
-import { poe2 } from "@fatsolutions/she/protocols"
-import { compute_challenge, compute_s, generateRandom} from "@fatsolutions/she"
-import {Range, generateRangeProof, verifyRangeProof} from "../provers/range"
+import { CipherBalance, createCipherBalance, GENERATOR as g, SECONDARY_GENERATOR as h, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
+import { poe } from "@fatsolutions/she/protocols";
+import { poe2 } from "@fatsolutions/she/protocols";
+import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
+import { Range, generateRangeProof, verifyRangeProof } from "../provers/range";
 
+// cairo string 'withdraw'
+export const WITHDRAW_CAIRO_STRING = 8604536554778681719n;
 
 /// Public inputs of the verifier for the withdarw operation.
 ///
@@ -18,24 +20,23 @@ export interface InputsWithdraw {
     to: bigint;
     amount: bigint;
     currentBalance: CipherBalance,
-    bit_size:number,
+    bit_size: number,
     prefix_data: GeneralPrefixData,
 }
 
 /// Computes the prefix by hashing some public inputs.
 function prefixWithdraw(
-    general_prefix_data:GeneralPrefixData,
-    y:ProjectivePoint,
-    nonce:bigint,
-    amount:bigint,
-    to:bigint
+    general_prefix_data: GeneralPrefixData,
+    y: ProjectivePoint,
+    nonce: bigint,
+    amount: bigint,
+    to: bigint
 ): bigint {
-    const withdraw_selector = 8604536554778681719n;
-    const {chain_id, tongo_address} = general_prefix_data;
+    const { chain_id, tongo_address } = general_prefix_data;
     const seq: bigint[] = [
         chain_id,
         tongo_address,
-        withdraw_selector,
+        WITHDRAW_CAIRO_STRING,
         y.toAffine().x,
         y.toAffine().y,
         nonce,
@@ -55,7 +56,7 @@ export interface ProofOfWithdraw {
     sx: bigint;
     sb: bigint;
     sr: bigint;
-    R_aux:ProjectivePoint;
+    R_aux: ProjectivePoint;
     range: Range;
 }
 
@@ -66,25 +67,25 @@ export function proveWithdraw(
     to: bigint,
     currentBalance: CipherBalance,
     nonce: bigint,
-    bit_size:number,
+    bit_size: number,
     prefix_data: GeneralPrefixData,
-):{
+): {
     inputs: InputsWithdraw;
-    proof: ProofOfWithdraw
+    proof: ProofOfWithdraw;
     newBalance: CipherBalance;
 } {
     const y = g.multiply(x);
-    const {L:L0, R:R0} = currentBalance;
-     
+    const { L: L0, R: R0 } = currentBalance;
+
     //this is to assert that storedbalance is an encription of the balance amount
-    const g_b = L0.subtract(R0.multiplyUnsafe(x))
-    const temp = g.multiplyUnsafe(initial_balance)
-    if (!g_b.equals(temp)) {throw new Error("storedBalance is not an encryption of balance")}; 
+    const g_b = L0.subtract(R0.multiplyUnsafe(x));
+    const temp = g.multiplyUnsafe(initial_balance);
+    if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
 
-    const prefix = prefixWithdraw(prefix_data,y,nonce,amount,to);
-    const left =  initial_balance - amount;
+    const prefix = prefixWithdraw(prefix_data, y, nonce, amount, to);
+    const left = initial_balance - amount;
 
-    const {r, range} = generateRangeProof(left,bit_size, prefix);
+    const { r, range } = generateRangeProof(left, bit_size, prefix);
     const R_aux = g.multiply(r);
 
     const inputs: InputsWithdraw = {
@@ -98,16 +99,16 @@ export function proveWithdraw(
     };
 
 
-    const kb = generateRandom()
-    const kx = generateRandom()
-    const kr = generateRandom()
+    const kb = generateRandom();
+    const kx = generateRandom();
+    const kr = generateRandom();
 
     const A_x = g.multiplyUnsafe(kx);
     const A_r = g.multiplyUnsafe(kr);
     const A = g.multiplyUnsafe(kb).add(R0.multiplyUnsafe(kx));
     const A_v = g.multiplyUnsafe(kb).add(h.multiplyUnsafe(kr));
 
-    const c = compute_challenge(prefix, [A_x,A_r, A, A_v]);
+    const c = compute_challenge(prefix, [A_x, A_r, A, A_v]);
 
     const sb = compute_s(kb, left, c);
     const sx = compute_s(kx, x, c);
@@ -126,9 +127,8 @@ export function proveWithdraw(
     };
 
     // compute the cipherbalance that y will have at the end of the withdraw 
-    const cairo_string_withdraw = BigInt(8604536554778681719n);
-    const cipher = createCipherBalance(y, amount, cairo_string_withdraw);
-    const newBalance: CipherBalance = {L: currentBalance.L.subtract(cipher.L), R: currentBalance.R.subtract(cipher.R)};
+    const cipher = createCipherBalance(y, amount, WITHDRAW_CAIRO_STRING);
+    const newBalance: CipherBalance = { L: currentBalance.L.subtract(cipher.L), R: currentBalance.R.subtract(cipher.R) };
 
     return { inputs, proof, newBalance };
 }
@@ -157,23 +157,23 @@ export function verifyWithdraw(
         inputs.to
     );
 
-    const c = compute_challenge(prefix, [proof.A_x,proof.A_r, proof.A, proof.A_v]);
+    const c = compute_challenge(prefix, [proof.A_x, proof.A_r, proof.A, proof.A_v]);
 
     let res = poe._verify(inputs.y, g, proof.A_x, c, proof.sx);
-    if (res == false) { throw new Error("error in poe y") }
+    if (res == false) { throw new Error("error in poe y"); }
 
-    let {L:L0, R:R0} =inputs.currentBalance; 
+    let { L: L0, R: R0 } = inputs.currentBalance;
 
     L0 = L0.subtract(g.multiply(inputs.amount));
 
     res = poe2._verify(L0, g, R0, proof.A, c, proof.sb, proof.sx);
-    if (res == false) { throw new Error("error in poe2 Y") }
+    if (res == false) { throw new Error("error in poe2 Y"); }
 
-    
+
     let range_prefix = 0n;
-    const V = verifyRangeProof(proof.range,bit_size, range_prefix);
-    if (V == false) { throw new Error("erro in range for V") }
+    const V = verifyRangeProof(proof.range, bit_size, range_prefix);
+    if (V == false) { throw new Error("erro in range for V"); }
 
     res = poe2._verify(V, g, g, proof.A_v, c, proof.sb, proof.sr);
-    if (res == false) { throw new Error("error in poe2 V") }
+    if (res == false) { throw new Error("error in poe2 V"); }
 }
