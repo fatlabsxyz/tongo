@@ -24,7 +24,7 @@ pub struct Audit {
 ///
 /// - y: The Tongo account that is declaring its balance.
 /// - auditorPubKey: The current auditor public key.
-/// - sotredBalance: The current CipherBalance stored for the account (y).
+/// - storedBalance: The current CipherBalance stored for the account (y).
 /// - auditedBalance: The balance of y encrypted under the auditor public key.
 #[derive(Serde, Drop)]
 pub struct InputsAudit {
