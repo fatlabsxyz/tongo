@@ -1,8 +1,6 @@
+use crate::structs::operations::fund::{InputsFund, ProofOfFund};
+use crate::structs::traits::{Challenge, Prefix};
 use crate::verifier::utils::verifyOwnership;
-use crate::structs::{
-    traits::{Prefix, Challenge},
-    operations::fund::{InputsFund, ProofOfFund},
-};
 
 
 /// Verify the fund operation. In this case, users have to only show the knowledge

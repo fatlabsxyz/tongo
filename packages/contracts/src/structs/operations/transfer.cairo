@@ -1,21 +1,11 @@
 use core::poseidon::poseidon_hash_span;
 use she::utils::reduce_modulo_order;
-use crate::structs::{
-    common::{
-        cipherbalance::CipherBalance,
-        pubkey::PubKey,
-        starkpoint::StarkPoint,
-    },
-    traits::{
-        GeneralPrefixData,
-        Prefix,
-        Challenge,
-        AppendPoint,
-    },
-    operations::audit::Audit,
-    aecipher::AEBalance,
-};
-
+use crate::structs::aecipher::AEBalance;
+use crate::structs::common::cipherbalance::CipherBalance;
+use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::starkpoint::StarkPoint;
+use crate::structs::operations::audit::Audit;
+use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 use crate::verifier::range::Range;
 
 /// Represents the calldata of a transfer operation.
@@ -59,7 +49,7 @@ pub struct InputsTransfer {
     pub currentBalance: CipherBalance,
     pub transferBalance: CipherBalance,
     pub transferBalanceSelf: CipherBalance,
-    pub bit_size:u32,
+    pub bit_size: u32,
     pub prefix_data: GeneralPrefixData,
 }
 
@@ -67,7 +57,7 @@ pub struct InputsTransfer {
 impl TransferPrefix of Prefix<InputsTransfer> {
     fn compute_prefix(self: @InputsTransfer) -> felt252 {
         let transfer_selector = 'transfer';
-        let GeneralPrefixData {chain_id, tongo_address} = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
@@ -107,15 +97,15 @@ pub struct ProofOfTransfer {
 /// Computes the challenge to be ussed in the Non-Interactive protocol.
 impl ChallengeTransfer of Challenge<ProofOfTransfer> {
     fn compute_challenge(self: @ProofOfTransfer, prefix: felt252) -> felt252 {
-       let mut arr = array![prefix];
-       arr.append_coordinates(self.A_x);
-       arr.append_coordinates(self.A_r);
-       arr.append_coordinates(self.A_r2);
-       arr.append_coordinates(self.A_b);
-       arr.append_coordinates(self.A_b2);
-       arr.append_coordinates(self.A_v);
-       arr.append_coordinates(self.A_v2);
-       arr.append_coordinates(self.A_bar);
-       reduce_modulo_order(poseidon_hash_span(arr.span()))
+        let mut arr = array![prefix];
+        arr.append_coordinates(self.A_x);
+        arr.append_coordinates(self.A_r);
+        arr.append_coordinates(self.A_r2);
+        arr.append_coordinates(self.A_b);
+        arr.append_coordinates(self.A_b2);
+        arr.append_coordinates(self.A_v);
+        arr.append_coordinates(self.A_v2);
+        arr.append_coordinates(self.A_bar);
+        reduce_modulo_order(poseidon_hash_span(arr.span()))
     }
 }

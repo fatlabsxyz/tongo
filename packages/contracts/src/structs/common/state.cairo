@@ -1,7 +1,5 @@
-use crate::structs::{
-    aecipher::AEBalance,
-    common::{cipherbalance::CipherBalance,},
-};
+use crate::structs::aecipher::AEBalance;
+use crate::structs::common::cipherbalance::CipherBalance;
 
 /// Represent the full state of an account.
 ///

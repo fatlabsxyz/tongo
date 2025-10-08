@@ -1,18 +1,9 @@
 use core::poseidon::poseidon_hash_span;
 use she::utils::reduce_modulo_order;
-use crate::structs::{
-    common::{
-        pubkey::PubKey,
-        starkpoint::StarkPoint,
-    },
-    traits::{
-        GeneralPrefixData,
-        Prefix,
-        Challenge,
-        AppendPoint,
-    },
-    aecipher::AEBalance,
-};
+use crate::structs::aecipher::AEBalance;
+use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::starkpoint::StarkPoint;
+use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 
 /// Represents the calldata of a fund operation.
 ///
@@ -41,7 +32,7 @@ pub struct InputsRollOver {
 impl RollOverPrefix of Prefix<InputsRollOver> {
     fn compute_prefix(self: @InputsRollOver) -> felt252 {
         let rollover_selector = 'rollover';
-        let GeneralPrefixData {chain_id, tongo_address} = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),

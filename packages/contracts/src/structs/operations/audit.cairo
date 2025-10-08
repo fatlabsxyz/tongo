@@ -1,22 +1,16 @@
 use core::poseidon::poseidon_hash_span;
 use she::utils::reduce_modulo_order;
-use crate::structs::{
-    common::{
-        cipherbalance:: {CipherBalance},
-        pubkey::PubKey,
-        starkpoint::StarkPoint,
-    },
-    traits::{
-        Challenge,
-        AppendPoint,
-    },
-    aecipher::AEBalance,
-};
+use crate::structs::aecipher::AEBalance;
+use crate::structs::common::cipherbalance::CipherBalance;
+use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::starkpoint::StarkPoint;
+use crate::structs::traits::{AppendPoint, Challenge};
 
-/// Struct for audit declaration. These are optional in Tongo and only enforces if the 
+/// Struct for audit declaration. These are optional in Tongo and only enforces if the
 /// Tongo contract was deployed with an Auditor publick key set.
 ///
-/// - auditedBalance: The encryption of the balance (amount) to declare under the auditor public key.
+/// - auditedBalance: The encryption of the balance (amount) to declare under the auditor public
+/// key.
 /// - hint: The same amount encrypted with AE encryption for fast decryption.
 /// - proof: The ZK proof that verifies the balance is actually the balance of the acount.
 #[derive(Serde, Drop)]
@@ -34,7 +28,7 @@ pub struct Audit {
 /// - auditedBalance: The balance of y encrypted under the auditor public key.
 #[derive(Serde, Drop)]
 pub struct InputsAudit {
-    pub y: PubKey, 
+    pub y: PubKey,
     pub auditorPubKey: PubKey,
     pub storedBalance: CipherBalance,
     pub auditedBalance: CipherBalance,

@@ -1,19 +1,10 @@
 use core::poseidon::poseidon_hash_span;
 use she::utils::reduce_modulo_order;
-use crate::structs::{
-    common::{
-        pubkey::PubKey,
-        starkpoint::StarkPoint,
-    },
-    traits::{
-        GeneralPrefixData,
-        Prefix,
-        Challenge,
-        AppendPoint,
-    },
-    operations::audit::Audit,
-    aecipher::AEBalance,
-};
+use crate::structs::aecipher::AEBalance;
+use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::starkpoint::StarkPoint;
+use crate::structs::operations::audit::Audit;
+use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 
 /// Represents the calldata of a fund operation.
 ///
@@ -47,8 +38,8 @@ pub struct InputsFund {
 ///// Computes the prefix by hashing some public inputs.
 pub impl FundPrefix of Prefix<InputsFund> {
     fn compute_prefix(self: @InputsFund) -> felt252 {
-        let  fund_selector = 'fund';
-        let GeneralPrefixData {chain_id, tongo_address} = self.prefix_data;
+        let fund_selector = 'fund';
+        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
@@ -73,9 +64,9 @@ pub struct ProofOfFund {
 /// Computes the challenge to be ussed in the Non-Interactive protocol.
 impl ChallengeFund of Challenge<ProofOfFund> {
     fn compute_challenge(self: @ProofOfFund, prefix: felt252) -> felt252 {
-       let mut arr = array![prefix];
-       arr.append_coordinates(self.Ax);
-       reduce_modulo_order(poseidon_hash_span(arr.span()))
+        let mut arr = array![prefix];
+        arr.append_coordinates(self.Ax);
+        reduce_modulo_order(poseidon_hash_span(arr.span()))
     }
 }
 

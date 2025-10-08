@@ -1,13 +1,8 @@
-use core::ec::{
-    EcPointTrait,
-    NonZeroEcPoint,
-    stark_curve::{GEN_X,GEN_Y},
-};
-use she::protocols::poe::{PoeInputs,PoeProof,verify};
-use crate::structs::common::{
-    pubkey::PubKey,
-    starkpoint::StarkPoint,
-};
+use core::ec::stark_curve::{GEN_X, GEN_Y};
+use core::ec::{EcPointTrait, NonZeroEcPoint};
+use she::protocols::poe::{PoeInputs, PoeProof, verify};
+use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::starkpoint::StarkPoint;
 
 /// Verifies the knowledge of the private key of the given public key.
 /// Note: The proof is only a she::POE, we decided to wrap the functinon
@@ -21,11 +16,11 @@ use crate::structs::common::{
 ///
 /// EC_MUL: 2
 /// EC_ADD: 1
-pub fn verifyOwnership(y:PubKey, Ax:StarkPoint, c:felt252, sx:felt252) {
+pub fn verifyOwnership(y: PubKey, Ax: StarkPoint, c: felt252, sx: felt252) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let inputs = PoeInputs {y: y.try_into().unwrap(), g };
-    let proof = PoeProof {A: Ax.try_into().unwrap(),c,s:sx};
-    verify(inputs,proof).expect('Proof Of Ownership failed');
+    let inputs = PoeInputs { y: y.try_into().unwrap(), g };
+    let proof = PoeProof { A: Ax.try_into().unwrap(), c, s: sx };
+    verify(inputs, proof).expect('Proof Of Ownership failed');
 }
 
 /// This generatos has been computed hashing:

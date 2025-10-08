@@ -1,18 +1,13 @@
 use starknet::ContractAddress;
-use crate::structs::common::{
-    pubkey::PubKey,
-    cipherbalance::CipherBalance,
-    state::State,
-};
+use crate::structs::common::cipherbalance::CipherBalance;
+use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::state::State;
+use crate::structs::operations::fund::Fund;
+use crate::structs::operations::ragequit::Ragequit;
+use crate::structs::operations::rollover::Rollover;
+use crate::structs::operations::transfer::Transfer;
+use crate::structs::operations::withdraw::Withdraw;
 
-use crate::structs::operations::{
-    fund::Fund,
-    withdraw::Withdraw,
-    transfer::Transfer,
-    ragequit::Ragequit,
-    rollover::Rollover,
-};
-    
 #[starknet::interface]
 pub trait ITongo<TContractState> {
     // Tongo general setup:
@@ -24,13 +19,13 @@ pub trait ITongo<TContractState> {
     /// ERC20_amount = Tongo_amount*rate
     ///
     /// The amount variable in all operation refers to the amount of Tongos.
-    fn get_rate(self:@TContractState) -> u256;
+    fn get_rate(self: @TContractState) -> u256;
 
     /// Returns the bit_size set for this Tongo contract.
     fn get_bit_size(self: @TContractState) -> u32;
 
     /// Returns the contract address of the owner of the Tongo account.
-    fn get_owner(self:@TContractState) -> ContractAddress;
+    fn get_owner(self: @TContractState) -> ContractAddress;
 
     // User operations:
     /// Funds a tongo account. Callable only by the account owner
@@ -43,8 +38,8 @@ pub trait ITongo<TContractState> {
     /// Emits WithdrawEvent
     fn withdraw(ref self: TContractState, withdraw: Withdraw);
 
-    /// Withdraw all the balance of an account and send the ERC20 to a starknet address. This proof avoids
-    /// the limitations of the range prove that are present in the regular withdraw.
+    /// Withdraw all the balance of an account and send the ERC20 to a starknet address. This proof
+    /// avoids the limitations of the range prove that are present in the regular withdraw.
     ///
     /// Emits RagequitEvent
     fn ragequit(ref self: TContractState, ragequit: Ragequit);
@@ -66,7 +61,8 @@ pub trait ITongo<TContractState> {
     /// Returns the current pending balance of a Tongo account
     fn get_pending(self: @TContractState, y: PubKey) -> CipherBalance;
 
-    /// Return, if the Tongo instance allows, the current declared balance of a Tongo account for the auditor
+    /// Return, if the Tongo instance allows, the current declared balance of a Tongo account for
+    /// the auditor
     fn get_audit(self: @TContractState, y: PubKey) -> Option<CipherBalance>;
 
     /// Returns the current nonce of a Tongo account
@@ -80,5 +76,5 @@ pub trait ITongo<TContractState> {
     fn auditor_key(self: @TContractState) -> Option<PubKey>;
 
     /// Rotates the current auditor public key.
-    fn change_auditor_key(ref self: TContractState, new_auditor_key:PubKey);
+    fn change_auditor_key(ref self: TContractState, new_auditor_key: PubKey);
 }

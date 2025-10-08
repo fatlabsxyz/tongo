@@ -1,21 +1,12 @@
 use core::poseidon::poseidon_hash_span;
-use starknet::ContractAddress;
 use she::utils::reduce_modulo_order;
-use crate::structs::{
-    common::{
-        cipherbalance::CipherBalance,
-        pubkey::PubKey,
-        starkpoint::StarkPoint,
-    },
-    traits::{
-        GeneralPrefixData,
-        Prefix,
-        Challenge,
-        AppendPoint,
-    },
-    operations::audit::Audit,
-    aecipher::AEBalance,
-};
+use starknet::ContractAddress;
+use crate::structs::aecipher::AEBalance;
+use crate::structs::common::cipherbalance::CipherBalance;
+use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::starkpoint::StarkPoint;
+use crate::structs::operations::audit::Audit;
+use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 
 /// Represents the calldata of a ragequit operation.
 ///
@@ -24,7 +15,8 @@ use crate::structs::{
 /// - to: The starknet contract address to send the funds to.
 /// - hint: AE encription of the final balance of the account.
 /// - proof: ZK proof for the ragequit operation.
-/// - auditPart: Optional Audit to declare the balance of the account after the tx. (In theory it is not necesary
+/// - auditPart: Optional Audit to declare the balance of the account after the tx. (In theory it is
+/// not necesary
 ///   for this operation, but it helps to keep things consistent and clean for a minimal cost)
 #[derive(Drop, Serde)]
 pub struct Ragequit {
@@ -58,7 +50,7 @@ pub struct InputsRagequit {
 impl RagequitPrefix of Prefix<InputsRagequit> {
     fn compute_prefix(self: @InputsRagequit) -> felt252 {
         let ragequit_selector = 'ragequit';
-        let GeneralPrefixData {chain_id, tongo_address} = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
@@ -82,13 +74,12 @@ pub struct ProofOfRagequit {
 }
 
 
-
 /// Computes the challenge to be ussed in the Non-Interactive protocol.
 impl ChallengeRagequit of Challenge<ProofOfRagequit> {
     fn compute_challenge(self: @ProofOfRagequit, prefix: felt252) -> felt252 {
-       let mut arr = array![prefix];
-       arr.append_coordinates(self.Ax);
-       arr.append_coordinates(self.AR);
-       reduce_modulo_order(poseidon_hash_span(arr.span()))
+        let mut arr = array![prefix];
+        arr.append_coordinates(self.Ax);
+        arr.append_coordinates(self.AR);
+        reduce_modulo_order(poseidon_hash_span(arr.span()))
     }
 }

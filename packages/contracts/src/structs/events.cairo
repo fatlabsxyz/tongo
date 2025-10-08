@@ -1,11 +1,7 @@
 use starknet::ContractAddress;
-use crate::structs::{
-    aecipher::AEBalance,
-    common::{
-        cipherbalance::CipherBalance,
-        pubkey::PubKey,
-    },
-};
+use crate::structs::aecipher::AEBalance;
+use crate::structs::common::cipherbalance::CipherBalance;
+use crate::structs::common::pubkey::PubKey;
 
 /// Event emited in a Fund operation.
 ///
@@ -133,7 +129,7 @@ pub struct TransferDeclared {
     pub hint: AEBalance,
 }
 
-/// Event emited when the owner sets a public key for the auditor. 
+/// Event emited when the owner sets a public key for the auditor.
 ///
 /// - keyNumber: An increasing number that identifies the public key
 /// - AuditorPubKey: The newly set auditor public key.

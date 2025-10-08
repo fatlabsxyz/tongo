@@ -1,5 +1,5 @@
-use crate::structs::common::starkpoint::StarkPoint;
 use starknet::ContractAddress;
+use crate::structs::common::starkpoint::StarkPoint;
 
 #[derive(Serde, Drop, Copy, Debug)]
 pub struct GeneralPrefixData {
@@ -9,7 +9,8 @@ pub struct GeneralPrefixData {
 
 /// This trait is implemented by the Inputs structs. Computes the prefix of the public inputs by
 /// hashing the relevant data. The result is used in the challenge computation as a prefix.
-/// This is use to bind the proof to some public inputs, doing this replay/frontrun attacks are avoided.
+/// This is use to bind the proof to some public inputs, doing this replay/frontrun attacks are
+/// avoided.
 pub trait Prefix<T> {
     fn compute_prefix(self: @T) -> felt252;
 }

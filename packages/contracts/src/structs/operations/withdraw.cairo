@@ -1,22 +1,12 @@
 use core::poseidon::poseidon_hash_span;
-use starknet::ContractAddress;
 use she::utils::reduce_modulo_order;
-use crate::structs::{
-    common::{
-        cipherbalance::CipherBalance,
-        pubkey::PubKey,
-        starkpoint::StarkPoint,
-    },
-    traits::{
-        GeneralPrefixData,
-        Prefix,
-        Challenge,
-        AppendPoint,
-    },
-    operations::audit::Audit,
-    aecipher::AEBalance,
-};
-
+use starknet::ContractAddress;
+use crate::structs::aecipher::AEBalance;
+use crate::structs::common::cipherbalance::CipherBalance;
+use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::starkpoint::StarkPoint;
+use crate::structs::operations::audit::Audit;
+use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 use crate::verifier::range::Range;
 
 /// Represents the calldata of a withdraw operation.
@@ -60,7 +50,7 @@ pub struct InputsWithdraw {
 impl WithdrawPrefix of Prefix<InputsWithdraw> {
     fn compute_prefix(self: @InputsWithdraw) -> felt252 {
         let withdraw_selector = 'withdraw';
-        let GeneralPrefixData {chain_id, tongo_address} = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
@@ -74,7 +64,6 @@ impl WithdrawPrefix of Prefix<InputsWithdraw> {
         poseidon_hash_span(array.span())
     }
 }
-
 
 
 /// Proof of withdraw operation.
@@ -94,12 +83,12 @@ pub struct ProofOfWithdraw {
 /// Computes the challenge to be ussed in the Non-Interactive protocol.
 impl ChallengeWithdraw of Challenge<ProofOfWithdraw> {
     fn compute_challenge(self: @ProofOfWithdraw, prefix: felt252) -> felt252 {
-       let mut arr = array![prefix];
-       arr.append_coordinates(self.A_x);
-       arr.append_coordinates(self.A_r);
-       arr.append_coordinates(self.A);
-       arr.append_coordinates(self.A_v);
-       reduce_modulo_order(poseidon_hash_span(arr.span()))
+        let mut arr = array![prefix];
+        arr.append_coordinates(self.A_x);
+        arr.append_coordinates(self.A_r);
+        arr.append_coordinates(self.A);
+        arr.append_coordinates(self.A_v);
+        reduce_modulo_order(poseidon_hash_span(arr.span()))
     }
 }
 
