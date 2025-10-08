@@ -4,24 +4,30 @@ import { randomBytes } from "@noble/ciphers/webcrypto.js";
 import { uint256, Uint256, BigNumberish } from "starknet";
 import { isUint256 } from "./utils.js";
 
+/**
+ * The AEBalance represents a simetrically encrypted balance using authenticated
+ * encryption. This interface represents the upstream values found in the
+ * contract, which are stored as numbers, although they must be interpreted
+ * as bytes.
+ */
 export interface AEBalance {
-    ciphertext: bigint;
-    nonce: bigint;
+    ciphertext: bigint;   // Cairo.U512
+    nonce: bigint;        // Cairo.U256
 }
 
 export interface AEBalanceBytes {
-    ciphertext: Uint8Array;
-    nonce: Uint8Array;
+    ciphertext: Uint8Array;    // 64 B
+    nonce: Uint8Array;         // 32 B
 }
 
 export function AEHintToBytes({ ciphertext, nonce }: AEBalance): AEBalanceBytes {
     return {
         ciphertext: numberToBytesBE(ciphertext, 64),
-        nonce: numberToBytesBE(nonce, 24),
+        nonce: numberToBytesBE(nonce, 24),                // XChaCha20 nonce is 192 bits
     };
 }
 
-export function bytesToBigAEHint({ ciphertext, nonce }: AEBalanceBytes): AEBalance {
+export function bytesToAEHint({ ciphertext, nonce }: AEBalanceBytes): AEBalance {
     return {
         ciphertext: bytesToNumberBE(ciphertext),
         nonce: bytesToNumberBE(nonce),
@@ -59,9 +65,12 @@ export class AEChaCha {
     }
 
     encryptBalance(balance: bigint): AEBalanceBytes {
+        if (balance >= 2n ** 32n) {
+            throw new Error("This implementation only supports 32 bit balances");
+        }
         // 512  = ( TAG [128] ) + ( NOISE/RESERVED [352] ) + ( BALANCE [32] )
         // 64 B      16 B                44 B                    4 B
-        const nonce = randomBytes(24);
+        const nonce = randomBytes(24);  // XChaCha20 uses random nonces of 192 bit = 24 B
         const noise = randomBytes(3 * 16 - 4);
         const numberBytes = numberToBytesBE(balance, 48);
         numberBytes.set(noise, 0);

@@ -1,15 +1,13 @@
 import { BigNumberish, CairoOption, CairoOptionVariant, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
 
-import { CipherBalance, GENERATOR as g, GeneralPrefixData} from "../types.js"
-import {  decipherBalance, assertBalance} from "../utils.js"
-import { proveFund } from "../provers/fund"
-import { proveRollover } from "../provers/rollover"
-import { proveRagequit } from "../provers/ragequit"
-import { proveTransfer } from "../provers/transfer"
-import { proveWithdraw } from "../provers/withdraw"
-import { proveAudit, verifyAudit} from "../provers/audit"
+import { proveAudit, verifyAudit } from "../provers/audit";
+import { proveFund } from "../provers/fund";
+import { proveRagequit } from "../provers/ragequit";
+import { proveRollover } from "../provers/rollover";
+import { proveTransfer } from "../provers/transfer";
+import { proveWithdraw } from "../provers/withdraw";
 
-import { AEBalance, AEChaCha, AEHintToBytes, bytesToBigAEHint, parseAEBalance } from "../ae_balance.js";
+import { AEBalance, AEChaCha, AEHintToBytes, bytesToAEHint, parseAEBalance } from "../ae_balance.js";
 import { StarknetEventReader } from "../data.service.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "../key.js";
 import { Audit, ExPost } from "../operations/audit.js";
@@ -20,16 +18,25 @@ import { TransferOperation } from "../operations/transfer.js";
 import { WithdrawOperation } from "../operations/withdraw.js";
 import { tongoAbi } from "../tongo.abi.js";
 import {
-    parseCipherBalance,
+    CipherBalance, GENERATOR as g, GeneralPrefixData, parseCipherBalance,
     projectivePointToStarkPoint,
     PubKey,
     pubKeyAffineToBase58,
     pubKeyAffineToHex,
     pubKeyBase58ToHex,
     starkPointToProjectivePoint,
-    TongoAddress,
+    TongoAddress
 } from "../types.js";
-import { bytesOrNumToBigInt, castBigInt } from "../utils.js";
+import { assertBalance, bytesOrNumToBigInt, castBigInt, decipherBalance } from "../utils.js";
+import {
+    AccountState,
+    FundDetails,
+    IAccount,
+    RagequitDetails,
+    RawAccountState,
+    TransferDetails,
+    WithdrawDetails,
+} from "./account.interface.js";
 import {
     AccountEvents,
     AccountFundEvent,
@@ -40,15 +47,6 @@ import {
     AccountWithdrawEvent,
     ReaderToAccountEvents,
 } from "./events.js";
-import {
-    AccountState,
-    FundDetails,
-    IAccount,
-    RagequitDetails,
-    RawAccountState,
-    TransferDetails,
-    WithdrawDetails,
-} from "./account.interface.js";
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
 
@@ -106,8 +104,8 @@ export class Account implements IAccount {
     /// Returns the bit_size of this Tongo contract
     async bit_size(): Promise<number> {
         const bit = await this.Tongo.get_bit_size();
-        const bit_size:number = typeof bit == 'bigint' ? Number(bit) : bit;
-        return bit_size
+        const bit_size: number = typeof bit == 'bigint' ? Number(bit) : bit;
+        return bit_size;
     }
 
     // Warning: This is only for display. This is not the correct amount
@@ -185,7 +183,7 @@ export class Account implements IAccount {
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
         const { amount } = transferDetails;
-        const bit_size:number = await this.bit_size();
+        const bit_size: number = await this.bit_size();
 
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
@@ -244,7 +242,7 @@ export class Account implements IAccount {
             throw new Error("You dont have enough balance");
         }
 
-        const prefix_data: GeneralPrefixData ={chain_id: BigInt(await this.provider.getChainId()), tongo_address: BigInt(this.Tongo.address)};
+        const prefix_data: GeneralPrefixData = { chain_id: BigInt(await this.provider.getChainId()), tongo_address: BigInt(this.Tongo.address) };
         const { inputs, proof, newBalance } = proveRagequit(
             this.pk,
             currentBalance,
@@ -281,7 +279,7 @@ export class Account implements IAccount {
             throw new Error("You dont have enought balance");
         }
 
-        const prefix_data: GeneralPrefixData ={
+        const prefix_data: GeneralPrefixData = {
             chain_id: BigInt(await this.provider.getChainId()),
             tongo_address: BigInt(this.Tongo.address)
         };
@@ -324,7 +322,7 @@ export class Account implements IAccount {
         if (pendingAmount == 0n) {
             throw new Error("Your pending ammount is 0");
         }
-        const prefix_data: GeneralPrefixData ={chain_id: BigInt(await this.provider.getChainId()), tongo_address: BigInt(this.Tongo.address)};
+        const prefix_data: GeneralPrefixData = { chain_id: BigInt(await this.provider.getChainId()), tongo_address: BigInt(this.Tongo.address) };
         const { inputs, proof } = proveRollover(this.pk, nonce, prefix_data);
 
         const hint = await this.computeAEHintForSelf(pendingAmount + unlockedAmount, nonce + 1n);
@@ -385,7 +383,7 @@ export class Account implements IAccount {
 
     async computeAEHintForPubKey(amount: bigint, nonce: bigint, pubKey: PubKey): Promise<AEBalance> {
         const keyAEBal = await this.deriveSymmetricKeyForPubKey(nonce, pubKey);
-        return bytesToBigAEHint(new AEChaCha(keyAEBal).encryptBalance(amount));
+        return bytesToAEHint(new AEChaCha(keyAEBal).encryptBalance(amount));
     }
 
     async computeAEHintForSelf(amount: bigint, nonce: bigint): Promise<AEBalance> {
@@ -516,7 +514,7 @@ export class Account implements IAccount {
                     ),
                     from: pubKeyAffineToBase58(event.from),
                 }) as AccountTransferInEvent,
-	));
+        ));
     }
 
     async getTxHistory(initialBlock: number): Promise<AccountEvents[]> {
