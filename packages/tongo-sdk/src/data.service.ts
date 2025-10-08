@@ -175,7 +175,7 @@ function parseRolloverEvent(event: ParsedEvent): ReaderRolloverEvent {
 }
 
 function parseBalanceDeclaredEvent(event: ParsedEvent): ReaderBalanceDeclaredEvent {
-    const data = event[ROLLOVER_EVENT_PATH] as unknown as BalanceDeclaredEventData;
+    const data = event[BALANCE_DECLARED_EVENT_PATH] as unknown as BalanceDeclaredEventData;
     return {
         type: ReaderEventType.BalanceDeclared,
         tx_hash: event.transaction_hash!,
@@ -185,7 +185,7 @@ function parseBalanceDeclaredEvent(event: ParsedEvent): ReaderBalanceDeclaredEve
 }
 
 function parseTransferDeclaredEvent(event: ParsedEvent): ReaderTransferDeclaredEvent {
-    const data = event[ROLLOVER_EVENT_PATH] as unknown as TransferDeclaredEventData;
+    const data = event[TRANSFER_DECLARED_EVENT_PATH] as unknown as TransferDeclaredEventData;
     return {
         type: ReaderEventType.TransferDeclared,
         tx_hash: event.transaction_hash!,
@@ -321,12 +321,28 @@ export class StarknetEventReader {
             .map((event) => parseBalanceDeclaredEvent(event));
     }
 
-    async getEventsTransferDeclared(initialBlock: number, otherPubKey: PubKey) {
+    async getEventsTransferFrom(initialBlock: number, otherPubKey: PubKey) {
         const eventsResults = await this.provider.getEvents({
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",
             keys: [[TRANSFER_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
+            chunk_size: 100,
+        });
+
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums);
+        return parsedEvents
+            .filter((event) => event[TRANSFER_DECLARED_EVENT_PATH] !== undefined)
+            .map((event) => parseTransferDeclaredEvent(event));
+    }
+
+
+    async getEventsTransferTo(initialBlock: number, otherPubKey: PubKey) {
+        const eventsResults = await this.provider.getEvents({
+            address: this.tongoAddress,
+            from_block: { block_number: initialBlock },
+            to_block: "latest",
+            keys: [[TRANSFER_DECLARED_EVENT],[],[], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
             chunk_size: 100,
         });
 
