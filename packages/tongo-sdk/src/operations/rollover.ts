@@ -1,4 +1,4 @@
-import { ProjectivePoint } from "@fatsolutions/she"
+import { ProjectivePoint } from "../types"
 import { Call, Contract } from "starknet";
 import { IOperation, OperationType } from "./operation.js";
 import { ProofOfRollover } from "../provers/rollover";

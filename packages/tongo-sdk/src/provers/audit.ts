@@ -1,5 +1,5 @@
-import { CipherBalance, createCipherBalance, GENERATOR as g} from "../types"
-import { compute_challenge, compute_s, generateRandom, ProjectivePoint} from "@fatsolutions/she"
+import { CipherBalance, createCipherBalance, GENERATOR as g, ProjectivePoint} from "../types"
+import { compute_challenge, compute_s, generateRandom} from "@fatsolutions/she"
 import { SameEncryptUnknownRandom } from "@fatsolutions/she/protocols"
 
 /// Public inputs of the verifier for the audit declaration

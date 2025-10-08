@@ -1,27 +1,30 @@
-import { ProjectivePoint} from "@fatsolutions/she";
+import { ProjectivePoint as SheProjectivePoint, type ProjectivePoint as SheProjectivePointType } from "@fatsolutions/she";
 import { BigNumberish } from "starknet";
 import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";
 
 import {
-  CURVE,
-  poseidonHashMany,
+    CURVE,
+    poseidonHashMany,
 } from "@scure/starknet";
 
-export interface GeneralPrefixData{
+export interface GeneralPrefixData {
     chain_id: bigint,
-    tongo_address:bigint,
+    tongo_address: bigint,
 }
+
+export const ProjectivePoint: typeof SheProjectivePoint = SheProjectivePoint;
+export type ProjectivePoint = SheProjectivePointType;
 
 export const CURVE_ORDER = CURVE.n;
 export const GENERATOR: ProjectivePoint = new ProjectivePoint(CURVE.Gx, CURVE.Gy, 1n);
 export const SECONDARY_GENERATOR: ProjectivePoint = new ProjectivePoint(
-  627088272801405713560985229077786158610581355215145837257248988047835443922n,
-  962306405833205337611861169387935900858447421343428280515103558221889311122n,
-  1n
+    627088272801405713560985229077786158610581355215145837257248988047835443922n,
+    962306405833205337611861169387935900858447421343428280515103558221889311122n,
+    1n
 );
 
-export type TongoAddress = string & { __type: "tongo" };
+export type TongoAddress = string & { __type: "tongo"; };
 
 /// This struct is inteded to wrap the coordinates of a NonZeroEcPoint.
 export interface StarkPoint {
@@ -33,29 +36,29 @@ export interface StarkPoint {
 /// are constructed with L = g**b y**r, R = g**r where g is the generator of the starknet curve, y is a pubkey, r is 
 /// a random value and b is the balance to encrypt.
 export interface CipherBalance {
-  L: ProjectivePoint;
-  R: ProjectivePoint;
+    L: ProjectivePoint;
+    R: ProjectivePoint;
 }
 
 export function createCipherBalance(
-  y: ProjectivePoint,
-  amount: bigint,
-  random: bigint,
+    y: ProjectivePoint,
+    amount: bigint,
+    random: bigint,
 ): CipherBalance {
-  if (amount === 0n) {
-    const L = y.multiplyUnsafe(random);
+    if (amount === 0n) {
+        const L = y.multiplyUnsafe(random);
+        const R = GENERATOR.multiplyUnsafe(random);
+        return { L, R };
+    }
+    const L = GENERATOR.multiply(amount).add(y.multiplyUnsafe(random));
     const R = GENERATOR.multiplyUnsafe(random);
     return { L, R };
-  }
-  const L = GENERATOR.multiply(amount).add(y.multiplyUnsafe(random));
-  const R = GENERATOR.multiplyUnsafe(random);
-  return { L, R };
 }
 
 
 //This function coincides with cairo compure_prefix
 export function compute_prefix(seq: bigint[]) {
-  return poseidonHashMany(seq);
+    return poseidonHashMany(seq);
 }
 
 /// Converts a StarkPoint to a ProjectivePoint. This operation could throw an error
@@ -92,7 +95,7 @@ export function pubKeyAffineToBase58(pub: PubKey): TongoAddress {
 }
 
 // assumes compressed format
-export function pubKeyBase58ToAffine(b58string: string): { x: bigint; y: bigint } {
+export function pubKeyBase58ToAffine(b58string: string): { x: bigint; y: bigint; } {
     const bytes = base58.decode(b58string);
     return ProjectivePoint.fromHex(bytesToHex(bytes));
 }
@@ -104,7 +107,7 @@ export function pubKeyBase58ToHex(b58string: string): string {
 }
 
 /// Converts a pairs of StarkPoints to a CipherBalance.
-export function parseCipherBalance({ L, R }: { L: StarkPoint; R: StarkPoint }): CipherBalance {
+export function parseCipherBalance({ L, R }: { L: StarkPoint; R: StarkPoint; }): CipherBalance {
     return {
         L: starkPointToProjectivePoint(L),
         R: starkPointToProjectivePoint(R),

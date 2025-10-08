@@ -1,6 +1,6 @@
 import { bytesToHex } from "@noble/hashes/utils";
 import { BigNumberish, num, uint256, Uint256 } from "starknet";
-import { ProjectivePoint} from "@fatsolutions/she";
+import { ProjectivePoint } from "./types";
 import { GENERATOR } from "./types";
 
 export function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {

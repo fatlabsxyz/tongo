@@ -1,7 +1,7 @@
-import { CipherBalance, createCipherBalance, GENERATOR as g, SECONDARY_GENERATOR as h, compute_prefix, GeneralPrefixData} from "../types"
+import { CipherBalance, createCipherBalance, GENERATOR as g, SECONDARY_GENERATOR as h, compute_prefix, GeneralPrefixData, ProjectivePoint} from "../types"
 import { poe } from "@fatsolutions/she/protocols"
 import { poe2 } from "@fatsolutions/she/protocols"
-import { compute_challenge, compute_s, generateRandom, ProjectivePoint} from "@fatsolutions/she"
+import { compute_challenge, compute_s, generateRandom} from "@fatsolutions/she"
 import {Range, generateRangeProof, verifyRangeProof} from "../provers/range"
 
 

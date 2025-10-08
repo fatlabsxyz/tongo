@@ -1,5 +1,4 @@
-import { ProjectivePoint } from "@fatsolutions/she";
-import { GENERATOR as g , SECONDARY_GENERATOR as h } from "../types"
+import { GENERATOR as g , SECONDARY_GENERATOR as h, ProjectivePoint } from "../types"
 import { range } from "@fatsolutions/she/protocols";
 
 export interface ProofOfBit {

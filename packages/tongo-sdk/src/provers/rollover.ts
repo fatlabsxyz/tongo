@@ -1,5 +1,5 @@
-import { GENERATOR as g, compute_prefix, GeneralPrefixData} from "../types"
-import { compute_challenge, compute_s, generateRandom, ProjectivePoint} from "@fatsolutions/she"
+import { GENERATOR as g, compute_prefix, GeneralPrefixData, ProjectivePoint} from "../types"
+import { compute_challenge, compute_s, generateRandom} from "@fatsolutions/she"
 import { poe } from "@fatsolutions/she/protocols"
 
 
