@@ -1,13 +1,15 @@
 import { ReaderEventType } from "../data.service.js";
 
-enum AccountEvent {
-    Fund = "fund",
-    Withdraw = "withdraw",
-    Ragequit = "ragequit",
-    Rollover = "rollover",
-    TransferIn = "transferIn",
-    TransferOut = "transferOut",
-}
+const AccountEvent = {
+    Fund: "fund",
+    Withdraw: "withdraw",
+    Ragequit: "ragequit",
+    Rollover: "rollover",
+    TransferIn: "transferIn",
+    TransferOut: "transferOut",
+} as const;
+
+type AccountEvent = typeof AccountEvent[keyof typeof AccountEvent];
 
 export const ReaderToAccountEvents = {
     [ReaderEventType.Fund]: AccountEvent.Fund,
@@ -25,40 +27,40 @@ interface AccountBaseEvent {
 }
 
 export interface AccountFundEvent extends AccountBaseEvent {
-    type: AccountEvent.Fund;
+    type: typeof AccountEvent.Fund;
     nonce: bigint;
     amount: bigint;
 }
 
 export interface AccountRolloverEvent extends AccountBaseEvent {
-    type: AccountEvent.Rollover;
+    type: typeof AccountEvent.Rollover;
     nonce: bigint;
     amount: bigint;
 }
 
 export interface AccountWithdrawEvent extends AccountBaseEvent {
-    type: AccountEvent.Withdraw;
+    type: typeof AccountEvent.Withdraw;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountRagequitEvent extends AccountBaseEvent {
-    type: AccountEvent.Ragequit;
+    type: typeof AccountEvent.Ragequit;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountTransferOutEvent extends AccountBaseEvent {
-    type: AccountEvent.TransferOut;
+    type: typeof AccountEvent.TransferOut;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountTransferInEvent extends AccountBaseEvent {
-    type: AccountEvent.TransferIn;
+    type: typeof AccountEvent.TransferIn;
     nonce: bigint;
     amount: bigint;
     from: string;
