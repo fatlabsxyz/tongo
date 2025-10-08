@@ -18,7 +18,7 @@ import { TransferOperation } from "../operations/transfer.js";
 import { WithdrawOperation } from "../operations/withdraw.js";
 import { tongoAbi } from "../tongo.abi.js";
 import {
-    CipherBalance, GENERATOR as g, GeneralPrefixData, parseCipherBalance,
+    CipherBalance, GeneralPrefixData, parseCipherBalance,
     projectivePointToStarkPoint,
     PubKey,
     pubKeyAffineToBase58,
@@ -27,7 +27,7 @@ import {
     starkPointToProjectivePoint,
     TongoAddress
 } from "../types.js";
-import { assertBalance, bytesOrNumToBigInt, castBigInt, decipherBalance } from "../utils.js";
+import { assertBalance, bytesOrNumToBigInt, castBigInt, decipherBalance, pubKeyFromSecret } from "../utils.js";
 import {
     AccountState,
     FundDetails,
@@ -50,6 +50,7 @@ import {
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
 
+
 export class Account implements IAccount {
     publicKey: PubKey;
     pk: bigint;
@@ -59,7 +60,7 @@ export class Account implements IAccount {
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
         this.Tongo = new Contract(tongoAbi, contractAddress, provider).typedv2(tongoAbi);
-        this.publicKey = projectivePointToStarkPoint(g.multiply(this.pk));
+        this.publicKey = pubKeyFromSecret(this.pk)
         this.provider = provider;
     }
 
@@ -68,7 +69,7 @@ export class Account implements IAccount {
     }
 
     static tongoAddress(pk: BigNumberish | Uint8Array): TongoAddress {
-        return pubKeyAffineToBase58(projectivePointToStarkPoint(g.multiply(bytesOrNumToBigInt(pk))));
+        return pubKeyAffineToBase58(pubKeyFromSecret(bytesOrNumToBigInt(pk)));
     }
 
     async nonce(): Promise<bigint> {

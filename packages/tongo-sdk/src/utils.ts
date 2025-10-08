@@ -1,7 +1,6 @@
 import { bytesToHex } from "@noble/hashes/utils";
 import { BigNumberish, num, uint256, Uint256 } from "starknet";
-import { ProjectivePoint } from "./types";
-import { GENERATOR } from "./types";
+import { GENERATOR, ProjectivePoint, projectivePointToStarkPoint } from "./types";
 
 export function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
     if (x instanceof Uint8Array) {
@@ -30,28 +29,28 @@ export function castBigInt(x: number | bigint | Uint256) {
 /// This function has to bruteforce for b in g**b. It start at b = 0 and
 /// ends in b= 2**32.
 export function decipherBalance(
-  x: bigint,
-  L: ProjectivePoint,
-  R: ProjectivePoint,
+    x: bigint,
+    L: ProjectivePoint,
+    R: ProjectivePoint,
 ): bigint {
 
-  const Rx = R.multiply(x);
-  if (Rx.equals(L)) { return 0n; }
+    const Rx = R.multiply(x);
+    if (Rx.equals(L)) { return 0n; }
 
-  const g_b = L.subtract(Rx);
-  let b = 1n;
-  let temp = GENERATOR;
-  if (temp.equals(g_b)) {
-    return 1n;
-  }
-  while (b < 2 ** 32) {
-    b = b + 1n;
-    temp = temp.add(GENERATOR);
+    const g_b = L.subtract(Rx);
+    let b = 1n;
+    let temp = GENERATOR;
     if (temp.equals(g_b)) {
-      return b;
+        return 1n;
     }
-  }
-  throw new Error('Decription of Cipherbalance has failed')
+    while (b < 2 ** 32) {
+        b = b + 1n;
+        temp = temp.add(GENERATOR);
+        if (temp.equals(g_b)) {
+            return b;
+        }
+    }
+    throw new Error('Decription of Cipherbalance has failed');
 }
 
 /// Asserts that the given CipherBalance is a correct encription for the public
@@ -63,8 +62,12 @@ export function assertBalance(
     R: ProjectivePoint,
 ): boolean {
 
-  const Rx = R.multiply(x);
-  const g_b = L.subtract(Rx);
-  return g_b.equals(GENERATOR.multiplyUnsafe(balance));
+    const Rx = R.multiply(x);
+    const g_b = L.subtract(Rx);
+    return g_b.equals(GENERATOR.multiplyUnsafe(balance));
 }
 
+
+export function pubKeyFromSecret(secret: bigint) {
+    return projectivePointToStarkPoint(GENERATOR.multiply(secret));
+}
