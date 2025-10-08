@@ -12,5 +12,6 @@ mod shared {
         pub AUDITOR_PUBKEY: PubKey,
         pub ERC20_ADDRESS: ContractAddress,
         pub rate: u256,
+        pub bit_size: felt252,
     }
 }

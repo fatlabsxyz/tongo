@@ -21,6 +21,7 @@ fn main() {
                 .unwrap(),
             salt: SALT_OFFSET + 0x1,
             rate: 1,
+            bit_size: 32,
         },
     );
 }

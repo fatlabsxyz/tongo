@@ -2,13 +2,23 @@
 version = 1
 
 [[package]]
+name = "she"
+version = "0.3.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:2b8d465aa6ddeb45c0f210471b3c79201c2e5eb822e0ac3407e593f5a58061ba"
+
+[[package]]
 name = "sncast_std"
-version = "0.44.0"
-source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.44.0#437d128b4f54847666ea8021530d237f6bf47866"
+version = "0.50.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:29f99c8dd264454503f5c15da242e73a4a270022175d30e8e30be69a10606bb8"
 
 [[package]]
 name = "tongo"
 version = "0.1.0"
+dependencies = [
+ "she",
+]
 
 [[package]]
 name = "utils"
