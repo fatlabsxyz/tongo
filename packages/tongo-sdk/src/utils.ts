@@ -28,8 +28,9 @@ export function castBigInt(x: number | bigint | Uint256) {
 
 
 /// Decipher the given cipher balance for with the given secret key.
-/// This function has to bruteforce for b in g**b. It start at b = 0 and
-/// ends in b= 2**32.
+/// This function has to bruteforce for `b` in `g^b`. It start at `b = 0` and
+/// ends in `b = 2^32`.
+/// TODO: parametrize bit size
 export function decipherBalance(
     x: bigint,
     L: ProjectivePoint,
@@ -63,7 +64,6 @@ export function assertBalance(
     L: ProjectivePoint,
     R: ProjectivePoint,
 ): boolean {
-
     const Rx = R.multiply(x);
     const g_b = L.subtract(Rx);
     return g_b.equals(GENERATOR.multiplyUnsafe(balance));

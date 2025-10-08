@@ -1,7 +1,8 @@
 import { xchacha20poly1305 } from "@noble/ciphers/chacha.js";
 import { bytesToNumberBE, numberToBytesBE } from "@noble/ciphers/utils.js";
 import { randomBytes } from "@noble/ciphers/webcrypto.js";
-import { uint256, Uint256, BigNumberish } from "starknet";
+import { BigNumberish, uint256, Uint256 } from "starknet";
+
 import { isUint256 } from "./utils.js";
 
 /**
@@ -65,6 +66,7 @@ export class AEChaCha {
     }
 
     encryptBalance(balance: bigint): AEBalanceBytes {
+        // TODO: refactor AEChaCha to support different bit sizes. (Max is 384 bits)
         if (balance >= 2n ** 32n) {
             throw new Error("This implementation only supports 32 bit balances");
         }
