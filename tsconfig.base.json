@@ -14,6 +14,7 @@
     /* Strictness */
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
     "useUnknownInCatchVariables": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitOverride": true,

@@ -1,4 +1,4 @@
-import { ProjectivePoint } from "../types"
+import { ProjectivePoint } from "../types";
 import { ProofOfRagequit } from "../provers/ragequit";
 import { Call, Contract, CairoOption } from "starknet";
 import { IOperation, OperationType } from "./operation.js";

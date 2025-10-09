@@ -1,4 +1,4 @@
-import { ProjectivePoint } from "../types"
+import { ProjectivePoint } from "../types";
 import { ProofOfWithdraw } from "../provers/withdraw";
 import { Call, Contract, num, CairoOption } from "starknet";
 import { AEBalance } from "../ae_balance.js";

@@ -60,7 +60,7 @@ export class Account implements IAccount {
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
         this.Tongo = new Contract(tongoAbi, contractAddress, provider).typedv2(tongoAbi);
-        this.publicKey = pubKeyFromSecret(this.pk)
+        this.publicKey = pubKeyFromSecret(this.pk);
         this.provider = provider;
     }
 
@@ -144,7 +144,7 @@ export class Account implements IAccount {
                 storedCipherBalance,
                 auditorPubKey,
             );
-            const nonce = (await this.nonce()) + 1n;
+            const nonce = await this.nonce();
             const hint = await this.computeAEHintForPubKey(balance, nonce, auditorPubKey);
             const audit: Audit = { auditedBalance: inputsAudit.auditedBalance, hint, proof: proofAudit };
             auditPart = new CairoOption<Audit>(CairoOptionVariant.Some, audit);
@@ -503,18 +503,17 @@ export class Account implements IAccount {
         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
         const events = await reader.getEventsTransferIn(initialBlock, this.publicKey);
         return Promise.all(events.map(
-            async (event) =>
-                ({
-                    type: ReaderToAccountEvents[event.type],
-                    tx_hash: event.tx_hash,
-                    block_number: event.block_number,
-                    nonce: event.nonce,
-                    amount: this.decryptCipherBalance(
-                        parseCipherBalance(event.transferBalance),
-                        await this.decryptAEHintForPubKey(event.hintTransfer, event.nonce, event.from)
-                    ),
-                    from: pubKeyAffineToBase58(event.from),
-                }) as AccountTransferInEvent,
+            async (event) => ({
+                type: ReaderToAccountEvents[event.type],
+                tx_hash: event.tx_hash,
+                block_number: event.block_number,
+                nonce: event.nonce,
+                amount: this.decryptCipherBalance(
+                    parseCipherBalance(event.transferBalance),
+                    await this.decryptAEHintForPubKey(event.hintTransfer, event.nonce, event.from)
+                ),
+                from: pubKeyAffineToBase58(event.from),
+            }) as AccountTransferInEvent,
         ));
     }
 

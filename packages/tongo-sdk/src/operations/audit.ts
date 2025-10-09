@@ -1,5 +1,5 @@
 import { CipherBalance } from "../types.js";
-import {ProofOfAudit, InputsAudit} from "../provers/audit"
+import {ProofOfAudit, InputsAudit} from "../provers/audit";
 import { AEBalance } from "../ae_balance.js";
 
 export interface Audit {

@@ -82,7 +82,7 @@ export function verifyFund(inputs: InputsFund, proof: ProofOfFund) {
     const prefix = prefixFund(inputs);
     const c = compute_challenge(prefix, [proof.Ax]);
 
-    let res = poe._verify(inputs.y, g, proof.Ax, c, proof.sx);
+    const res = poe._verify(inputs.y, g, proof.Ax, c, proof.sx);
     if (res == false) {
         throw new Error("verifyFund failed");
     }

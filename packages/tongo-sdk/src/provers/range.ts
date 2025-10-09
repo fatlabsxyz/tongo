@@ -27,7 +27,7 @@ export function verifyRangeProof(range_proof: Range, bit_size: number, initial_p
 
     const inputs: range.RangeInputs = { g1: g, g2: h, bit_size, commitments: range_proof.commitments };
 
-    let proof: range.RangeProof = { proofs: range_proof.proofs.map((pi, index) => ({ ...pi, prefix: initial_prefix + BigInt(index) })) };
+    const proof: range.RangeProof = { proofs: range_proof.proofs.map((pi, index) => ({ ...pi, prefix: initial_prefix + BigInt(index) })) };
     const V = range.verify(inputs, proof);
     return V;
 };
