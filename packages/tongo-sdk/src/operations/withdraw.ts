@@ -9,15 +9,17 @@ export interface IWithdrawOperation extends IOperation {
     type: typeof OperationType.Withdraw;
 }
 
-/// Represents the calldata of a withdraw operation.
-///
-/// - from: The Tongo account to withdraw from.
-/// - amount: The ammount of tongo to withdraw.
-/// - to: The starknet contract address to send the funds to.
-/// - hint: AE encription of the final balance of the account.
-/// - proof: ZK proof for the withdraw operation.
-/// - auditPart: Optional Audit to declare the balance of the account after the tx.
-/// - Tongo: The Tongo instance to interact with.
+/**
+ * Represents the calldata of a withdraw operation.
+ * @interface WithdrawOpParams
+ * @property {ProjectivePoint} from - The Tongo account to withdraw from
+ * @property {bigint} amount - The amount of tongo to withdraw
+ * @property {bigint} to - The starknet contract address to send the funds to
+ * @property {AEBalance} hint - AE encryption of the final balance of the account
+ * @property {ProofOfWithdraw} proof - ZK proof for the withdraw operation
+ * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx
+ * @property {Contract} Tongo - The Tongo instance to interact with
+ */
 interface WithdrawOpParams {
     from: ProjectivePoint;
     to: bigint;

@@ -8,17 +8,25 @@ import { compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
 // cairo string 'rollover'
 export const ROLLOVER_CAIRO_STRING = 8245928655720965490n;
 
-/// Public inputs of the verifier for the rollover operation.
-///
-/// - y: The Tongo account to fund.
-/// - nonce: The nonce of the Tongo account (from).
+/**
+ * Public inputs of the verifier for the rollover operation.
+ * @interface InputsRollover
+ * @property {ProjectivePoint} y - The Tongo account to rollover
+ * @property {bigint} nonce - The nonce of the Tongo account
+ * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
+ */
 export interface InputsRollover {
     y: ProjectivePoint,
     nonce: bigint,
     prefix_data: GeneralPrefixData,
 }
 
-/// Proof of rollover operation.
+/**
+ * Proof of rollover operation.
+ * @interface ProofOfRollover
+ * @property {ProjectivePoint} Ax - The proof point Ax
+ * @property {bigint} sx - The proof scalar sx
+ */
 export interface ProofOfRollover {
     Ax: ProjectivePoint;
     sx: bigint;
@@ -50,11 +58,18 @@ export function proveRollover(
 }
 
 
-/// Verify the rollover operation. In this case, users have to only show the knowledge
-/// of the private key.
-/// 
-/// EC_MUL: 2
-/// EC_ADD: 1
+/**
+ * Verify the rollover operation. In this case, users have to only show the knowledge
+ * of the private key.
+ * 
+ * Complexity:
+ * - EC_MUL: 2
+ * - EC_ADD: 1
+ * 
+ * @param {InputsRollover} inputs - The rollover operation inputs
+ * @param {ProofOfRollover} proof - The proof to verify
+ * @returns {boolean} True if the proof is valid, false otherwise
+ */
 export function verifyRollover(inputs: InputsRollover, proof: ProofOfRollover) {
     const seq: bigint[] = [
         ROLLOVER_CAIRO_STRING,

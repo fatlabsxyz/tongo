@@ -13,14 +13,16 @@ interface IFundOperation extends IOperation {
     populateApprove(): Promise<void>;
 }
 
-/// Represents the calldata of a fund operation.
-///
-/// - to: The Tongo account to fund.
-/// - amount: The ammount of tongo to fund.
-/// - hint: AE encription of the final balance of the account.
-/// - proof: ZK proof for the fund operation.
-/// - auditPart: Optional Audit to declare the balance of the account after the tx.
-/// - Tongo: The Tongo instance to interact with.
+/**
+ * Represents the calldata of a fund operation.
+ * @interface FundOpParams
+ * @property {ProjectivePoint} to - The Tongo account to fund
+ * @property {bigint} amount - The amount of tongo to fund
+ * @property {AEBalance} hint - AE encryption of the final balance of the account
+ * @property {ProofOfFund} proof - ZK proof for the fund operation
+ * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx
+ * @property {Contract} Tongo - The Tongo instance to interact with
+ */
 interface FundOpParams {
     to: ProjectivePoint;
     amount: bigint;
