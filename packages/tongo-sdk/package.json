@@ -64,7 +64,7 @@
     "@scure/starknet": "catalog:",
     "commander": "^11.0.0",
     "dotenv": "^16.3.1",
-    "starknet": "^7.0.0"
+    "starknet": "8.5.4"
   },
   "publishConfig": {
     "access": "public",
