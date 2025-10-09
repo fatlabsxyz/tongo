@@ -116,9 +116,9 @@ export function verifyRagequit(
         throw new Error("error in poe y");
     }
 
-    let { L: L1, R: R1 } = inputs.currentBalance;
+    const { L: L1, R: R1 } = inputs.currentBalance;
 
-    let L = L1.subtract(g.multiply(inputs.amount));
+    const L = L1.subtract(g.multiply(inputs.amount));
 
     res = poe._verify(L, R1, proof.AR, c, proof.sx);
     if (res == false) {

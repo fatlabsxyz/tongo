@@ -149,7 +149,7 @@ export function verifyWithdraw(
     inputs: InputsWithdraw,
     proof: ProofOfWithdraw,
 ) {
-    let bit_size = inputs.bit_size;
+    const bit_size = inputs.bit_size;
     const prefix = prefixWithdraw(
         inputs.prefix_data,
         inputs.y,
@@ -163,7 +163,8 @@ export function verifyWithdraw(
     let res = poe._verify(inputs.y, g, proof.A_x, c, proof.sx);
     if (res == false) { throw new Error("error in poe y"); }
 
-    let { L: L0, R: R0 } = inputs.currentBalance;
+    const { R: R0 } = inputs.currentBalance;
+    let { L: L0 } = inputs.currentBalance;
 
     L0 = L0.subtract(g.multiply(inputs.amount));
 
@@ -171,7 +172,7 @@ export function verifyWithdraw(
     if (res == false) { throw new Error("error in poe2 Y"); }
 
 
-    let range_prefix = 0n;
+    const range_prefix = 0n;
     const V = verifyRangeProof(proof.range, bit_size, range_prefix);
     if (V == false) { throw new Error("erro in range for V"); }
 

@@ -1,7 +1,7 @@
 import { cairo, CairoOption, Call, CallData, Contract, num } from "starknet";
 
-import { ProjectivePoint } from "../types"
-import { ProofOfFund } from "../provers/fund"
+import { ProjectivePoint } from "../types";
+import { ProofOfFund } from "../provers/fund";
 
 import { AEBalance } from "../ae_balance.js";
 import { castBigInt } from "../utils.js";

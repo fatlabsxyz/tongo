@@ -186,7 +186,7 @@ export function verifyTransfer(
     inputs: InputsTransfer,
     proof: ProofOfTransfer,
 ) {
-    let bit_size = inputs.bit_size;
+    const bit_size = inputs.bit_size;
     const prefix = prefixTransfer(
         inputs.prefix_data,
         inputs.to,

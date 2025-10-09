@@ -20,7 +20,7 @@ describe("[integration]", () => {
 
         const transferOp = await accSender.transfer({ amount: 23n, to: accRec.publicKey });
         const transferResponse = await relayer.execute(transferOp.toCalldata());
-        let r = await provider.waitForTransaction(transferResponse.transaction_hash, { retryInterval: 200 });
+        const r = await provider.waitForTransaction(transferResponse.transaction_hash, { retryInterval: 200 });
 
         const senderState = await accSender.rawState();
         expect(senderState.nonce).toStrictEqual(2n);

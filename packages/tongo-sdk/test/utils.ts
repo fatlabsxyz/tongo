@@ -20,7 +20,7 @@ export function relayerAccount(provider: RpcProvider): Account {
 export const relayer = relayerAccount(provider);
 
 export class RelayerHandler {
-    accounts: { [key: number]: { address: string; privateKey: string; }; };
+    accounts: Record<number, { address: string; privateKey: string; }>;
     constructor() {
         this.accounts = {
             0: {
