@@ -8,12 +8,14 @@ export interface IRollOverOperation extends IOperation {
     type: typeof OperationType.Rollover;
 }
 
-/// Represents the calldata of a fund operation.
-///
-/// - to: The Tongo account to rollover.
-/// - hint: AE encription of the final balance (tentative in this case) of the account.
-/// - proof: ZK proof for the rollover operation.
-/// - Tongo: The tongo instance to interact with.
+/**
+ * Represents the calldata of a rollover operation.
+ * @interface RollOverOpParams
+ * @property {ProjectivePoint} to - The Tongo account to rollover
+ * @property {AEBalance} hint - AE encryption of the final balance (tentative in this case) of the account
+ * @property {ProofOfRollover} proof - ZK proof for the rollover operation
+ * @property {Contract} Tongo - The tongo instance to interact with
+ */
 interface RollOverOpParams {
     to: ProjectivePoint;
     hint: AEBalance;

@@ -9,16 +9,17 @@ export interface IRagequitOperation extends IOperation {
     type: typeof OperationType.Ragequit;
 }
 
-/// Represents the calldata of a ragequit operation.
-///
-/// - from: The Tongo account to withdraw from.
-/// - amount: The ammount of tongo to ragequit (the total amount of tongos in the account).
-/// - to: The starknet contract address to send the funds to.
-/// - hint: AE encription of the final balance of the account.
-/// - proof: ZK proof for the ragequit operation.
-/// - auditPart: Optional Audit to declare the balance of the account after the tx. (In theory it is not necesary
-///   for this operation, but it helps to keep things consistent and clean for a minimal cost)
-/// - Tongo: The tongo instance to interact with.
+/**
+ * Represents the calldata of a ragequit operation.
+ * @interface RagequitOpParams
+ * @property {ProjectivePoint} from - The Tongo account to withdraw from
+ * @property {bigint} amount - The amount of tongo to ragequit (the total amount of tongos in the account)
+ * @property {bigint} to - The starknet contract address to send the funds to
+ * @property {AEBalance} hint - AE encryption of the final balance of the account
+ * @property {ProofOfRagequit} proof - ZK proof for the ragequit operation
+ * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx. (In theory it is not necessary for this operation, but it helps to keep things consistent and clean for a minimal cost)
+ * @property {Contract} Tongo - The tongo instance to interact with
+ */
 interface RagequitOpParams {
     from: ProjectivePoint;
     amount: bigint;

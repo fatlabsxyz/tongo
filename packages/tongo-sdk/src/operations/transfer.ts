@@ -12,18 +12,20 @@ export interface ITransferOperation extends IOperation {
     type: typeof OperationType.Transfer;
 }
 
-/// Represents the calldata of a transfer operation.
-///
-/// - from: The Tongo account to take tongos from.
-/// - to: The Tongo account to send tongos to.
-/// - transferBalance: The amount to transfer encrypted for the pubkey of `to`.
-/// - transferBalanceSelf: The amount to transfer encrypted for the pubkey of `from`.
-/// - hintTransfer: AE encryption of the amount to transfer to `to`.
-/// - hintLeftover: AE encryption of the leftover balance of `from`.
-/// - proof: ZK proof for the transfer operation.
-/// - auditPart: Optional Audit to declare the balance of the account after the tx.
-/// - auditPartTransfer: Optional Audit to declare the transfer amount.
-/// - Tongo: The tongo instance to interact with.
+/**
+ * Represents the calldata of a transfer operation.
+ * @interface TransferOpParams
+ * @property {ProjectivePoint} from - The Tongo account to take tongos from
+ * @property {ProjectivePoint} to - The Tongo account to send tongos to
+ * @property {CipherBalance} transferBalance - The amount to transfer encrypted for the pubkey of `to`
+ * @property {CipherBalance} transferBalanceSelf - The amount to transfer encrypted for the pubkey of `from`
+ * @property {AEBalance} hintTransfer - AE encryption of the amount to transfer to `to`
+ * @property {AEBalance} hintLeftover - AE encryption of the leftover balance of `from`
+ * @property {ProofOfTransfer} proof - ZK proof for the transfer operation
+ * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx
+ * @property {CairoOption<Audit>} auditPartTransfer - Optional Audit to declare the transfer amount
+ * @property {Contract} Tongo - The tongo instance to interact with
+ */
 interface TransferOpParams {
     from: ProjectivePoint;
     to: ProjectivePoint;

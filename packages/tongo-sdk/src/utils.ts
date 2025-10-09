@@ -27,10 +27,17 @@ export function castBigInt(x: number | bigint | Uint256) {
 }
 
 
-/// Decipher the given cipher balance for with the given secret key.
-/// This function has to bruteforce for `b` in `g^b`. It start at `b = 0` and
-/// ends in `b = 2^32`.
-/// TODO: parametrize bit size
+/**
+ * Decipher the given cipher balance with the given secret key.
+ * This function has to bruteforce for `b` in `g^b`. It starts at `b = 0` and
+ * ends in `b = 2^32`.
+ * @param {bigint} x - The secret key
+ * @param {ProjectivePoint} L - The left point of the cipher balance
+ * @param {ProjectivePoint} R - The right point of the cipher balance
+ * @returns {bigint} The deciphered balance
+ * @throws {Error} If decryption fails
+ * @todo Parametrize bit size
+ */
 export function decipherBalance(
     x: bigint,
     L: ProjectivePoint,
@@ -56,8 +63,15 @@ export function decipherBalance(
     throw new Error('Decription of Cipherbalance has failed');
 }
 
-/// Asserts that the given CipherBalance is a correct encription for the public
-/// key of the given private key x and the given balance.
+/**
+ * Asserts that the given CipherBalance is a correct encryption for the public
+ * key of the given private key x and the given balance.
+ * @param {bigint} x - The private key
+ * @param {bigint} balance - The expected balance
+ * @param {ProjectivePoint} L - The left point of the cipher balance
+ * @param {ProjectivePoint} R - The right point of the cipher balance
+ * @returns {boolean} True if the assertion passes, false otherwise
+ */
 export function assertBalance(
     x: bigint,
     balance: bigint,

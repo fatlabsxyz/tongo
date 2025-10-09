@@ -8,14 +8,18 @@ import { CipherBalance, compute_prefix, createCipherBalance, GeneralPrefixData, 
 // cairo string 'transfer'
 export const TRANSFER_CAIRO_STRING = 8390876182755042674n;
 
-/// Public inputs of the verifier for the transfer operation.
-///
-/// - from: The Tongo account to take tongos from.
-/// - to: The Tongo account to send tongos to.
-/// - nonce: The nonce of the Tongo account (from).
-/// - currentBalance: The current CipherBalance stored for the account (from)
-/// - transferBalance: The amount to transfer encrypted for the pubkey of `to`.
-/// - transferBalanceSelf: The amount to transfer encrypted for the pubkey of `from`.
+/**
+ * Public inputs of the verifier for the transfer operation.
+ * @interface InputsTransfer
+ * @property {ProjectivePoint} from - The Tongo account to take tongos from
+ * @property {ProjectivePoint} to - The Tongo account to send tongos to
+ * @property {bigint} nonce - The nonce of the Tongo account (from)
+ * @property {CipherBalance} currentBalance - The current CipherBalance stored for the account (from)
+ * @property {CipherBalance} transferBalance - The amount to transfer encrypted for the pubkey of `to`
+ * @property {CipherBalance} transferBalanceSelf - The amount to transfer encrypted for the pubkey of `from`
+ * @property {number} bit_size - The bit size for range proofs
+ * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
+ */
 export interface InputsTransfer {
     from: ProjectivePoint,
     to: ProjectivePoint,
@@ -27,7 +31,17 @@ export interface InputsTransfer {
     prefix_data: GeneralPrefixData,
 }
 
-/// Computes the prefix by hashing some public inputs.
+/**
+ * Computes the prefix by hashing some public inputs.
+ * @param {GeneralPrefixData} general_prefix_data - General prefix data
+ * @param {ProjectivePoint} from - The source account
+ * @param {ProjectivePoint} to - The destination account
+ * @param {bigint} nonce - The account nonce
+ * @param {CipherBalance} currentBalance - Current cipher balance
+ * @param {CipherBalance} transferBalance - Transfer cipher balance
+ * @param {CipherBalance} transferBalanceSelf - Transfer cipher balance for self
+ * @returns {bigint} The computed prefix hash
+ */
 function prefixTransfer(
     general_prefix_data: GeneralPrefixData,
     from: ProjectivePoint,
@@ -168,20 +182,27 @@ export function proveTransfer(
 }
 
 
-/// Verifies the withdraw operation. First, ussers have to show knowledge of the private key. Then, users  have to provide 
-/// two cipher balance, one (L,R) is a encryption of the transfer amount b under its public key, the other (L_bar, R_bar)
-/// a encryption of the trasnfer amount b under the receiver public key. Users have to provide a ZK proof that both encryption
-/// are indeed encrypting the same amount for the correct public keys. To show the transfer amount b is positive,
-/// when the first RangeProof is verified, it returns a V1 = g**b h**r1, with b positive. V1 is used as a L part 
-/// of a cipher blalance, users have to prove that the cipher balance (V1, R_aux1 = g**r1) is encrypting the same
-/// amount that (L,R). The cipher balance after the operation would be (L0,R0) = (CL/L, CR/R) where (CL,CR) is the 
-/// current balance. To show that (L0, R0) is encrypting an amount b_left positive, when the second RangeProof is
-/// verified, it returns a V2 = g**b_left h**r2, with b_left positive. V2 is used as a L part 
-/// of a cipher blalance, users have to prove that the cipher balance (V2, R_aux2 = g**r2) is encrypting the same
-/// amount that (L0,R0)
-///
-/// EC_MUL: 27 + 2*n*5  = 347 for u32
-/// EC_ADD: 18  + 2*n*4 = 274 for u32
+/**
+ * Verifies the transfer operation. First, users have to show knowledge of the private key. Then, users have to provide 
+ * two cipher balances, one (L,R) is an encryption of the transfer amount b under its public key, the other (L_bar, R_bar)
+ * an encryption of the transfer amount b under the receiver public key. Users have to provide a ZK proof that both encryptions
+ * are indeed encrypting the same amount for the correct public keys. To show the transfer amount b is positive,
+ * when the first RangeProof is verified, it returns a V1 = g**b h**r1, with b positive. V1 is used as an L part 
+ * of a cipher balance, users have to prove that the cipher balance (V1, R_aux1 = g**r1) is encrypting the same
+ * amount that (L,R). The cipher balance after the operation would be (L0,R0) = (CL/L, CR/R) where (CL,CR) is the 
+ * current balance. To show that (L0, R0) is encrypting an amount b_left positive, when the second RangeProof is
+ * verified, it returns a V2 = g**b_left h**r2, with b_left positive. V2 is used as an L part 
+ * of a cipher balance, users have to prove that the cipher balance (V2, R_aux2 = g**r2) is encrypting the same
+ * amount that (L0,R0)
+ *
+ * Complexity:
+ * - EC_MUL: 27 + 2*n*5  = 347 for u32
+ * - EC_ADD: 18  + 2*n*4 = 274 for u32
+ * 
+ * @param {InputsTransfer} inputs - The transfer operation inputs
+ * @param {ProofOfTransfer} proof - The proof to verify
+ * @returns {boolean} True if the proof is valid, false otherwise
+ */
 export function verifyTransfer(
     inputs: InputsTransfer,
     proof: ProofOfTransfer,

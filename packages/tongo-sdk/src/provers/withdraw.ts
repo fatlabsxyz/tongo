@@ -8,13 +8,17 @@ import { CipherBalance, compute_prefix, createCipherBalance, GeneralPrefixData, 
 // cairo string 'withdraw'
 export const WITHDRAW_CAIRO_STRING = 8604536554778681719n;
 
-/// Public inputs of the verifier for the withdarw operation.
-///
-/// - y: The Tongo account to withdraw from.
-/// - nonce: The nonce of the Tongo account.
-/// - to: The starknet contract address to send the funds to.
-/// - amount: The ammount of tongo to withdraw.
-/// - currentBalance: The current CipherBalance stored for the account.
+/**
+ * Public inputs of the verifier for the withdraw operation.
+ * @interface InputsWithdraw
+ * @property {ProjectivePoint} y - The Tongo account to withdraw from
+ * @property {bigint} nonce - The nonce of the Tongo account
+ * @property {bigint} to - The starknet contract address to send the funds to
+ * @property {bigint} amount - The amount of tongo to withdraw
+ * @property {CipherBalance} currentBalance - The current CipherBalance stored for the account
+ * @property {number} bit_size - The bit size for range proofs
+ * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
+ */
 export interface InputsWithdraw {
     y: ProjectivePoint;
     nonce: bigint;
@@ -25,7 +29,16 @@ export interface InputsWithdraw {
     prefix_data: GeneralPrefixData,
 }
 
-/// Computes the prefix by hashing some public inputs.
+/**
+ * Computes the prefix by hashing some public inputs.
+ * @param {GeneralPrefixData} general_prefix_data - General prefix data
+ * @param {ProjectivePoint} y - The account to withdraw from
+ * @param {bigint} nonce - The account nonce
+ * @param {bigint} to - The destination address
+ * @param {bigint} amount - The withdrawal amount
+ * @param {CipherBalance} currentBalance - Current cipher balance
+ * @returns {bigint} The computed prefix hash
+ */
 function prefixWithdraw(
     general_prefix_data: GeneralPrefixData,
     y: ProjectivePoint,
@@ -47,8 +60,20 @@ function prefixWithdraw(
     return compute_prefix(seq);
 }
 
-/// Proof of withdraw operation.
-/// TODO: remove the _?
+/**
+ * Proof of withdraw operation.
+ * @interface ProofOfWithdraw
+ * @property {ProjectivePoint} A_x - The proof point A_x
+ * @property {ProjectivePoint} A_r - The proof point A_r
+ * @property {ProjectivePoint} A - The proof point A
+ * @property {ProjectivePoint} A_v - The proof point A_v
+ * @property {bigint} sx - The proof scalar sx
+ * @property {bigint} sb - The proof scalar sb
+ * @property {bigint} sr - The proof scalar sr
+ * @property {ProjectivePoint} R_aux - The auxiliary R point
+ * @property {Range} range - The range proof
+ * @todo Remove the _ from property names?
+ */
 export interface ProofOfWithdraw {
     A_x: ProjectivePoint;
     A_r: ProjectivePoint;
@@ -78,7 +103,7 @@ export function proveWithdraw(
     const y = g.multiply(x);
     const { L: L0, R: R0 } = currentBalance;
 
-    //this is to assert that storedbalance is an encription of the balance amount
+    //this is to assert that storedbalance is an encryption of the balance amount
     const g_b = L0.subtract(R0.multiplyUnsafe(x));
     const temp = g.multiplyUnsafe(initial_balance);
     if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
@@ -98,7 +123,6 @@ export function proveWithdraw(
         bit_size,
         prefix_data,
     };
-
 
     const kb = generateRandom();
     const kx = generateRandom();
@@ -127,7 +151,7 @@ export function proveWithdraw(
         range,
     };
 
-    // compute the cipherbalance that y will have at the end of the withdraw 
+    // compute the cipherbalance that y will have at the end of the withdraw
     const cipher = createCipherBalance(y, amount, WITHDRAW_CAIRO_STRING);
     const newBalance: CipherBalance = { L: currentBalance.L.subtract(cipher.L), R: currentBalance.R.subtract(cipher.R) };
 
@@ -135,16 +159,23 @@ export function proveWithdraw(
 }
 
 
-/// Verifies the withdraw operation. First, ussers have to show knowledge of the private key. Then, users  have to provide 
-/// a cleartext of the amount b to withdraw. The contract will construct a cipher balance (L2, R2) = (g**b y**r2, g**r2)
-/// with randomness r2='withdraw'. The contract will subtract (L2,R2) to the stored balance of the user. The user have
-/// provide a zk proof that the final cipher balance is encrypting a positive (a value in (0, u**32)) amount b_left. To do
-/// this when the RangeProof is verified, it returns a V = g**b_left h**r, with b_left positive. V is used as a L part of
-/// a cipher blalance, users have to prove that the cipher balance (V, R_aux = g**r) is encrypting the same amount
-/// that the final cipher balance.
-///
-/// EC_MUL: 12 + n*5 = 172 for u32 
-/// EC_ADD: 8 + n*4  = 136 for u32
+/**
+ * Verifies the withdraw operation. First, users have to show knowledge of the private key. Then, users have to provide 
+ * a cleartext of the amount b to withdraw. The contract will construct a cipher balance (L2, R2) = (g**b y**r2, g**r2)
+ * with randomness r2='withdraw'. The contract will subtract (L2,R2) to the stored balance of the user. The user have
+ * to provide a zk proof that the final cipher balance is encrypting a positive (a value in (0, u**32)) amount b_left. To do
+ * this when the RangeProof is verified, it returns a V = g**b_left h**r, with b_left positive. V is used as an L part of
+ * a cipher balance, users have to prove that the cipher balance (V, R_aux = g**r) is encrypting the same amount
+ * that the final cipher balance.
+ *
+ * Complexity:
+ * - EC_MUL: 12 + n*5 = 172 for u32 
+ * - EC_ADD: 8 + n*4  = 136 for u32
+ *
+ * @param {InputsWithdraw} inputs - The withdraw operation inputs
+ * @param {ProofOfWithdraw} proof - The proof to verify
+ * @returns {boolean} True if the proof is valid, false otherwise
+ */
 export function verifyWithdraw(
     inputs: InputsWithdraw,
     proof: ProofOfWithdraw,

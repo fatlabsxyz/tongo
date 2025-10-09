@@ -8,13 +8,16 @@ import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she"
 // cairo string 'ragequit'
 export const RAGEQUIT_CAIRO_STRING = 8241982478457596276n;
 
-/// Public inputs of the verifier for the ragequit operation.
-///
-/// - y: The Tongo account to withdraw from.
-/// - nonce: The nonce of the Tongo account.
-/// - to: The starknet contract address to send the funds to.
-/// - amount: The ammount of tongo to ragequit (the total amount of tongos in the account).
-/// - currentBalance: The current CipherBalance stored for the account.
+/**
+ * Public inputs of the verifier for the ragequit operation.
+ * @interface InputsRagequit
+ * @property {ProjectivePoint} y - The Tongo account to withdraw from
+ * @property {bigint} nonce - The nonce of the Tongo account
+ * @property {bigint} to - The starknet contract address to send the funds to
+ * @property {bigint} amount - The amount of tongo to ragequit (the total amount of tongos in the account)
+ * @property {CipherBalance} currentBalance - The current CipherBalance stored for the account
+ * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
+ */
 export interface InputsRagequit {
     y: ProjectivePoint;
     nonce: bigint;
@@ -24,7 +27,11 @@ export interface InputsRagequit {
     prefix_data: GeneralPrefixData,
 }
 
-/// Computes the prefix by hashing some public inputs.
+/**
+ * Computes the prefix by hashing some public inputs.
+ * @param {InputsRagequit} inputs - The ragequit operation inputs
+ * @returns {bigint} The computed prefix hash
+ */
 function prefixRagequit(inputs: InputsRagequit): bigint {
     const { chain_id, tongo_address } = inputs.prefix_data;
     const seq: bigint[] = [
@@ -40,7 +47,13 @@ function prefixRagequit(inputs: InputsRagequit): bigint {
     return compute_prefix(seq);
 }
 
-/// Proof of ragequit operation.
+/**
+ * Proof of ragequit operation.
+ * @interface ProofOfRagequit
+ * @property {ProjectivePoint} Ax - The proof point Ax
+ * @property {ProjectivePoint} AR - The proof point AR
+ * @property {bigint} sx - The proof scalar sx
+ */
 export interface ProofOfRagequit {
     Ax: ProjectivePoint;
     AR: ProjectivePoint;
@@ -90,20 +103,29 @@ export function proveRagequit(
 }
 
 
-/// Verifies the ragequit operation. First, ussers have to show knowledge of the private key. Then, users  have to provide 
-/// a cleartext of the amount b stored in their balances. The contract will construct a cipher balance 
-/// (L2, R2) = (g**b y, g) with randomness r=1. Users have to provide a zk proof that (L2,R2) is encrypting
-/// the same amount that the stored cipher balance (L1,R1). This is done by noting that
-/// L1/L2 = y**r1/y**r2 = (R1/R2)**x. We need to prove a poe for Y=G**x with Y=L1/L2 and G=R1/R2
-///
-/// P:  k <-- R        sends    A=G**k
-/// V:  c <-- R        sends    c
-/// P:  s = k + c*x    send     s
-/// The verifier asserts:
-/// - G**sr == A * (Y**c)
-///
-/// EC_MUL: 7
-/// EC_ADD: 5
+/**
+ * Verifies the ragequit operation. First, users have to show knowledge of the private key. Then, users have to provide 
+ * a cleartext of the amount b stored in their balances. The contract will construct a cipher balance 
+ * (L2, R2) = (g**b y, g) with randomness r=1. Users have to provide a zk proof that (L2,R2) is encrypting
+ * the same amount that the stored cipher balance (L1,R1). This is done by noting that
+ * L1/L2 = y**r1/y**r2 = (R1/R2)**x. We need to prove a poe for Y=G**x with Y=L1/L2 and G=R1/R2
+ *
+ * Protocol:
+ * - P:  k <-- R        sends    A=G**k
+ * - V:  c <-- R        sends    c
+ * - P:  s = k + c*x    send     s
+ * 
+ * The verifier asserts:
+ * - G**sr == A * (Y**c)
+ *
+ * Complexity:
+ * - EC_MUL: 7
+ * - EC_ADD: 5
+ * 
+ * @param {InputsRagequit} inputs - The ragequit operation inputs
+ * @param {ProofOfRagequit} proof - The proof to verify
+ * @returns {boolean} True if the proof is valid, false otherwise
+ */
 export function verifyRagequit(
     inputs: InputsRagequit,
     proof: ProofOfRagequit,
