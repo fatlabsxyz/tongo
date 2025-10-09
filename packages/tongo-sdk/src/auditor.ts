@@ -18,11 +18,13 @@ import { tongoAbi } from "./tongo.abi.js";
 import { bytesOrNumToBigInt } from "./utils.js";
 
 
-enum AuditorEvent {
-    BalanceDeclared = 'balanceDeclared',
-    TransferOutDeclared = 'transferOutDeclared',
-    TransferInDeclared = 'transferInDeclared',
-}
+export const AuditorEvent = {
+    BalanceDeclared: 'balanceDeclared',
+    TransferOutDeclared: 'transferOutDeclared',
+    TransferInDeclared: 'transferInDeclared',
+} as const;
+
+export type AuditorEvent = typeof AuditorEvent[keyof typeof AuditorEvent];
 
 interface AuditorBaseEvent {
     type: AuditorEvent;
@@ -31,14 +33,14 @@ interface AuditorBaseEvent {
 }
 
 interface AuditorBalanceDeclared extends AuditorBaseEvent {
-    type: AuditorEvent.BalanceDeclared;
+    type: typeof AuditorEvent.BalanceDeclared;
     nonce: bigint;
     user: TongoAddress;
     amount: bigint;
 }
 
 interface AuditorTransferOutDeclared extends AuditorBaseEvent {
-    type: AuditorEvent.TransferOutDeclared;
+    type: typeof AuditorEvent.TransferOutDeclared;
     sender_nonce: bigint;
     user: TongoAddress;
     amount: bigint;
@@ -46,7 +48,7 @@ interface AuditorTransferOutDeclared extends AuditorBaseEvent {
 }
 
 interface AuditorTransferInDeclared extends AuditorBaseEvent {
-    type: AuditorEvent.TransferInDeclared;
+    type: typeof AuditorEvent.TransferInDeclared;
     sender_nonce: bigint;
     user: TongoAddress;
     amount: bigint;
