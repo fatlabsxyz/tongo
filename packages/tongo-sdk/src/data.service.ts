@@ -1,4 +1,4 @@
-import { num, RpcProvider, hash, events, CallData, ParsedEvent } from "starknet";
+import { num, RpcProvider, hash, events, CallData, ParsedEvent, AbiParser2 } from "starknet";
 import { tongoAbi } from "./tongo.abi.js";
 import { PubKey } from "./types.js";
 import { StarkPoint } from "./types.js";
@@ -196,6 +196,8 @@ function parseTransferDeclaredEvent(event: ParsedEvent): ReaderTransferDeclaredE
 
 export class StarknetEventReader {
     private readonly provider: RpcProvider;
+    private static readonly abiParser = new AbiParser2(tongoAbi);
+    private readonly abiParser = StarknetEventReader.abiParser;
     tongoAddress: string;
 
     constructor(provider: RpcProvider, tongoAddress: string) {
@@ -212,7 +214,7 @@ export class StarknetEventReader {
             chunk_size: 100,
         });
 
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums);
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
             .filter((event) => event[FUND_EVENT_PATH] !== undefined)
             .map((event) => parseFundEvent(event));
@@ -227,7 +229,7 @@ export class StarknetEventReader {
             chunk_size: 100,
         });
 
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums);
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
             .filter((event) => event[WITHDRAW_EVENT_PATH] !== undefined)
             .map((event) => parseWithdrawEvent(event));
@@ -242,7 +244,7 @@ export class StarknetEventReader {
             chunk_size: 100,
         });
 
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums);
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
             .filter((event) => event[RAGEQUIT_EVENT_PATH] !== undefined)
             .map((event) => parseRagequitEvent(event));
@@ -257,7 +259,7 @@ export class StarknetEventReader {
             chunk_size: 100,
         });
 
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums);
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
             .filter((event) => event[ROLLOVER_EVENT_PATH] !== undefined)
             .map((event) => parseRolloverEvent(event));
@@ -272,7 +274,7 @@ export class StarknetEventReader {
             chunk_size: 100,
         });
 
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums);
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
             .filter((event) => event[TRANSFER_EVENT_PATH] !== undefined)
             .map((event) => parseTransferEventOut(event));
@@ -287,7 +289,7 @@ export class StarknetEventReader {
             chunk_size: 100,
         });
 
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums);
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
             .filter((event) => event[TRANSFER_EVENT_PATH] !== undefined)
             .map((event) => parseTransferEventIn(event));
@@ -315,7 +317,7 @@ export class StarknetEventReader {
             keys: [[BALANCE_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
             chunk_size: 100,
         });
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums);
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
             .filter((event) => event[BALANCE_DECLARED_EVENT_PATH] !== undefined)
             .map((event) => parseBalanceDeclaredEvent(event));
@@ -330,7 +332,7 @@ export class StarknetEventReader {
             chunk_size: 100,
         });
 
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums);
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
             .filter((event) => event[TRANSFER_DECLARED_EVENT_PATH] !== undefined)
             .map((event) => parseTransferDeclaredEvent(event));
@@ -342,11 +344,11 @@ export class StarknetEventReader {
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",
-            keys: [[TRANSFER_DECLARED_EVENT],[],[], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
+            keys: [[TRANSFER_DECLARED_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
             chunk_size: 100,
         });
 
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums);
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
             .filter((event) => event[TRANSFER_DECLARED_EVENT_PATH] !== undefined)
             .map((event) => parseTransferDeclaredEvent(event));
