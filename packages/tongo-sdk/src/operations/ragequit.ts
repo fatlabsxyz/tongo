@@ -1,5 +1,5 @@
-import { ProjectivePoint } from "@scure/starknet";
-import { ProofOfRagequit } from "@fatsolutions/she";
+import { ProjectivePoint } from "../types"
+import { ProofOfRagequit } from "../provers/ragequit";
 import { Call, Contract, CairoOption } from "starknet";
 import { IOperation, OperationType } from "./operation.js";
 import { AEBalance } from "../ae_balance.js";

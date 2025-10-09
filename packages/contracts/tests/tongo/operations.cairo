@@ -69,6 +69,7 @@ pub fn withdrawOperation(
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
+    let bit_size = dispatcher.get_bit_size();
 
     let (_inputs, proof, newBalance) = prove_withdraw(
         pk,
@@ -77,6 +78,7 @@ pub fn withdrawOperation(
         initialBalance,
         currentBalance,
         nonce,
+        bit_size,
         generate_random(pk, nonce.into())
     );
 
@@ -120,6 +122,7 @@ pub fn transferOperation(
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
+    let bit_size = dispatcher.get_bit_size();
 
     let (inputs, proof, newBalance) = prove_transfer(
         pk,
@@ -127,6 +130,7 @@ pub fn transferOperation(
         amount,
         currentBalance,
         nonce,
+        bit_size,
         generate_random(pk,nonce.into())
     );
 

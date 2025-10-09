@@ -204,12 +204,18 @@ export const tongoAbi = [
     },
     {
         "type": "struct",
-        "name": "tongo::structs::proofbit::ProofOfBit",
+        "name": "core::array::Span::<tongo::structs::common::starkpoint::StarkPoint>",
         "members": [
             {
-                "name": "V",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
-            },
+                "name": "snapshot",
+                "type": "@core::array::Array::<tongo::structs::common::starkpoint::StarkPoint>"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::verifier::range::bitProof",
+        "members": [
             {
                 "name": "A0",
                 "type": "tongo::structs::common::starkpoint::StarkPoint"
@@ -234,11 +240,25 @@ export const tongoAbi = [
     },
     {
         "type": "struct",
-        "name": "core::array::Span::<tongo::structs::proofbit::ProofOfBit>",
+        "name": "core::array::Span::<tongo::verifier::range::bitProof>",
         "members": [
             {
                 "name": "snapshot",
-                "type": "@core::array::Array::<tongo::structs::proofbit::ProofOfBit>"
+                "type": "@core::array::Array::<tongo::verifier::range::bitProof>"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::verifier::range::Range",
+        "members": [
+            {
+                "name": "commitments",
+                "type": "core::array::Span::<tongo::structs::common::starkpoint::StarkPoint>"
+            },
+            {
+                "name": "proofs",
+                "type": "core::array::Span::<tongo::verifier::range::bitProof>"
             }
         ]
     },
@@ -280,7 +300,7 @@ export const tongoAbi = [
             },
             {
                 "name": "range",
-                "type": "core::array::Span::<tongo::structs::proofbit::ProofOfBit>"
+                "type": "tongo::verifier::range::Range"
             }
         ]
     },
@@ -424,7 +444,7 @@ export const tongoAbi = [
             },
             {
                 "name": "range",
-                "type": "core::array::Span::<tongo::structs::proofbit::ProofOfBit>"
+                "type": "tongo::verifier::range::Range"
             },
             {
                 "name": "R_aux2",
@@ -432,7 +452,7 @@ export const tongoAbi = [
             },
             {
                 "name": "range2",
-                "type": "core::array::Span::<tongo::structs::proofbit::ProofOfBit>"
+                "type": "tongo::verifier::range::Range"
             }
         ]
     },
@@ -604,6 +624,17 @@ export const tongoAbi = [
                 "outputs": [
                     {
                         "type": "core::integer::u256"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_bit_size",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::integer::u32"
                     }
                 ],
                 "state_mutability": "view"
@@ -799,6 +830,10 @@ export const tongoAbi = [
             {
                 "name": "rate",
                 "type": "core::integer::u256"
+            },
+            {
+                "name": "bit_size",
+                "type": "core::integer::u32"
             },
             {
                 "name": "auditor_key",

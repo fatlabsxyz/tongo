@@ -1,14 +1,56 @@
-import { ProjectivePoint, GENERATOR as g, CipherBalance } from "@fatsolutions/she";
+import { ProjectivePoint as SheProjectivePoint, type ProjectivePoint as SheProjectivePointType } from "@fatsolutions/she";
 import { BigNumberish } from "starknet";
 import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";
 
-export type TongoAddress = string & { __type: "tongo" };
+import {
+    poseidonHashMany,
+} from "@scure/starknet";
+import { GENERATOR } from "./constants";
+
+export interface GeneralPrefixData {
+    chain_id: bigint,
+    tongo_address: bigint,
+}
+
+export const ProjectivePoint: typeof SheProjectivePoint = SheProjectivePoint;
+export type ProjectivePoint = SheProjectivePointType;
+
+export type TongoAddress = string & { __type: "tongo"; };
 
 /// This struct is inteded to wrap the coordinates of a NonZeroEcPoint.
 export interface StarkPoint {
     x: BigNumberish;
     y: BigNumberish;
+}
+
+/// Balances are encrypted with ElGammal, which consists in a tuple of curve points (L, R). Internally the points
+/// are constructed with L = g**b y**r, R = g**r where g is the generator of the starknet curve, y is a pubkey, r is 
+/// a random value and b is the balance to encrypt.
+export interface CipherBalance {
+    L: ProjectivePoint;
+    R: ProjectivePoint;
+}
+
+export function createCipherBalance(
+    y: ProjectivePoint,
+    amount: bigint,
+    random: bigint,
+): CipherBalance {
+    if (amount === 0n) {
+        const L = y.multiplyUnsafe(random);
+        const R = GENERATOR.multiplyUnsafe(random);
+        return { L, R };
+    }
+    const L = GENERATOR.multiply(amount).add(y.multiplyUnsafe(random));
+    const R = GENERATOR.multiplyUnsafe(random);
+    return { L, R };
+}
+
+
+//This function coincides with cairo compure_prefix
+export function compute_prefix(seq: bigint[]) {
+    return poseidonHashMany(seq);
 }
 
 /// Converts a StarkPoint to a ProjectivePoint. This operation could throw an error
@@ -29,7 +71,7 @@ export type PubKey = StarkPoint;
 
 /// Constructs a public key from a given private key.
 export function derivePublicKey(privateKey: bigint) {
-    return projectivePointToStarkPoint(g.multiply(privateKey));
+    return projectivePointToStarkPoint(GENERATOR.multiply(privateKey));
 }
 
 // assumes compressed format
@@ -45,7 +87,7 @@ export function pubKeyAffineToBase58(pub: PubKey): TongoAddress {
 }
 
 // assumes compressed format
-export function pubKeyBase58ToAffine(b58string: string): { x: bigint; y: bigint } {
+export function pubKeyBase58ToAffine(b58string: string): { x: bigint; y: bigint; } {
     const bytes = base58.decode(b58string);
     return ProjectivePoint.fromHex(bytesToHex(bytes));
 }
@@ -57,7 +99,7 @@ export function pubKeyBase58ToHex(b58string: string): string {
 }
 
 /// Converts a pairs of StarkPoints to a CipherBalance.
-export function parseCipherBalance({ L, R }: { L: StarkPoint; R: StarkPoint }): CipherBalance {
+export function parseCipherBalance({ L, R }: { L: StarkPoint; R: StarkPoint; }): CipherBalance {
     return {
         L: starkPointToProjectivePoint(L),
         R: starkPointToProjectivePoint(R),

@@ -16,6 +16,7 @@ fn main() {
             OWNER_ADDRESS: 'OWNER'.try_into().unwrap(),
             salt: 0x3,
             rate: 1,
+            bit_size: 32
         },
     );
 }

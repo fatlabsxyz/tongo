@@ -2,6 +2,12 @@
 version = 1
 
 [[package]]
+name = "she"
+version = "0.3.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:2b8d465aa6ddeb45c0f210471b3c79201c2e5eb822e0ac3407e593f5a58061ba"
+
+[[package]]
 name = "snforge_scarb_plugin"
 version = "0.50.0"
 source = "registry+https://scarbs.xyz/"
@@ -20,5 +26,6 @@ dependencies = [
 name = "tongo"
 version = "0.1.0"
 dependencies = [
+ "she",
  "snforge_std",
 ]
