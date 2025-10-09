@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { encryptNull, KeyGen, provider, relayer, Relayers, tongoAddress } from "../utils.js";
+import { encryptNull, KeyGen, provider, Relayers, tongoAddress } from "../utils.js";
 
 import { Account as TongoAccount } from "../../src/account/account.js";
 
