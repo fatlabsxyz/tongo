@@ -1,7 +1,8 @@
 import { poe } from "@fatsolutions/she/protocols";
 
-import { CipherBalance, compute_prefix, createCipherBalance, GeneralPrefixData, ProjectivePoint } from "../types";
 import { GENERATOR as g } from "../constants";
+import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
+import { createCipherBalance} from "../../src/utils";
 
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 
@@ -62,28 +63,29 @@ export interface ProofOfRagequit {
 
 
 export function proveRagequit(
-    x: bigint,
-    currentBalance: CipherBalance,
+    private_key: bigint,
+    initial_cipherbalance: CipherBalance,
     nonce: bigint,
     to: bigint,
-    amount: bigint,
+    full_amount: bigint,
     prefix_data: GeneralPrefixData,
 ): { inputs: InputsRagequit, proof: ProofOfRagequit, newBalance: CipherBalance; } {
 
+    const x = private_key;
     const y = g.multiply(x);
-    const { L: L0, R: R0 } = currentBalance;
+    const { L: L0, R: R0 } = initial_cipherbalance;
 
     //this is to assert that storedbalance is an encription of the balance amount
     const g_b = L0.subtract(R0.multiplyUnsafe(x));
-    const temp = g.multiplyUnsafe(amount);
+    const temp = g.multiplyUnsafe(full_amount);
     if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
 
     const inputs: InputsRagequit = {
         y,
         nonce,
         to,
-        amount,
-        currentBalance,
+        amount: full_amount,
+        currentBalance: initial_cipherbalance,
         prefix_data,
     };
     const prefix = prefixRagequit(inputs);

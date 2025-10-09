@@ -1,4 +1,4 @@
-import { AEChaCha, AEHintToBytes, bytesToBigAEHint } from "../../src/ae_balance.js";
+import { AEChaCha, AEHintToBytes, bytesToAEHint } from "../../src/ae_balance"
 import { describe, expect, it } from "vitest";
 
 describe("[ae_balance] conversions", () => {
@@ -20,7 +20,7 @@ describe("[ae_balance] conversions", () => {
     });
 
     it("decodes ciphertext and nonce from bytes", async () => {
-        const aeHintBigInt = bytesToBigAEHint({
+        const aeHintBigInt = bytesToAEHint({
             ciphertext: new Uint8Array([0xca, 0xfe]),
             nonce: new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 166, 254]),
         });

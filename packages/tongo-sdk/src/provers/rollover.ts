@@ -46,10 +46,11 @@ function prefixRollover(inputs: InputsRollover): bigint {
 }
 
 export function proveRollover(
-    x: bigint,
+    private_key: bigint,
     nonce: bigint,
     prefix_data: GeneralPrefixData,
 ): { inputs: InputsRollover; proof: ProofOfRollover; } {
+    const x = private_key;
     const y = g.multiply(x);
     const inputs: InputsRollover = { y: y, nonce: nonce, prefix_data };
     const prefix = prefixRollover(inputs);
@@ -71,13 +72,7 @@ export function proveRollover(
  * @returns {boolean} True if the proof is valid, false otherwise
  */
 export function verifyRollover(inputs: InputsRollover, proof: ProofOfRollover) {
-    const seq: bigint[] = [
-        ROLLOVER_CAIRO_STRING,
-        inputs.y.toAffine().x,
-        inputs.y.toAffine().y,
-        inputs.nonce,
-    ];
-    const prefix = compute_prefix(seq);
+    const prefix = prefixRollover(inputs);
     const c = compute_challenge(prefix, [proof.Ax]);
     const res = poe._verify(inputs.y, g, proof.Ax, c, proof.sx);
     if (res == false) {
