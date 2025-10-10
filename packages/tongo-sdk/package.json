@@ -70,6 +70,7 @@
     "registry": "https://registry.npmjs.org"
   },
   "devDependencies": {
-    "tsx": "^4.20.5"
+    "tsx": "^4.20.5",
+    "starknet-devnet": "0.6.0"
   }
 }

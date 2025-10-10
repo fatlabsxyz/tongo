@@ -7,7 +7,7 @@ import { Account as TongoAccount } from "../../src/account/account.js";
 describe("[integration]", () => {
     it("[rollover]", async () => {
         const kg = new KeyGen("rollover2");
-        const relayer = Relayers.get(2);
+        const relayer = await Relayers.get(2);
 
         const accSender = new TongoAccount(kg.from(1), tongoAddress, provider);
         const accRec = new TongoAccount(kg.from(2), tongoAddress, provider);

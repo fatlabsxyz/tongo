@@ -7,7 +7,7 @@ import { Account as TongoAccount } from "../../src/account/account.js";
 describe("[integration]", () => {
     it("[fund]", async () => {
         const kg = new KeyGen("fund");
-        const relayer = Relayers.get(0);
+        const relayer = await Relayers.get(0);
 
         const account = new TongoAccount(kg.from(1), tongoAddress, provider);
 
