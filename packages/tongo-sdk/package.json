@@ -41,7 +41,7 @@
   "scripts": {
     "bin": "node ./dist/cli.js",
     "clean": "rm -rf dist",
-    "build": "tsc -p ./tsconfig.json --outDir dist && chmod +x dist/cli.js",
+    "build": "tsc -p ./tsconfig.json --outDir dist",
     "update-abi": "echo -n 'export const tongoAbi = ' > ./src/tongo.abi.ts && jq --indent 4 -j '.abi' < ../contracts/target/dev/tongo_Tongo.contract_class.json >> ./src/tongo.abi.ts && echo ' as const;' >> ./src/tongo.abi.ts",
     "test": ". ./test/envvars && vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
     "test:unit": ". ./test/envvars && vitest --project unit -c ./vitest.config.ts",
