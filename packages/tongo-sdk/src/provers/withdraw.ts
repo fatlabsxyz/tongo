@@ -3,7 +3,8 @@ import { poe, poe2 } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
-import { CipherBalance, compute_prefix, createCipherBalance, GeneralPrefixData, ProjectivePoint } from "../types";
+import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
+import { createCipherBalance} from "../../src/utils";
 
 // cairo string 'withdraw'
 export const WITHDRAW_CAIRO_STRING = 8604536554778681719n;
@@ -87,11 +88,11 @@ export interface ProofOfWithdraw {
 }
 
 export function proveWithdraw(
-    x: bigint,
+    private_key: bigint,
     initial_balance: bigint,
     amount: bigint,
     to: bigint,
-    currentBalance: CipherBalance,
+    initial_cipherbalance: CipherBalance,
     nonce: bigint,
     bit_size: number,
     prefix_data: GeneralPrefixData,
@@ -100,8 +101,9 @@ export function proveWithdraw(
     proof: ProofOfWithdraw;
     newBalance: CipherBalance;
 } {
+    const x = private_key;
     const y = g.multiply(x);
-    const { L: L0, R: R0 } = currentBalance;
+    const { L: L0, R: R0 } = initial_cipherbalance;
 
     //this is to assert that storedbalance is an encryption of the balance amount
     const g_b = L0.subtract(R0.multiplyUnsafe(x));
@@ -117,7 +119,7 @@ export function proveWithdraw(
     const inputs: InputsWithdraw = {
         y,
         nonce,
-        currentBalance,
+        currentBalance: initial_cipherbalance,
         to,
         amount,
         bit_size,
@@ -153,7 +155,7 @@ export function proveWithdraw(
 
     // compute the cipherbalance that y will have at the end of the withdraw
     const cipher = createCipherBalance(y, amount, WITHDRAW_CAIRO_STRING);
-    const newBalance: CipherBalance = { L: currentBalance.L.subtract(cipher.L), R: currentBalance.R.subtract(cipher.R) };
+    const newBalance: CipherBalance = { L: L0.subtract(cipher.L), R: R0.subtract(cipher.R) };
 
     return { inputs, proof, newBalance };
 }
@@ -189,6 +191,7 @@ export function verifyWithdraw(
         inputs.to
     );
 
+    
     const c = compute_challenge(prefix, [proof.A_x, proof.A_r, proof.A, proof.A_v]);
 
     let res = poe._verify(inputs.y, g, proof.A_x, c, proof.sx);
@@ -203,10 +206,9 @@ export function verifyWithdraw(
     if (res == false) { throw new Error("error in poe2 Y"); }
 
 
-    const range_prefix = 0n;
-    const V = verifyRangeProof(proof.range, bit_size, range_prefix);
+    const V = verifyRangeProof(proof.range, bit_size, prefix);
     if (V == false) { throw new Error("erro in range for V"); }
 
-    res = poe2._verify(V, g, g, proof.A_v, c, proof.sb, proof.sr);
+    res = poe2._verify(V, g, h, proof.A_v, c, proof.sb, proof.sr);
     if (res == false) { throw new Error("error in poe2 V"); }
 }

@@ -1,7 +1,8 @@
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 import { SameEncryptUnknownRandom } from "@fatsolutions/she/protocols";
 import { GENERATOR as g } from "../constants";
-import { CipherBalance, createCipherBalance, ProjectivePoint } from "../types";
+import { CipherBalance, ProjectivePoint } from "../types";
+import { createCipherBalance} from "../../src/utils";
 
 // cairo string 'audit'
 export const AUDIT_CAIRO_STRING = 418581342580n;
@@ -42,19 +43,25 @@ export interface ProofOfAudit {
     sb: bigint,
 }
 
-export function proveAudit(x: bigint, balance: bigint, storedBalance: CipherBalance, auditorPubKey: ProjectivePoint): { inputs: InputsAudit, proof: ProofOfAudit; } {
+export function proveAudit(
+    private_key: bigint,
+    initial_balance: bigint,
+    initial_cipherbalance: CipherBalance,
+    auditorPubKey: ProjectivePoint
+): { inputs: InputsAudit, proof: ProofOfAudit; } {
+    const x = private_key;
     const y = g.multiply(x);
-    const { L: L0, R: R0 } = storedBalance;
+    const { L: L0, R: R0 } = initial_cipherbalance;
 
     //this is to assert that storedbalance is an encription of the balance amount
     const g_b = L0.subtract(R0.multiplyUnsafe(x));
-    const temp = g.multiplyUnsafe(balance);
+    const temp = g.multiplyUnsafe(initial_balance);
     if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
     //
 
     const r = generateRandom();
-    const auditedBalance = createCipherBalance(auditorPubKey, balance, r);
-    const inputs: InputsAudit = { y, storedBalance, auditorPubKey, auditedBalance };
+    const auditedBalance = createCipherBalance(auditorPubKey, initial_balance, r);
+    const inputs: InputsAudit = { y, storedBalance: initial_cipherbalance, auditorPubKey, auditedBalance };
 
     const kx = generateRandom();
     const kb = generateRandom();
@@ -69,7 +76,7 @@ export function proveAudit(x: bigint, balance: bigint, storedBalance: CipherBala
 
     const sx = compute_s(kx, x, c);
     const sr = compute_s(kr, r, c);
-    const sb = compute_s(kb, balance, c);
+    const sb = compute_s(kb, initial_balance, c);
 
     const proof: ProofOfAudit = { Ax, AL0, AL1, AR1, sx, sb, sr };
     return { inputs, proof };

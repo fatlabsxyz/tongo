@@ -2,7 +2,7 @@ import { bytesToHex } from "@noble/hashes/utils";
 import { BigNumberish, num, uint256, Uint256 } from "starknet";
 
 import { GENERATOR } from "./constants";
-import { ProjectivePoint, projectivePointToStarkPoint } from "./types";
+import { ProjectivePoint, projectivePointToStarkPoint, CipherBalance} from "./types";
 
 export function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
     if (x instanceof Uint8Array) {
@@ -25,6 +25,22 @@ export function castBigInt(x: number | bigint | Uint256) {
         return uint256.uint256ToBN(x);
     }
 }
+
+export function createCipherBalance(
+    y: ProjectivePoint,
+    amount: bigint,
+    random: bigint,
+): CipherBalance {
+    if (amount === 0n) {
+        const L = y.multiplyUnsafe(random);
+        const R = GENERATOR.multiplyUnsafe(random);
+        return { L, R };
+    }
+    const L = GENERATOR.multiply(amount).add(y.multiplyUnsafe(random));
+    const R = GENERATOR.multiplyUnsafe(random);
+    return { L, R };
+}
+
 
 
 /**

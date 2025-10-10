@@ -3,7 +3,8 @@ import { poe, poe2 } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
-import { CipherBalance, compute_prefix, createCipherBalance, GeneralPrefixData, ProjectivePoint } from "../types";
+import { CipherBalance, compute_prefix,  GeneralPrefixData, ProjectivePoint } from "../types";
+import { createCipherBalance} from "../../src/utils";
 
 // cairo string 'transfer'
 export const TRANSFER_CAIRO_STRING = 8390876182755042674n;
@@ -83,11 +84,11 @@ export interface ProofOfTransfer {
 }
 
 export function proveTransfer(
-    x: bigint,
+    private_key: bigint,
     to: ProjectivePoint,
-    b0: bigint,
-    b: bigint,
-    currentBalance: CipherBalance,
+    initial_balance: bigint,
+    amount_to_transfer: bigint,
+    initial_cipherbalance: CipherBalance,
     nonce: bigint,
     bit_size: number,
     prefix_data: GeneralPrefixData,
@@ -96,8 +97,11 @@ export function proveTransfer(
     proof: ProofOfTransfer;
     newBalance: CipherBalance;
 } {
+    const x = private_key;
     const y = g.multiply(x);
-    const { L: L0, R: R0 } = currentBalance;
+    const { L: L0, R: R0 } = initial_cipherbalance;
+    const b = amount_to_transfer;
+    const b0 = initial_balance;
 
     const prefix = prefixTransfer(prefix_data, y, to, nonce);
 
@@ -114,7 +118,7 @@ export function proveTransfer(
         from: y,
         to,
         nonce,
-        currentBalance,
+        currentBalance: initial_cipherbalance,
         transferBalance,
         transferBalanceSelf,
         bit_size,
@@ -210,8 +214,8 @@ export function verifyTransfer(
     const bit_size = inputs.bit_size;
     const prefix = prefixTransfer(
         inputs.prefix_data,
-        inputs.to,
         inputs.from,
+        inputs.to,
         inputs.nonce
     );
 

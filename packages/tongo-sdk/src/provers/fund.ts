@@ -2,7 +2,10 @@ import { compute_challenge } from "@fatsolutions/she";
 import { poe } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g } from "../constants";
-import { CipherBalance, compute_prefix, createCipherBalance, GeneralPrefixData, ProjectivePoint } from "../types";
+import { createCipherBalance} from "../../src/utils";
+import { ProjectivePoint, GeneralPrefixData, CipherBalance, compute_prefix } from "../types";
+
+
 
 // cairo string 'fund'
 export const FUND_CAIRO_STRING = 1718972004n;
@@ -53,10 +56,10 @@ export interface ProofOfFund {
 }
 
 export function proveFund(
-    x: bigint,
-    amount: bigint,
-    initialBalance: bigint,
-    currentBalance: CipherBalance,
+    private_key: bigint,
+    amount_to_fund: bigint,
+    initial_balance: bigint,
+    initial_cipherbalance: CipherBalance,
     nonce: bigint,
     prefix_data: GeneralPrefixData,
 ): {
@@ -64,21 +67,22 @@ export function proveFund(
     proof: ProofOfFund;
     newBalance: CipherBalance;
 } {
+    const x = private_key;
     const y = g.multiply(x);
-    const { L: L0, R: R0 } = currentBalance;
+    const { L: L0, R: R0 } = initial_cipherbalance;
 
     //this is to assert that storedbalance is an encryption of the balance amount
     const g_b = L0.subtract(R0.multiplyUnsafe(x));
-    const temp = g.multiplyUnsafe(initialBalance);
+    const temp = g.multiplyUnsafe(initial_balance);
     if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
 
-    const inputs: InputsFund = { y, nonce, amount, prefix_data };
+    const inputs: InputsFund = { y, nonce, amount:amount_to_fund, prefix_data };
     const prefix = prefixFund(inputs);
 
     const { proof: { s: sx, A: Ax } } = poe.prove(x, g, prefix);
 
     // compute the cipherbalance that `y` will have after the fund operation
-    const cipher = createCipherBalance(y, amount, FUND_CAIRO_STRING);  // we use FUND_CAIRO_STRING as a random number
+    const cipher = createCipherBalance(y, amount_to_fund, FUND_CAIRO_STRING);  // we use FUND_CAIRO_STRING as a random number
     const newBalance: CipherBalance = { L: L0.add(cipher.L), R: R0.add(cipher.R) };
 
     return { inputs, proof: { sx, Ax }, newBalance };

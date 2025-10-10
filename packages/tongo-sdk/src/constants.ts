@@ -1,5 +1,5 @@
 import { CURVE } from "@scure/starknet";
-import { ProjectivePoint } from "./types";
+import { ProjectivePoint } from "./types.js";
 
 export const CURVE_ORDER = CURVE.n;
 export const GENERATOR: ProjectivePoint = new ProjectivePoint(CURVE.Gx, CURVE.Gy, 1n);
