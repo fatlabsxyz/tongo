@@ -7,6 +7,7 @@ async function startDevnet({
 }): Promise<Devnet> {
     return new Promise(async (resolve) => {
         const devnet = await Devnet.spawnInstalled({
+            stdout: "ignore",
             args: [
                 "--seed", "1244846250",
                 "--chain-id", chainId,
