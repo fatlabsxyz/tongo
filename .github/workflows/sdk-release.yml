@@ -31,10 +31,6 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Build she
-        run: pnpm build
-        working-directory: packages/she
-
       - name: Build sdk
         run: pnpm build
         working-directory: packages/tongo-sdk
