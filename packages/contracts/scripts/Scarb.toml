@@ -18,9 +18,9 @@ casm = true
 deploy_mainnet = ". ./.env && sncast --account $ACCOUNT --accounts-file $ACCOUNTS_FILE_PATH script run -u $RPC_URL deploy_mainnet"
 deploy_local5151 = "sncast --profile local5151 script run deploy_local"
 deploy_local = "sncast --profile local script run deploy_local"
-devnet5151 = "bash -c '. ./localnet/variables && starknet-devnet --port 5151 --fork-network https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_9/$RPC_API_KEY --dump-path ./state/devnet.state'"
+prepare_devnet = "bash -c '. ./localnet/variables && starknet-devnet --state-archive-capacity full --chain-id MAINNET --dump-path ./state/devnet.state --dump-on exit'"
+devnet5151 = "bash -c '. ./localnet/variables && starknet-devnet --port 5151 --dump-path ./state/devnet.state'"
 devnet = "bash -c '. ./localnet/variables && starknet-devnet --lite-mode --fork-network http://127.0.0.1:5151'"
-prepare_devnet = "bash -c '. ./localnet/variables && RUST_LOG=\"REQUEST,RESPONSE,INFO\" starknet-devnet --fork-network https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_9/$RPC_API_KEY --dump-path ./state/devnet.state --dump-on exit'"
 
 [[target.starknet-contract]]
 build-external-contracts = [
