@@ -59,7 +59,11 @@ export class Account implements IAccount {
 
     constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
-        this.Tongo = new Contract(tongoAbi, contractAddress, provider).typedv2(tongoAbi);
+        this.Tongo = new Contract({
+            abi: tongoAbi,
+            address: contractAddress,
+            providerOrAccount: provider
+        }).typedv2(tongoAbi);
         this.publicKey = pubKeyFromSecret(this.pk);
         this.provider = provider;
     }

@@ -1,12 +1,12 @@
 import { keccak } from "@scure/starknet";
-import { Account, constants, Contract, RpcProvider, Call, GetTransactionReceiptResponse } from "starknet";
+import { Account, Contract, RpcProvider } from "starknet";
+import { GENERATOR } from "../src/constants.js";
 import { tongoAbi } from "../src/tongo.abi.js";
 import { StarkPoint, starkPointToProjectivePoint } from "../src/types.js";
-import { GENERATOR } from "@fatsolutions/she";
 
 export const provider = new RpcProvider({
     nodeUrl: "http://127.0.0.1:5050/rpc",
-    specVersion: "0.8",
+    specVersion: "0.9.0",
 });
 
 export function relayerAccount(provider: RpcProvider): Account {
@@ -14,7 +14,13 @@ export function relayerAccount(provider: RpcProvider): Account {
     const privateKey = process.env.ACCOUNT_PRIVATE_KEY;
     if (address === undefined || privateKey === undefined)
         throw new Error("Environment not set for ACCOUNT_ADDRESS | ACCOUNT_PRIVATE_KEY");
-    return new Account(provider, address, privateKey, undefined, constants.TRANSACTION_VERSION.V3);
+    return new Account({
+        provider,
+        address,
+        signer: privateKey,
+        cairoVersion: "1",
+        transactionVersion: "0x3",
+    });
 }
 
 export const relayer = relayerAccount(provider);
@@ -50,7 +56,13 @@ export class RelayerHandler {
         const { address, privateKey } = this.accounts[index];
         if (!address)
             throw new Error(`No relayer account ${index}`);
-        return new Account(provider, address, privateKey, undefined, constants.TRANSACTION_VERSION.V3);
+        return new Account({
+            provider,
+            address,
+            signer: privateKey,
+            cairoVersion: "1",
+            transactionVersion: "0x3",
+        });
     }
 
 }
@@ -63,7 +75,11 @@ export const tongoAddress = (() => {
     return _address;
 })();
 
-export const Tongo = new Contract(tongoAbi, tongoAddress, relayer).typedv2(tongoAbi);
+export const Tongo = new Contract({
+    abi: tongoAbi,
+    address: tongoAddress,
+    providerOrAccount: relayer
+}).typedv2(tongoAbi);
 
 export function encryptNull(publicKey: StarkPoint) {
     return {

@@ -50,8 +50,7 @@
     "lint:fix": "eslint --config ./eslint.config.js \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
     "format": "prettier --config ./prettier.config.js --check \"{src,test}/**/*.{js,ts,json}\"",
     "format:fix": "prettier --config ./prettier.config.js --write \"{src,test,tests}/**/*.{js,ts,json}\"",
-    "devnet:state": ". ../contracts/scripts/localnet/variables && RUST_LOG=\"REQUEST,RESPONSE,INFO\" starknet-devnet --fork-network https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_8/$RPC_API_KEY --dump-path ./test/state/devnet.state",
-    "devnet": ". ../contracts/scripts/localnet/variables && RUST_LOG=\"REQUEST,RESPONSE,INFO\" starknet-devnet --fork-network https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_8/$RPC_API_KEY",
+    "devnet:state": ". ./test/envvars && starknet-devnet --dump-path ./test/state/devnet.state",
     "aux": "tsx ./aux.ts"
   },
   "license": "Apache-2.0",
@@ -64,7 +63,7 @@
     "@scure/starknet": "catalog:",
     "commander": "^11.0.0",
     "dotenv": "^16.3.1",
-    "starknet": "^7.0.0"
+    "starknet": "8.5.4"
   },
   "publishConfig": {
     "access": "public",

@@ -1,7 +1,9 @@
-ACCOUNT_PATH=../contracts/scripts/localnet/accounts.json
-SCRIPTS_PATH=../contracts/scripts
+export CHAIN_ID=MAINNET
+export ACCOUNTS=5
+export SEED=1244846250
+export RUST_LOG="REQUEST,RESPONSE,INFO"
 
 ## integration tests
-export ACCOUNT_ADDRESS=$(jq -r '."alpha-sepolia".localnet.address' < $ACCOUNT_PATH)
-export ACCOUNT_PRIVATE_KEY=$(jq -r '."alpha-sepolia".localnet.private_key' < $ACCOUNT_PATH)
+export ACCOUNT_ADDRESS=0x0726095178d1d310e0abeab7264e3fa76f9360a71417d553b6e51889b5b4a590
+export ACCOUNT_PRIVATE_KEY=0x0000000000000000000000000000000021b26befb13f5d5496ab1eb84497342b
 export TONGO_CONTRACT_ADDRESS=$(jq -r '.contracts.Tongo.address' < ./test/state/devnet.json)

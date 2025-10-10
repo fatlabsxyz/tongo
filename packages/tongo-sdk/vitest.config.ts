@@ -25,7 +25,12 @@ export default defineConfig({
         test: {
           testTimeout: 0,
           name: "integration",
-          include: [ "test/integration/*" ],
+          include: [
+            "./test/integration/state.test.ts",
+            "./test/integration/fund.test.ts",
+            "./test/integration/transfer.test.ts",
+            "./test/integration/rollover.test.ts",
+          ],
         },
       },
     ]

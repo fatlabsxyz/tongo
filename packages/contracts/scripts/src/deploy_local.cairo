@@ -11,12 +11,12 @@ fn main() {
     let auditor_pubkey = pubkey_from_secret('CURIOSITY');
     base(
         BaseParams {
-            ERC20_ADDRESS: STARK_ADDRESS,
-            AUDITOR_PUBKEY: auditor_pubkey,
-            OWNER_ADDRESS: 'OWNER'.try_into().unwrap(),
             salt: 0x3,
-            rate: 1,
-            bit_size: 32
+            OWNER_ADDRESS: 'OWNER'.try_into().unwrap(),
+            ERC20_ADDRESS: STARK_ADDRESS,
+            rate: 1_u256,
+            bit_size: 32,
+            AUDITOR_PUBKEY: auditor_pubkey,
         },
     );
 }
