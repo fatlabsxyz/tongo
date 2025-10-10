@@ -1,5 +1,7 @@
-ACCOUNT_PATH=../contracts/scripts/localnet/accounts.json
-SCRIPTS_PATH=../contracts/scripts
+export CHAIN_ID=MAINNET
+export ACCOUNTS=5
+export SEED=1244846250
+export RUST_LOG="REQUEST,RESPONSE,INFO"
 
 ## integration tests
 export ACCOUNT_ADDRESS=0x0726095178d1d310e0abeab7264e3fa76f9360a71417d553b6e51889b5b4a590
