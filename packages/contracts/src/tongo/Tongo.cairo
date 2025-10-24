@@ -395,7 +395,8 @@ pub mod Tongo {
         fn _transfer_from_caller(self: @ContractState, amount: u256) {
             let asset_address = self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address };
-            ERC20.transfer_from(get_caller_address(), get_contract_address(), amount);
+            let response = ERC20.transfer_from(get_caller_address(), get_contract_address(), amount);
+            assert!(response, "ERC20 transfer_from failed");
         }
 
         /// Transfer some amount of ERC20 to the given starknet address.
