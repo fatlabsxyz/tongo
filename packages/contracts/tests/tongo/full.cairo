@@ -8,18 +8,18 @@ use crate::prover::utils::{decipher_balance};
 use crate::tongo::setup::{setup_tongo};
 use crate::prover::utils::pubkey_from_secret;
 
-fn checkBalances(x: felt252, balanceAmount:felt252, pendingAmount:felt252,auditAmount:felt252, dispatcher: ITongoDispatcher) {
+fn checkBalances(x: felt252, balanceAmount:u128, pendingAmount:u128,auditAmount:u128, dispatcher: ITongoDispatcher) {
     let public_key = pubkey_from_secret(x);
 
     let balance = dispatcher.get_balance(public_key);
-    decipher_balance(balanceAmount, x, balance);
+    decipher_balance(balanceAmount.into(), x, balance);
 
     let pending= dispatcher.get_pending(public_key);
-    decipher_balance(pendingAmount, x, pending);
+    decipher_balance(pendingAmount.into(), x, pending);
 
     let audit = dispatcher.get_audit(public_key);
     if audit.is_some() {
-        decipher_balance(auditAmount, AUDITOR_PRIVATE, audit.unwrap());
+        decipher_balance(auditAmount.into(), AUDITOR_PRIVATE, audit.unwrap());
     }
 }
 
@@ -46,8 +46,8 @@ fn full() {
     assert!(nonce == 0, "Initial nonce not 0");
 
 
-    let initial_balance = 0;
-    let initial_fund = 250;
+    let initial_balance = 0_u128;
+    let initial_fund = 250_u128;
     let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
@@ -57,7 +57,7 @@ fn full() {
     let nonce = dispatcher.get_nonce(y);
     assert!(nonce == 1, "Nonce is not 1");
 
-    let transfer_amount = 100;
+    let transfer_amount = 100_u128;
     let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,dispatcher);
     dispatcher.transfer(operation);
 

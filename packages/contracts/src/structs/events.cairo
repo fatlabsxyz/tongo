@@ -14,7 +14,7 @@ pub struct FundEvent {
     pub to: PubKey,
     #[key]
     pub nonce: u64,
-    pub amount: u64,
+    pub amount: u128,
 }
 
 /// Event emited in a Rollover operation.
@@ -44,7 +44,7 @@ pub struct WithdrawEvent {
     pub from: PubKey,
     #[key]
     pub nonce: u64,
-    pub amount: u64,
+    pub amount: u128,
     pub to: ContractAddress,
 }
 
@@ -85,7 +85,7 @@ pub struct RagequitEvent {
     pub from: PubKey,
     #[key]
     pub nonce: u64,
-    pub amount: u64,
+    pub amount: u128,
     pub to: ContractAddress,
 }
 

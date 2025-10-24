@@ -29,14 +29,14 @@ fn audit_fund() {
     let x = 2093810923812;
     let y = pubkey_from_secret(x);
 
-    let initial_balance = 0;
-    let initial_fund = 250;
+    let initial_balance = 0_u128;
+    let initial_fund = 250_u128;
     let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     let audit = dispatcher.get_audit(y);
     if audit.is_some() {
-        decipher_balance(initial_fund, AUDITOR_PRIVATE, audit.unwrap());
+        decipher_balance(initial_fund.into(), AUDITOR_PRIVATE, audit.unwrap());
     }
 }
 
@@ -48,18 +48,18 @@ fn audit_withdraw() {
     let x = 129381237213;
     let y = pubkey_from_secret(x);
 
-    let initial_balance = 0;
-    let initial_fund = 250;
+    let initial_balance = 0_u128;
+    let initial_fund = 250_u128;
     let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
-    let withdraw_amount = 25;
+    let withdraw_amount = 25_u128;
     let operation = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address,dispatcher);
     dispatcher.withdraw(operation);
 
     let audit = dispatcher.get_audit(y);
     if audit.is_some() {
-        decipher_balance(initial_fund - withdraw_amount, AUDITOR_PRIVATE, audit.unwrap());
+        decipher_balance((initial_fund - withdraw_amount).into(), AUDITOR_PRIVATE, audit.unwrap());
     }
 }
 
@@ -71,8 +71,8 @@ fn audit_ragequit() {
     let x = 92183091283;
     let y = pubkey_from_secret(x);
 
-    let initial_balance = 0;
-    let initial_fund = 250;
+    let initial_balance = 0_u128;
+    let initial_fund = 250_u128;
     let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
@@ -96,18 +96,19 @@ fn audit_transfer() {
     let x_bar = 21983092183910283;
     let y_bar = pubkey_from_secret(x_bar);
 
-    let initial_balance = 0;
-    let initial_fund = 250;
+
+    let initial_balance = 0_u128;
+    let initial_fund = 250_u128;
     let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
-    let transfer_amount = 100;
+    let transfer_amount = 100_u128;
     let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,dispatcher);
     dispatcher.transfer(operation);
 
     let audit = dispatcher.get_audit(y);
     if audit.is_some() {
-        decipher_balance(initial_fund - transfer_amount, AUDITOR_PRIVATE, audit.unwrap());
+        decipher_balance((initial_fund - transfer_amount).into(), AUDITOR_PRIVATE, audit.unwrap());
     }
 
     let audit = dispatcher.get_audit(y_bar);

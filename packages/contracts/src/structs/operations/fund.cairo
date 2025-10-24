@@ -16,12 +16,12 @@ use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 #[derive(Drop, Serde)]
 pub struct Fund {
     pub to: PubKey,
-    pub amount: felt252,
+    pub amount: u128,
     pub hint: AEBalance,
     pub proof: ProofOfFund,
     pub auditPart: Option<Audit>,
-}
 
+}
 /// Public inputs of the verifier for the fund operation.
 ///
 /// - y: The Tongo account to fund.
@@ -30,7 +30,7 @@ pub struct Fund {
 #[derive(Serde, Drop, Copy, Debug)]
 pub struct InputsFund {
     pub y: PubKey,
-    pub amount: felt252,
+    pub amount: u128,
     pub nonce: u64,
     pub prefix_data: GeneralPrefixData,
 }
@@ -46,7 +46,7 @@ pub impl FundPrefix of Prefix<InputsFund> {
             fund_selector,
             *self.y.x,
             *self.y.y,
-            *self.amount,
+            (*self.amount).into(),
             (*self.nonce).into(),
         ];
         poseidon_hash_span(array.span())

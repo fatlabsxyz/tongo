@@ -147,7 +147,7 @@ pub mod Tongo {
 
             self._transfer_from_caller(self._unwrap_tongo_amount(amount));
 
-            let cipher = CipherBalanceTrait::new(to, amount, 'fund');
+            let cipher = CipherBalanceTrait::new(to, amount.into(), 'fund');
             self._add_balance(to, cipher);
             self._overwrite_hint(to, hint);
             self.emit(FundEvent { to, amount: amount.try_into().unwrap(), nonce });
@@ -174,7 +174,7 @@ pub mod Tongo {
             };
             verify_withdraw(inputs, proof);
 
-            let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
+            let cipher = CipherBalanceTrait::new(from, amount.into(), 'withdraw');
             self._subtract_balance(from, cipher);
             self._overwrite_hint(from, hint);
             self._transfer_to(to, self._unwrap_tongo_amount(amount));
@@ -431,7 +431,7 @@ pub mod Tongo {
         /// Returns the ERC20 equivalent of the given Tongo amount.
         ///
         /// ERC20_amount = Tongo_amount*rate
-        fn _unwrap_tongo_amount(self: @ContractState, amount: felt252) -> u256 {
+        fn _unwrap_tongo_amount(self: @ContractState, amount: u128) -> u256 {
             let rate = self.rate.read();
             return (amount.into() * rate);
         }

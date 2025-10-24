@@ -18,8 +18,8 @@ fn test_ragequit() {
 
     let y = pubkey_from_secret(x);
     
-    let initial_balance = 0;
-    let initial_fund = 250;
+    let initial_balance = 0_u128;
+    let initial_fund = 250_u128;
     let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
@@ -50,21 +50,21 @@ fn test_withdraw() {
     let x = generate_random(seed, 1);
     let y = pubkey_from_secret(x);
 
-    let initial_balance = 0;
-    let initial_fund = 250;
+    let initial_balance = 0_u128;
+    let initial_fund = 250_u128;
     let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20 = erc20dispatcher.balance_of(transfer_address);
 
-    let withdraw_amount = 25;
+    let withdraw_amount = 25_u128;
 
     let operation = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address,dispatcher);
     dispatcher.withdraw(operation);
 
     let balance = dispatcher.get_balance(y);
-    decipher_balance(initial_fund- withdraw_amount, x, balance);
+    decipher_balance((initial_fund- withdraw_amount).into(), x, balance);
 
     let finalErc20 = erc20dispatcher.balance_of(transfer_address);
     let rate = dispatcher.get_rate();

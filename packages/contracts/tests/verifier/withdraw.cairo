@@ -17,9 +17,9 @@ fn test_withdraw() {
     let y = pubkey_from_secret(x);
 
     // balance stored
-    let initial_balance = 100;
+    let initial_balance = 100_u128;
     let r0 = generate_random(seed, 2);
-    let currentBalance = CipherBalanceTrait::new(y, initial_balance, r0);
+    let currentBalance = CipherBalanceTrait::new(y, initial_balance.into(), r0);
     // end of setup
 
     let amount = 10;

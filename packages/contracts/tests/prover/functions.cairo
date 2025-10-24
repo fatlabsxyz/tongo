@@ -41,7 +41,7 @@ use crate::prover::utils::{
 
 pub fn prove_audit(
     x:felt252,
-    balance: felt252,
+    balance: u128,
     storedBalance: CipherBalance,
     auditorPubKey: PubKey,
     seed:felt252,
@@ -51,7 +51,7 @@ pub fn prove_audit(
 
     let (_, R0) = storedBalance.points();
     let r = generate_random(seed, 1);
-    let auditedBalance = CipherBalanceTrait::new(auditorPubKey, balance, r);
+    let auditedBalance = CipherBalanceTrait::new(auditorPubKey, balance.into(), r);
     let inputs: InputsAudit = InputsAudit {y, auditorPubKey, storedBalance, auditedBalance};
     let prefix = 'audit';
 
@@ -78,7 +78,7 @@ pub fn prove_audit(
 
     let sx = compute_s(kx, x, c);
     let sr = compute_s(kr, r, c);
-    let sb = compute_s(kb, balance, c);
+    let sb = compute_s(kb, balance.into(), c);
 
     let proof: ProofOfAudit = ProofOfAudit {
         Ax: Ax.into(),
@@ -94,8 +94,8 @@ pub fn prove_audit(
 
 pub fn prove_fund(
     x: felt252,
-    amount:felt252,
-    initialBalance:felt252,
+    amount:u128,
+    initialBalance:u128,
     currentBalance: CipherBalance,
     nonce: u64,
     seed: felt252
@@ -103,7 +103,7 @@ pub fn prove_fund(
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y = pubkey_from_secret(x);
 
-    decipher_balance(initialBalance, x, currentBalance);
+    decipher_balance(initialBalance.into(), x, currentBalance);
     let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
     let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, nonce, prefix_data};
     let prefix = inputs.compute_prefix();
@@ -120,7 +120,7 @@ pub fn prove_fund(
 
     let proof: ProofOfFund = ProofOfFund { Ax: Ax.into(), sx };
 
-    let cipher = CipherBalanceTrait::new(y, amount, 'fund');
+    let cipher = CipherBalanceTrait::new(y, amount.into(), 'fund');
     let newBalance = CipherBalanceTrait::add(currentBalance , cipher);
     return (inputs, proof, newBalance);
 }
@@ -149,7 +149,7 @@ pub fn prove_rollover(x: felt252, nonce: u64, seed: felt252) -> (InputsRollOver,
 /// all the balance that is stored in the y=g**x account.
 pub fn prove_ragequit(
     x: felt252,
-    amount: felt252,
+    amount: u128,
     to: ContractAddress,
     currentBalance: CipherBalance,
     nonce: u64,
@@ -157,7 +157,7 @@ pub fn prove_ragequit(
 ) -> (InputsRagequit, ProofOfRagequit, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let y = pubkey_from_secret(x);
-    decipher_balance(amount, x, currentBalance);
+    decipher_balance(amount.into(), x, currentBalance);
 
 
     let ( _ , R) = currentBalance.points_nz();
@@ -188,9 +188,9 @@ pub fn prove_ragequit(
 
 pub fn prove_withdraw(
     x: felt252,
-    amount: felt252,
+    amount: u128,
     to: ContractAddress,
-    initialBalance: felt252,
+    initialBalance: u128,
     currentBalance: CipherBalance,
     nonce: u64,
     bit_size:u32,
@@ -198,7 +198,7 @@ pub fn prove_withdraw(
 ) -> (InputsWithdraw, ProofOfWithdraw, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y = pubkey_from_secret(x);
-    decipher_balance(initialBalance, x, currentBalance);
+    decipher_balance(initialBalance.into(), x, currentBalance);
 
     let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
 
@@ -211,7 +211,7 @@ pub fn prove_withdraw(
         y.x,
         y.y,
         nonce.into(),
-        amount,
+        amount.into(),
         to.into(),
     ];
     let initial_prefix = poseidon_hash_span(array.span());
@@ -252,7 +252,7 @@ pub fn prove_withdraw(
 
     let commits: Array<NonZeroEcPoint> = array![A_x,A_r, A, A_v];
     let c = compute_challenge(prefix,commits);
-    let sb = compute_s(kb, left, c);
+    let sb = compute_s(kb, left.into(), c);
     let sx = compute_s(kx, x, c);
     let sr = compute_s(kr, r, c);
 
@@ -260,7 +260,7 @@ pub fn prove_withdraw(
         A_x: A_x.into(),A_r:A_r.into(), A: A.into(), A_v: A_v.into(), sx: sx, sb: sb, sr: sr,R_aux, range,
     };
 
-    let cipher = CipherBalanceTrait::new(y, amount, 'withdraw');
+    let cipher = CipherBalanceTrait::new(y, amount.into(), 'withdraw');
     let newBalance = CipherBalanceTrait::subtract(currentBalance , cipher);
 
     return (inputs, proof, newBalance);

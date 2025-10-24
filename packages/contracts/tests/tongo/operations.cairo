@@ -18,7 +18,7 @@ use starknet::ContractAddress;
 
 fn generateAuditPart(
     pk:felt252,
-    balance:felt252,
+    balance:u128,
     storedBalance:CipherBalance,
     dispatcher:ITongoDispatcher
 )-> Option<Audit> {
@@ -37,8 +37,8 @@ fn generateAuditPart(
 
 pub fn fundOperation(
     pk: felt252,
-    initialBalance: felt252,
-    amount: felt252,
+    initialBalance: u128,
+    amount: u128,
     dispatcher:ITongoDispatcher
 )-> Fund {
     let y = pubkey_from_secret(pk);
@@ -61,8 +61,8 @@ pub fn fundOperation(
 
 pub fn withdrawOperation(
     pk: felt252,
-    initialBalance: felt252,
-    amount: felt252,
+    initialBalance: u128,
+    amount: u128,
     to: ContractAddress,
     dispatcher:ITongoDispatcher,
 )-> Withdraw {
@@ -90,7 +90,7 @@ pub fn withdrawOperation(
 
 pub fn ragequitOperation(
     pk: felt252,
-    initialBalance: felt252,
+    initialBalance: u128,
     to: ContractAddress,
     dispatcher:ITongoDispatcher,
 )-> Ragequit {
@@ -115,8 +115,8 @@ pub fn ragequitOperation(
 pub fn transferOperation(
     pk: felt252,
     to: PubKey,
-    amount: felt252,
-    initialBalance: felt252,
+    amount: u128,
+    initialBalance: u128,
     dispatcher:ITongoDispatcher,
 )-> Transfer {
     let y = pubkey_from_secret(pk);
@@ -126,8 +126,9 @@ pub fn transferOperation(
 
     let (inputs, proof, newBalance) = prove_transfer(
         pk,
-        to,initialBalance,
-        amount,
+        to,
+        initialBalance.into(),
+        amount.into(),
         currentBalance,
         nonce,
         bit_size,

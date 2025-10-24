@@ -21,7 +21,7 @@ use crate::verifier::range::Range;
 pub struct Withdraw {
     pub from: PubKey,
     pub to: ContractAddress,
-    pub amount: felt252,
+    pub amount: u128,
     pub hint: AEBalance,
     pub proof: ProofOfWithdraw,
     pub auditPart: Option<Audit>,
@@ -40,7 +40,7 @@ pub struct InputsWithdraw {
     pub y: PubKey,
     pub nonce: u64,
     pub to: ContractAddress,
-    pub amount: felt252,
+    pub amount: u128,
     pub currentBalance: CipherBalance,
     pub bit_size: u32,
     pub prefix_data: GeneralPrefixData,
@@ -58,7 +58,7 @@ impl WithdrawPrefix of Prefix<InputsWithdraw> {
             *self.y.x,
             *self.y.y,
             (*self.nonce).into(),
-            *self.amount,
+            (*self.amount).into(),
             (*self.to).into(),
         ];
         poseidon_hash_span(array.span())
