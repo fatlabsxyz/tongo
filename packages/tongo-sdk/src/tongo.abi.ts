@@ -186,7 +186,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::felt252"
+                "type": "core::integer::u128"
             },
             {
                 "name": "hint",
@@ -318,7 +318,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::felt252"
+                "type": "core::integer::u128"
             },
             {
                 "name": "hint",
@@ -366,7 +366,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::felt252"
+                "type": "core::integer::u128"
             },
             {
                 "name": "hint",
@@ -900,7 +900,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::integer::u64",
+                "type": "core::integer::u128",
                 "kind": "data"
             }
         ]
@@ -944,7 +944,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::integer::u64",
+                "type": "core::integer::u128",
                 "kind": "data"
             },
             {
@@ -971,7 +971,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::integer::u64",
+                "type": "core::integer::u128",
                 "kind": "data"
             },
             {

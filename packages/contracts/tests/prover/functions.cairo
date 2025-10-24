@@ -95,6 +95,7 @@ pub fn prove_audit(
 pub fn prove_fund(
     x: felt252,
     amount:u128,
+    from: ContractAddress,
     initialBalance:u128,
     currentBalance: CipherBalance,
     nonce: u64,
@@ -105,7 +106,7 @@ pub fn prove_fund(
 
     decipher_balance(initialBalance.into(), x, currentBalance);
     let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
-    let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, nonce, prefix_data};
+    let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, from,  nonce, prefix_data};
     let prefix = inputs.compute_prefix();
 
     //prover

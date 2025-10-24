@@ -6,7 +6,7 @@ use crate::tongo::setup::{setup_tongo};
 
 use crate::prover::utils::{generate_random, decipher_balance, pubkey_from_secret};
 use tongo::erc20::{IERC20DispatcherTrait, IERC20Dispatcher};
-use crate::consts::{STRK_ADDRESS};
+use crate::consts::{USER_CALLER,STRK_ADDRESS};
 
 
 #[test]
@@ -20,7 +20,7 @@ fn test_ragequit() {
     
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x,USER_CALLER, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
@@ -52,7 +52,7 @@ fn test_withdraw() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x,USER_CALLER, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};

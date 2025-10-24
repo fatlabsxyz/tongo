@@ -14,12 +14,14 @@ export const FUND_CAIRO_STRING = 1718972004n;
  * Public inputs of the verifier for the fund operation.
  * @interface InputsFund
  * @property {ProjectivePoint} y - The Tongo account to fund
+ * @property {bigint} from - The starknet contract address to take the funds from
  * @property {bigint} amount - The amount of tongo to fund
  * @property {bigint} nonce - The nonce of the Tongo account (from)
  * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
  */
 export interface InputsFund {
     y: ProjectivePoint;
+    from: bigint;
     amount: bigint;
     nonce: bigint;
     prefix_data: GeneralPrefixData;
@@ -38,6 +40,7 @@ function prefixFund(inputs: InputsFund): bigint {
         FUND_CAIRO_STRING,
         inputs.y.toAffine().x,
         inputs.y.toAffine().y,
+        inputs.from,
         inputs.amount,
         inputs.nonce,
     ];
@@ -57,6 +60,7 @@ export interface ProofOfFund {
 
 export function proveFund(
     private_key: bigint,
+    from: bigint,
     amount_to_fund: bigint,
     initial_balance: bigint,
     initial_cipherbalance: CipherBalance,
@@ -76,7 +80,7 @@ export function proveFund(
     const temp = g.multiplyUnsafe(initial_balance);
     if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
 
-    const inputs: InputsFund = { y, nonce, amount:amount_to_fund, prefix_data };
+    const inputs: InputsFund = { y, nonce, amount:amount_to_fund, from,  prefix_data };
     const prefix = prefixFund(inputs);
 
     const { proof: { s: sx, A: Ax } } = poe.prove(x, g, prefix);

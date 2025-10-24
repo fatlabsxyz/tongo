@@ -6,6 +6,7 @@ use tongo::structs::common::{
     cipherbalance::CipherBalanceTrait,
 };
 use crate::prover::utils::pubkey_from_secret;
+use crate::consts::USER_CALLER;
 
 #[test]
 fn test_fund() {
@@ -20,7 +21,7 @@ fn test_fund() {
     let currentBalance = CipherBalanceTrait::new(y,initial_balance.into(), generate_random(seed+1,1));
 
     //prover
-    let (inputs, proof, _) = prove_fund(x,amount, initial_balance, currentBalance, nonce, seed);
+    let (inputs, proof, _) = prove_fund(x,amount,USER_CALLER, initial_balance, currentBalance, nonce, seed);
 
     //Verifier
     verify_fund(inputs, proof)

@@ -144,7 +144,13 @@ pub mod Tongo {
             let nonce = self.get_nonce(to);
             let prefix_data = self._get_general_prefix_data();
 
-            let inputs: InputsFund = InputsFund { y: to, nonce, amount, prefix_data };
+            let inputs: InputsFund = InputsFund { 
+                y: to,
+                nonce,
+                amount,
+                from: get_caller_address(),
+                prefix_data
+            };
             verify_fund(inputs, proof);
 
             self._transfer_from_caller(self._unwrap_tongo_amount(amount));

@@ -37,6 +37,7 @@ fn generateAuditPart(
 
 pub fn fundOperation(
     pk: felt252,
+    from: ContractAddress,
     initialBalance: u128,
     amount: u128,
     dispatcher:ITongoDispatcher
@@ -48,6 +49,7 @@ pub fn fundOperation(
     let (_inputs, proof, newBalance) = prove_fund(
         pk,
         amount,
+        from,
         initialBalance,
         currentBalance,
         nonce,

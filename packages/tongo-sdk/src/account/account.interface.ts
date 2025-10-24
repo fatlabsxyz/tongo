@@ -62,6 +62,7 @@ export interface IAccount {
 
 export interface FundDetails {
     amount: bigint;
+    from: string;
 }
 
 export interface TransferDetails {

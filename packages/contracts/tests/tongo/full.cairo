@@ -7,6 +7,7 @@ use crate::consts::{ AUDITOR_PRIVATE};
 use crate::prover::utils::{decipher_balance};
 use crate::tongo::setup::{setup_tongo};
 use crate::prover::utils::pubkey_from_secret;
+use crate::consts::{USER_CALLER};
 
 fn checkBalances(x: felt252, balanceAmount:u128, pendingAmount:u128,auditAmount:u128, dispatcher: ITongoDispatcher) {
     let public_key = pubkey_from_secret(x);
@@ -48,7 +49,7 @@ fn full() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x,USER_CALLER, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     //Bufer should be 0, balance initial_balance and audit initial_balance

@@ -50,7 +50,6 @@ import {
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
 
-
 export class Account implements IAccount {
     publicKey: PubKey;
     pk: bigint;
@@ -157,7 +156,7 @@ export class Account implements IAccount {
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
-        const { amount } = fundDetails;
+        const { amount, from } = fundDetails;
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
         const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
@@ -170,6 +169,7 @@ export class Account implements IAccount {
 
         const { inputs, proof, newBalance } = proveFund(
             this.pk,
+            BigInt(from),
             amount,
             initialBalance,
             currentBalance,

@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 use tongo::tongo::ITongo::ITongoDispatcherTrait;
 use tongo::structs::common::{
 };
-use crate::consts::{ AUDITOR_PRIVATE};
+use crate::consts::{AUDITOR_PRIVATE, USER_CALLER};
 use crate::tongo::setup::{setup_tongo};
 use crate::tongo::operations::{fundOperation, withdrawOperation, ragequitOperation, transferOperation, rolloverOperation};
 use crate::prover::utils::{pubkey_from_secret,generate_random, decipher_balance};
@@ -31,7 +31,7 @@ fn audit_fund() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x,USER_CALLER, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     let audit = dispatcher.get_audit(y);
@@ -50,7 +50,7 @@ fn audit_withdraw() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x,USER_CALLER, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     let withdraw_amount = 25_u128;
@@ -73,7 +73,7 @@ fn audit_ragequit() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x,USER_CALLER, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
 
@@ -99,7 +99,7 @@ fn audit_transfer() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x,USER_CALLER, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     let transfer_amount = 100_u128;
@@ -128,7 +128,7 @@ fn audit_rollover() {
 
     let initial_balance = 0;
     let initial_fund = 250;
-    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x,USER_CALLER, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     let transfer_amount = 100;

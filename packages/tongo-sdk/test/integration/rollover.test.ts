@@ -12,7 +12,7 @@ describe("[integration]", () => {
         const accSender = new TongoAccount(kg.from(1), tongoAddress, provider);
         const accRec = new TongoAccount(kg.from(2), tongoAddress, provider);
 
-        const operation = await accSender.fund({ amount: 100n });
+        const operation = await accSender.fund({ amount: 100n, from: relayer.address  });
         const fund_response = await relayer.execute([operation.approve!, operation.toCalldata()]);
         await provider.waitForTransaction(fund_response.transaction_hash, { retryInterval: 200 });
 
