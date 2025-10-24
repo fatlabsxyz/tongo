@@ -3,6 +3,7 @@ pub mod Tongo {
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
+    use core::ec::NonZeroEcPoint;
     use starknet::{ContractAddress, get_caller_address, get_contract_address, get_tx_info};
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::structs::aecipher::{AEBalance, IntoOptionAEBalance};
@@ -378,10 +379,26 @@ pub mod Tongo {
         fn _add_pending(ref self: ContractState, y: PubKey, new_pending: CipherBalance) {
             let old_pending = self.get_pending(y);
             let sum = old_pending.add(new_pending.into());
+            let balance = self.get_balance(y);
+
+            self._assert_is_rollovereable(balance, sum);
+
             self.pending.entry(y).write(sum);
         }
 
-        /// Adds the pending balance to the current balance of the givren Tongo accout
+        /// Assert the pending balance can be safely add to the balance. This is to avoid a tipe of attack
+        /// in which a malicious actor who knows the random of the cipherbalance (usually after a fund/ragequit)
+        /// can transfer with a randomness constructed to temporally block a rollover.
+        fn _assert_is_rollovereable(self: @ContractState, balance: CipherBalance, pending: CipherBalance) {
+            let (L_pending, R_pending) = pending.points();
+            let (L_balance, R_balance) = balance.points();
+            let R_sum: Option<NonZeroEcPoint> = (R_pending + R_balance).try_into();
+            let L_sum: Option<NonZeroEcPoint> = (L_pending + L_balance).try_into();
+            assert!(R_sum.is_some(), "R not Rollovereable");
+            assert!(L_sum.is_some(), "L not Rollovereable");
+        }
+
+        /// Adds the pending balance to the current balance of the given Tongo account
         /// sets the pending to 0.
         fn _pending_to_balance(ref self: ContractState, y: PubKey) {
             let pending = self.pending.entry(y).read();
