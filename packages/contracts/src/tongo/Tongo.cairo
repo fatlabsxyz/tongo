@@ -87,6 +87,8 @@ pub mod Tongo {
         self.owner.write(owner);
         self.ERC20.write(ERC20);
         self.rate.write(rate);
+
+        assert!(bit_size <= 128_u32, "Bit size should be 128 at max");
         self.bit_size.write(bit_size);
 
         if let Some(key) = auditor_key {
