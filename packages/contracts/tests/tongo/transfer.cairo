@@ -10,7 +10,7 @@ use crate::tongo::operations::{fundOperation, transferOperation};
 fn test_transfer() {
     let (_address, dispatcher) = setup_tongo();
 
-    let x = 1298308213;
+    let x = 2384230948239;
     let x_bar = 2190381209380321;
     let y_bar = pubkey_from_secret(x_bar);
 

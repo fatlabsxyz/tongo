@@ -57,10 +57,11 @@ pub struct InputsTransfer {
 impl TransferPrefix of Prefix<InputsTransfer> {
     fn compute_prefix(self: @InputsTransfer) -> felt252 {
         let transfer_selector = 'transfer';
-        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
+            (*sender_address).into(),
             transfer_selector,
             *self.from.x,
             *self.from.y,

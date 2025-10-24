@@ -515,10 +515,11 @@ pub mod Tongo {
         }
 
         fn _get_general_prefix_data(self: @ContractState) -> GeneralPrefixData {
-            let tongo_address = get_contract_address();
             let chain_id = get_tx_info().unbox().chain_id;
+            let tongo_address = get_contract_address();
+            let sender_address = get_caller_address();
 
-            GeneralPrefixData { chain_id, tongo_address }
+            GeneralPrefixData { chain_id, tongo_address, sender_address }
         }
     }
 }

@@ -33,10 +33,11 @@ export interface InputsFund {
  * @returns {bigint} The computed prefix hash
  */
 function prefixFund(inputs: InputsFund): bigint {
-    const { chain_id, tongo_address } = inputs.prefix_data;
+    const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
     const seq: bigint[] = [
         chain_id,
         tongo_address,
+        sender_address,
         FUND_CAIRO_STRING,
         inputs.y.toAffine().x,
         inputs.y.toAffine().y,

@@ -11,7 +11,7 @@ describe("[integration]", () => {
 
         const account = new TongoAccount(kg.from(1), tongoAddress, provider);
 
-        const operation = await account.fund({ amount: 100n, from: relayer.address });
+        const operation = await account.fund({ amount: 100n, sender: relayer.address });
         const response = await relayer.execute([operation.approve!, operation.toCalldata()]);
         console.log("Awaiting for confirmation on tx: ", response.transaction_hash);
         await provider.waitForTransaction(response.transaction_hash, { retryInterval: 500 });

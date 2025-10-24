@@ -47,10 +47,11 @@ function prefixWithdraw(
     amount: bigint,
     to: bigint
 ): bigint {
-    const { chain_id, tongo_address } = general_prefix_data;
+    const { chain_id, tongo_address, sender_address } = general_prefix_data;
     const seq: bigint[] = [
         chain_id,
         tongo_address,
+        sender_address,
         WITHDRAW_CAIRO_STRING,
         y.toAffine().x,
         y.toAffine().y,

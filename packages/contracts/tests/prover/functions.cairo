@@ -99,13 +99,18 @@ pub fn prove_fund(
     initialBalance:u128,
     currentBalance: CipherBalance,
     nonce: u64,
+    sender:ContractAddress,
     seed: felt252
 ) -> (InputsFund, ProofOfFund, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y = pubkey_from_secret(x);
 
     decipher_balance(initialBalance.into(), x, currentBalance);
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
     let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, from,  nonce, prefix_data};
     let prefix = inputs.compute_prefix();
 
@@ -127,10 +132,19 @@ pub fn prove_fund(
 }
 
 
-pub fn prove_rollover(x: felt252, nonce: u64, seed: felt252) -> (InputsRollOver, ProofOfRollOver) {
+pub fn prove_rollover(
+    x: felt252,
+    nonce: u64,
+    sender:ContractAddress,
+    seed: felt252,
+) -> (InputsRollOver, ProofOfRollOver) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y = pubkey_from_secret(x);
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
     let inputs: InputsRollOver = InputsRollOver { y: y.try_into().unwrap(), nonce, prefix_data};
     let prefix = inputs.compute_prefix();
 
@@ -154,6 +168,7 @@ pub fn prove_ragequit(
     to: ContractAddress,
     currentBalance: CipherBalance,
     nonce: u64,
+    sender: ContractAddress,
     seed: felt252
 ) -> (InputsRagequit, ProofOfRagequit, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
@@ -163,7 +178,11 @@ pub fn prove_ragequit(
 
     let ( _ , R) = currentBalance.points_nz();
 
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
     let inputs: InputsRagequit = InputsRagequit {y:y.try_into().unwrap(), amount, to, nonce, currentBalance, prefix_data };
     let prefix = inputs.compute_prefix();
 
@@ -195,19 +214,25 @@ pub fn prove_withdraw(
     currentBalance: CipherBalance,
     nonce: u64,
     bit_size:u32,
+    sender: ContractAddress,
     seed: felt252
 ) -> (InputsWithdraw, ProofOfWithdraw, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y = pubkey_from_secret(x);
     decipher_balance(initialBalance.into(), x, currentBalance);
 
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
 
     // precomputation of the prefix for testing
     let withdraw_selector = 'withdraw';
     let array: Array<felt252> = array![
         CHAIN_ID,
         TONGO_ADDRESS.into(),
+        sender.into(),
         withdraw_selector,
         y.x,
         y.y,
@@ -275,6 +300,7 @@ pub fn prove_transfer(
     currentBalance: CipherBalance,
     nonce: u64,
     bit_size:u32,
+    sender:ContractAddress,
     seed: felt252
 ) -> (InputsTransfer, ProofOfTransfer, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
@@ -287,6 +313,7 @@ pub fn prove_transfer(
     let array: Array<felt252> = array![
         CHAIN_ID,
         TONGO_ADDRESS.into(),
+        sender.into(),
         transfer_selector,
         y.x,
         y.y,
@@ -309,7 +336,11 @@ pub fn prove_transfer(
     let (r2, proof2) = prove_range(balanceLeft.try_into().unwrap(),bit_size,initial_prefix, generate_random(seed + 2, 1));
     let R_aux2: StarkPoint = g.into().mul(r2).try_into().unwrap();
 
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
 
     let inputs: InputsTransfer = InputsTransfer {
         from: y.try_into().unwrap(),

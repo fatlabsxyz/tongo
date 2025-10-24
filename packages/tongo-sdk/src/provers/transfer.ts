@@ -49,10 +49,11 @@ function prefixTransfer(
     to: ProjectivePoint,
     nonce: bigint,
 ): bigint {
-    const { chain_id, tongo_address } = general_prefix_data;
+    const { chain_id, tongo_address, sender_address } = general_prefix_data;
     const seq: bigint[] = [
         chain_id,
         tongo_address,
+        sender_address,
         TRANSFER_CAIRO_STRING,
         from.toAffine().x,
         from.toAffine().y,

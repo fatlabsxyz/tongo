@@ -21,7 +21,16 @@ fn test_fund() {
     let currentBalance = CipherBalanceTrait::new(y,initial_balance.into(), generate_random(seed+1,1));
 
     //prover
-    let (inputs, proof, _) = prove_fund(x,amount,USER_CALLER, initial_balance, currentBalance, nonce, seed);
+    let (inputs, proof, _) = prove_fund(
+        x,
+        amount,
+        USER_CALLER,
+        initial_balance,
+        currentBalance,
+        nonce,
+        USER_CALLER,
+        seed
+    );
 
     //Verifier
     verify_fund(inputs, proof)

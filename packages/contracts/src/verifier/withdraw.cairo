@@ -9,7 +9,7 @@ use crate::structs::common::cipherbalance::CipherBalanceTrait;
 use crate::structs::operations::withdraw::{InputsWithdraw, ProofOfWithdraw};
 use crate::structs::traits::{Challenge, Prefix};
 use crate::verifier::range::ConvertRangeProofImpl;
-use crate::verifier::utils::{generator_h, verifyOwnership};
+use crate::verifier::utils::{generator_h};
 
 
 /// Verifies the withdraw operation. First, ussers have to show knowledge of the private key. Then,

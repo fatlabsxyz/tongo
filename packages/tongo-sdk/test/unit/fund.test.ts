@@ -14,7 +14,7 @@ describe("fund", () => {
         const amount_to_fund = 100n;
         const nonce = 1n;
         const sender_address = "0x0000012345";
-        const prefix_data: GeneralPrefixData = { chain_id: 1111n, tongo_address: 22222n };
+        const prefix_data: GeneralPrefixData = { chain_id: 1111n, tongo_address: 22222n, sender_address: 33333n };
 
         const { inputs, proof } = proveFund(
             private_key,

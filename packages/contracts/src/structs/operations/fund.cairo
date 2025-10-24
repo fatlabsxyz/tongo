@@ -41,10 +41,11 @@ pub struct InputsFund {
 pub impl FundPrefix of Prefix<InputsFund> {
     fn compute_prefix(self: @InputsFund) -> felt252 {
         let fund_selector = 'fund';
-        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
+            (*sender_address).into(),
             fund_selector,
             *self.y.x,
             *self.y.y,

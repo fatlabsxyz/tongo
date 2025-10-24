@@ -36,6 +36,7 @@ import {
     RawAccountState,
     TransferDetails,
     WithdrawDetails,
+    RolloverDetails,
 } from "./account.interface.js";
 import {
     AccountEvents,
@@ -156,7 +157,7 @@ export class Account implements IAccount {
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
-        const { amount, from } = fundDetails;
+        const { amount, sender }  = fundDetails;
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
         const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
@@ -164,12 +165,13 @@ export class Account implements IAccount {
 
         const prefix_data: GeneralPrefixData = {
             chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address)
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender)
         };
 
         const { inputs, proof, newBalance } = proveFund(
             this.pk,
-            BigInt(from),
+            BigInt(sender),
             amount,
             initialBalance,
             currentBalance,
@@ -187,7 +189,7 @@ export class Account implements IAccount {
     }
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
-        const { amount } = transferDetails;
+        const { amount, sender } = transferDetails;
         const bit_size: number = await this.bit_size();
 
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
@@ -202,7 +204,8 @@ export class Account implements IAccount {
         const to = starkPointToProjectivePoint(transferDetails.to);
         const prefix_data: GeneralPrefixData = {
             chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address)
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
         };
 
         const { inputs, proof, newBalance } = proveTransfer(
@@ -238,6 +241,7 @@ export class Account implements IAccount {
     }
 
     async ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation> {
+        const { to, sender } = ragequitDetails;
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
         const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
@@ -247,12 +251,16 @@ export class Account implements IAccount {
             throw new Error("You dont have enough balance");
         }
 
-        const prefix_data: GeneralPrefixData = { chain_id: BigInt(await this.provider.getChainId()), tongo_address: BigInt(this.Tongo.address) };
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(await this.provider.getChainId()),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
+        };
         const { inputs, proof, newBalance } = proveRagequit(
             this.pk,
             currentBalance,
             nonce,
-            BigInt(ragequitDetails.to),
+            BigInt(to),
             currentBalanceAmount,
             prefix_data,
         );
@@ -273,7 +281,7 @@ export class Account implements IAccount {
     }
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
-        const { amount, to } = withdrawDetails;
+        const { amount, to, sender } = withdrawDetails;
         const bit_size = await this.bit_size();
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
@@ -286,7 +294,8 @@ export class Account implements IAccount {
 
         const prefix_data: GeneralPrefixData = {
             chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address)
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
         };
 
         const { inputs, proof, newBalance } = proveWithdraw(
@@ -315,7 +324,8 @@ export class Account implements IAccount {
         });
     }
 
-    async rollover(): Promise<RollOverOperation> {
+    async rollover(rolloverDetails: RolloverDetails): Promise<RollOverOperation> {
+        const {sender} = rolloverDetails; 
         const state = await this.rawState();
         const { nonce, balance: currentBalance, aeBalance, pending } = state;
 
@@ -327,7 +337,11 @@ export class Account implements IAccount {
         if (pendingAmount == 0n) {
             throw new Error("Your pending ammount is 0");
         }
-        const prefix_data: GeneralPrefixData = { chain_id: BigInt(await this.provider.getChainId()), tongo_address: BigInt(this.Tongo.address) };
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(await this.provider.getChainId()),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender), 
+        };
         const { inputs, proof } = proveRollover(this.pk, nonce, prefix_data);
 
         const hint = await this.computeAEHintForSelf(pendingAmount + unlockedAmount, nonce + 1n);

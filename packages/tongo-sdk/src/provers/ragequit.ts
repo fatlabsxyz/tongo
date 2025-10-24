@@ -34,10 +34,11 @@ export interface InputsRagequit {
  * @returns {bigint} The computed prefix hash
  */
 function prefixRagequit(inputs: InputsRagequit): bigint {
-    const { chain_id, tongo_address } = inputs.prefix_data;
+    const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
     const seq: bigint[] = [
         chain_id,
         tongo_address,
+        sender_address,
         RAGEQUIT_CAIRO_STRING,
         inputs.y.toAffine().x,
         inputs.y.toAffine().y,

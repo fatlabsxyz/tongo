@@ -7,6 +7,7 @@ use tongo::structs::common::{
 };
 use crate::prover::utils::pubkey_from_secret;
 use crate::consts::BIT_SIZE;
+use crate::consts::USER_CALLER;
 
 #[test]
 fn test_transfer() {
@@ -26,9 +27,10 @@ fn test_transfer() {
     let nonce = 1;
     let x_bar = generate_random(seed, 2);
     let y_bar = pubkey_from_secret(x_bar);
+    let sender = USER_CALLER;
 
     let (inputs, proof,_) = prove_transfer(
-        x, y_bar, b0, b, balance, nonce,BIT_SIZE, generate_random(seed, 4)
+        x, y_bar, b0, b, balance, nonce,BIT_SIZE,sender, generate_random(seed, 4)
     );
 
     verify_transfer(inputs, proof);

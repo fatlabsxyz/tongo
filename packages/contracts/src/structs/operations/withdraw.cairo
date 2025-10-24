@@ -50,10 +50,11 @@ pub struct InputsWithdraw {
 impl WithdrawPrefix of Prefix<InputsWithdraw> {
     fn compute_prefix(self: @InputsWithdraw) -> felt252 {
         let withdraw_selector = 'withdraw';
-        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
+            (*sender_address).into(),
             withdraw_selector,
             *self.y.x,
             *self.y.y,

@@ -33,10 +33,11 @@ export interface ProofOfRollover {
 }
 
 function prefixRollover(inputs: InputsRollover): bigint {
-    const { chain_id, tongo_address } = inputs.prefix_data;
+    const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
     const seq: bigint[] = [
         chain_id,
         tongo_address,
+        sender_address,
         ROLLOVER_CAIRO_STRING,
         inputs.y.toAffine().x,
         inputs.y.toAffine().y,
