@@ -30,7 +30,10 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
 
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
-    verifyOwnership(inputs.y, proof.A_x, c, proof.sx);
+    // This verification is made as part of same_encrypt_unknown_random_verify(inputs, proof). 
+    // Is is redundant here.
+    //
+    //verifyOwnership(inputs.y, proof.A_x, c, proof.sx);
 
     let (L0, R0) = inputs.currentBalance.points_nz();
     let L0 = L0.into() - g.into().mul(inputs.amount.into());
