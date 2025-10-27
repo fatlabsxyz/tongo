@@ -45,6 +45,10 @@ function prefixRagequit(inputs: InputsRagequit): bigint {
         inputs.nonce,
         inputs.amount,
         inputs.to,
+        inputs.currentBalance.L.toAffine().x,
+        inputs.currentBalance.L.toAffine().y,
+        inputs.currentBalance.R.toAffine().x,
+        inputs.currentBalance.R.toAffine().y,
     ];
     return compute_prefix(seq);
 }
