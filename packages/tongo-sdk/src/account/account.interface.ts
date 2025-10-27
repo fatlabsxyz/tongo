@@ -1,4 +1,4 @@
-import { PubKey } from "../types.js";
+import { PubKey, GeneralPrefixData } from "../types.js";
 import { FundOperation } from "../operations/fund.js";
 import { RollOverOperation } from "../operations/rollover.js";
 import { TransferOperation } from "../operations/transfer.js";
@@ -44,10 +44,10 @@ export interface IAccount {
     tongoToErc20(tongoAmount: bigint): Promise<bigint>;
 
     //audit
-    createAuditPart(balance: bigint, storedCipherBalance: CipherBalance): Promise<CairoOption<Audit>>;
+    createAuditPart(balance: bigint, storedCipherBalance: CipherBalance, prefix_data: GeneralPrefixData): Promise<CairoOption<Audit>>;
 
     // ex post
-    generateExPost(to: PubKey, cipher: CipherBalance): ExPost;
+    generateExPost(to: PubKey, cipher: CipherBalance, sender: string): Promise<ExPost>;
     verifyExPost(expost: ExPost): bigint;
 
     // events

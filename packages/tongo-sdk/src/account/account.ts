@@ -137,7 +137,11 @@ export class Account implements IAccount {
     }
 
     /// Returns Option(None) if tongo has not and auditor and Some(Audit) if tongo has an auditor
-    async createAuditPart(balance: bigint, storedCipherBalance: CipherBalance): Promise<CairoOption<Audit>> {
+    async createAuditPart(
+        balance: bigint,
+        storedCipherBalance: CipherBalance,
+        prefix_data:GeneralPrefixData
+    ): Promise<CairoOption<Audit>> {
         let auditPart = new CairoOption<Audit>(CairoOptionVariant.None);
         const auditor = await this.auditorKey();
         if (auditor.isSome()) {
@@ -147,6 +151,7 @@ export class Account implements IAccount {
                 balance,
                 storedCipherBalance,
                 auditorPubKey,
+                prefix_data,
             );
             const nonce = await this.nonce();
             const hint = await this.computeAEHintForPubKey(balance, nonce, auditorPubKey);
@@ -180,7 +185,7 @@ export class Account implements IAccount {
         );
 
         //audit
-        const auditPart = await this.createAuditPart(amount + initialBalance, newBalance);
+        const auditPart = await this.createAuditPart(amount + initialBalance, newBalance, prefix_data);
         const hint = await this.computeAEHintForSelf(amount + initialBalance, nonce + 1n);
 
         const operation = new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo });
@@ -223,8 +228,8 @@ export class Account implements IAccount {
         const hintLeftover = await this.computeAEHintForSelf(initialBalance - amount, nonce + 1n);
 
         //audit
-        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance);
-        const auditPartTransfer = await this.createAuditPart(amount, inputs.transferBalanceSelf);
+        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance, prefix_data);
+        const auditPartTransfer = await this.createAuditPart(amount, inputs.transferBalanceSelf, prefix_data);
 
         return new TransferOperation({
             from: inputs.from,
@@ -267,7 +272,7 @@ export class Account implements IAccount {
 
         // zeroing out aehints
         const hint = await this.computeAEHintForSelf(0n, nonce + 1n);
-        const auditPart = await this.createAuditPart(0n, newBalance);
+        const auditPart = await this.createAuditPart(0n, newBalance, prefix_data);
 
         return new RagequitOperation({
             from: inputs.y,
@@ -311,7 +316,7 @@ export class Account implements IAccount {
         const hint = await this.computeAEHintForSelf(initialBalance - amount, nonce + 1n);
 
         //audit
-        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance);
+        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance, prefix_data);
 
         return new WithdrawOperation({
             from: inputs.y,
@@ -369,16 +374,21 @@ export class Account implements IAccount {
     }
 
     //TODO: rethink this to better ux
-    generateExPost(to: PubKey, cipher: CipherBalance): ExPost {
+    async generateExPost(to: PubKey, cipher: CipherBalance, sender:string): Promise<ExPost> {
         if (cipher.L == null) {
             throw new Error("L is null");
         }
         if (cipher.R == null) {
             throw new Error("R is null");
         }
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(await this.provider.getChainId()),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender), 
+        }
 
         const balance = this.decryptCipherBalance(cipher);
-        const { inputs, proof } = proveAudit(this.pk, balance, cipher, starkPointToProjectivePoint(to));
+        const { inputs, proof } = proveAudit(this.pk, balance, cipher, starkPointToProjectivePoint(to), prefix_data);
         return { inputs, proof };
     }
 

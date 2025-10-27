@@ -6,7 +6,7 @@ use she::protocols::SameEncryptionUnknownRandom::{
 };
 use crate::structs::common::cipherbalance::CipherBalanceTrait;
 use crate::structs::operations::audit::{InputsAudit, ProofOfAudit};
-use crate::structs::traits::Challenge;
+use crate::structs::traits::{Challenge, Prefix};
 
 
 /// Verifies that the given ZK proof is a valid proof of the audit declaration. If the proof checks
@@ -20,7 +20,7 @@ pub fn verify_audit(inputs: InputsAudit, proof: ProofOfAudit) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let (L0, R0) = inputs.storedBalance.points_nz();
     let (L_audit, R_audit) = inputs.auditedBalance.points_nz();
-    let prefix = 'audit';
+    let prefix = inputs.compute_prefix();
     let c = proof.compute_challenge(prefix);
 
     let same_encrypt_inputs = SameEncryptionUnknownRandomInputs {

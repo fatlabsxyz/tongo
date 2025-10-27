@@ -44,6 +44,7 @@ pub fn prove_audit(
     balance: u128,
     storedBalance: CipherBalance,
     auditorPubKey: PubKey,
+    sender:ContractAddress,
     seed:felt252,
 ) -> (InputsAudit, ProofOfAudit) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
@@ -52,8 +53,14 @@ pub fn prove_audit(
     let (_, R0) = storedBalance.points();
     let r = generate_random(seed, 1);
     let auditedBalance = CipherBalanceTrait::new(auditorPubKey, balance.into(), r);
-    let inputs: InputsAudit = InputsAudit {y, auditorPubKey, storedBalance, auditedBalance};
-    let prefix = 'audit';
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
+
+    let inputs: InputsAudit = InputsAudit {y, auditorPubKey, storedBalance, auditedBalance, prefix_data};
+    let prefix = inputs.compute_prefix();
 
     //prover
     let kx = generate_random(seed, 2);

@@ -472,8 +472,9 @@ pub mod Tongo {
 
             let auditorPubKey = self.auditor_key.read().unwrap();
             let storedBalance = self.get_balance(y);
+            let prefix_data = self._get_general_prefix_data();
             let inputs: InputsAudit = InputsAudit {
-                y, auditorPubKey, storedBalance, auditedBalance,
+                y, auditorPubKey, storedBalance, auditedBalance, prefix_data
             };
             verify_audit(inputs, auditProof);
 
@@ -501,8 +502,9 @@ pub mod Tongo {
             assert!(audit.is_some(), "You must declare your balance");
             let Audit { auditedBalance, proof, hint } = audit.unwrap();
             let auditorPubKey = self.auditor_key.read().unwrap();
+            let prefix_data = self._get_general_prefix_data();
             let inputs: InputsAudit = InputsAudit {
-                y: from, auditorPubKey, storedBalance: transferBalance, auditedBalance,
+                y: from, auditorPubKey, storedBalance: transferBalance, auditedBalance,prefix_data
             };
             verify_audit(inputs, proof);
 

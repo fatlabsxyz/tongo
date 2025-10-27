@@ -23,9 +23,18 @@ fn generateAuditPart(
     storedBalance:CipherBalance,
     dispatcher:ITongoDispatcher
 )-> Option<Audit> {
+    let sender = USER_CALLER;
     let auditor = dispatcher.auditor_key();
     if auditor.is_some() {
-        let (inputsAudit, proofAudit) = prove_audit(pk,balance,storedBalance,auditor.unwrap(), generate_random(pk, 1));
+        let (inputsAudit, proofAudit) = prove_audit(
+            pk,
+            balance,
+            storedBalance,
+            auditor.unwrap(),
+            sender,
+            generate_random(pk, 1)
+        );
+
         let auditPart = Audit {
             auditedBalance:inputsAudit.auditedBalance,
             hint:empty_ae_hint(),
