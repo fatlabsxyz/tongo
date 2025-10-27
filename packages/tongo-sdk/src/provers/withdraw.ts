@@ -1,5 +1,5 @@
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
-import { poe, poe2 } from "@fatsolutions/she/protocols";
+import { SameEncryptUnknownRandom } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
@@ -195,21 +195,33 @@ export function verifyWithdraw(
     
     const c = compute_challenge(prefix, [proof.A_x, proof.A_r, proof.A, proof.A_v]);
 
-    let res = poe._verify(inputs.y, g, proof.A_x, c, proof.sx);
-    if (res == false) { throw new Error("error in poe y"); }
-
-    const { R: R0 } = inputs.currentBalance;
-    let { L: L0 } = inputs.currentBalance;
-
+    let { R: R0, L: L0 } = inputs.currentBalance;
     L0 = L0.subtract(g.multiply(inputs.amount));
-
-    res = poe2._verify(L0, g, R0, proof.A, c, proof.sb, proof.sx);
-    if (res == false) { throw new Error("error in poe2 Y"); }
-
 
     const V = verifyRangeProof(proof.range, bit_size, prefix);
     if (V == false) { throw new Error("erro in range for V"); }
+    
+    let sameEncryptInputs = {
+      L1: L0,
+      R1: R0,
+      L2: V,
+      R2: proof.R_aux,
+      g,
+      y1: inputs.y,
+      y2: h,
+    };
 
-    res = poe2._verify(V, g, h, proof.A_v, c, proof.sb, proof.sr);
-    if (res == false) { throw new Error("error in poe2 V"); }
+    let sameEncrpyProof= {
+        Ax: proof.A_x,
+        AL1: proof.A,
+        AL2: proof.A_v,
+        AR2: proof.A_r,
+        c,
+        sb: proof.sb,
+        sx: proof.sx,
+        sr2: proof.sr,
+    };
+
+    let res = SameEncryptUnknownRandom.verify(sameEncryptInputs, sameEncrpyProof);
+    if (res == false) { throw new Error("error in SameEncrpyUnkownRandom"); }
 }

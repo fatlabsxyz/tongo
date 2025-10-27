@@ -1,5 +1,5 @@
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
-import { poe, poe2 } from "@fatsolutions/she/protocols";
+import {SameEncrypt, ElGamal, SameEncryptUnknownRandom, poe} from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
@@ -233,44 +233,87 @@ export function verifyTransfer(
 
     const { L: CL, R: CR } = inputs.currentBalance;
     const { L, R } = inputs.transferBalanceSelf;
-    const { L: L_bar, R: _R_bar } = inputs.transferBalance;
+    const { L: L_bar, R: R_bar } = inputs.transferBalance;
 
 
     let res = poe._verify(inputs.from, g, proof.A_x, c, proof.s_x);
     if (res == false) { throw new Error("error in poe for y"); }
 
-    res = poe._verify(R, g, proof.A_r, c, proof.s_r);
-    if (res == false) { throw new Error("error in poe for R"); }
-
-    res = poe2._verify(L, g, inputs.from, proof.A_b, c, proof.s_b, proof.s_r);
-    if (res == false) { throw new Error("error in poe2 for L"); }
-
-    res = poe2._verify(
-        L_bar,
+    let sameEncryptInputs = {
+        L1: L,
+        R1: R,
+        L2: L_bar,
+        R2: R_bar,
         g,
-        inputs.to,
-        proof.A_bar,
-        c,
-        proof.s_b,
-        proof.s_r,
-    );
-    if (res == false) { throw new Error("error in poe2 for L_bar"); }
+        y1: inputs.from,
+        y2: inputs.to,
+    };
 
+    let sameEncryptProof = {
+        AL1: proof.A_b,
+        AR1: proof.A_r,
+        AL2: proof.A_bar,
+        AR2: proof.A_r,
+        c,
+        sb: proof.s_b,
+        sr1: proof.s_r,
+        sr2: proof.s_r,
+    };
+
+    res =  SameEncrypt.verify(sameEncryptInputs,sameEncryptProof);
+    if (res == false) { throw new Error("error SameEncryp"); }
 
     const V = verifyRangeProof(proof.range, bit_size, prefix);
     if (V == false) { throw new Error("erro in range for V"); }
 
-    res = poe2._verify(V, g, h, proof.A_v, c, proof.s_b, proof.s_r);
-    if (res == false) { throw new Error("erro in poe2 for V"); }
+    let elGamalInputs = {
+        L: V,
+        R: proof.R_aux,
+        g1: g,
+        g2: h,
+    };
 
-    const Y = CL.subtract(L);
-    const G = CR.subtract(R);
-    res = poe2._verify(Y, g, G, proof.A_b2, c, proof.s_b2, proof.s_x);
-    if (res == false) { throw new Error("error in poe2 for Y"); }
+    let elGamalProof = {
+        AL: proof.A_v,
+        AR: proof.A_r,
+        c,
+        sb: proof.s_b,
+        sr: proof.s_r,
+    };
+    res = ElGamal.verify(elGamalInputs, elGamalProof);
+    if (res == false) { throw new Error("erro elGamalProof"); }
+
+
+    const L0 = CL.subtract(L);
+    const R0 = CR.subtract(R);
 
     const V2 = verifyRangeProof(proof.range2, bit_size, prefix);
     if (V2 == false) { throw new Error("erro in range for V"); }
 
-    res = poe2._verify(V2, g, h, proof.A_v2, c, proof.s_b2, proof.s_r2);
-    if (res == false) { throw new Error("error in poe2 for V2"); }
+    let sameEncryptUnkownRandomInputs = {
+        L1: L0,
+        R1: R0,
+        L2: V2,
+        R2: proof.R_aux2,
+        g,
+        y1: inputs.from,
+        y2: h,
+    }
+
+    let sameEncryptUnkownRandomProof = {
+        Ax: proof.A_x,
+        AL1: proof.A_b2,
+        AL2: proof.A_v2,
+        AR2: proof.A_r2,
+        c,
+        sb: proof.s_b2,
+        sx: proof.s_x,
+        sr2: proof.s_r2,
+    }
+
+    res = SameEncryptUnknownRandom.verify(
+        sameEncryptUnkownRandomInputs,
+        sameEncryptUnkownRandomProof
+    );
+    if (res == false) { throw new Error("error in sameEncrypUnkownRandom"); }
 }
