@@ -5,7 +5,7 @@ use she::protocols::SameEncryptionUnknownRandom::{
     verify as same_encrypt_unknown_random_verify,
 };
 use she::protocols::range::verify as range_verify;
-use crate::structs::common::cipherbalance::CipherBalanceTrait;
+use crate::structs::common::cipherbalance::{CipherBalanceTrait};
 use crate::structs::operations::withdraw::{InputsWithdraw, ProofOfWithdraw};
 use crate::structs::traits::{Challenge, Prefix};
 use crate::verifier::range::ConvertRangeProofImpl;
@@ -37,15 +37,18 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
 
     let (L0, R0) = inputs.currentBalance.points_nz();
     let L0 = L0.into() - g.into().mul(inputs.amount.into());
+    let (V, R_aux) = inputs.auxiliarCipher.points_nz();
 
     let (rangeInputs, rangeProof) = proof.range.to_she_proof(inputs.bit_size, prefix);
-    let V = range_verify(rangeInputs, rangeProof).expect('Failed Range  proof for V');
+    let V_proof = range_verify(rangeInputs, rangeProof).expect('Failed Range  proof for V');
+    assert!(V_proof.coordinates() == V.coordinates(), "V missmatch" );
+      
 
     let inputs = SameEncryptionUnknownRandomInputs {
         L1: L0.try_into().unwrap(),
         R1: R0,
-        L2: V,
-        R2: proof.R_aux.try_into().unwrap(),
+        L2: V_proof,
+        R2: R_aux,
         g,
         y1: inputs.y.try_into().unwrap(),
         y2: generator_h(),

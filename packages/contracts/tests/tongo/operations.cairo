@@ -86,7 +86,7 @@ pub fn withdrawOperation(
     let bit_size = dispatcher.get_bit_size();
     let sender = USER_CALLER;
 
-    let (_inputs, proof, newBalance) = prove_withdraw(
+    let (inputs, proof, newBalance) = prove_withdraw(
         pk,
         amount,
         to,
@@ -101,7 +101,7 @@ pub fn withdrawOperation(
     let auditPart = generateAuditPart(pk, initialBalance-amount, newBalance,dispatcher);
 
     let hint = empty_ae_hint();
-    return Withdraw {from:y, to,amount,proof,hint,auditPart};
+    return Withdraw {from:y, to,amount,proof,hint, auxiliarCipher: inputs.auxiliarCipher,auditPart};
 }
 
 pub fn ragequitOperation(
@@ -165,6 +165,8 @@ pub fn transferOperation(
         hintLeftover: empty_ae_hint(),
         transferBalance: inputs.transferBalance,
         transferBalanceSelf: inputs.transferBalanceSelf,
+        auxiliarCipher: inputs.auxiliarCipher,
+        auxiliarCipher2: inputs.auxiliarCipher2,
         auditPart,
         auditPartTransfer,
         proof,

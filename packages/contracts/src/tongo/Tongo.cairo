@@ -172,14 +172,14 @@ pub mod Tongo {
         ///
         /// Emits WithdrawEvent
         fn withdraw(ref self: ContractState, withdraw: Withdraw) {
-            let Withdraw { from, amount, to, proof, auditPart, hint } = withdraw;
+            let Withdraw { from, amount, to, proof, auditPart, hint, auxiliarCipher} = withdraw;
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
             let prefix_data = self._get_general_prefix_data();
             let bit_size = self.get_bit_size();
 
             let inputs: InputsWithdraw = InputsWithdraw {
-                y: from, amount, nonce, to, currentBalance, bit_size, prefix_data,
+                y: from, amount, nonce, to, currentBalance, auxiliarCipher, bit_size, prefix_data,
             };
             verify_withdraw(inputs, proof);
 
@@ -235,6 +235,8 @@ pub mod Tongo {
                 to,
                 transferBalance,
                 transferBalanceSelf,
+                auxiliarCipher,
+                auxiliarCipher2,
                 proof,
                 auditPart,
                 auditPartTransfer,
@@ -254,6 +256,8 @@ pub mod Tongo {
                 currentBalance,
                 transferBalance,
                 transferBalanceSelf,
+                auxiliarCipher,
+                auxiliarCipher2,
                 bit_size,
                 prefix_data,
             };

@@ -1,5 +1,6 @@
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 import {SameEncrypt, ElGamal, SameEncryptUnknownRandom, poe} from "@fatsolutions/she/protocols";
+import { range as SHE_range} from "@fatsolutions/she/protocols"
 
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
@@ -28,38 +29,54 @@ export interface InputsTransfer {
     currentBalance: CipherBalance,
     transferBalance: CipherBalance,
     transferBalanceSelf: CipherBalance,
+    auxiliarCipher: CipherBalance,
+    auxiliarCipher2: CipherBalance,
     bit_size: number,
     prefix_data: GeneralPrefixData,
 }
 
 /**
  * Computes the prefix by hashing some public inputs.
- * @param {GeneralPrefixData} general_prefix_data - General prefix data
- * @param {ProjectivePoint} from - The source account
- * @param {ProjectivePoint} to - The destination account
- * @param {bigint} nonce - The account nonce
- * @param {CipherBalance} currentBalance - Current cipher balance
- * @param {CipherBalance} transferBalance - Transfer cipher balance
- * @param {CipherBalance} transferBalanceSelf - Transfer cipher balance for self
+ * @param {InputsTransfer} inputs - The inputs of the proof
  * @returns {bigint} The computed prefix hash
  */
-function prefixTransfer(
-    general_prefix_data: GeneralPrefixData,
-    from: ProjectivePoint,
-    to: ProjectivePoint,
-    nonce: bigint,
-): bigint {
-    const { chain_id, tongo_address, sender_address } = general_prefix_data;
+function prefixTransfer(inputs: InputsTransfer): bigint {
+    const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
+    const {L:L0, R:R0} = inputs.currentBalance;
+    const {L:L, R:R} = inputs.transferBalanceSelf;
+    const {L:L_bar, R:R_bar} = inputs.transferBalance;
+    const {L:V, R:R_aux} = inputs.auxiliarCipher;
+    const {L:V2, R:R_aux2} = inputs.auxiliarCipher2;
     const seq: bigint[] = [
         chain_id,
         tongo_address,
         sender_address,
         TRANSFER_CAIRO_STRING,
-        from.toAffine().x,
-        from.toAffine().y,
-        to.toAffine().x,
-        to.toAffine().y,
-        nonce,
+        inputs.from.toAffine().x,
+        inputs.from.toAffine().y,
+        inputs.to.toAffine().x,
+        inputs.to.toAffine().y,
+        inputs.nonce,
+        L0.toAffine().x,
+        L0.toAffine().y,
+        R0.toAffine().x,
+        R0.toAffine().y,
+        L.toAffine().x,
+        L.toAffine().y,
+        R.toAffine().x,
+        R.toAffine().y,
+        L_bar.toAffine().x,
+        L_bar.toAffine().y,
+        R_bar.toAffine().x,
+        R_bar.toAffine().y,
+        V.toAffine().x,
+        V.toAffine().y,
+        R_aux.toAffine().x,
+        R_aux.toAffine().y,
+        V2.toAffine().x,
+        V2.toAffine().y,
+        R_aux2.toAffine().x,
+        R_aux2.toAffine().y,
     ];
     return compute_prefix(seq);
 }
@@ -78,9 +95,7 @@ export interface ProofOfTransfer {
     s_b: bigint;
     s_b2: bigint;
     s_r2: bigint;
-    R_aux: ProjectivePoint,
     range: Range,
-    R_aux2: ProjectivePoint,
     range2: Range;
 }
 
@@ -103,17 +118,17 @@ export function proveTransfer(
     const { L: L0, R: R0 } = initial_cipherbalance;
     const b = amount_to_transfer;
     const b0 = initial_balance;
-
-    const prefix = prefixTransfer(prefix_data, y, to, nonce);
-
-    const { r, range } = generateRangeProof(b, bit_size, prefix);
-    const transferBalanceSelf = createCipherBalance(y, b, r);
-    const transferBalance = createCipherBalance(to, b, r);
-    const R_aux = g.multiply(r);
-
     const b_left = b0 - b;
-    const { r: r2, range: range2 } = generateRangeProof(b_left, bit_size, prefix);
-    const R_aux2 = g.multiply(r2);
+
+    // This precomputation is usefull to know add R_aux and V to the prefix computation
+    const  {randomness, total_random} = SHE_range.pregenerate_randomness(bit_size);
+    const auxiliarCipher = createCipherBalance(h,amount_to_transfer,total_random);
+
+    const transferBalanceSelf = createCipherBalance(y, b, total_random);
+    const transferBalance = createCipherBalance(to, b, total_random);
+
+    const  {randomness: randomness2, total_random:total_random2} = SHE_range.pregenerate_randomness(bit_size);
+    const auxiliarCipher2 = createCipherBalance(h,b_left,total_random2);
 
     const inputs: InputsTransfer = {
         from: y,
@@ -122,9 +137,20 @@ export function proveTransfer(
         currentBalance: initial_cipherbalance,
         transferBalance,
         transferBalanceSelf,
+        auxiliarCipher,
+        auxiliarCipher2,
         bit_size,
         prefix_data,
     };
+
+    const prefix = prefixTransfer(inputs);
+
+    const { r, range } = generateRangeProof(b, bit_size,randomness, prefix);
+    if (r !== total_random) {throw new Error("random missmatch") ;}
+
+    const { r: r2, range: range2 } = generateRangeProof(b_left, bit_size,randomness2, prefix);
+    if (r2 !== total_random2) {throw new Error("random missmatch") ;}
+
 
     const G = R0.subtract(transferBalanceSelf.R);
 
@@ -176,9 +202,7 @@ export function proveTransfer(
         s_b,
         s_b2,
         s_r2,
-        R_aux,
         range,
-        R_aux2,
         range2,
     };
 
@@ -213,12 +237,7 @@ export function verifyTransfer(
     proof: ProofOfTransfer,
 ) {
     const bit_size = inputs.bit_size;
-    const prefix = prefixTransfer(
-        inputs.prefix_data,
-        inputs.from,
-        inputs.to,
-        inputs.nonce
-    );
+    const prefix = prefixTransfer(inputs);
 
     const c = compute_challenge(prefix, [
         proof.A_x,
@@ -234,6 +253,8 @@ export function verifyTransfer(
     const { L: CL, R: CR } = inputs.currentBalance;
     const { L, R } = inputs.transferBalanceSelf;
     const { L: L_bar, R: R_bar } = inputs.transferBalance;
+    const { L:V , R:R_aux } = inputs.auxiliarCipher;
+    const { L:V2 , R:R_aux2 } = inputs.auxiliarCipher2;
 
 
     let res = poe._verify(inputs.from, g, proof.A_x, c, proof.s_x);
@@ -263,12 +284,13 @@ export function verifyTransfer(
     res =  SameEncrypt.verify(sameEncryptInputs,sameEncryptProof);
     if (res == false) { throw new Error("error SameEncryp"); }
 
-    const V = verifyRangeProof(proof.range, bit_size, prefix);
-    if (V == false) { throw new Error("erro in range for V"); }
+    const V_proof = verifyRangeProof(proof.range, bit_size, prefix);
+    if (V_proof == false) { throw new Error("erro in range for V"); }
+    if (!V.equals(V_proof)) {throw new Error( "V missmatch" )};
 
     let elGamalInputs = {
         L: V,
-        R: proof.R_aux,
+        R: R_aux,
         g1: g,
         g2: h,
     };
@@ -287,14 +309,15 @@ export function verifyTransfer(
     const L0 = CL.subtract(L);
     const R0 = CR.subtract(R);
 
-    const V2 = verifyRangeProof(proof.range2, bit_size, prefix);
-    if (V2 == false) { throw new Error("erro in range for V"); }
+    const V2_proof = verifyRangeProof(proof.range2, bit_size, prefix);
+    if (V2_proof == false) { throw new Error("erro in range for V2"); }
+    if (!V2.equals(V2_proof)) {throw new Error( "V2 missmatch" )};
 
     let sameEncryptUnkownRandomInputs = {
         L1: L0,
         R1: R0,
         L2: V2,
-        R2: proof.R_aux2,
+        R2: R_aux2,
         g,
         y1: inputs.from,
         y2: h,

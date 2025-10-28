@@ -16,8 +16,8 @@ export interface Range {
     proofs: ProofOfBit[];
 }
 
-export function generateRangeProof(amount: bigint, bit_size: number, initial_prefix: bigint): { r: bigint, range: Range; } {
-    const { inputs, proofs, r } = range.prove(amount, bit_size, g, h, initial_prefix);
+export function generateRangeProof(amount: bigint, bit_size: number,randomness:bigint[], initial_prefix: bigint): { r: bigint, range: Range; } {
+    const { inputs, proofs, r } = range.prove(amount, bit_size, g, h,randomness, initial_prefix);
     const range_without_prefix: ProofOfBit[] = proofs.proofs.map(({ prefix, ...item }) => item);
     const range_proof: Range = { commitments: inputs.commitments, proofs: range_without_prefix };
     return { r, range: range_proof };

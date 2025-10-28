@@ -6,7 +6,6 @@ use core::ec::{
     stark_curve::{GEN_X,GEN_Y},
 };
 
-use core::poseidon::poseidon_hash_span;
 use tongo::structs::common::{
     pubkey::{PubKey},
     cipherbalance::{CipherBalance, CipherBalanceTrait},
@@ -27,8 +26,8 @@ use tongo::verifier::{
     utils::generator_h,
 };
 
-use she::utils::{FeltXor,compute_challenge, compute_s};
-use she::protocols::range::prover_for_testing;
+use she::utils::{compute_challenge, compute_s};
+use she::protocols::range::{prover_for_testing, pregenerate_random_for_testing};
 use she::protocols::bit::BitProofWithPrefix;
 
 use crate::consts::{CHAIN_ID, TONGO_ADDRESS};
@@ -225,8 +224,11 @@ pub fn prove_withdraw(
     seed: felt252
 ) -> (InputsWithdraw, ProofOfWithdraw, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
+    let h = generator_h();
     let y = pubkey_from_secret(x);
     decipher_balance(initialBalance.into(), x, currentBalance);
+
+    let left = initialBalance - amount;
 
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
         chain_id: CHAIN_ID,
@@ -234,36 +236,28 @@ pub fn prove_withdraw(
         sender_address:sender,
     };
 
-    // precomputation of the prefix for testing
-    let withdraw_selector = 'withdraw';
-    let array: Array<felt252> = array![
-        CHAIN_ID,
-        TONGO_ADDRESS.into(),
-        sender.into(),
-        withdraw_selector,
-        y.x,
-        y.y,
-        nonce.into(),
-        amount.into(),
-        to.into(),
-    ];
-    let initial_prefix = poseidon_hash_span(array.span());
-    //
-
-    let (_,R) = currentBalance.points();
-    let h = generator_h();
-
-    let left = initialBalance - amount;
-
-    let (r, range) = prove_range(left.try_into().unwrap(),bit_size,initial_prefix, generate_random(seed + 1, 1));
-    let R_aux: StarkPoint = g.into().mul(r).try_into().unwrap();
+    let (randomness, total_random ) = pregenerate_random_for_testing(bit_size, seed + 1);
+    let auxiliarCipher = CipherBalanceTrait::new(h.into(),left.into(), total_random);
 
     let inputs: InputsWithdraw = InputsWithdraw {
-        y: y.try_into().unwrap(), amount, currentBalance, nonce, to,bit_size, prefix_data
+        y: y.try_into().unwrap(),
+        amount,
+        currentBalance,
+        auxiliarCipher,
+        nonce,
+        to,
+        bit_size,
+        prefix_data,
     };
+
     let prefix = inputs.compute_prefix();
 
-    assert!(prefix == initial_prefix, "prefix mismatch");
+    let (_,R) = currentBalance.points();
+
+
+    let (r, range) = prove_range(left.try_into().unwrap(),bit_size,randomness, prefix, generate_random(seed + 1, 1));
+    assert!(r == total_random, "random mismatch");
+
 
     let kb = generate_random(seed, 1);
     let kx = generate_random(seed, 2);
@@ -290,7 +284,14 @@ pub fn prove_withdraw(
     let sr = compute_s(kr, r, c);
 
     let proof: ProofOfWithdraw = ProofOfWithdraw {
-        A_x: A_x.into(),A_r:A_r.into(), A: A.into(), A_v: A_v.into(), sx: sx, sb: sb, sr: sr,R_aux, range,
+        A_x: A_x.into(),
+        A_r:A_r.into(),
+        A: A.into(),
+        A_v: A_v.into(),
+        sx,
+        sb,
+        sr,
+        range,
     };
 
     let cipher = CipherBalanceTrait::new(y, amount.into(), 'withdraw');
@@ -315,33 +316,16 @@ pub fn prove_transfer(
     decipher_balance(initialBalance, x, currentBalance);
 
     let h = generator_h();
-
-    let transfer_selector = 'transfer';
-    let array: Array<felt252> = array![
-        CHAIN_ID,
-        TONGO_ADDRESS.into(),
-        sender.into(),
-        transfer_selector,
-        y.x,
-        y.y,
-        to.x,
-        to.y,
-        nonce.into(),
-    ];
-    let initial_prefix = poseidon_hash_span(array.span());
-
-    let (_, CR) = currentBalance.points();
-
-    let (r, proof) = prove_range(amount.try_into().unwrap(),bit_size, initial_prefix, generate_random(seed + 1, 1));
-    let R_aux: StarkPoint = g.into().mul(r).try_into().unwrap();
-    let transferBalanceSelf = CipherBalanceTrait::new(y, amount, r);
-    let transferBalance = CipherBalanceTrait::new(to, amount, r);
-
-    let (_, R) = transferBalanceSelf.points();
-
     let balanceLeft = initialBalance - amount;
-    let (r2, proof2) = prove_range(balanceLeft.try_into().unwrap(),bit_size,initial_prefix, generate_random(seed + 2, 1));
-    let R_aux2: StarkPoint = g.into().mul(r2).try_into().unwrap();
+
+
+    let (randomness, total_random ) = pregenerate_random_for_testing(bit_size, seed + 1);
+    let auxiliarCipher = CipherBalanceTrait::new(h.into(),amount, total_random);
+    let transferBalanceSelf = CipherBalanceTrait::new(y, amount, total_random);
+    let transferBalance = CipherBalanceTrait::new(to, amount, total_random);
+
+    let (randomness2, total_random2 ) = pregenerate_random_for_testing(bit_size, seed + 1);
+    let auxiliarCipher2 = CipherBalanceTrait::new(h.into(), balanceLeft, total_random2);
 
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
         chain_id: CHAIN_ID,
@@ -356,10 +340,22 @@ pub fn prove_transfer(
         currentBalance,
         transferBalance,
         transferBalanceSelf,
+        auxiliarCipher,
+        auxiliarCipher2,
         bit_size,
         prefix_data
     };
     let prefix = inputs.compute_prefix();
+
+
+    let (r, proof) = prove_range(amount.try_into().unwrap(),bit_size,randomness, prefix, generate_random(seed + 1, 1));
+    assert!(r == total_random, "random mismatch");
+
+    let (r2, proof2) = prove_range(balanceLeft.try_into().unwrap(),bit_size,randomness2,prefix, generate_random(seed + 2, 1));
+    assert!(r2 == total_random2, "random2 mismatch");
+
+    let (_, CR) = currentBalance.points();
+    let (_, R)  = transferBalance.points();
 
     let G: NonZeroEcPoint = (CR - R.into()).try_into().unwrap();
 
@@ -432,9 +428,7 @@ pub fn prove_transfer(
         s_b,
         s_b2,
         s_r2,
-        R_aux,
         range: proof,
-        R_aux2,
         range2: proof2,
     };
     
@@ -443,11 +437,11 @@ pub fn prove_transfer(
 }
 
 
-pub fn prove_range(amount: u32,bit_size:u32, initial_prefix: felt252, seed: felt252) -> (felt252, Range) {
+pub fn prove_range(amount: u32,bit_size:u32,randomness: Array<felt252>, initial_prefix: felt252, seed: felt252) -> (felt252, Range) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let h = generator_h();
 
-    let (she_inputs, she_proof, r) = prover_for_testing(amount, g,h, bit_size,initial_prefix,generate_random(seed,0));
+    let (she_inputs, she_proof, r) = prover_for_testing(amount, g,h, bit_size, randomness, initial_prefix,generate_random(seed,0));
 
     let mut commitments: Array<StarkPoint> = array![];
     let mut proofs: Array<bitProof> = array![];

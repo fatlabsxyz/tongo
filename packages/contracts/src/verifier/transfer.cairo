@@ -36,6 +36,8 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let (CL, CR) = inputs.currentBalance.points();
     let (L, R) = inputs.transferBalanceSelf.points_nz();
     let (L_bar, R_bar) = inputs.transferBalance.points_nz();
+    let (V, R_aux) = inputs.auxiliarCipher.points_nz();
+    let (V2, R_aux2) = inputs.auxiliarCipher2.points_nz();
 
     let prefix = inputs.compute_prefix();
     let c = proof.compute_challenge(prefix);
@@ -68,10 +70,11 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
     // Now we need to show that V = g**b h**r with the same b and r.
     let (rangeInputs, rangeProof) = proof.range.to_she_proof(inputs.bit_size, prefix);
-    let V = range_verify(rangeInputs, rangeProof).expect('Failed ZK proof for V');
+    let V_proof = range_verify(rangeInputs, rangeProof).expect('Failed ZK proof for V');
+    assert!(V_proof.coordinates() == V.coordinates(), "V missmatch" );
 
     let elgamal_inputs = ElGamalInputs {
-        L: V, R: proof.R_aux.try_into().unwrap(), g1: g, g2: generator_h(),
+        L: V_proof, R: R_aux, g1: g, g2: generator_h(),
     };
 
     let elgamal_proof = ElGamalProof {
@@ -87,13 +90,14 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let R0: NonZeroEcPoint = (CR - R.into()).try_into().unwrap();
 
     let (rangeInputs, rangeProof) = proof.range2.to_she_proof(inputs.bit_size, prefix);
-    let V2 = range_verify(rangeInputs, rangeProof).expect('Failed ZK proof for V2');
+    let V2_proof = range_verify(rangeInputs, rangeProof).expect('Failed ZK proof for V2');
+    assert!(V2_proof.coordinates() == V2.coordinates(), "V2 missmatch" );
 
     let same_encrypt_inputs = SameEncryptionUnknownRandomInputs {
         L1: L0,
         R1: R0,
-        L2: V2,
-        R2: proof.R_aux2.try_into().unwrap(),
+        L2: V2_proof,
+        R2: R_aux2,
         g,
         y1: inputs.from.try_into().unwrap(),
         y2: generator_h(),
