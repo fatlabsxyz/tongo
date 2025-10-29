@@ -117,7 +117,7 @@ pub fn prove_fund(
         tongo_address:TONGO_ADDRESS,
         sender_address:sender,
     };
-    let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, from,  nonce, prefix_data};
+    let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, nonce, prefix_data};
     let prefix = inputs.compute_prefix();
 
     //prover
@@ -431,7 +431,7 @@ pub fn prove_transfer(
         range: proof,
         range2: proof2,
     };
-    
+
     let newBalance= CipherBalanceTrait::subtract(currentBalance , transferBalanceSelf);
     return (inputs, proof, newBalance);
 }

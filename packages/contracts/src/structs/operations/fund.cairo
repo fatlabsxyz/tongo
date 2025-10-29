@@ -1,5 +1,4 @@
 use core::poseidon::poseidon_hash_span;
-use starknet::ContractAddress;
 use she::utils::reduce_modulo_order;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::pubkey::PubKey;
@@ -31,7 +30,6 @@ pub struct Fund {
 #[derive(Serde, Drop, Copy, Debug)]
 pub struct InputsFund {
     pub y: PubKey,
-    pub from: ContractAddress,
     pub amount: u128,
     pub nonce: u64,
     pub prefix_data: GeneralPrefixData,
@@ -49,7 +47,6 @@ pub impl FundPrefix of Prefix<InputsFund> {
             fund_selector,
             *self.y.x,
             *self.y.y,
-            (*self.from).into(),
             (*self.amount).into(),
             (*self.nonce).into(),
         ];

@@ -176,7 +176,6 @@ export class Account implements IAccount {
 
         const { inputs, proof, newBalance } = proveFund(
             this.pk,
-            BigInt(sender),
             amount,
             initialBalance,
             currentBalance,
@@ -388,7 +387,7 @@ export class Account implements IAccount {
             chain_id: BigInt(await this.provider.getChainId()),
             tongo_address: BigInt(this.Tongo.address),
             sender_address: BigInt(sender), 
-        }
+        };
 
         const balance = this.decryptCipherBalance(cipher);
         const { inputs, proof } = proveAudit(this.pk, balance, cipher, starkPointToProjectivePoint(to), prefix_data);

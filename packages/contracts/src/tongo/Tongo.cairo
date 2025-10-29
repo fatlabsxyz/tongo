@@ -149,7 +149,6 @@ pub mod Tongo {
                 y: to,
                 nonce,
                 amount,
-                from: get_caller_address(),
                 prefix_data
             };
             verify_fund(inputs, proof);
