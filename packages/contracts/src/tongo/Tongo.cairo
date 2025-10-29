@@ -430,7 +430,8 @@ pub mod Tongo {
         fn _transfer_to(self: @ContractState, to: ContractAddress, amount: u256) {
             let asset_address = self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address };
-            ERC20.transfer(to, amount);
+            let response = ERC20.transfer(to, amount);
+            assert!(response, "ERC20 transfer failed");
         }
 
         /// Increases the nonce of the given Tongo account.
