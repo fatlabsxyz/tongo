@@ -3,9 +3,9 @@ version = 1
 
 [[package]]
 name = "she"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://scarbs.xyz/"
-checksum = "sha256:2b8d465aa6ddeb45c0f210471b3c79201c2e5eb822e0ac3407e593f5a58061ba"
+checksum = "sha256:1b81d4b6df2965050c5b563eb39227037910d20fe670dc01b5c87f6ca02fd7f7"
 
 [[package]]
 name = "snforge_scarb_plugin"
