@@ -7,7 +7,7 @@ edition = "2023_11"
 
 [dependencies]
 starknet = "2.12.2"
-she = "0.3.0"
+she = "0.4.0"
 
 [dev-dependencies]
 snforge_std = "0.50.0"
