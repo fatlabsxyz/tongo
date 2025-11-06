@@ -21,8 +21,9 @@ use crate::verifier::range::Range;
 pub struct Withdraw {
     pub from: PubKey,
     pub to: ContractAddress,
-    pub amount: felt252,
+    pub amount: u128,
     pub hint: AEBalance,
+    pub auxiliarCipher: CipherBalance,
     pub proof: ProofOfWithdraw,
     pub auditPart: Option<Audit>,
 }
@@ -40,8 +41,9 @@ pub struct InputsWithdraw {
     pub y: PubKey,
     pub nonce: u64,
     pub to: ContractAddress,
-    pub amount: felt252,
+    pub amount: u128,
     pub currentBalance: CipherBalance,
+    pub auxiliarCipher: CipherBalance,
     pub bit_size: u32,
     pub prefix_data: GeneralPrefixData,
 }
@@ -50,16 +52,27 @@ pub struct InputsWithdraw {
 impl WithdrawPrefix of Prefix<InputsWithdraw> {
     fn compute_prefix(self: @InputsWithdraw) -> felt252 {
         let withdraw_selector = 'withdraw';
-        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
+        let CipherBalance {L,R} = *self.currentBalance;
+        let CipherBalance {L:V,R:R_aux} = *self.auxiliarCipher;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
+            (*sender_address).into(),
             withdraw_selector,
             *self.y.x,
             *self.y.y,
             (*self.nonce).into(),
-            *self.amount,
+            (*self.amount).into(),
             (*self.to).into(),
+            L.x,
+            L.y,
+            R.x,
+            R.y,
+            V.x,
+            V.y,
+            R_aux.x,
+            R_aux.y
         ];
         poseidon_hash_span(array.span())
     }
@@ -76,7 +89,6 @@ pub struct ProofOfWithdraw {
     pub sx: felt252,
     pub sb: felt252,
     pub sr: felt252,
-    pub R_aux: StarkPoint,
     pub range: Range,
 }
 

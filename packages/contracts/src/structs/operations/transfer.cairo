@@ -27,6 +27,8 @@ pub struct Transfer {
     pub transferBalanceSelf: CipherBalance,
     pub hintTransfer: AEBalance,
     pub hintLeftover: AEBalance,
+    pub auxiliarCipher: CipherBalance,
+    pub auxiliarCipher2: CipherBalance,
     pub proof: ProofOfTransfer,
     pub auditPart: Option<Audit>,
     pub auditPartTransfer: Option<Audit>,
@@ -49,6 +51,8 @@ pub struct InputsTransfer {
     pub currentBalance: CipherBalance,
     pub transferBalance: CipherBalance,
     pub transferBalanceSelf: CipherBalance,
+    pub auxiliarCipher: CipherBalance,
+    pub auxiliarCipher2: CipherBalance,
     pub bit_size: u32,
     pub prefix_data: GeneralPrefixData,
 }
@@ -57,16 +61,44 @@ pub struct InputsTransfer {
 impl TransferPrefix of Prefix<InputsTransfer> {
     fn compute_prefix(self: @InputsTransfer) -> felt252 {
         let transfer_selector = 'transfer';
-        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
+
+        let CipherBalance {L:L0, R:R0} = *self.currentBalance;
+        let CipherBalance {L ,R } = *self.transferBalanceSelf;
+        let CipherBalance {L:L_bar,R:R_bar} = *self.transferBalance;
+        let CipherBalance {L:V,R:R_aux} = *self.auxiliarCipher;
+        let CipherBalance {L:V2,R:R_aux2} = *self.auxiliarCipher2;
+
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
+            (*sender_address).into(),
             transfer_selector,
             *self.from.x,
             *self.from.y,
             *self.to.x,
             *self.to.y,
             (*self.nonce).into(),
+            L0.x,
+            L0.y,
+            R0.x,
+            R0.y,
+            L.x,
+            L.y,
+            R.x,
+            R.y,
+            L_bar.x,
+            L_bar.y,
+            R_bar.x,
+            R_bar.y,
+            V.x,
+            V.y,
+            R_aux.x,
+            R_aux.y,
+            V2.x,
+            V2.y,
+            R_aux2.x,
+            R_aux2.y
         ];
         poseidon_hash_span(array.span())
     }
@@ -88,9 +120,7 @@ pub struct ProofOfTransfer {
     pub s_b: felt252,
     pub s_b2: felt252,
     pub s_r2: felt252,
-    pub R_aux: StarkPoint,
     pub range: Range,
-    pub R_aux2: StarkPoint,
     pub range2: Range,
 }
 

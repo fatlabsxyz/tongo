@@ -32,10 +32,11 @@ pub struct InputsRollOver {
 impl RollOverPrefix of Prefix<InputsRollOver> {
     fn compute_prefix(self: @InputsRollOver) -> felt252 {
         let rollover_selector = 'rollover';
-        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address, sender_address} = self.prefix_data;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
+            (*sender_address).into(),
             rollover_selector,
             *self.y.x,
             *self.y.y,

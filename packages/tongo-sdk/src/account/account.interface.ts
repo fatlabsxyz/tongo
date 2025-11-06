@@ -1,4 +1,4 @@
-import { PubKey } from "../types.js";
+import { PubKey, GeneralPrefixData } from "../types.js";
 import { FundOperation } from "../operations/fund.js";
 import { RollOverOperation } from "../operations/rollover.js";
 import { TransferOperation } from "../operations/transfer.js";
@@ -27,7 +27,7 @@ export interface IAccount {
     transfer(transferDetails: TransferDetails): Promise<TransferOperation>;
     withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation>;
     ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation>;
-    rollover(): Promise<RollOverOperation>;
+    rollover(rolloverDetails: RolloverDetails): Promise<RollOverOperation>;
 
     // state access
     rawState(): Promise<RawAccountState>;
@@ -44,10 +44,10 @@ export interface IAccount {
     tongoToErc20(tongoAmount: bigint): Promise<bigint>;
 
     //audit
-    createAuditPart(balance: bigint, storedCipherBalance: CipherBalance): Promise<CairoOption<Audit>>;
+    createAuditPart(balance: bigint, storedCipherBalance: CipherBalance, prefix_data: GeneralPrefixData): Promise<CairoOption<Audit>>;
 
     // ex post
-    generateExPost(to: PubKey, cipher: CipherBalance): ExPost;
+    generateExPost(to: PubKey, cipher: CipherBalance, sender: string): Promise<ExPost>;
     verifyExPost(expost: ExPost): bigint;
 
     // events
@@ -62,20 +62,28 @@ export interface IAccount {
 
 export interface FundDetails {
     amount: bigint;
+    sender: string,
 }
 
 export interface TransferDetails {
     amount: bigint;
     to: PubKey;
+    sender: string,
+}
+
+export interface RolloverDetails {
+    sender: string,
 }
 
 export interface RagequitDetails {
     to: string;
+    sender: string,
 }
 
 export interface WithdrawDetails {
     to: string;
     amount: bigint;
+    sender: string,
 }
 
 export interface RawAccountState {

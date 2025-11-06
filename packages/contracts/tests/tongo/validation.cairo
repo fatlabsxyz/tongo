@@ -5,6 +5,7 @@ use tongo::structs::operations::fund::Fund;
 use crate::tongo::operations::fundOperation;
 
 use crate::tongo::setup::{setup_tongo};
+use crate::consts::USER_CALLER;
 
 #[test]
 #[should_panic(expected: "PubKey is not an EcPoint")]
@@ -15,7 +16,7 @@ fn tamperPubKey() {
 
     let initial_balance = 0;
     let initial_fund = 250;
-    let operation = fundOperation(x, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x, USER_CALLER, initial_balance,initial_fund,dispatcher);
 
 
     let tamperTo =  PubKey {x: operation.to.x, y: operation.to.y + 1 };

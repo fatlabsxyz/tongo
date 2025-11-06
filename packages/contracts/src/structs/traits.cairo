@@ -5,6 +5,7 @@ use crate::structs::common::starkpoint::StarkPoint;
 pub struct GeneralPrefixData {
     pub chain_id: felt252,
     pub tongo_address: ContractAddress,
+    pub sender_address: ContractAddress,
 }
 
 /// This trait is implemented by the Inputs structs. Computes the prefix of the public inputs by

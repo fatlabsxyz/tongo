@@ -186,7 +186,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::felt252"
+                "type": "core::integer::u128"
             },
             {
                 "name": "hint",
@@ -295,10 +295,6 @@ export const tongoAbi = [
                 "type": "core::felt252"
             },
             {
-                "name": "R_aux",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
-            },
-            {
                 "name": "range",
                 "type": "tongo::verifier::range::Range"
             }
@@ -318,11 +314,15 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::felt252"
+                "type": "core::integer::u128"
             },
             {
                 "name": "hint",
                 "type": "tongo::structs::aecipher::AEBalance"
+            },
+            {
+                "name": "auxiliarCipher",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance"
             },
             {
                 "name": "proof",
@@ -366,7 +366,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::felt252"
+                "type": "core::integer::u128"
             },
             {
                 "name": "hint",
@@ -439,16 +439,8 @@ export const tongoAbi = [
                 "type": "core::felt252"
             },
             {
-                "name": "R_aux",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
-            },
-            {
                 "name": "range",
                 "type": "tongo::verifier::range::Range"
-            },
-            {
-                "name": "R_aux2",
-                "type": "tongo::structs::common::starkpoint::StarkPoint"
             },
             {
                 "name": "range2",
@@ -483,6 +475,14 @@ export const tongoAbi = [
             {
                 "name": "hintLeftover",
                 "type": "tongo::structs::aecipher::AEBalance"
+            },
+            {
+                "name": "auxiliarCipher",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance"
+            },
+            {
+                "name": "auxiliarCipher2",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance"
             },
             {
                 "name": "proof",
@@ -900,7 +900,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::integer::u64",
+                "type": "core::integer::u128",
                 "kind": "data"
             }
         ]
@@ -944,7 +944,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::integer::u64",
+                "type": "core::integer::u128",
                 "kind": "data"
             },
             {
@@ -971,7 +971,7 @@ export const tongoAbi = [
             },
             {
                 "name": "amount",
-                "type": "core::integer::u64",
+                "type": "core::integer::u128",
                 "kind": "data"
             },
             {

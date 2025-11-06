@@ -31,6 +31,8 @@ interface TransferOpParams {
     to: ProjectivePoint;
     transferBalance: CipherBalance;
     transferBalanceSelf: CipherBalance;
+    auxiliarCipher: CipherBalance;
+    auxiliarCipher2: CipherBalance;
     proof: ProofOfTransfer;
     hintTransfer: AEBalance;
     hintLeftover: AEBalance;
@@ -46,6 +48,8 @@ export class TransferOperation implements ITransferOperation {
     to: ProjectivePoint;
     transferBalance: CipherBalance;
     transferBalanceSelf: CipherBalance;
+    auxiliarCipher: CipherBalance;
+    auxiliarCipher2: CipherBalance;
     hintTransfer: AEBalance;
     hintLeftover: AEBalance;
     proof: ProofOfTransfer;
@@ -60,6 +64,8 @@ export class TransferOperation implements ITransferOperation {
         proof,
         auditPart,
         auditPartTransfer,
+        auxiliarCipher,
+        auxiliarCipher2,
         Tongo,
         hintTransfer,
         hintLeftover,
@@ -68,6 +74,8 @@ export class TransferOperation implements ITransferOperation {
         this.to = to;
         this.transferBalance = transferBalance;
         this.transferBalanceSelf = transferBalanceSelf;
+        this.auxiliarCipher = auxiliarCipher;
+        this.auxiliarCipher2= auxiliarCipher2;
         this.hintTransfer = hintTransfer;
         this.hintLeftover = hintLeftover;
         this.proof = proof;
@@ -83,6 +91,8 @@ export class TransferOperation implements ITransferOperation {
                 to: this.to,
                 transferBalance: this.transferBalance,
                 transferBalanceSelf: this.transferBalanceSelf,
+                auxiliarCipher: this.auxiliarCipher,
+                auxiliarCipher2: this.auxiliarCipher2,
                 hintTransfer: this.hintTransfer,
                 hintLeftover: this.hintLeftover,
                 proof: this.proof,

@@ -22,7 +22,7 @@ use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 pub struct Ragequit {
     pub from: PubKey,
     pub to: ContractAddress,
-    pub amount: felt252,
+    pub amount: u128,
     pub hint: AEBalance,
     pub proof: ProofOfRagequit,
     pub auditPart: Option<Audit>,
@@ -41,7 +41,7 @@ pub struct InputsRagequit {
     pub y: PubKey,
     pub nonce: u64,
     pub to: ContractAddress,
-    pub amount: felt252,
+    pub amount: u128,
     pub currentBalance: CipherBalance,
     pub prefix_data: GeneralPrefixData,
 }
@@ -50,16 +50,24 @@ pub struct InputsRagequit {
 impl RagequitPrefix of Prefix<InputsRagequit> {
     fn compute_prefix(self: @InputsRagequit) -> felt252 {
         let ragequit_selector = 'ragequit';
-        let GeneralPrefixData { chain_id, tongo_address } = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
+        let CipherBalance {L,R} = *self.currentBalance;
+
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
+            (*sender_address).into(),
             ragequit_selector,
             *self.y.x,
             *self.y.y,
             (*self.nonce).into(),
-            *self.amount,
+            (*self.amount).into(),
             (*self.to).into(),
+            L.x,
+            L.y,
+            R.x,
+            R.y,
+
         ];
         poseidon_hash_span(array.span())
     }

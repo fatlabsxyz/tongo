@@ -3,6 +3,7 @@ pub mod Tongo {
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
+    use core::ec::NonZeroEcPoint;
     use starknet::{ContractAddress, get_caller_address, get_contract_address, get_tx_info};
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::structs::aecipher::{AEBalance, IntoOptionAEBalance};
@@ -87,6 +88,8 @@ pub mod Tongo {
         self.owner.write(owner);
         self.ERC20.write(ERC20);
         self.rate.write(rate);
+
+        assert!(bit_size <= 128_u32, "Bit size should be 128 at max");
         self.bit_size.write(bit_size);
 
         if let Some(key) = auditor_key {
@@ -142,12 +145,17 @@ pub mod Tongo {
             let nonce = self.get_nonce(to);
             let prefix_data = self._get_general_prefix_data();
 
-            let inputs: InputsFund = InputsFund { y: to, nonce, amount, prefix_data };
+            let inputs: InputsFund = InputsFund { 
+                y: to,
+                nonce,
+                amount,
+                prefix_data
+            };
             verify_fund(inputs, proof);
 
             self._transfer_from_caller(self._unwrap_tongo_amount(amount));
 
-            let cipher = CipherBalanceTrait::new(to, amount, 'fund');
+            let cipher = CipherBalanceTrait::new(to, amount.into(), 'fund');
             self._add_balance(to, cipher);
             self._overwrite_hint(to, hint);
             self.emit(FundEvent { to, amount: amount.try_into().unwrap(), nonce });
@@ -163,18 +171,18 @@ pub mod Tongo {
         ///
         /// Emits WithdrawEvent
         fn withdraw(ref self: ContractState, withdraw: Withdraw) {
-            let Withdraw { from, amount, to, proof, auditPart, hint } = withdraw;
+            let Withdraw { from, amount, to, proof, auditPart, hint, auxiliarCipher} = withdraw;
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
             let prefix_data = self._get_general_prefix_data();
             let bit_size = self.get_bit_size();
 
             let inputs: InputsWithdraw = InputsWithdraw {
-                y: from, amount, nonce, to, currentBalance, bit_size, prefix_data,
+                y: from, amount, nonce, to, currentBalance, auxiliarCipher, bit_size, prefix_data,
             };
             verify_withdraw(inputs, proof);
 
-            let cipher = CipherBalanceTrait::new(from, amount, 'withdraw');
+            let cipher = CipherBalanceTrait::new(from, amount.into(), 'withdraw');
             self._subtract_balance(from, cipher);
             self._overwrite_hint(from, hint);
             self._transfer_to(to, self._unwrap_tongo_amount(amount));
@@ -226,6 +234,8 @@ pub mod Tongo {
                 to,
                 transferBalance,
                 transferBalanceSelf,
+                auxiliarCipher,
+                auxiliarCipher2,
                 proof,
                 auditPart,
                 auditPartTransfer,
@@ -245,6 +255,8 @@ pub mod Tongo {
                 currentBalance,
                 transferBalance,
                 transferBalanceSelf,
+                auxiliarCipher,
+                auxiliarCipher2,
                 bit_size,
                 prefix_data,
             };
@@ -370,10 +382,26 @@ pub mod Tongo {
         fn _add_pending(ref self: ContractState, y: PubKey, new_pending: CipherBalance) {
             let old_pending = self.get_pending(y);
             let sum = old_pending.add(new_pending.into());
+            let balance = self.get_balance(y);
+
+            self._assert_is_rollovereable(balance, sum);
+
             self.pending.entry(y).write(sum);
         }
 
-        /// Adds the pending balance to the current balance of the givren Tongo accout
+        /// Assert the pending balance can be safely add to the balance. This is to avoid a tipe of attack
+        /// in which a malicious actor who knows the random of the cipherbalance (usually after a fund/ragequit)
+        /// can transfer with a randomness constructed to temporally block a rollover.
+        fn _assert_is_rollovereable(self: @ContractState, balance: CipherBalance, pending: CipherBalance) {
+            let (L_pending, R_pending) = pending.points();
+            let (L_balance, R_balance) = balance.points();
+            let R_sum: Option<NonZeroEcPoint> = (R_pending + R_balance).try_into();
+            let L_sum: Option<NonZeroEcPoint> = (L_pending + L_balance).try_into();
+            assert!(R_sum.is_some(), "R not Rollovereable");
+            assert!(L_sum.is_some(), "L not Rollovereable");
+        }
+
+        /// Adds the pending balance to the current balance of the given Tongo account
         /// sets the pending to 0.
         fn _pending_to_balance(ref self: ContractState, y: PubKey) {
             let pending = self.pending.entry(y).read();
@@ -393,14 +421,16 @@ pub mod Tongo {
         fn _transfer_from_caller(self: @ContractState, amount: u256) {
             let asset_address = self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address };
-            ERC20.transfer_from(get_caller_address(), get_contract_address(), amount);
+            let response = ERC20.transfer_from(get_caller_address(), get_contract_address(), amount);
+            assert!(response, "ERC20 transfer_from failed");
         }
 
         /// Transfer some amount of ERC20 to the given starknet address.
         fn _transfer_to(self: @ContractState, to: ContractAddress, amount: u256) {
             let asset_address = self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address };
-            ERC20.transfer(to, amount);
+            let response = ERC20.transfer(to, amount);
+            assert!(response, "ERC20 transfer failed");
         }
 
         /// Increases the nonce of the given Tongo account.
@@ -431,7 +461,7 @@ pub mod Tongo {
         /// Returns the ERC20 equivalent of the given Tongo amount.
         ///
         /// ERC20_amount = Tongo_amount*rate
-        fn _unwrap_tongo_amount(self: @ContractState, amount: felt252) -> u256 {
+        fn _unwrap_tongo_amount(self: @ContractState, amount: u128) -> u256 {
             let rate = self.rate.read();
             return (amount.into() * rate);
         }
@@ -446,8 +476,9 @@ pub mod Tongo {
 
             let auditorPubKey = self.auditor_key.read().unwrap();
             let storedBalance = self.get_balance(y);
+            let prefix_data = self._get_general_prefix_data();
             let inputs: InputsAudit = InputsAudit {
-                y, auditorPubKey, storedBalance, auditedBalance,
+                y, auditorPubKey, storedBalance, auditedBalance, prefix_data
             };
             verify_audit(inputs, auditProof);
 
@@ -475,8 +506,9 @@ pub mod Tongo {
             assert!(audit.is_some(), "You must declare your balance");
             let Audit { auditedBalance, proof, hint } = audit.unwrap();
             let auditorPubKey = self.auditor_key.read().unwrap();
+            let prefix_data = self._get_general_prefix_data();
             let inputs: InputsAudit = InputsAudit {
-                y: from, auditorPubKey, storedBalance: transferBalance, auditedBalance,
+                y: from, auditorPubKey, storedBalance: transferBalance, auditedBalance,prefix_data
             };
             verify_audit(inputs, proof);
 
@@ -489,10 +521,11 @@ pub mod Tongo {
         }
 
         fn _get_general_prefix_data(self: @ContractState) -> GeneralPrefixData {
-            let tongo_address = get_contract_address();
             let chain_id = get_tx_info().unbox().chain_id;
+            let tongo_address = get_contract_address();
+            let sender_address = get_caller_address();
 
-            GeneralPrefixData { chain_id, tongo_address }
+            GeneralPrefixData { chain_id, tongo_address, sender_address }
         }
     }
 }

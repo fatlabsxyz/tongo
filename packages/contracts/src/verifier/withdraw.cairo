@@ -5,11 +5,11 @@ use she::protocols::SameEncryptionUnknownRandom::{
     verify as same_encrypt_unknown_random_verify,
 };
 use she::protocols::range::verify as range_verify;
-use crate::structs::common::cipherbalance::CipherBalanceTrait;
+use crate::structs::common::cipherbalance::{CipherBalanceTrait};
 use crate::structs::operations::withdraw::{InputsWithdraw, ProofOfWithdraw};
 use crate::structs::traits::{Challenge, Prefix};
 use crate::verifier::range::ConvertRangeProofImpl;
-use crate::verifier::utils::{generator_h, verifyOwnership};
+use crate::verifier::utils::{generator_h};
 
 
 /// Verifies the withdraw operation. First, ussers have to show knowledge of the private key. Then,
@@ -30,19 +30,25 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
 
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
-    verifyOwnership(inputs.y, proof.A_x, c, proof.sx);
+    // This verification is made as part of same_encrypt_unknown_random_verify(inputs, proof). 
+    // Is is redundant here.
+    //
+    //verifyOwnership(inputs.y, proof.A_x, c, proof.sx);
 
     let (L0, R0) = inputs.currentBalance.points_nz();
-    let L0 = L0.into() - g.into().mul(inputs.amount);
+    let L0 = L0.into() - g.into().mul(inputs.amount.into());
+    let (V, R_aux) = inputs.auxiliarCipher.points_nz();
 
     let (rangeInputs, rangeProof) = proof.range.to_she_proof(inputs.bit_size, prefix);
-    let V = range_verify(rangeInputs, rangeProof).expect('Failed Range  proof for V');
+    let V_proof = range_verify(rangeInputs, rangeProof).expect('Failed Range  proof for V');
+    assert!(V_proof.coordinates() == V.coordinates(), "V missmatch" );
+      
 
     let inputs = SameEncryptionUnknownRandomInputs {
         L1: L0.try_into().unwrap(),
         R1: R0,
-        L2: V,
-        R2: proof.R_aux.try_into().unwrap(),
+        L2: V_proof,
+        R2: R_aux,
         g,
         y1: inputs.y.try_into().unwrap(),
         y2: generator_h(),

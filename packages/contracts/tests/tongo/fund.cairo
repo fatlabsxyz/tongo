@@ -14,7 +14,7 @@ fn test_fund() {
     let initialErc20 = erc20dispatcher.balance_of(USER_CALLER);
     let tongoAmount = 250;
 
-    let operation = fundOperation(x,0, tongoAmount,dispatcher);
+    let operation = fundOperation(x,USER_CALLER, 0, tongoAmount,dispatcher);
     dispatcher.fund(operation);
 
     let finalErc20 = erc20dispatcher.balance_of(USER_CALLER);

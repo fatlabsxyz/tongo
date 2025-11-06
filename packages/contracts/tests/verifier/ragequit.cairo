@@ -6,6 +6,7 @@ use tongo::structs::common::{
     cipherbalance::{CipherBalance,CipherBalanceTrait},
 };
 use crate::prover::utils::pubkey_from_secret;
+use crate::consts::USER_CALLER;
 
 
 #[test]
@@ -27,7 +28,13 @@ fn test_ragequit() {
     let nonce = 12;
 
     let (inputs, proof, _) = prove_ragequit(
-        x, amount, tranfer_address, currentBalance, nonce, generate_random(seed, 3)
+        x,
+        amount,
+        tranfer_address,
+        currentBalance,
+        nonce,
+        USER_CALLER,
+        generate_random(seed, 3)
     );
     verify_ragequit(inputs, proof);
 }

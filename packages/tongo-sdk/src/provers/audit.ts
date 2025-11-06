@@ -1,7 +1,7 @@
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 import { SameEncryptUnknownRandom } from "@fatsolutions/she/protocols";
 import { GENERATOR as g } from "../constants";
-import { CipherBalance, ProjectivePoint } from "../types";
+import { CipherBalance, ProjectivePoint, GeneralPrefixData, compute_prefix } from "../types";
 import { createCipherBalance} from "../../src/utils";
 
 // cairo string 'audit'
@@ -20,6 +20,35 @@ export interface InputsAudit {
     storedBalance: CipherBalance,
     auditorPubKey: ProjectivePoint,
     auditedBalance: CipherBalance,
+    prefix_data: GeneralPrefixData,
+}
+
+/**
+ * Computes the prefix by hashing some public inputs.
+ * @param {InputsAudit} inputs - The audit operation inputs
+ * @returns {bigint} The computed prefix hash
+ */
+function prefixAudit(inputs: InputsAudit): bigint {
+    const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
+    const seq: bigint[] = [
+        chain_id,
+        tongo_address,
+        sender_address,
+        AUDIT_CAIRO_STRING,
+        inputs.y.toAffine().x,
+        inputs.y.toAffine().y,
+        inputs.auditorPubKey.toAffine().x,
+        inputs.auditorPubKey.toAffine().y,
+        inputs.storedBalance.L.toAffine().x,
+        inputs.storedBalance.L.toAffine().y,
+        inputs.storedBalance.R.toAffine().x,
+        inputs.storedBalance.R.toAffine().y,
+        inputs.auditedBalance.L.toAffine().x,
+        inputs.auditedBalance.L.toAffine().y,
+        inputs.auditedBalance.R.toAffine().x,
+        inputs.auditedBalance.R.toAffine().y,
+    ];
+    return compute_prefix(seq);
 }
 
 /**
@@ -47,7 +76,8 @@ export function proveAudit(
     private_key: bigint,
     initial_balance: bigint,
     initial_cipherbalance: CipherBalance,
-    auditorPubKey: ProjectivePoint
+    auditorPubKey: ProjectivePoint,
+    prefix_data: GeneralPrefixData,
 ): { inputs: InputsAudit, proof: ProofOfAudit; } {
     const x = private_key;
     const y = g.multiply(x);
@@ -61,7 +91,8 @@ export function proveAudit(
 
     const r = generateRandom();
     const auditedBalance = createCipherBalance(auditorPubKey, initial_balance, r);
-    const inputs: InputsAudit = { y, storedBalance: initial_cipherbalance, auditorPubKey, auditedBalance };
+    const inputs: InputsAudit = { y, storedBalance: initial_cipherbalance, auditorPubKey, auditedBalance, prefix_data };
+    const prefix = prefixAudit(inputs);
 
     const kx = generateRandom();
     const kb = generateRandom();
@@ -72,7 +103,7 @@ export function proveAudit(
 
     const AR1 = g.multiplyUnsafe(kr);
     const AL1 = g.multiplyUnsafe(kb).add(auditorPubKey.multiplyUnsafe(kr));
-    const c = compute_challenge(AUDIT_CAIRO_STRING, [Ax, AL0, AL1, AR1]);
+    const c = compute_challenge(prefix, [Ax, AL0, AL1, AR1]);
 
     const sx = compute_s(kx, x, c);
     const sr = compute_s(kr, r, c);

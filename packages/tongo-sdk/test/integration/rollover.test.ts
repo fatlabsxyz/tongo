@@ -12,13 +12,13 @@ describe("[integration]", () => {
         const accSender = new TongoAccount(kg.from(1), tongoAddress, provider);
         const accRec = new TongoAccount(kg.from(2), tongoAddress, provider);
 
-        const operation = await accSender.fund({ amount: 100n });
+        const operation = await accSender.fund({ amount: 100n, sender: relayer.address  });
         const fund_response = await relayer.execute([operation.approve!, operation.toCalldata()]);
         await provider.waitForTransaction(fund_response.transaction_hash, { retryInterval: 200 });
 
         // TODO: post fund assertions
 
-        const transferOp = await accSender.transfer({ amount: 23n, to: accRec.publicKey });
+        const transferOp = await accSender.transfer({ amount: 23n, to: accRec.publicKey, sender: relayer.address });
         const transferResponse = await relayer.execute(transferOp.toCalldata());
         await provider.waitForTransaction(transferResponse.transaction_hash, { retryInterval: 200 });
 
@@ -49,7 +49,7 @@ describe("[integration]", () => {
         expect(receiverState.audit).toBeDefined();
 
         // receiver rolls over their pending balance
-        const rolloverOp = await accRec.rollover();
+        const rolloverOp = await accRec.rollover({sender: relayer.address});
         const rolloverResponse = await relayer.execute(rolloverOp.toCalldata());
         await provider.waitForTransaction(rolloverResponse.transaction_hash, { retryInterval: 200 });
 

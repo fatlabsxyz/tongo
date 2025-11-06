@@ -6,7 +6,6 @@ use core::ec::{
     stark_curve::{GEN_X,GEN_Y},
 };
 
-use core::poseidon::poseidon_hash_span;
 use tongo::structs::common::{
     pubkey::{PubKey},
     cipherbalance::{CipherBalance, CipherBalanceTrait},
@@ -27,8 +26,8 @@ use tongo::verifier::{
     utils::generator_h,
 };
 
-use she::utils::{FeltXor,compute_challenge, compute_s};
-use she::protocols::range::prover_for_testing;
+use she::utils::{compute_challenge, compute_s};
+use she::protocols::range::{prover_for_testing, pregenerate_random_for_testing};
 use she::protocols::bit::BitProofWithPrefix;
 
 use crate::consts::{CHAIN_ID, TONGO_ADDRESS};
@@ -41,9 +40,10 @@ use crate::prover::utils::{
 
 pub fn prove_audit(
     x:felt252,
-    balance: felt252,
+    balance: u128,
     storedBalance: CipherBalance,
     auditorPubKey: PubKey,
+    sender:ContractAddress,
     seed:felt252,
 ) -> (InputsAudit, ProofOfAudit) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
@@ -51,9 +51,15 @@ pub fn prove_audit(
 
     let (_, R0) = storedBalance.points();
     let r = generate_random(seed, 1);
-    let auditedBalance = CipherBalanceTrait::new(auditorPubKey, balance, r);
-    let inputs: InputsAudit = InputsAudit {y, auditorPubKey, storedBalance, auditedBalance};
-    let prefix = 'audit';
+    let auditedBalance = CipherBalanceTrait::new(auditorPubKey, balance.into(), r);
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
+
+    let inputs: InputsAudit = InputsAudit {y, auditorPubKey, storedBalance, auditedBalance, prefix_data};
+    let prefix = inputs.compute_prefix();
 
     //prover
     let kx = generate_random(seed, 2);
@@ -78,7 +84,7 @@ pub fn prove_audit(
 
     let sx = compute_s(kx, x, c);
     let sr = compute_s(kr, r, c);
-    let sb = compute_s(kb, balance, c);
+    let sb = compute_s(kb, balance.into(), c);
 
     let proof: ProofOfAudit = ProofOfAudit {
         Ax: Ax.into(),
@@ -94,17 +100,23 @@ pub fn prove_audit(
 
 pub fn prove_fund(
     x: felt252,
-    amount:felt252,
-    initialBalance:felt252,
+    amount:u128,
+    from: ContractAddress,
+    initialBalance:u128,
     currentBalance: CipherBalance,
     nonce: u64,
+    sender:ContractAddress,
     seed: felt252
 ) -> (InputsFund, ProofOfFund, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y = pubkey_from_secret(x);
 
-    decipher_balance(initialBalance, x, currentBalance);
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
+    decipher_balance(initialBalance.into(), x, currentBalance);
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
     let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, nonce, prefix_data};
     let prefix = inputs.compute_prefix();
 
@@ -120,16 +132,25 @@ pub fn prove_fund(
 
     let proof: ProofOfFund = ProofOfFund { Ax: Ax.into(), sx };
 
-    let cipher = CipherBalanceTrait::new(y, amount, 'fund');
+    let cipher = CipherBalanceTrait::new(y, amount.into(), 'fund');
     let newBalance = CipherBalanceTrait::add(currentBalance , cipher);
     return (inputs, proof, newBalance);
 }
 
 
-pub fn prove_rollover(x: felt252, nonce: u64, seed: felt252) -> (InputsRollOver, ProofOfRollOver) {
+pub fn prove_rollover(
+    x: felt252,
+    nonce: u64,
+    sender:ContractAddress,
+    seed: felt252,
+) -> (InputsRollOver, ProofOfRollOver) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y = pubkey_from_secret(x);
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
     let inputs: InputsRollOver = InputsRollOver { y: y.try_into().unwrap(), nonce, prefix_data};
     let prefix = inputs.compute_prefix();
 
@@ -149,20 +170,25 @@ pub fn prove_rollover(x: felt252, nonce: u64, seed: felt252) -> (InputsRollOver,
 /// all the balance that is stored in the y=g**x account.
 pub fn prove_ragequit(
     x: felt252,
-    amount: felt252,
+    amount: u128,
     to: ContractAddress,
     currentBalance: CipherBalance,
     nonce: u64,
+    sender: ContractAddress,
     seed: felt252
 ) -> (InputsRagequit, ProofOfRagequit, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let y = pubkey_from_secret(x);
-    decipher_balance(amount, x, currentBalance);
+    decipher_balance(amount.into(), x, currentBalance);
 
 
     let ( _ , R) = currentBalance.points_nz();
 
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
     let inputs: InputsRagequit = InputsRagequit {y:y.try_into().unwrap(), amount, to, nonce, currentBalance, prefix_data };
     let prefix = inputs.compute_prefix();
 
@@ -188,49 +214,50 @@ pub fn prove_ragequit(
 
 pub fn prove_withdraw(
     x: felt252,
-    amount: felt252,
+    amount: u128,
     to: ContractAddress,
-    initialBalance: felt252,
+    initialBalance: u128,
     currentBalance: CipherBalance,
     nonce: u64,
     bit_size:u32,
+    sender: ContractAddress,
     seed: felt252
 ) -> (InputsWithdraw, ProofOfWithdraw, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
-    let y = pubkey_from_secret(x);
-    decipher_balance(initialBalance, x, currentBalance);
-
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
-
-    // precomputation of the prefix for testing
-    let withdraw_selector = 'withdraw';
-    let array: Array<felt252> = array![
-        CHAIN_ID,
-        TONGO_ADDRESS.into(),
-        withdraw_selector,
-        y.x,
-        y.y,
-        nonce.into(),
-        amount,
-        to.into(),
-    ];
-    let initial_prefix = poseidon_hash_span(array.span());
-    //
-
-    let (_,R) = currentBalance.points();
     let h = generator_h();
+    let y = pubkey_from_secret(x);
+    decipher_balance(initialBalance.into(), x, currentBalance);
 
     let left = initialBalance - amount;
 
-    let (r, range) = prove_range(left.try_into().unwrap(),bit_size,initial_prefix, generate_random(seed + 1, 1));
-    let R_aux: StarkPoint = g.into().mul(r).try_into().unwrap();
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
+
+    let (randomness, total_random ) = pregenerate_random_for_testing(bit_size, seed + 1);
+    let auxiliarCipher = CipherBalanceTrait::new(h.into(),left.into(), total_random);
 
     let inputs: InputsWithdraw = InputsWithdraw {
-        y: y.try_into().unwrap(), amount, currentBalance, nonce, to,bit_size, prefix_data
+        y: y.try_into().unwrap(),
+        amount,
+        currentBalance,
+        auxiliarCipher,
+        nonce,
+        to,
+        bit_size,
+        prefix_data,
     };
+
     let prefix = inputs.compute_prefix();
 
-    assert!(prefix == initial_prefix, "prefix mismatch");
+    let (_,R) = currentBalance.points();
+
+
+    let (r, range) = prove_range(left.try_into().unwrap(),bit_size,randomness, prefix, generate_random(seed + 1, 1));
+    assert!(r == total_random, "random mismatch");
+
 
     let kb = generate_random(seed, 1);
     let kx = generate_random(seed, 2);
@@ -252,15 +279,22 @@ pub fn prove_withdraw(
 
     let commits: Array<NonZeroEcPoint> = array![A_x,A_r, A, A_v];
     let c = compute_challenge(prefix,commits);
-    let sb = compute_s(kb, left, c);
+    let sb = compute_s(kb, left.into(), c);
     let sx = compute_s(kx, x, c);
     let sr = compute_s(kr, r, c);
 
     let proof: ProofOfWithdraw = ProofOfWithdraw {
-        A_x: A_x.into(),A_r:A_r.into(), A: A.into(), A_v: A_v.into(), sx: sx, sb: sb, sr: sr,R_aux, range,
+        A_x: A_x.into(),
+        A_r:A_r.into(),
+        A: A.into(),
+        A_v: A_v.into(),
+        sx,
+        sb,
+        sr,
+        range,
     };
 
-    let cipher = CipherBalanceTrait::new(y, amount, 'withdraw');
+    let cipher = CipherBalanceTrait::new(y, amount.into(), 'withdraw');
     let newBalance = CipherBalanceTrait::subtract(currentBalance , cipher);
 
     return (inputs, proof, newBalance);
@@ -274,6 +308,7 @@ pub fn prove_transfer(
     currentBalance: CipherBalance,
     nonce: u64,
     bit_size:u32,
+    sender:ContractAddress,
     seed: felt252
 ) -> (InputsTransfer, ProofOfTransfer, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
@@ -281,34 +316,22 @@ pub fn prove_transfer(
     decipher_balance(initialBalance, x, currentBalance);
 
     let h = generator_h();
-
-    let transfer_selector = 'transfer';
-    let array: Array<felt252> = array![
-        CHAIN_ID,
-        TONGO_ADDRESS.into(),
-        transfer_selector,
-        y.x,
-        y.y,
-        to.x,
-        to.y,
-        nonce.into(),
-    ];
-    let initial_prefix = poseidon_hash_span(array.span());
-
-    let (_, CR) = currentBalance.points();
-
-    let (r, proof) = prove_range(amount.try_into().unwrap(),bit_size, initial_prefix, generate_random(seed + 1, 1));
-    let R_aux: StarkPoint = g.into().mul(r).try_into().unwrap();
-    let transferBalanceSelf = CipherBalanceTrait::new(y, amount, r);
-    let transferBalance = CipherBalanceTrait::new(to, amount, r);
-
-    let (_, R) = transferBalanceSelf.points();
-
     let balanceLeft = initialBalance - amount;
-    let (r2, proof2) = prove_range(balanceLeft.try_into().unwrap(),bit_size,initial_prefix, generate_random(seed + 2, 1));
-    let R_aux2: StarkPoint = g.into().mul(r2).try_into().unwrap();
 
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {chain_id: CHAIN_ID, tongo_address:TONGO_ADDRESS};
+
+    let (randomness, total_random ) = pregenerate_random_for_testing(bit_size, seed + 1);
+    let auxiliarCipher = CipherBalanceTrait::new(h.into(),amount, total_random);
+    let transferBalanceSelf = CipherBalanceTrait::new(y, amount, total_random);
+    let transferBalance = CipherBalanceTrait::new(to, amount, total_random);
+
+    let (randomness2, total_random2 ) = pregenerate_random_for_testing(bit_size, seed + 1);
+    let auxiliarCipher2 = CipherBalanceTrait::new(h.into(), balanceLeft, total_random2);
+
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:TONGO_ADDRESS,
+        sender_address:sender,
+    };
 
     let inputs: InputsTransfer = InputsTransfer {
         from: y.try_into().unwrap(),
@@ -317,10 +340,22 @@ pub fn prove_transfer(
         currentBalance,
         transferBalance,
         transferBalanceSelf,
+        auxiliarCipher,
+        auxiliarCipher2,
         bit_size,
         prefix_data
     };
     let prefix = inputs.compute_prefix();
+
+
+    let (r, proof) = prove_range(amount.try_into().unwrap(),bit_size,randomness, prefix, generate_random(seed + 1, 1));
+    assert!(r == total_random, "random mismatch");
+
+    let (r2, proof2) = prove_range(balanceLeft.try_into().unwrap(),bit_size,randomness2,prefix, generate_random(seed + 2, 1));
+    assert!(r2 == total_random2, "random2 mismatch");
+
+    let (_, CR) = currentBalance.points();
+    let (_, R)  = transferBalance.points();
 
     let G: NonZeroEcPoint = (CR - R.into()).try_into().unwrap();
 
@@ -393,22 +428,20 @@ pub fn prove_transfer(
         s_b,
         s_b2,
         s_r2,
-        R_aux,
         range: proof,
-        R_aux2,
         range2: proof2,
     };
-    
+
     let newBalance= CipherBalanceTrait::subtract(currentBalance , transferBalanceSelf);
     return (inputs, proof, newBalance);
 }
 
 
-pub fn prove_range(amount: u32,bit_size:u32, initial_prefix: felt252, seed: felt252) -> (felt252, Range) {
+pub fn prove_range(amount: u32,bit_size:u32,randomness: Array<felt252>, initial_prefix: felt252, seed: felt252) -> (felt252, Range) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let h = generator_h();
 
-    let (she_inputs, she_proof, r) = prover_for_testing(amount, g,h, bit_size,initial_prefix,generate_random(seed,0));
+    let (she_inputs, she_proof, r) = prover_for_testing(amount, g,h, bit_size, randomness, initial_prefix,generate_random(seed,0));
 
     let mut commitments: Array<StarkPoint> = array![];
     let mut proofs: Array<bitProof> = array![];

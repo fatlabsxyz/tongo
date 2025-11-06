@@ -36,6 +36,7 @@ import {
     RawAccountState,
     TransferDetails,
     WithdrawDetails,
+    RolloverDetails,
 } from "./account.interface.js";
 import {
     AccountEvents,
@@ -49,7 +50,6 @@ import {
 } from "./events.js";
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
-
 
 export class Account implements IAccount {
     publicKey: PubKey;
@@ -137,7 +137,11 @@ export class Account implements IAccount {
     }
 
     /// Returns Option(None) if tongo has not and auditor and Some(Audit) if tongo has an auditor
-    async createAuditPart(balance: bigint, storedCipherBalance: CipherBalance): Promise<CairoOption<Audit>> {
+    async createAuditPart(
+        balance: bigint,
+        storedCipherBalance: CipherBalance,
+        prefix_data:GeneralPrefixData
+    ): Promise<CairoOption<Audit>> {
         let auditPart = new CairoOption<Audit>(CairoOptionVariant.None);
         const auditor = await this.auditorKey();
         if (auditor.isSome()) {
@@ -147,6 +151,7 @@ export class Account implements IAccount {
                 balance,
                 storedCipherBalance,
                 auditorPubKey,
+                prefix_data,
             );
             const nonce = await this.nonce();
             const hint = await this.computeAEHintForPubKey(balance, nonce, auditorPubKey);
@@ -157,7 +162,7 @@ export class Account implements IAccount {
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
-        const { amount } = fundDetails;
+        const { amount, sender }  = fundDetails;
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
         const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
@@ -165,7 +170,8 @@ export class Account implements IAccount {
 
         const prefix_data: GeneralPrefixData = {
             chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address)
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender)
         };
 
         const { inputs, proof, newBalance } = proveFund(
@@ -178,7 +184,7 @@ export class Account implements IAccount {
         );
 
         //audit
-        const auditPart = await this.createAuditPart(amount + initialBalance, newBalance);
+        const auditPart = await this.createAuditPart(amount + initialBalance, newBalance, prefix_data);
         const hint = await this.computeAEHintForSelf(amount + initialBalance, nonce + 1n);
 
         const operation = new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo });
@@ -187,7 +193,7 @@ export class Account implements IAccount {
     }
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
-        const { amount } = transferDetails;
+        const { amount, sender } = transferDetails;
         const bit_size: number = await this.bit_size();
 
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
@@ -202,7 +208,8 @@ export class Account implements IAccount {
         const to = starkPointToProjectivePoint(transferDetails.to);
         const prefix_data: GeneralPrefixData = {
             chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address)
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
         };
 
         const { inputs, proof, newBalance } = proveTransfer(
@@ -220,14 +227,16 @@ export class Account implements IAccount {
         const hintLeftover = await this.computeAEHintForSelf(initialBalance - amount, nonce + 1n);
 
         //audit
-        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance);
-        const auditPartTransfer = await this.createAuditPart(amount, inputs.transferBalanceSelf);
+        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance, prefix_data);
+        const auditPartTransfer = await this.createAuditPart(amount, inputs.transferBalanceSelf, prefix_data);
 
         return new TransferOperation({
             from: inputs.from,
             to: inputs.to,
             transferBalance: inputs.transferBalance,
             transferBalanceSelf: inputs.transferBalanceSelf,
+            auxiliarCipher: inputs.auxiliarCipher,
+            auxiliarCipher2: inputs.auxiliarCipher2,
             hintTransfer,
             hintLeftover,
             proof,
@@ -238,6 +247,7 @@ export class Account implements IAccount {
     }
 
     async ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation> {
+        const { to, sender } = ragequitDetails;
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
         const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
@@ -247,19 +257,23 @@ export class Account implements IAccount {
             throw new Error("You dont have enough balance");
         }
 
-        const prefix_data: GeneralPrefixData = { chain_id: BigInt(await this.provider.getChainId()), tongo_address: BigInt(this.Tongo.address) };
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(await this.provider.getChainId()),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
+        };
         const { inputs, proof, newBalance } = proveRagequit(
             this.pk,
             currentBalance,
             nonce,
-            BigInt(ragequitDetails.to),
+            BigInt(to),
             currentBalanceAmount,
             prefix_data,
         );
 
         // zeroing out aehints
         const hint = await this.computeAEHintForSelf(0n, nonce + 1n);
-        const auditPart = await this.createAuditPart(0n, newBalance);
+        const auditPart = await this.createAuditPart(0n, newBalance, prefix_data);
 
         return new RagequitOperation({
             from: inputs.y,
@@ -273,7 +287,7 @@ export class Account implements IAccount {
     }
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
-        const { amount, to } = withdrawDetails;
+        const { amount, to, sender } = withdrawDetails;
         const bit_size = await this.bit_size();
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
@@ -286,7 +300,8 @@ export class Account implements IAccount {
 
         const prefix_data: GeneralPrefixData = {
             chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address)
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
         };
 
         const { inputs, proof, newBalance } = proveWithdraw(
@@ -302,12 +317,13 @@ export class Account implements IAccount {
         const hint = await this.computeAEHintForSelf(initialBalance - amount, nonce + 1n);
 
         //audit
-        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance);
+        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance, prefix_data);
 
         return new WithdrawOperation({
             from: inputs.y,
             to: inputs.to,
             amount: inputs.amount,
+            auxiliarCipher: inputs.auxiliarCipher,
             hint,
             proof,
             auditPart,
@@ -315,7 +331,8 @@ export class Account implements IAccount {
         });
     }
 
-    async rollover(): Promise<RollOverOperation> {
+    async rollover(rolloverDetails: RolloverDetails): Promise<RollOverOperation> {
+        const {sender} = rolloverDetails; 
         const state = await this.rawState();
         const { nonce, balance: currentBalance, aeBalance, pending } = state;
 
@@ -327,7 +344,11 @@ export class Account implements IAccount {
         if (pendingAmount == 0n) {
             throw new Error("Your pending ammount is 0");
         }
-        const prefix_data: GeneralPrefixData = { chain_id: BigInt(await this.provider.getChainId()), tongo_address: BigInt(this.Tongo.address) };
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(await this.provider.getChainId()),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender), 
+        };
         const { inputs, proof } = proveRollover(this.pk, nonce, prefix_data);
 
         const hint = await this.computeAEHintForSelf(pendingAmount + unlockedAmount, nonce + 1n);
@@ -355,16 +376,21 @@ export class Account implements IAccount {
     }
 
     //TODO: rethink this to better ux
-    generateExPost(to: PubKey, cipher: CipherBalance): ExPost {
+    async generateExPost(to: PubKey, cipher: CipherBalance, sender:string): Promise<ExPost> {
         if (cipher.L == null) {
             throw new Error("L is null");
         }
         if (cipher.R == null) {
             throw new Error("R is null");
         }
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(await this.provider.getChainId()),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender), 
+        };
 
         const balance = this.decryptCipherBalance(cipher);
-        const { inputs, proof } = proveAudit(this.pk, balance, cipher, starkPointToProjectivePoint(to));
+        const { inputs, proof } = proveAudit(this.pk, balance, cipher, starkPointToProjectivePoint(to), prefix_data);
         return { inputs, proof };
     }
 

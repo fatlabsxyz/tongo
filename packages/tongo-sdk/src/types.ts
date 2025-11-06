@@ -11,6 +11,7 @@ import { GENERATOR } from "./constants";
 export interface GeneralPrefixData {
     chain_id: bigint,
     tongo_address: bigint,
+    sender_address: bigint,
 }
 
 export const ProjectivePoint: typeof SheProjectivePoint = SheProjectivePoint;

@@ -36,7 +36,7 @@ pub fn verify_ragequit(inputs: InputsRagequit, proof: ProofOfRagequit) {
 
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
 
-    let L: NonZeroEcPoint = (L1.into() - g.mul(amount)).try_into().unwrap();
+    let L: NonZeroEcPoint = (L1.into() - g.mul(amount.into())).try_into().unwrap();
 
     let inputs = PoeInputs { y: L, g: R1 };
     let proof = PoeProof { A: AR.try_into().unwrap(), c, s: sx };
