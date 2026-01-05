@@ -37,7 +37,7 @@ export interface DeploymentState {
   network: Network;
   timestamp: string;
   accounts: Record<string, AccountConfig>;
-  contract?: ContractDeclarationInfo & ContractDeploymentInfo;
+  contracts: (ContractDeclarationInfo & ContractDeploymentInfo)[];
 }
 
 export interface ContractArtifact {

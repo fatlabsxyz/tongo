@@ -26,7 +26,7 @@ export function findArtifacts(): ContractArtifact[] {
   }
 
   // Build path to contracts target directory
-  const contractsTargetPath = path.join(searchPath, "packages", "contracts", "target", "dev");
+  const contractsTargetPath = path.join(searchPath, "packages", "contracts", "target", "release");
 
   if (!fs.existsSync(contractsTargetPath)) {
     throw new Error("Could not find contracts target directory. Please run 'scarb build' in packages/contracts first.");

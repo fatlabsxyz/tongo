@@ -2,9 +2,11 @@
 import chalk from "chalk";
 import { Command } from "commander";
 
+import { pubKeyFromSecret } from "@fatsolutions/tongo-sdk";
+
 import { accountCommand } from "./commands/account.js";
 import { initCommand } from "./commands/init.js";
-import { createAccount, verifyAccount } from "./utils/account.js";
+import { createAccount, parsePubKey, verifyAccount } from "./utils/account.js";
 import { getAccountConfig, getConfig } from "./utils/config.js";
 import { isValidNetwork } from "./utils/networks.js";
 import { createEmptyState, loadDeploymentState } from "./utils/state.js";
@@ -61,12 +63,23 @@ program
   .option("--erc20 <address>", "ERC20 token (optional, defaults to ETH)")
   .option("--rate <u256>", "Conversion rate (optional, defaults to 1)")
   .option("--bit-size <number>", "Balance upper bound (optional, defaults to 32)")
-  .option("--auditor-pubkey [u256...]", "Auditor (optional, defaults to None)")
+  .option("--auditor-pubkey <string>", "Auditor (optional, defaults to None)")
+  .option("--auditor-privkey [u256]", "Auditor private key (overrides --auditor-pubkey)")
   .action(async (options: any = {}) => {
     try {
       const globalOpts = program.opts();
-      const { owner, erc20, rate, bitSize, auditorPubkey } = options;
-      const tongoArgs = { owner, erc20, rate, bit_size: bitSize, auditorPubkey };
+      const { owner, erc20, rate, bitSize, auditorPubkey, auditorPrivkey } = options;
+      let _auditorPubkey: [string, string];
+      if (auditorPrivkey) {
+        const { x, y } = pubKeyFromSecret(BigInt(auditorPrivkey));
+        _auditorPubkey = [
+          "0x" + x.toString(16).padStart(64, "0"),
+          "0x" + y.toString(16).padStart(64, "0")
+        ];
+      } else {
+        _auditorPubkey = parsePubKey(auditorPubkey);
+      }
+      const tongoArgs = { owner, erc20, rate, bit_size: bitSize, auditorPubkey: _auditorPubkey };
       const { config, account, state } = await setupDependencies(globalOpts.network);
       await initCommand(account, state, tongoArgs, globalOpts.skipConfirmation);
     } catch (error) {
@@ -126,10 +139,12 @@ program
       console.log(chalk.gray(`Last updated: ${state.timestamp}\n`));
 
       // Tongo status
-      if (state.contract) {
-        console.log(chalk.green("✓ Tongo deployed"));
-        console.log(chalk.gray(`   Address: ${state.contract.address}`));
-        console.log(chalk.gray(`   Class Hash: ${state.contract.class_hash}`));
+      if (state.contracts.length > 0) {
+        for (let tongo of state.contracts) {
+          console.log(chalk.green("✓ contract: "));
+          console.log(chalk.gray(`   Class Hash: ${tongo.class_hash}`));
+          console.log(chalk.gray(`   Address: ${tongo.address}`));
+        }
       } else {
         console.log(chalk.red("❌ Tongo not deployed"));
       }
@@ -148,31 +163,6 @@ program
       process.exit(1);
     }
   });
-
-// Help text
-program.on("--help", () => {
-  console.log();
-  console.log(chalk.blue("Examples:"));
-  console.log(chalk.gray("  deploy account                                 # Deploy new OZ account (generates key)"));
-  console.log(chalk.gray("  deploy account --private-key 0x123...         # Deploy OZ account with specific key"));
-  console.log(chalk.gray("  deploy init                                    # Initialize on localnet (default)"));
-  console.log(chalk.gray("  deploy --network sepolia init                 # Initialize on sepolia"));
-  console.log(chalk.gray("  deploy --network sepolia status               # Show deployment status"));
-  console.log(chalk.gray("  deploy --skip-confirmation init               # Non-interactive deployment"));
-  console.log();
-  console.log(chalk.blue("Global Options:"));
-  console.log(chalk.gray("  -n, --network <network>     # Target network: localnet, sepolia, mainnet (default: interactive)"));
-  console.log(chalk.gray("  --skip-confirmation         # Skip confirmation prompts"));
-  console.log();
-  console.log(chalk.blue("Account Options:"));
-  console.log(chalk.gray("  --private-key <key>         # Use specific private key (otherwise generates new one)"));
-  console.log();
-  console.log(chalk.blue("Environment Variables:"));
-  console.log(chalk.gray("  PRIVATE_KEY                          # Account private key (required)"));
-  console.log(chalk.gray("  ACCOUNT_ADDRESS                      # Account address (required)"));
-  console.log(chalk.gray("  RPC_URL                              # Custom RPC endpoint (optional)"));
-  console.log();
-});
 
 // Parse command line arguments
 program.parse();

@@ -1,12 +1,12 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { Account, num } from "starknet";
+import { Account, hash, num, RawArgs } from "starknet";
 
+import { ETH_ADDRESS } from "../constants.js";
 import { DeploymentState } from "../types.js";
 import { getBalance } from "../utils/account.js";
-import { declareAndDeploy, declareContract, deployContract, TongoConstructorArgs, findArtifacts } from "../utils/contracts.js";
+import { declareAndDeploy, deployContract, findArtifacts, TongoConstructorArgs } from "../utils/contracts.js";
 import { saveDeploymentState } from "../utils/state.js";
-import { ETH_ADDRESS } from "../constants.js";
 
 
 export async function initCommand(
@@ -18,7 +18,15 @@ export async function initCommand(
   console.log(chalk.blue.bold("🏗️  Initializing Tongo Infrastructure"));
   console.log(chalk.gray("This will deploy the Tongo contract\n"));
 
-  const { deployments, declarations } = await assertState(account, state);
+  const constructorArgs = {
+    owner: tongoArgs.owner || account.address,
+    erc20: tongoArgs.erc20 || ETH_ADDRESS,
+    rate: tongoArgs.rate || 1n,
+    bit_size: tongoArgs.bit_size || 32,
+    auditorPubkey: tongoArgs.auditorPubkey,
+  };
+
+  const { deployments, declarations } = await assertState(account, state, constructorArgs);
 
   if (
     Object.values(deployments).every(x => !x) &&
@@ -96,17 +104,17 @@ export async function initCommand(
             constructorArgs: {
               owner: tongoArgs.owner || account.address,
               erc20: tongoArgs.erc20 || ETH_ADDRESS,
-              rate:  tongoArgs.rate || 1n,
-              bit_size:  tongoArgs.bit_size || 32,
+              rate: tongoArgs.rate || 1n,
+              bit_size: tongoArgs.bit_size || 32,
               auditorPubkey: tongoArgs.auditorPubkey,
             }
           }
         });
         console.log(chalk.blue("\n📝 Successfully declared & deployed Tongo"));
         // Update state with tongo
-        state.contract = { ...tongoDeployment, ...tongoDeclaration };
+        state.contracts.push({ ...tongoDeployment, ...tongoDeclaration });
       } else if (deployments.Tongo) {
-        const tongo = state.contract!;
+        const tongo = state.contracts[0]!;
         const deploymentInfo = await deployContract(account, num.toHex64(tongo.class_hash!), {
           contractName: "Tongo",
           options: {
@@ -114,14 +122,14 @@ export async function initCommand(
             constructorArgs: {
               owner: tongoArgs.owner || account.address,
               erc20: tongoArgs.erc20 || ETH_ADDRESS,
-              rate:  tongoArgs.rate || 1n,
-              bit_size:  tongoArgs.bit_size || 32,
+              rate: tongoArgs.rate || 1n,
+              bit_size: tongoArgs.bit_size || 32,
               auditorPubkey: tongoArgs.auditorPubkey,
             }
           }
         });
         console.log(chalk.blue("\n📝 Successfully deployed Tongo"));
-        state.contract = { ...tongo, ...deploymentInfo };
+        state.contracts.push({ ...tongo, ...deploymentInfo });
       }
       saveDeploymentState(state);
 
@@ -135,11 +143,11 @@ export async function initCommand(
 
   // Everything should be set up correctly at this point
   console.log(chalk.green.bold("\n🎉 Initialization completed successfully!"));
-  console.log(chalk.green(`✓ Tongo declared: ${state.contract!.class_hash}`));
-  console.log(chalk.green(`✓ Tongo deployed at: ${state.contract!.address}`));
+  console.log(chalk.green(`✓ Tongo declared: ${state.contracts[0]!.class_hash}`));
+  console.log(chalk.green(`✓ Tongo deployed at: ${state.contracts[state.contracts.length - 1]!.address}`));
 }
 
-async function assertState(account: Account, state: DeploymentState) {
+async function assertState(account: Account, state: DeploymentState, constructorCalldata: RawArgs) {
 
   const declarations = {
     "Tongo": false,
@@ -149,13 +157,21 @@ async function assertState(account: Account, state: DeploymentState) {
     "Tongo": false,
   };
 
-  if (state.contract && state.contract.class_hash) {
+  if (state.contracts.length > 0 && state.contracts[0]?.class_hash) {
     try {
-      const _ = await account.getClass(state.contract.class_hash);
+      const _ = await account.getClass(state.contracts[0]?.class_hash);
+
+      const contractAddress = hash.calculateContractAddressFromHash(
+        "0",
+        num.toHex64(state.contracts[0]?.class_hash),
+        constructorCalldata,
+        account.address
+      );
+
       console.log(chalk.yellow(`  Tongo declared, checking deployment`));
-      if (state.contract.address) {
+      if (contractAddress) {
         try {
-          const _ = await account.getClassHashAt(state.contract.address);
+          const _ = await account.getClassHashAt(contractAddress);
         } catch (e) {
           console.log(chalk.blue(`  Tongo not deployed yet`));
           deployments["Tongo"] = true;

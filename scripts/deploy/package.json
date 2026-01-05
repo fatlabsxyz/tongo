@@ -24,7 +24,9 @@
     "starknet": "8.5.4",
     "chalk": "5.3.0",
     "commander": "12.1.0",
-    "inquirer": "12.1.0"
+    "inquirer": "12.1.0",
+    "@scure/starknet": "catalog:",
+    "@fatsolutions/tongo-sdk": "workspace:"
   },
   "devDependencies": {
     "@types/inquirer": "9.0.7",

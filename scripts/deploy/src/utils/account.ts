@@ -80,3 +80,19 @@ export async function checkBalance(account: Account, minimumAmount: bigint) {
   if (balance < minimumAmount)
     throw new Error(`Account balance is less than expected. Expected '${minimumAmount}', found '${balance}'`);
 }
+
+
+/**
+ * Expects a stark public key in uncompressed format `0x04...` and returns the string pair [x, y] in base 16 and fully padded to 64 characters. Prepends `0x` too.
+ *
+ */
+export function parsePubKey(pubkey: string): [string, string] {
+  const _pubkey = pubkey.replace(/^0x04/, '');
+  if (_pubkey.length !== 128) {
+    throw new Error("Invalid pubkey format: expected full uncompressed format `0x04...`");
+  }
+  return [
+    "0x" + _pubkey.slice(0, 64).padStart(64, "0"),
+    "0x" + _pubkey.slice(64).padStart(64, "0"),
+  ];
+}

@@ -62,12 +62,12 @@ export function createEmptyState(network: Network): DeploymentState {
     network,
     timestamp: new Date().toISOString(),
     accounts: {},
-    contract: undefined
+    contracts: []
   };
 }
 
 export function updateStateContract(state: DeploymentState, data: any): void {
-    state.contract = data;
+    state.contracts.push(data);
 }
 
 function assertAllFields(rawState: any, network: Network): DeploymentState {
@@ -76,6 +76,6 @@ function assertAllFields(rawState: any, network: Network): DeploymentState {
     network: rawState.network || empty.network,
     timestamp: rawState.timestamp || empty.timestamp,
     accounts: rawState.accounts || empty.accounts,
-    contract: rawState.contract || empty.contract,
+    contracts: rawState.contracts || empty.contracts,
   };
 }
