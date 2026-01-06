@@ -3,14 +3,16 @@ import { Devnet } from "starknet-devnet";
 async function startDevnet({
     dumpPath,
     chainId = "MAINNET",
-    predeployedAccounts = 5,
+    predeployedAccounts = 10,
 }): Promise<Devnet> {
     return new Promise(async (resolve) => {
         const devnet = await Devnet.spawnInstalled({
             stdout: "ignore",
+            stderr: "ignore",
             args: [
-                "--seed", "1244846250",
+                "--seed", "100",
                 "--chain-id", chainId,
+                "--block-generation-on", "transaction",
                 "--accounts", predeployedAccounts.toString(),
                 "--dump-path", dumpPath,
                 "--port", "5050"
