@@ -2,8 +2,8 @@
   "state": "devnet.state",
   "contracts": {
     "Tongo": {
-      "class_hash": "0x00b92d0236e190ebd3b6aa639ddfd9da23c3d665bd01c7e082ee35f4e1651e88",
-      "address": "0x01d8c18af940c78a4fa55d1e1d26781a849c9098720609869493947fbe2110d1"
+      "class_hash": "0x00582609087e5aeb75dc25284cf954e2cee6974568d1b5636052a9d36eec672a",
+      "address": "0x057717441c26756bc750dc58b818aa7b9f44d33069cbad25db458940a698d120"
     },
     "STRK": {
       "address": "0x4718F5A0FC34CC1AF16A1CDEE98FFB20C31F5CD61D6AB07201858F4287C938D"

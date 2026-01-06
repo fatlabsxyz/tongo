@@ -23,6 +23,7 @@ export default defineConfig({
       {
         extends: true,
         test: {
+          globalSetup: "./test/integration/devnet.ts",
           testTimeout: 0,
           name: "integration",
           include: [
