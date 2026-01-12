@@ -67,7 +67,7 @@ jobs:
       - name: Set-up Node
         uses: actions/setup-node@v5
         with:
-          node-version: '20.x'
+          node-version: 24
           registry-url: "https://registry.npmjs.org/"
           package-manager-cache: false
 
@@ -79,8 +79,8 @@ jobs:
           pnpm version $VERSION --no-git-tag-version
         working-directory: packages/tongo-sdk
 
+      # NODE_AUTH_TOKEN is set by the setup-node action and interfeers with OIDC https://github.com/actions/setup-node/issues/1440
       - name: Publish
-        run: pnpm publish --access public --verbose --no-git-checks
         working-directory: packages/tongo-sdk
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          NODE_AUTH_TOKEN="" pnpm publish --access public --tag latest --no-git-checks
