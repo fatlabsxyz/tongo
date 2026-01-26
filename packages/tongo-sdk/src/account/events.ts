@@ -29,6 +29,7 @@ interface AccountBaseEvent {
 export interface AccountFundEvent extends AccountBaseEvent {
     type: typeof AccountEvent.Fund;
     nonce: bigint;
+    from: string;
     amount: bigint;
 }
 

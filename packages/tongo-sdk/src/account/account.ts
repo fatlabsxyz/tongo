@@ -459,6 +459,7 @@ export class Account implements IAccount {
                     block_number: event.block_number,
                     nonce: event.nonce,
                     amount: event.amount,
+                    from: num.toHex(event.from),
                 }) as AccountFundEvent,
         );
     }
