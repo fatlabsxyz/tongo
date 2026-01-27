@@ -20,6 +20,20 @@ pub struct FundEvent {
     pub amount: u128,
 }
 
+/// Event emited in a OutsideFund operation
+///
+/// - to: The Tongo account to fund.
+/// - from: The contract address is funding the account.
+/// - amount: The ammount of tongo to fund.
+#[derive(Drop, starknet::Event)]
+pub struct OutsideFundEvent {
+    #[key]
+    pub to: PubKey,
+    #[key]
+    pub from:  ContractAddress,
+    pub amount: u128,
+}
+
 /// Event emited in a Rollover operation.
 ///
 /// - to: The Tongo account to rollover.
