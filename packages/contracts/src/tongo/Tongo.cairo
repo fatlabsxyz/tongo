@@ -11,11 +11,12 @@ pub mod Tongo {
     use crate::structs::common::pubkey::PubKey;
     use crate::structs::common::state::State;
     use crate::structs::events::{
-        AuditorPubKeySet, BalanceDeclared, FundEvent, RagequitEvent, RolloverEvent,
+        AuditorPubKeySet, BalanceDeclared, FundEvent, OutsideFundEvent, RagequitEvent, RolloverEvent,
         TransferDeclared, TransferEvent, WithdrawEvent,
     };
     use crate::structs::operations::audit::{Audit, InputsAudit};
     use crate::structs::operations::fund::{Fund, InputsFund};
+    use crate::structs::operations::fund::OutsideFund;
     use crate::structs::operations::ragequit::{InputsRagequit, Ragequit};
     use crate::structs::operations::rollover::{InputsRollOver, Rollover};
     use crate::structs::operations::transfer::{InputsTransfer, Transfer};
@@ -102,6 +103,7 @@ pub mod Tongo {
     pub enum Event {
         TransferEvent: TransferEvent,
         FundEvent: FundEvent,
+        OutsideFundEvent: OutsideFundEvent,
         RolloverEvent: RolloverEvent,
         WithdrawEvent: WithdrawEvent,
         RagequitEvent: RagequitEvent,
@@ -165,6 +167,19 @@ pub mod Tongo {
             }
 
             self._increase_nonce(to);
+        }
+
+        /// Funds a tongo acount. Can be called without knowledge of the pk.
+        ///
+        /// Emits OutsideFundEvent
+        fn fund_from_outside(ref self: ContractState, outsideFund: OutsideFund) {
+            let OutsideFund { to, amount } = outsideFund;
+
+            self._transfer_from_caller(self._unwrap_tongo_amount(amount));
+
+            let cipher = CipherBalanceTrait::new(to, amount.into(), 'outsideFund');
+            self._add_pending(to, cipher);
+            self.emit(OutsideFundEvent{ to, amount, from: get_caller_address() });
         }
 
         /// Withdraw Tongos and send the ERC20 to a starknet address.

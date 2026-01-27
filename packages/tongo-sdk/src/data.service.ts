@@ -10,6 +10,7 @@ const abiEnums = CallData.getAbiEnum(tongoAbi);
 
 const CHUNK_SIZE = 100;
 const FUND_EVENT = num.toHex(hash.starknetKeccak("FundEvent"));
+const OUTSIDE_FUND_EVENT = num.toHex(hash.starknetKeccak("OutsideFundEvent"));
 const ROLLOVER_EVENT = num.toHex(hash.starknetKeccak("RolloverEvent"));
 const TRANSFER_EVENT = num.toHex(hash.starknetKeccak("TransferEvent"));
 const WITHDRAW_EVENT = num.toHex(hash.starknetKeccak("WithdrawEvent"));
@@ -18,6 +19,7 @@ const BALANCE_DECLARED_EVENT = num.toHex(hash.starknetKeccak("BalanceDeclared"))
 const TRANSFER_DECLARED_EVENT = num.toHex(hash.starknetKeccak("TransferDeclared"));
 
 const FUND_EVENT_PATH = "tongo::structs::events::FundEvent";
+const OUTSIDE_FUND_EVENT_PATH = "tongo::structs::events::OutsideFundEvent";
 const ROLLOVER_EVENT_PATH = "tongo::structs::events::RolloverEvent";
 const TRANSFER_EVENT_PATH = "tongo::structs::events::TransferEvent";
 const WITHDRAW_EVENT_PATH = "tongo::structs::events::WithdrawEvent";
@@ -27,6 +29,7 @@ const TRANSFER_DECLARED_EVENT_PATH = "tongo::structs::events::TransferDeclared";
 
 export const ReaderEventType = {
     Fund: "fund",
+    OutsideFund: "outsideFund",
     Withdraw: "withdraw",
     Ragequit: "ragequit",
     Rollover: "rollover",
@@ -48,6 +51,12 @@ interface BaseEvent {
 interface FundEventData {
     to: StarkPoint;
     nonce: bigint;
+    from: bigint;
+    amount: bigint;
+}
+
+interface OutsideFundEventData {
+    to: StarkPoint;
     from: bigint;
     amount: bigint;
 }
@@ -100,6 +109,7 @@ interface TransferDeclaredEventData {
 }
 
 type ReaderFundEvent = FundEventData & BaseEvent & { type: typeof ReaderEventType.Fund; };
+type ReaderOutsideFundEvent = OutsideFundEventData & BaseEvent & { type: typeof ReaderEventType.OutsideFund; };
 type ReaderWithdrawEvent = WithdrawEventData & BaseEvent & { type: typeof ReaderEventType.Withdraw; };
 type ReaderRagequitEvent = RagequitEventData & BaseEvent & { type: typeof ReaderEventType.Ragequit; };
 type ReaderRolloverEvent = RolloverEventData & BaseEvent & { type: typeof ReaderEventType.Rollover; };
@@ -110,6 +120,7 @@ type ReaderTransferDeclaredEvent = TransferDeclaredEventData & BaseEvent & { typ
 
 type ReaderEvent =
     ReaderFundEvent |
+    ReaderOutsideFundEvent |
     ReaderWithdrawEvent |
     ReaderRagequitEvent |
     ReaderRolloverEvent |
@@ -146,6 +157,18 @@ function parseFundEvent(event: ParsedEvent): ReaderFundEvent {
     const data = event[FUND_EVENT_PATH] as unknown as FundEventData;
     return {
         type: ReaderEventType.Fund,
+        tx_hash: event.transaction_hash!,
+        block_number: event.block_number! as number,
+        event_index: event.event_index! as unknown as number,
+        transaction_index: event.transaction_index! as unknown as number,
+        ...data,
+    };
+}
+
+function parseOutsideFundEvent(event: ParsedEvent): ReaderOutsideFundEvent {
+    const data = event[OUTSIDE_FUND_EVENT_PATH] as unknown as OutsideFundEventData;
+    return {
+        type: ReaderEventType.OutsideFund,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
         event_index: event.event_index! as unknown as number,
@@ -268,6 +291,13 @@ export class StarknetEventReader {
         );
     }
 
+    async getEventsOutsideFund(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<ReaderOutsideFundEvent[]> {
+        return this.fetchEvents(
+            [[OUTSIDE_FUND_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
+            fromBlock, OUTSIDE_FUND_EVENT_PATH, parseOutsideFundEvent, toBlock, numEvents,
+        );
+    }
+
     async getEventsWithdraw(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
         return this.fetchEvents(
             [[WITHDRAW_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
@@ -306,6 +336,7 @@ export class StarknetEventReader {
     async getAllEvents(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<ReaderEvent[]> {
         const results = await Promise.all([
             this.getEventsFund(fromBlock, otherPubKey, toBlock, numEvents),
+            this.getEventsOutsideFund(fromBlock, otherPubKey, toBlock, numEvents),
             this.getEventsRollover(fromBlock, otherPubKey, toBlock, numEvents),
             this.getEventsWithdraw(fromBlock, otherPubKey, toBlock, numEvents),
             this.getEventsRagequit(fromBlock, otherPubKey, toBlock, numEvents),

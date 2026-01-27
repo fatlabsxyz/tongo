@@ -12,6 +12,7 @@ import { StarknetEventReader } from "../data.service.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "../key.js";
 import { Audit, ExPost } from "../operations/audit.js";
 import { FundOperation } from "../operations/fund.js";
+import { OutsideFundOperation } from "../operations/outside_fund.js";
 import { RagequitOperation } from "../operations/ragequit.js";
 import { RollOverOperation } from "../operations/rollover.js";
 import { TransferOperation } from "../operations/transfer.js";
@@ -31,6 +32,7 @@ import { assertBalance, bytesOrNumToBigInt, castBigInt, decipherBalance, pubKeyF
 import {
     AccountState,
     FundDetails,
+    OutsideFundDetails,
     IAccount,
     RagequitDetails,
     RawAccountState,
@@ -41,6 +43,7 @@ import {
 import {
     AccountEvents,
     AccountFundEvent,
+    AccountOutsideFundEvent,
     AccountRagequitEvent,
     AccountRolloverEvent,
     AccountTransferInEvent,
@@ -193,6 +196,19 @@ export class Account implements IAccount {
         await operation.populateApprove();
         return operation;
     }
+    
+    async fund_from_outside(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation> {
+        const { amount, to } = outsideFundDetails;
+
+        const operation = new OutsideFundOperation({
+            to: starkPointToProjectivePoint(to),
+            amount,
+            Tongo: this.Tongo
+        });
+        await operation.populateApprove();
+        return operation;
+    }
+
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
         const { amount, sender } = transferDetails;
@@ -465,6 +481,22 @@ export class Account implements IAccount {
         );
     }
 
+    async getEventsOutsideFund(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountOutsideFundEvent[]> {
+        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
+        const events = await reader.getEventsOutsideFund(fromBlock, this.publicKey, toBlock, numEvents);
+        return events.map(
+            (event) =>
+                ({
+                    type: ReaderToAccountEvents[event.type],
+                    tx_hash: event.tx_hash,
+                    block_number: event.block_number,
+                    amount: event.amount,
+                    from: num.toHex(event.from),
+                }) as AccountOutsideFundEvent,
+        );
+    }
+
+
     async getEventsRollover(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountRolloverEvent[]> {
         const events = await this.reader.getEventsRollover(fromBlock, this.publicKey, toBlock, numEvents);
         return events.map(
@@ -547,6 +579,7 @@ export class Account implements IAccount {
     async getTxHistory(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountEvents[]> {
         const promises = Promise.all([
             this.getEventsFund(fromBlock, toBlock, numEvents),
+            this.getEventsOutsideFund(fromBlock, toBlock, numEvents),
             this.getEventsRollover(fromBlock, toBlock, numEvents),
             this.getEventsWithdraw(fromBlock, toBlock, numEvents),
             this.getEventsRagequit(fromBlock, toBlock, numEvents),

@@ -2,6 +2,7 @@ import { ReaderEventType } from "../data.service.js";
 
 const AccountEvent = {
     Fund: "fund",
+    OutsideFund: "outsideFund",
     Withdraw: "withdraw",
     Ragequit: "ragequit",
     Rollover: "rollover",
@@ -13,6 +14,7 @@ type AccountEvent = typeof AccountEvent[keyof typeof AccountEvent];
 
 export const ReaderToAccountEvents = {
     [ReaderEventType.Fund]: AccountEvent.Fund,
+    [ReaderEventType.OutsideFund]: AccountEvent.OutsideFund,
     [ReaderEventType.Rollover]: AccountEvent.Rollover,
     [ReaderEventType.Withdraw]: AccountEvent.Withdraw,
     [ReaderEventType.Ragequit]: AccountEvent.Ragequit,
@@ -31,6 +33,12 @@ export interface AccountFundEvent extends AccountBaseEvent {
     nonce: bigint;
     from: string;
     amount: bigint;
+}
+
+export interface AccountOutsideFundEvent extends AccountBaseEvent {
+    type: typeof AccountEvent.OutsideFund;
+    amount: bigint;
+    from: string;
 }
 
 export interface AccountRolloverEvent extends AccountBaseEvent {
@@ -69,6 +77,7 @@ export interface AccountTransferInEvent extends AccountBaseEvent {
 
 export type AccountEvents =
     | AccountFundEvent
+    | AccountOutsideFundEvent
     | AccountWithdrawEvent
     | AccountRagequitEvent
     | AccountRolloverEvent
