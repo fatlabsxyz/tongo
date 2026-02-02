@@ -4,11 +4,12 @@ import { range as SHE_range} from "@fatsolutions/she/protocols"
 
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
-import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
+import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint, RelayData } from "../types";
 import { createCipherBalance} from "../../src/utils";
 
 // cairo string 'withdraw'
 export const WITHDRAW_CAIRO_STRING = 8604536554778681719n;
+const FEE_CAIRO_STRING = 6710629n;
 
 /**
  * Public inputs of the verifier for the withdraw operation.
@@ -20,6 +21,7 @@ export const WITHDRAW_CAIRO_STRING = 8604536554778681719n;
  * @property {CipherBalance} currentBalance - The current CipherBalance stored for the account
  * @property {number} bit_size - The bit size for range proofs
  * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
+ * @property {RelayData} relay_data - relay data for the operation
  */
 export interface InputsWithdraw {
     y: ProjectivePoint;
@@ -30,6 +32,7 @@ export interface InputsWithdraw {
     auxiliarCipher: CipherBalance,
     bit_size: number,
     prefix_data: GeneralPrefixData,
+    relay_data: RelayData,
 }
 
 /**
@@ -48,6 +51,7 @@ function prefixWithdraw(
         chain_id,
         tongo_address,
         sender_address,
+        inputs.relay_data.fee_to_sender,
         WITHDRAW_CAIRO_STRING,
         inputs.y.toAffine().x,
         inputs.y.toAffine().y,
@@ -99,6 +103,7 @@ export function proveWithdraw(
     nonce: bigint,
     bit_size: number,
     prefix_data: GeneralPrefixData,
+    fee_to_sender: bigint,
 ): {
     inputs: InputsWithdraw;
     proof: ProofOfWithdraw;
@@ -106,18 +111,20 @@ export function proveWithdraw(
 } {
     const x = private_key;
     const y = g.multiply(x);
-    const { L: L0, R: R0 } = initial_cipherbalance;
+    let { L: L0, R: R0 } = initial_cipherbalance;
 
     //this is to assert that storedbalance is an encryption of the balance amount
     const g_b = L0.subtract(R0.multiplyUnsafe(x));
     const temp = g.multiplyUnsafe(initial_balance);
     if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
 
-    const left = initial_balance - amount;
+    const left = initial_balance - amount - fee_to_sender;
 
     // This precomputation is usefull to know add R_aux and V to the prefix computation
     const  {randomness, total_random} = SHE_range.pregenerate_randomness(bit_size);
     const auxiliarCipher = createCipherBalance(h,left, total_random);
+
+    const relay_data: RelayData =  {fee_to_sender};
 
     const inputs: InputsWithdraw = {
         y,
@@ -128,9 +135,20 @@ export function proveWithdraw(
         bit_size,
         auxiliarCipher,
         prefix_data,
+        relay_data,
     };
 
     const prefix = prefixWithdraw(inputs);
+
+    let currentBalance = initial_cipherbalance;
+    if (fee_to_sender != 0n) {
+        let {L: L_fee, R: R_fee}  = createCipherBalance(y,fee_to_sender, FEE_CAIRO_STRING);
+        let {L, R} = currentBalance;
+        currentBalance = {L: L.subtract(L_fee), R: R.subtract(R_fee)};
+    }
+
+    R0 = currentBalance.R;
+    L0 = currentBalance.L;
 
     const { r, range } = generateRangeProof(left, bit_size,randomness, prefix);
     if (r !== total_random) {throw new Error("random mismatch")};
@@ -163,7 +181,7 @@ export function proveWithdraw(
 
     // compute the cipherbalance that y will have at the end of the withdraw
     const cipher = createCipherBalance(y, amount, WITHDRAW_CAIRO_STRING);
-    const newBalance: CipherBalance = { L: L0.subtract(cipher.L), R: R0.subtract(cipher.R) };
+    const newBalance: CipherBalance = { L: currentBalance.L.subtract(cipher.L), R: currentBalance.R.subtract(cipher.R) };
 
     return { inputs, proof, newBalance };
 }
@@ -197,9 +215,14 @@ export function verifyWithdraw(
     const c = compute_challenge(prefix, [proof.A_x, proof.A_r, proof.A, proof.A_v]);
 
     let { L: L0, R: R0 } = inputs.currentBalance;
-    let { L: V, R: R_aux} = inputs.auxiliarCipher;
+    if (inputs.relay_data.fee_to_sender != 0n) {
+        const {L: L_fee, R: R_fee}  = createCipherBalance(inputs.y,inputs.relay_data.fee_to_sender, FEE_CAIRO_STRING);
+        L0 = L0.subtract(L_fee); 
+        R0 = R0.subtract(R_fee);
+    }
     L0 = L0.subtract(g.multiply(inputs.amount));
 
+    let { L: V, R: R_aux} = inputs.auxiliarCipher;
     const V_proof = verifyRangeProof(proof.range, bit_size, prefix);
     if (V_proof == false) { throw new Error("erro in range for V"); }
     if (!V.equals(V_proof)) {throw new Error( "V missmatch" )};
