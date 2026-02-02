@@ -262,6 +262,8 @@ export class Account implements IAccount {
             tongo_address: BigInt(this.Tongo.address),
             sender_address: BigInt(sender),
         };
+
+        const fee_to_sender = ragequitDetails.fee_to_sender? ragequitDetails.fee_to_sender : 0n;
         const { inputs, proof, newBalance } = proveRagequit(
             this.pk,
             currentBalance,
@@ -269,6 +271,7 @@ export class Account implements IAccount {
             BigInt(to),
             currentBalanceAmount,
             prefix_data,
+            fee_to_sender,
         );
 
         // zeroing out aehints
@@ -281,6 +284,7 @@ export class Account implements IAccount {
             amount: inputs.amount,
             hint,
             proof,
+            relayData: inputs.relay_data,
             Tongo: this.Tongo,
             auditPart,
         });
@@ -304,6 +308,8 @@ export class Account implements IAccount {
             sender_address: BigInt(sender),
         };
 
+        const fee_to_sender = withdrawDetails.fee_to_sender? withdrawDetails.fee_to_sender : 0n;
+
         const { inputs, proof, newBalance } = proveWithdraw(
             this.pk,
             initialBalance,
@@ -313,11 +319,12 @@ export class Account implements IAccount {
             nonce,
             bit_size,
             prefix_data,
+            fee_to_sender,
         );
-        const hint = await this.computeAEHintForSelf(initialBalance - amount, nonce + 1n);
+        const hint = await this.computeAEHintForSelf(initialBalance - amount - fee_to_sender, nonce + 1n);
 
         //audit
-        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance, prefix_data);
+        const auditPart = await this.createAuditPart(initialBalance - amount - fee_to_sender, newBalance, prefix_data);
 
         return new WithdrawOperation({
             from: inputs.y,
@@ -326,6 +333,7 @@ export class Account implements IAccount {
             auxiliarCipher: inputs.auxiliarCipher,
             hint,
             proof,
+            relayData: inputs.relay_data,
             auditPart,
             Tongo: this.Tongo,
         });

@@ -1,4 +1,4 @@
-import { ProjectivePoint } from "../types";
+import { ProjectivePoint, RelayData } from "../types";
 import { ProofOfRagequit } from "../provers/ragequit";
 import { Call, Contract, CairoOption } from "starknet";
 import { IOperation, OperationType } from "./operation.js";
@@ -27,6 +27,7 @@ interface RagequitOpParams {
     hint: AEBalance;
     proof: ProofOfRagequit;
     auditPart: CairoOption<Audit>;
+    relayData: RelayData;
     Tongo: Contract;
 }
 
@@ -37,16 +38,18 @@ export class RagequitOperation implements IRagequitOperation {
     amount: bigint;
     hint: AEBalance;
     auditPart: CairoOption<Audit>;
+    relayData: RelayData;
     proof: ProofOfRagequit;
     Tongo: Contract;
 
-    constructor({ from, to, amount, proof, Tongo, hint, auditPart }: RagequitOpParams) {
+    constructor({ from, to, amount, proof, Tongo, hint, auditPart, relayData }: RagequitOpParams) {
         this.from = from;
         this.to = to;
         this.amount = amount;
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
+        this.relayData = relayData;
         this.Tongo = Tongo;
     }
 
@@ -59,6 +62,7 @@ export class RagequitOperation implements IRagequitOperation {
                 proof: this.proof,
                 hint: this.hint,
                 auditPart: this.auditPart,
+                relayData: this.relayData,
             },
         ]);
     }

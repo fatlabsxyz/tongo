@@ -1,4 +1,4 @@
-import { ProjectivePoint } from "../types";
+import { ProjectivePoint, RelayData } from "../types";
 import { ProofOfWithdraw } from "../provers/withdraw";
 import { CipherBalance } from "../types.js";
 import { Call, Contract, num, CairoOption } from "starknet";
@@ -29,6 +29,7 @@ interface WithdrawOpParams {
     hint: AEBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
+    relayData: RelayData;
     Tongo: Contract;
 }
 
@@ -41,9 +42,10 @@ export class WithdrawOperation implements IWithdrawOperation {
     auxiliarCipher: CipherBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
+    relayData: RelayData;
     Tongo: Contract;
 
-    constructor({ from, to, amount, proof, auditPart, Tongo, hint, auxiliarCipher }: WithdrawOpParams) {
+    constructor({ from, to, amount, proof, auditPart, Tongo, hint, auxiliarCipher, relayData}: WithdrawOpParams) {
         this.from = from;
         this.to = to;
         this.amount = amount;
@@ -51,6 +53,7 @@ export class WithdrawOperation implements IWithdrawOperation {
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
+        this.relayData = relayData;
         this.Tongo = Tongo;
     }
 
@@ -64,6 +67,7 @@ export class WithdrawOperation implements IWithdrawOperation {
                 auxiliarCipher: this.auxiliarCipher,
                 auditPart: this.auditPart,
                 proof: this.proof,
+                relayData: this.relayData,
             },
         ]);
     }

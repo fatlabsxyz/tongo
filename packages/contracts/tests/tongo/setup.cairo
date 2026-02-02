@@ -9,7 +9,7 @@ use tongo::structs::{
     aecipher::AEBalance,
 };
 
-use crate::consts::{TONGO_ADDRESS,STRK_ADDRESS,USER_CALLER, AUDITOR_PRIVATE, OWNER_ADDRESS, RATE, CHAIN_ID, BIT_SIZE};
+use crate::consts::{TONGO_ADDRESS,STRK_ADDRESS,USER_ADDRESS,RELAYER_ADDRESS, AUDITOR_PRIVATE, OWNER_ADDRESS, RATE, CHAIN_ID, BIT_SIZE};
 use crate::prover::utils::pubkey_from_secret;
 
 pub fn empty_ae_hint() -> AEBalance {
@@ -52,7 +52,7 @@ pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
         tongo_contract, TONGO_ADDRESS.try_into().unwrap(), constructor_calldata,
     );
     let tongo_dispatcher = ITongoDispatcher { contract_address: tongo_address };
-    start_cheat_caller_address(TONGO_ADDRESS, USER_CALLER);
+    start_cheat_caller_address(TONGO_ADDRESS, USER_ADDRESS);
     start_cheat_chain_id_global(CHAIN_ID);
 
     (tongo_address, tongo_dispatcher)
@@ -61,8 +61,9 @@ pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
 
 fn setup_erc20() -> IERC20Dispatcher {
     let dispatcher = IERC20Dispatcher { contract_address: STRK_ADDRESS };
-    set_balance(USER_CALLER, 100000000000000_u256, Token::STRK);
-    start_cheat_caller_address(STRK_ADDRESS, USER_CALLER);
+    set_balance(USER_ADDRESS, 100000000000000_u256, Token::STRK);
+    set_balance(RELAYER_ADDRESS, 100000000000000_u256, Token::STRK);
+    start_cheat_caller_address(STRK_ADDRESS, USER_ADDRESS);
     dispatcher.approve(TONGO_ADDRESS.try_into().unwrap(), 10000000_u256);
     stop_cheat_caller_address(STRK_ADDRESS);
     return dispatcher;
