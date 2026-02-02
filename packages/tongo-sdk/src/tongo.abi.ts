@@ -521,6 +521,10 @@ export const tongoAbi = [
                 "type": "tongo::structs::operations::transfer::ProofOfTransfer"
             },
             {
+                "name": "relayData",
+                "type": "tongo::structs::common::relayer::RelayData"
+            },
+            {
                 "name": "auditPart",
                 "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
             },

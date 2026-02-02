@@ -16,6 +16,7 @@ fn test_transfer() {
     let seed = 47198274198273;
     let x = generate_random(seed, 1);
     let y = pubkey_from_secret(x);
+    let fee_to_sender = 0;
 
     // balance stored
     let b0 = 100;
@@ -30,7 +31,7 @@ fn test_transfer() {
     let sender = USER_ADDRESS;
 
     let (inputs, proof,_) = prove_transfer(
-        x, y_bar, b0, b, balance, nonce,BIT_SIZE,sender, generate_random(seed, 4)
+        x, y_bar, b0, b, balance, nonce,BIT_SIZE,sender,fee_to_sender, generate_random(seed, 4)
     );
 
     verify_transfer(inputs, proof);

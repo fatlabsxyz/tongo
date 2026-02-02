@@ -96,6 +96,7 @@ fn audit_transfer() {
     let x_bar = 21983092183910283;
     let y_bar = pubkey_from_secret(x_bar);
 
+    let fee_to_sender = 0;
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
@@ -103,12 +104,12 @@ fn audit_transfer() {
     dispatcher.fund(operation);
 
     let transfer_amount = 100_u128;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,dispatcher);
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender, dispatcher);
     dispatcher.transfer(operation);
 
     let audit = dispatcher.get_audit(y);
     if audit.is_some() {
-        decipher_balance((initial_fund - transfer_amount).into(), AUDITOR_PRIVATE, audit.unwrap());
+        decipher_balance((initial_fund - fee_to_sender - transfer_amount).into(), AUDITOR_PRIVATE, audit.unwrap());
     }
 
     let audit = dispatcher.get_audit(y_bar);
@@ -126,13 +127,15 @@ fn audit_rollover() {
     let x_bar = 95849543;
     let y_bar = pubkey_from_secret(x_bar);
 
+    let fee_to_sender = 0;
+
     let initial_balance = 0;
     let initial_fund = 250;
     let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     let transfer_amount = 100;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,dispatcher);
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,USER_ADDRESS, fee_to_sender, dispatcher);
     dispatcher.transfer(operation);
 
     let operation = rolloverOperation(x_bar,dispatcher);

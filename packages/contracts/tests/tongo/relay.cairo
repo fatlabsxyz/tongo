@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
 use tongo::tongo::ITongo::ITongoDispatcherTrait;
 
-use crate::tongo::operations::{fundOperation, ragequitOperation, withdrawOperation};
+use crate::tongo::operations::{fundOperation, ragequitOperation, withdrawOperation, transferOperation};
 use crate::tongo::setup::{setup_tongo};
 
 use crate::prover::utils::{generate_random, decipher_balance, pubkey_from_secret};
@@ -87,5 +87,39 @@ fn test_tongo_relay_withdraw() {
     
     
     assert(finalErc20  - initialErc20 == rate*(withdraw_amount - fee_to_sender).into(), 'nope');
+    assert(finalErc20Relayer  - initialErc20Relayer == rate*(fee_to_sender).into(), 'nope');
+}
+
+
+#[test]
+fn test_tongo_relay_transfer() {
+    let (tongo_address, dispatcher) = setup_tongo();
+
+    let x = 2384230948239;
+    let y = pubkey_from_secret(x);
+    let x_bar = 2190381209380321;
+    let y_bar = pubkey_from_secret(x_bar);
+    let fee_to_sender = 10;
+    let sender = RELAYER_ADDRESS;
+
+    let initial_balance = 0;
+    let initial_fund = 250;
+    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+    dispatcher.fund(operation);
+
+    let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
+    let initialErc20Relayer = erc20dispatcher.balance_of(sender);
+
+    let transfer_amount = 100;
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, sender, fee_to_sender,dispatcher);
+    start_cheat_caller_address(tongo_address, sender);
+    dispatcher.transfer(operation);
+
+    let balance = dispatcher.get_balance(y);
+    decipher_balance((initial_fund - fee_to_sender -  transfer_amount).into(), x, balance);
+
+    let finalErc20Relayer = erc20dispatcher.balance_of(sender);
+    let rate = dispatcher.get_rate();
+
     assert(finalErc20Relayer  - initialErc20Relayer == rate*(fee_to_sender).into(), 'nope');
 }

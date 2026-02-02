@@ -4,6 +4,7 @@ use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::starkpoint::StarkPoint;
+use crate::structs::common::relayer::RelayData;
 use crate::structs::operations::audit::Audit;
 use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 use crate::verifier::range::Range;
@@ -17,6 +18,7 @@ use crate::verifier::range::Range;
 /// - hintTransfer: AE encryption of the amount to transfer to `to`.
 /// - hintLeftover: AE encryption of the leftover balance of `from`.
 /// - proof: ZK proof for the transfer operation.
+/// - relayData: relayer related data.
 /// - auditPart: Optional Audit to declare the balance of the account after the tx.
 /// - auditPartTransfer: Optional Audit to declare the transfer amount.
 #[derive(Drop, Serde)]
@@ -30,6 +32,7 @@ pub struct Transfer {
     pub auxiliarCipher: CipherBalance,
     pub auxiliarCipher2: CipherBalance,
     pub proof: ProofOfTransfer,
+    pub relayData: RelayData,
     pub auditPart: Option<Audit>,
     pub auditPartTransfer: Option<Audit>,
 }
@@ -55,6 +58,7 @@ pub struct InputsTransfer {
     pub auxiliarCipher2: CipherBalance,
     pub bit_size: u32,
     pub prefix_data: GeneralPrefixData,
+    pub relayData: RelayData,
 }
 
 /// Computes the prefix by hashing some public inputs.
@@ -62,6 +66,8 @@ impl TransferPrefix of Prefix<InputsTransfer> {
     fn compute_prefix(self: @InputsTransfer) -> felt252 {
         let transfer_selector = 'transfer';
         let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
+
+        let fee_to_sender = *self.relayData.fee_to_sender;
 
         let CipherBalance {L:L0, R:R0} = *self.currentBalance;
         let CipherBalance {L ,R } = *self.transferBalanceSelf;
@@ -73,6 +79,7 @@ impl TransferPrefix of Prefix<InputsTransfer> {
             *chain_id,
             (*tongo_address).into(),
             (*sender_address).into(),
+            fee_to_sender.into(),
             transfer_selector,
             *self.from.x,
             *self.from.y,

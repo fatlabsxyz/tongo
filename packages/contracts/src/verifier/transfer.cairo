@@ -33,15 +33,23 @@ use crate::verifier::utils::{generator_h, verifyOwnership};
 /// EC_MUL: 27 + 2*n*5  = 347 for u32
 /// EC_ADD: 18  + 2*n*4 = 274 for u32
 pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
-    let (CL, CR) = inputs.currentBalance.points();
+    let prefix = inputs.compute_prefix();
+    let c = proof.compute_challenge(prefix);
+    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
+
+    let mut cipherBalanceAfterFee = inputs.currentBalance;
+    if inputs.relayData.fee_to_sender != 0 {
+        cipherBalanceAfterFee= inputs.currentBalance.subtract(
+            CipherBalanceTrait::new(inputs.from, inputs.relayData.fee_to_sender.into(),'fee')
+        )
+    };
+
+    let (CL, CR) = cipherBalanceAfterFee.points();
     let (L, R) = inputs.transferBalanceSelf.points_nz();
     let (L_bar, R_bar) = inputs.transferBalance.points_nz();
     let (V, R_aux) = inputs.auxiliarCipher.points_nz();
     let (V2, R_aux2) = inputs.auxiliarCipher2.points_nz();
 
-    let prefix = inputs.compute_prefix();
-    let c = proof.compute_challenge(prefix);
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
     verifyOwnership(inputs.from, proof.A_x, c, proof.s_x);
 
