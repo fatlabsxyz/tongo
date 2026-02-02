@@ -26,9 +26,7 @@ use crate::verifier::utils::{generator_h};
 /// EC_ADD: 8 + n*4  = 136 for u32
 pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
     let prefix = inputs.compute_prefix();
-
     let c = proof.compute_challenge(prefix);
-
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
     // This verification is made as part of same_encrypt_unknown_random_verify(inputs, proof). 

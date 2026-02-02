@@ -1,7 +1,7 @@
 import { CairoOption, Call, Contract } from "starknet";
 import { CipherBalance } from "../types.js";
 
-import { ProjectivePoint } from "../types";
+import { ProjectivePoint, RelayData } from "../types";
 import {ProofOfTransfer} from "../provers/transfer";
 
 import { AEBalance } from "../ae_balance.js";
@@ -24,6 +24,7 @@ export interface ITransferOperation extends IOperation {
  * @property {ProofOfTransfer} proof - ZK proof for the transfer operation
  * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx
  * @property {CairoOption<Audit>} auditPartTransfer - Optional Audit to declare the transfer amount
+ * @property {RelayData} relayData - relay data for the operation
  * @property {Contract} Tongo - The tongo instance to interact with
  */
 interface TransferOpParams {
@@ -38,6 +39,7 @@ interface TransferOpParams {
     hintLeftover: AEBalance;
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
+    relayData: RelayData,
     Tongo: Contract;
 }
 
@@ -55,6 +57,7 @@ export class TransferOperation implements ITransferOperation {
     proof: ProofOfTransfer;
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
+    relayData: RelayData;
 
     constructor({
         from,
@@ -69,6 +72,7 @@ export class TransferOperation implements ITransferOperation {
         Tongo,
         hintTransfer,
         hintLeftover,
+        relayData,
     }: TransferOpParams) {
         this.from = from;
         this.to = to;
@@ -81,6 +85,7 @@ export class TransferOperation implements ITransferOperation {
         this.proof = proof;
         this.auditPart = auditPart;
         this.auditPartTransfer = auditPartTransfer;
+        this.relayData = relayData;
         this.Tongo = Tongo;
     }
 
@@ -98,6 +103,7 @@ export class TransferOperation implements ITransferOperation {
                 proof: this.proof,
                 auditPart: this.auditPart,
                 auditPartTransfer: this.auditPartTransfer,
+                relayData: this.relayData,
             },
         ]);
     }

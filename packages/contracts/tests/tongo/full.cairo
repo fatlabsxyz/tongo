@@ -34,6 +34,7 @@ fn full() {
 
     let x_bar = 9583954385;
     let y_bar = pubkey_from_secret(x_bar);
+    let fee_to_sender = 0;
 
     // The initial pendings, balance, and audits should be 0
     checkBalances(x,0,0,0,dispatcher);
@@ -59,7 +60,7 @@ fn full() {
     assert!(nonce == 1, "Nonce is not 1");
 
     let transfer_amount = 100_u128;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,dispatcher);
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,dispatcher);
     dispatcher.transfer(operation);
 
     // nonce for y should be 2

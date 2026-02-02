@@ -142,13 +142,14 @@ pub fn transferOperation(
     to: PubKey,
     amount: u128,
     initialBalance: u128,
+    sender: ContractAddress,
+    fee_to_sender: u128,
     dispatcher:ITongoDispatcher,
 )-> Transfer {
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
     let bit_size = dispatcher.get_bit_size();
-    let sender = USER_ADDRESS;
 
     let (inputs, proof, newBalance) = prove_transfer(
         pk,
@@ -159,10 +160,11 @@ pub fn transferOperation(
         nonce,
         bit_size,
         sender,
+        fee_to_sender,
         generate_random(pk,nonce.into())
     );
 
-    let auditPart = generateAuditPart(pk, initialBalance-amount, newBalance,sender, dispatcher);
+    let auditPart = generateAuditPart(pk, initialBalance - fee_to_sender.into() - amount, newBalance,sender, dispatcher);
     let auditPartTransfer = generateAuditPart(pk, amount, inputs.transferBalanceSelf, sender, dispatcher);
 
     return Transfer {
@@ -176,6 +178,7 @@ pub fn transferOperation(
         auxiliarCipher2: inputs.auxiliarCipher2,
         auditPart,
         auditPartTransfer,
+        relayData: inputs.relayData,
         proof,
     };
 }
