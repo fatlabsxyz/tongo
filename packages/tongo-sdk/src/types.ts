@@ -14,6 +14,10 @@ export interface GeneralPrefixData {
     sender_address: bigint,
 }
 
+export interface RelayData {
+    fee_to_sender:bigint,
+}
+
 export const ProjectivePoint: typeof SheProjectivePoint = SheProjectivePoint;
 export type ProjectivePoint = SheProjectivePointType;
 

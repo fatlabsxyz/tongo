@@ -15,15 +15,15 @@ use tongo::structs::operations::{
 use crate::prover::functions::{prove_fund,prove_withdraw, prove_ragequit, prove_audit,prove_transfer, prove_rollover};
 use crate::tongo::setup::{empty_ae_hint};
 use starknet::ContractAddress;
-use crate::consts::USER_CALLER;
+use crate::consts::USER_ADDRESS;
 
 fn generateAuditPart(
     pk:felt252,
     balance:u128,
     storedBalance:CipherBalance,
+    sender: ContractAddress,
     dispatcher:ITongoDispatcher
 )-> Option<Audit> {
-    let sender = USER_CALLER;
     let auditor = dispatcher.auditor_key();
     if auditor.is_some() {
         let (inputsAudit, proofAudit) = prove_audit(
@@ -55,7 +55,7 @@ pub fn fundOperation(
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
-    let sender = USER_CALLER;
+    let sender = USER_ADDRESS;
 
     let (_inputs, proof, newBalance) = prove_fund(
         pk,
@@ -68,7 +68,7 @@ pub fn fundOperation(
         generate_random(pk, nonce.into())
     );
 
-    let auditPart = generateAuditPart(pk, initialBalance+amount, newBalance,dispatcher);
+    let auditPart = generateAuditPart(pk, initialBalance+amount, newBalance, sender, dispatcher);
     let hint = empty_ae_hint();
     return Fund {to: y,amount,proof, hint,auditPart};
 }
@@ -78,13 +78,14 @@ pub fn withdrawOperation(
     initialBalance: u128,
     amount: u128,
     to: ContractAddress,
+    sender: ContractAddress,
+    fee_to_sender: u128,
     dispatcher:ITongoDispatcher,
 )-> Withdraw {
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
     let bit_size = dispatcher.get_bit_size();
-    let sender = USER_CALLER;
 
     let (inputs, proof, newBalance) = prove_withdraw(
         pk,
@@ -95,25 +96,29 @@ pub fn withdrawOperation(
         nonce,
         bit_size,
         sender,
+        fee_to_sender,
         generate_random(pk, nonce.into())
     );
 
-    let auditPart = generateAuditPart(pk, initialBalance-amount, newBalance,dispatcher);
+    let auditPart = generateAuditPart(pk, initialBalance - amount - fee_to_sender, newBalance,sender, dispatcher);
 
     let hint = empty_ae_hint();
-    return Withdraw {from:y, to,amount,proof,hint, auxiliarCipher: inputs.auxiliarCipher,auditPart};
+
+    let relayData = inputs.relayData;
+    return Withdraw {from:y, to,amount,proof,hint, auxiliarCipher: inputs.auxiliarCipher,auditPart, relayData};
 }
 
 pub fn ragequitOperation(
     pk: felt252,
     initialBalance: u128,
     to: ContractAddress,
+    sender: ContractAddress,
+    fee_to_sender: u128,
     dispatcher:ITongoDispatcher,
 )-> Ragequit {
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
-    let sender = USER_CALLER;
 
     let (_inputs, proof, newBalance) = prove_ragequit(
         pk,
@@ -122,12 +127,14 @@ pub fn ragequitOperation(
         currentBalance,
         nonce,
         sender,
+        fee_to_sender,
         generate_random(pk, nonce.into())
     );
 
-    let auditPart = generateAuditPart(pk, 0, newBalance,dispatcher);
+    let auditPart = generateAuditPart(pk, 0, newBalance, sender, dispatcher);
     let hint = empty_ae_hint();
-    return Ragequit {from:y,to,amount:initialBalance,proof, hint, auditPart};
+    let relayData = _inputs.relayData;
+    return Ragequit {from:y,to,amount:initialBalance,proof, hint, auditPart, relayData};
 }
 
 pub fn transferOperation(
@@ -141,7 +148,7 @@ pub fn transferOperation(
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
     let bit_size = dispatcher.get_bit_size();
-    let sender = USER_CALLER;
+    let sender = USER_ADDRESS;
 
     let (inputs, proof, newBalance) = prove_transfer(
         pk,
@@ -155,8 +162,8 @@ pub fn transferOperation(
         generate_random(pk,nonce.into())
     );
 
-    let auditPart = generateAuditPart(pk, initialBalance-amount, newBalance,dispatcher);
-    let auditPartTransfer = generateAuditPart(pk, amount, inputs.transferBalanceSelf,dispatcher);
+    let auditPart = generateAuditPart(pk, initialBalance-amount, newBalance,sender, dispatcher);
+    let auditPartTransfer = generateAuditPart(pk, amount, inputs.transferBalanceSelf, sender, dispatcher);
 
     return Transfer {
         from:y,
@@ -179,7 +186,7 @@ pub fn rolloverOperation(
 )-> Rollover {
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
-    let sender = USER_CALLER;
+    let sender = USER_ADDRESS;
 
     let (_inputs, proof) = prove_rollover(
         pk,

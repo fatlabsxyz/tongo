@@ -6,7 +6,7 @@ use tongo::structs::common::{
     cipherbalance::CipherBalanceTrait,
 };
 use crate::prover::utils::pubkey_from_secret;
-use crate::consts::{BIT_SIZE, USER_CALLER};
+use crate::consts::{BIT_SIZE, USER_ADDRESS};
 
 #[test]
 fn test_withdraw() {
@@ -33,7 +33,8 @@ fn test_withdraw() {
         currentBalance,
         nonce,
         BIT_SIZE,
-        USER_CALLER,
+        USER_ADDRESS,
+        0,
         generate_random(seed, 3)
     );
     verify_withdraw(inputs, proof);

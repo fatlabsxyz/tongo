@@ -1,7 +1,7 @@
 use crate::tongo::setup::{setup_tongo};
 use tongo::tongo::ITongo::{ITongoDispatcherTrait};
 use tongo::erc20::{IERC20DispatcherTrait, IERC20Dispatcher};
-use crate::consts::{USER_CALLER, STRK_ADDRESS};
+use crate::consts::{USER_ADDRESS, STRK_ADDRESS};
 use tongo::structs::operations::fund::OutsideFund;
 
 use crate::tongo::operations::{fundOperation};
@@ -13,13 +13,13 @@ fn test_fund() {
 
     let (_tongo_address, dispatcher) = setup_tongo();
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
-    let initialErc20 = erc20dispatcher.balance_of(USER_CALLER);
+    let initialErc20 = erc20dispatcher.balance_of(USER_ADDRESS);
     let tongoAmount = 250;
 
-    let operation = fundOperation(x,USER_CALLER, 0, tongoAmount,dispatcher);
+    let operation = fundOperation(x,USER_ADDRESS, 0, tongoAmount,dispatcher);
     dispatcher.fund(operation);
 
-    let finalErc20 = erc20dispatcher.balance_of(USER_CALLER);
+    let finalErc20 = erc20dispatcher.balance_of(USER_ADDRESS);
     let rate = dispatcher.get_rate();
     assert(initialErc20 - finalErc20 == rate*tongoAmount.into(), 'nope');
 }
@@ -31,14 +31,14 @@ fn test_outside_fund() {
 
     let (_tongo_address, dispatcher) = setup_tongo();
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
-    let initialErc20 = erc20dispatcher.balance_of(USER_CALLER);
+    let initialErc20 = erc20dispatcher.balance_of(USER_ADDRESS);
     let tongoAmount = 250;
     
     let outsideFund = OutsideFund {to, amount: tongoAmount};
 
     dispatcher.outside_fund(outsideFund);
 
-    let finalErc20 = erc20dispatcher.balance_of(USER_CALLER);
+    let finalErc20 = erc20dispatcher.balance_of(USER_ADDRESS);
     let rate = dispatcher.get_rate();
     assert(initialErc20 - finalErc20 == rate*tongoAmount.into(), 'nope');
 

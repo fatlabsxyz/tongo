@@ -1,7 +1,7 @@
 use crate::tongo::setup::{setup_tongo};
 use tongo::tongo::ITongo::ITongoDispatcherTrait;
 use crate::prover::utils::pubkey_from_secret;
-use crate::consts::{USER_CALLER};
+use crate::consts::{USER_ADDRESS};
 
 
 use crate::tongo::operations::{fundOperation, transferOperation};
@@ -16,7 +16,7 @@ fn test_transfer() {
 
     let initial_balance = 0;
     let initial_fund = 250;
-    let operation = fundOperation(x,USER_CALLER, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
 
