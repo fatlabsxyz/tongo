@@ -899,6 +899,11 @@ export const tongoAbi = [
                 "kind": "key"
             },
             {
+                "name": "from",
+                "type": "core::starknet::contract_address::ContractAddress",
+                "kind": "key"
+            },
+            {
                 "name": "amount",
                 "type": "core::integer::u128",
                 "kind": "data"

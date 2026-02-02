@@ -45,6 +45,7 @@ interface BaseEvent {
 interface FundEventData {
     to: StarkPoint;
     nonce: bigint;
+    from: bigint;
     amount: bigint;
 }
 

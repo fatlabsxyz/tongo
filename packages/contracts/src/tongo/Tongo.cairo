@@ -158,7 +158,7 @@ pub mod Tongo {
             let cipher = CipherBalanceTrait::new(to, amount.into(), 'fund');
             self._add_balance(to, cipher);
             self._overwrite_hint(to, hint);
-            self.emit(FundEvent { to, amount: amount.try_into().unwrap(), nonce });
+            self.emit(FundEvent { to, amount: amount.try_into().unwrap(),from: get_caller_address(), nonce });
 
             if self.auditor_key.read().is_some() {
                 self._handle_audit_balance(to, nonce, auditPart);

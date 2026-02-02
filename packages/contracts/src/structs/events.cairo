@@ -7,6 +7,7 @@ use crate::structs::common::pubkey::PubKey;
 ///
 /// - to: The Tongo account to fund.
 /// - nonce: The nonce of the Tongo account.
+/// - from: The contract address is funding the account.
 /// - amount: The ammount of tongo to fund.
 #[derive(Drop, starknet::Event)]
 pub struct FundEvent {
@@ -14,6 +15,8 @@ pub struct FundEvent {
     pub to: PubKey,
     #[key]
     pub nonce: u64,
+    #[key]
+    pub from:  ContractAddress,
     pub amount: u128,
 }
 
