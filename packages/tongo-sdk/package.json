@@ -28,9 +28,6 @@
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": {
-    "tongo": "./dist/cli.js"
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -39,7 +36,6 @@
     }
   },
   "scripts": {
-    "bin": "node ./dist/cli.js",
     "clean": "rm -rf dist",
     "build": "tsc -p ./tsconfig.json --outDir dist",
     "update-abi": "echo -n 'export const tongoAbi = ' > ./src/tongo.abi.ts && jq --indent 4 -j '.abi' < ../contracts/target/dev/tongo_Tongo.contract_class.json >> ./src/tongo.abi.ts && echo ' as const;' >> ./src/tongo.abi.ts",
@@ -61,8 +57,6 @@
     "@noble/hashes": "catalog:",
     "@scure/base": "catalog:",
     "@scure/starknet": "catalog:",
-    "commander": "^11.0.0",
-    "dotenv": "^16.3.1",
     "starknet": "8.5.4"
   },
   "publishConfig": {
@@ -70,7 +64,7 @@
     "registry": "https://registry.npmjs.org"
   },
   "devDependencies": {
-    "tsx": "^4.20.5",
+    "tsx": "4.20.5",
     "starknet-devnet": "0.6.0"
   }
 }
