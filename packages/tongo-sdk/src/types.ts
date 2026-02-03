@@ -37,22 +37,6 @@ export interface CipherBalance {
     R: ProjectivePoint;
 }
 
-export function createCipherBalance(
-    y: ProjectivePoint,
-    amount: bigint,
-    random: bigint,
-): CipherBalance {
-    if (amount === 0n) {
-        const L = y.multiplyUnsafe(random);
-        const R = GENERATOR.multiplyUnsafe(random);
-        return { L, R };
-    }
-    const L = GENERATOR.multiply(amount).add(y.multiplyUnsafe(random));
-    const R = GENERATOR.multiplyUnsafe(random);
-    return { L, R };
-}
-
-
 /**
  * This function coincides with cairo compute_prefix
  * @param seq - Array of bigint values to hash
