@@ -40,6 +40,8 @@ interface BaseEvent {
     type: ReaderEventType;
     tx_hash: string;
     block_number: number;
+    event_index: number;
+    transaction_index: number;
 }
 
 interface FundEventData {
