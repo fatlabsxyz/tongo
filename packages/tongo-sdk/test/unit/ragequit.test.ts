@@ -15,6 +15,7 @@ describe("ragequit", () => {
 
         const nonce = 1n;
         const prefix_data: GeneralPrefixData = { chain_id: 1111n, tongo_address: 22222n, sender_address: 33333n };
+        const fee_to_sender = 0n;
 
 
         const { inputs, proof } = proveRagequit(
@@ -24,6 +25,7 @@ describe("ragequit", () => {
             send_to,
             initial_balance,
             prefix_data,
+            fee_to_sender,
         );
         verifyRagequit(inputs, proof);
     });

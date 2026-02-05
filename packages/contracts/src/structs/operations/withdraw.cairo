@@ -5,6 +5,7 @@ use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::starkpoint::StarkPoint;
+use crate::structs::common::relayer::RelayData;
 use crate::structs::operations::audit::Audit;
 use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 use crate::verifier::range::Range;
@@ -16,6 +17,7 @@ use crate::verifier::range::Range;
 /// - to: The starknet contract address to send the funds to.
 /// - hint: AE encription of the final balance of the account.
 /// - proof: ZK proof for the withdraw operation.
+/// - relayData: relayer related data.
 /// - auditPart: Optional Audit to declare the balance of the account after the tx.
 #[derive(Drop, Serde)]
 pub struct Withdraw {
@@ -25,8 +27,10 @@ pub struct Withdraw {
     pub hint: AEBalance,
     pub auxiliarCipher: CipherBalance,
     pub proof: ProofOfWithdraw,
+    pub relayData: RelayData,
     pub auditPart: Option<Audit>,
 }
+
 
 
 /// Public inputs of the verifier for the withdarw operation.
@@ -46,19 +50,24 @@ pub struct InputsWithdraw {
     pub auxiliarCipher: CipherBalance,
     pub bit_size: u32,
     pub prefix_data: GeneralPrefixData,
+    pub relayData: RelayData,
 }
 
 /// Computes the prefix by hashing some public inputs.
 impl WithdrawPrefix of Prefix<InputsWithdraw> {
     fn compute_prefix(self: @InputsWithdraw) -> felt252 {
         let withdraw_selector = 'withdraw';
-        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address, sender_address} = self.prefix_data;
+
+        let fee_to_sender = *self.relayData.fee_to_sender;
+
         let CipherBalance {L,R} = *self.currentBalance;
         let CipherBalance {L:V,R:R_aux} = *self.auxiliarCipher;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
             (*sender_address).into(),
+            fee_to_sender.into(),
             withdraw_selector,
             *self.y.x,
             *self.y.y,
