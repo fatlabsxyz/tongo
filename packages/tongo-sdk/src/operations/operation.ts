@@ -3,6 +3,7 @@ import { Call } from "starknet";
 export const OperationType = {
     Audit: "audit",
     Fund: "fund",
+    OutsideFund: "outsideFund",
     Ragequit: "ragequit",
     Withdraw: "withdraw",
     Rollover: "rollover",
