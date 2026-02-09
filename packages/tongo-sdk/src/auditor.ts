@@ -30,6 +30,8 @@ interface AuditorBaseEvent {
     type: AuditorEvent;
     tx_hash: string;
     block_number: number;
+    transaction_index: number,
+    event_index: number
 }
 
 interface AuditorBalanceDeclared extends AuditorBaseEvent {
@@ -103,7 +105,7 @@ export class Auditor {
         return balance;
     }
 
-    async getUserBalance(initialBlock: number, otherPubKey: PubKey): Promise<AuditorBalanceDeclared[]> {
+    async getUserBalances(initialBlock: number, otherPubKey: PubKey): Promise<AuditorBalanceDeclared[]> {
         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
         const events = await reader.getEventsBalanceDeclared(initialBlock, otherPubKey);
         return Promise.all(events.map(
@@ -111,6 +113,8 @@ export class Auditor {
                 type: AuditorEvent.BalanceDeclared,
                 tx_hash: event.tx_hash,
                 block_number: event.block_number,
+                transaction_index: event.transaction_index,
+                event_index: event.event_index,
                 nonce: event.nonce,
                 user: pubKeyAffineToBase58(otherPubKey),
                 amount: this.decryptCipherBalance(
@@ -119,6 +123,22 @@ export class Auditor {
                 ),
             } as AuditorBalanceDeclared)
         ));
+    }
+
+    async getUserBalance(initialBlock: number, otherPubKey: PubKey): Promise<AuditorBalanceDeclared | null> {
+        const balances = await this.getUserBalances(initialBlock, otherPubKey);
+
+        if (balances.length === 0) return null;
+        
+        return balances.sort((a, b) => {
+            if (a.block_number !== b.block_number) {
+                return b.block_number - a.block_number;
+            }
+            if (a.transaction_index !== b.transaction_index) {
+                return b.transaction_index - a.transaction_index;
+            }
+            return b.event_index - a.event_index;
+            })[0];
     }
 
     async getUserTransferOut(initialBlock: number, otherPubKey: PubKey): Promise<AuditorTransferOutDeclared[]> {
@@ -169,4 +189,44 @@ export class Auditor {
         const events = (await promises).flat();
         return events.sort((a, b) => b.block_number - a.block_number);
     }
+
+    async getLastUserEvent(initialBlock: number, user: PubKey): Promise<AuditorEvents | null > {
+        const events = await this.getUserHistory(initialBlock, user);
+
+        if (events.length === 0) return null;
+
+        return events[0];
+    }
+
+    async getRealuserBalance(initialBlock: number, user: PubKey): Promise<bigint | null> {
+        const lastDeclaredBalance = await this.getUserBalance(initialBlock, user);
+
+        if (lastDeclaredBalance === null) return null;
+
+        const incomingTransfers = await this.getUserTransferIn(initialBlock, user);
+
+        const pendingIncoming = incomingTransfers.filter(transfer => 
+            transfer.block_number > lastDeclaredBalance.block_number ||
+            (transfer.block_number === lastDeclaredBalance.block_number &&
+            transfer.transaction_index > lastDeclaredBalance.transaction_index) || 
+            (transfer.block_number === lastDeclaredBalance.block_number &&
+            transfer.transaction_index === lastDeclaredBalance.transaction_index &&
+            transfer.event_index > lastDeclaredBalance.event_index)
+            );
+        
+            const pendingAmount = pendingIncoming.reduce(
+                (sum, transfer) => sum + transfer.amount,
+                0n
+            );
+
+            return lastDeclaredBalance.amount + pendingAmount;
+    }
+
+    async getOperationsByTxHash(initialBlock: number, user: PubKey, txHash: string):
+    Promise<AuditorEvents[]> {
+        const events = await this.getUserHistory(initialBlock, user);
+
+        return events.filter(event => event.tx_hash === txHash);
+    }
 }
+
