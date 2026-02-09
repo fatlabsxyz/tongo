@@ -64,33 +64,68 @@ type AuditorEvents =
 
 
 export class Auditor {
-    publicKey: PubKey;
-    pk: bigint;
+    private pks: bigint[];
+    private publicKeys: PubKey[];
     provider: RpcProvider;
     Tongo: TypedContractV2<typeof tongoAbi>;
 
-    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
-        this.pk = bytesOrNumToBigInt(pk);
+    constructor(
+        pk: BigNumberish | Uint8Array | (BigNumberish | Uint8Array)[],
+        contractAddress: string,
+        provider: RpcProvider
+    ) {
+        const keys = Array.isArray(pk) ? pk : [pk];
+        this.pks = keys.map(k => bytesOrNumToBigInt(k));
+        this.publicKeys = this.pks.map(k => derivePublicKey(k));
         this.Tongo = new Contract({
             abi: tongoAbi,
             address: contractAddress,
             providerOrAccount: provider
         }).typedv2(tongoAbi);
-        this.publicKey = derivePublicKey(this.pk);
         this.provider = provider;
     }
 
-    decryptCipherBalance({ L, R }: CipherBalance, hint?: bigint): bigint {
+    get pk(): bigint {
+        return this.pks[this.pks.length - 1]!;
+    }
+
+    get publicKey(): PubKey {
+        return this.publicKeys[this.publicKeys.length - 1]!;
+    }
+
+    addPrivateKey(pk: BigNumberish | Uint8Array): void {
+        const key = bytesOrNumToBigInt(pk);
+        this.pks.push(key);
+        this.publicKeys.push(derivePublicKey(key));
+    }
+
+    getAllPublicKeys(): PubKey[] {
+        return [...this.publicKeys];
+    }
+
+    findKeyIndex(auditorPubKey: PubKey): number {
+        const index = this.publicKeys.findIndex(
+            pk => pk.x === auditorPubKey.x && pk.y === auditorPubKey.y
+        );
+        if (index === -1) {
+            throw new Error('Unknown auditor key');
+        }
+        return index;
+    }
+
+    decryptCipherBalance({ L, R }: CipherBalance, hint?: bigint, keyIndex?: number): bigint {
+        const pk = keyIndex !== undefined ? this.pks[keyIndex]! : this.pk;
         if (hint) {
-            if (assertBalance(this.pk, hint, L, R)) {
+            if (assertBalance(pk, hint, L, R)) {
                 return hint;
             }
         }
-        return decipherBalance(this.pk, L, R);
+        return decipherBalance(pk, L, R);
     }
 
-    async deriveSymmetricKeyForPubKey(nonce: bigint, other: PubKey) {
-        const sharedSecret = ECDiffieHellman(this.pk, pubKeyAffineToHex(other));
+    async deriveSymmetricKeyForPubKey(nonce: bigint, other: PubKey, keyIndex: number) {
+        const pk = this.pks[keyIndex]!;
+        const sharedSecret = ECDiffieHellman(pk, pubKeyAffineToHex(other));
         return deriveSymmetricEncryptionKey({
             contractAddress: this.Tongo.address,
             nonce,
@@ -98,30 +133,35 @@ export class Auditor {
         });
     }
 
-    async decryptAEHintForPubKey(aeHint: AEBalance, accountNonce: bigint, other: PubKey): Promise<bigint> {
-        const keyAEHint = await this.deriveSymmetricKeyForPubKey(accountNonce, other);
+    async decryptAEHintForPubKey(aeHint: AEBalance, accountNonce: bigint, other: PubKey, auditorPubKey: PubKey): Promise<{ balance: bigint; keyIndex: number }> {
+        const keyIndex = this.findKeyIndex(auditorPubKey);
         const { ciphertext, nonce: cipherNonce } = AEHintToBytes(aeHint);
+        const keyAEHint = await this.deriveSymmetricKeyForPubKey(accountNonce, other, keyIndex);
         const balance = new AEChaCha(keyAEHint).decryptBalance({ ciphertext, nonce: cipherNonce });
-        return balance;
+        return { balance, keyIndex };
     }
 
     async getUserBalances(initialBlock: number, otherPubKey: PubKey): Promise<AuditorBalanceDeclared[]> {
         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
         const events = await reader.getEventsBalanceDeclared(initialBlock, otherPubKey);
         return Promise.all(events.map(
-            async (event) => ({
-                type: AuditorEvent.BalanceDeclared,
-                tx_hash: event.tx_hash,
-                block_number: event.block_number,
-                transaction_index: event.transaction_index,
-                event_index: event.event_index,
-                nonce: event.nonce,
-                user: pubKeyAffineToBase58(otherPubKey),
-                amount: this.decryptCipherBalance(
-                    parseCipherBalance(event.declaredCipherBalance),
-                    await this.decryptAEHintForPubKey(event.hint, event.nonce, otherPubKey)
-                ),
-            } as AuditorBalanceDeclared)
+            async (event) => {
+                const { balance: hint, keyIndex } = await this.decryptAEHintForPubKey(event.hint, event.nonce, otherPubKey, event.auditorPubKey);
+                return {
+                    type: AuditorEvent.BalanceDeclared,
+                    tx_hash: event.tx_hash,
+                    block_number: event.block_number,
+                    transaction_index: event.transaction_index,
+                    event_index: event.event_index,
+                    nonce: event.nonce,
+                    user: pubKeyAffineToBase58(otherPubKey),
+                    amount: this.decryptCipherBalance(
+                        parseCipherBalance(event.declaredCipherBalance),
+                        hint,
+                        keyIndex
+                    ),
+                } as AuditorBalanceDeclared;
+            }
         ));
     }
 
@@ -145,18 +185,22 @@ export class Auditor {
         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
         const events = await reader.getEventsTransferFrom(initialBlock, otherPubKey);
         return Promise.all(events.map(
-            async (event) => ({
-                type: AuditorEvent.TransferOutDeclared,
-                tx_hash: event.tx_hash,
-                block_number: event.block_number,
-                sender_nonce: event.nonce,
-                user: pubKeyAffineToBase58(otherPubKey),
-                amount: this.decryptCipherBalance(
-                    parseCipherBalance(event.declaredCipherBalance),
-                    await this.decryptAEHintForPubKey(event.hint, event.nonce, otherPubKey)
-                ),
-                to: pubKeyAffineToBase58(event.to),
-            } as AuditorTransferOutDeclared)
+            async (event) => {
+                const { balance: hint, keyIndex } = await this.decryptAEHintForPubKey(event.hint, event.nonce, otherPubKey, event.auditorPubKey);
+                return {
+                    type: AuditorEvent.TransferOutDeclared,
+                    tx_hash: event.tx_hash,
+                    block_number: event.block_number,
+                    sender_nonce: event.nonce,
+                    user: pubKeyAffineToBase58(otherPubKey),
+                    amount: this.decryptCipherBalance(
+                        parseCipherBalance(event.declaredCipherBalance),
+                        hint,
+                        keyIndex
+                    ),
+                    to: pubKeyAffineToBase58(event.to),
+                } as AuditorTransferOutDeclared;
+            }
         ));
     }
 
@@ -164,18 +208,22 @@ export class Auditor {
         const reader = new StarknetEventReader(this.provider, this.Tongo.address);
         const events = await reader.getEventsTransferTo(initialBlock, otherPubKey);
         return Promise.all(events.map(
-            async (event) => ({
-                type: AuditorEvent.TransferInDeclared,
-                tx_hash: event.tx_hash,
-                block_number: event.block_number,
-                sender_nonce: event.nonce,
-                user: pubKeyAffineToBase58(otherPubKey),
-                amount: this.decryptCipherBalance(
-                    parseCipherBalance(event.declaredCipherBalance),
-                    await this.decryptAEHintForPubKey(event.hint, event.nonce, event.from)
-                ),
-                from: pubKeyAffineToBase58(event.from),
-            } as AuditorTransferInDeclared)
+            async (event) => {
+                const { balance: hint, keyIndex } = await this.decryptAEHintForPubKey(event.hint, event.nonce, event.from, event.auditorPubKey);
+                return {
+                    type: AuditorEvent.TransferInDeclared,
+                    tx_hash: event.tx_hash,
+                    block_number: event.block_number,
+                    sender_nonce: event.nonce,
+                    user: pubKeyAffineToBase58(otherPubKey),
+                    amount: this.decryptCipherBalance(
+                        parseCipherBalance(event.declaredCipherBalance),
+                        hint,
+                        keyIndex
+                    ),
+                    from: pubKeyAffineToBase58(event.from),
+                } as AuditorTransferInDeclared;
+            }
         ));
     }
 

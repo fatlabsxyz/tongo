@@ -1,2 +1,3 @@
 deployments
 tsconfig.tsbuildinfo
+.env*
