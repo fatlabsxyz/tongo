@@ -3,6 +3,7 @@ use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::state::State;
 use crate::structs::operations::fund::Fund;
+use crate::structs::operations::fund::OutsideFund;
 use crate::structs::operations::ragequit::Ragequit;
 use crate::structs::operations::rollover::Rollover;
 use crate::structs::operations::transfer::Transfer;
@@ -32,6 +33,11 @@ pub trait ITongo<TContractState> {
     ///
     /// Emits FundEvent
     fn fund(ref self: TContractState, fund: Fund);
+
+    /// Funds a tongo acount. Can be called without knowledge of the pk.
+    ///
+    /// Emits OutsideFundEvent
+    fn fund_from_outside(ref self: TContractState, outsideFund: OutsideFund);
 
     /// Withdraw Tongos and send the ERC20 to a starknet address.
     ///

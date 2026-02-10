@@ -9,6 +9,7 @@ const abiStructs = CallData.getAbiStruct(tongoAbi);
 const abiEnums = CallData.getAbiEnum(tongoAbi);
 
 const FUND_EVENT = num.toHex(hash.starknetKeccak("FundEvent"));
+const OUTSIDE_FUND_EVENT = num.toHex(hash.starknetKeccak("OutsideFundEvent"));
 const ROLLOVER_EVENT = num.toHex(hash.starknetKeccak("RolloverEvent"));
 const TRANSFER_EVENT = num.toHex(hash.starknetKeccak("TransferEvent"));
 const WITHDRAW_EVENT = num.toHex(hash.starknetKeccak("WithdrawEvent"));
@@ -17,6 +18,7 @@ const BALANCE_DECLARED_EVENT = num.toHex(hash.starknetKeccak("BalanceDeclared"))
 const TRANSFER_DECLARED_EVENT = num.toHex(hash.starknetKeccak("TransferDeclared"));
 
 const FUND_EVENT_PATH = "tongo::structs::events::FundEvent";
+const OUTSIDE_FUND_EVENT_PATH = "tongo::structs::events::OutsideFundEvent";
 const ROLLOVER_EVENT_PATH = "tongo::structs::events::RolloverEvent";
 const TRANSFER_EVENT_PATH = "tongo::structs::events::TransferEvent";
 const WITHDRAW_EVENT_PATH = "tongo::structs::events::WithdrawEvent";
@@ -26,6 +28,7 @@ const TRANSFER_DECLARED_EVENT_PATH = "tongo::structs::events::TransferDeclared";
 
 export const ReaderEventType = {
     Fund: "fund",
+    OutsideFund: "outsideFund",
     Withdraw: "withdraw",
     Ragequit: "ragequit",
     Rollover: "rollover",
@@ -47,6 +50,12 @@ interface BaseEvent {
 interface FundEventData {
     to: StarkPoint;
     nonce: bigint;
+    from: bigint;
+    amount: bigint;
+}
+
+interface OutsideFundEventData {
+    to: StarkPoint;
     from: bigint;
     amount: bigint;
 }
@@ -99,6 +108,7 @@ interface TransferDeclaredEventData {
 }
 
 type ReaderFundEvent = FundEventData & BaseEvent & { type: typeof ReaderEventType.Fund; };
+type ReaderOutsideFundEvent = OutsideFundEventData & BaseEvent & { type: typeof ReaderEventType.OutsideFund; };
 type ReaderWithdrawEvent = WithdrawEventData & BaseEvent & { type: typeof ReaderEventType.Withdraw; };
 type ReaderRagequitEvent = RagequitEventData & BaseEvent & { type: typeof ReaderEventType.Ragequit; };
 type ReaderRolloverEvent = RolloverEventData & BaseEvent & { type: typeof ReaderEventType.Rollover; };
@@ -109,6 +119,7 @@ type ReaderTransferDeclaredEvent = TransferDeclaredEventData & BaseEvent & { typ
 
 type ReaderEvent =
     ReaderFundEvent |
+    ReaderOutsideFundEvent |
     ReaderWithdrawEvent |
     ReaderRagequitEvent |
     ReaderRolloverEvent |
@@ -141,6 +152,16 @@ function parseFundEvent(event: ParsedEvent): ReaderFundEvent {
     const data = event[FUND_EVENT_PATH] as unknown as FundEventData;
     return {
         type: ReaderEventType.Fund,
+        tx_hash: event.transaction_hash!,
+        block_number: event.block_number! as number,
+        ...data,
+    };
+}
+
+function parseOutsideFundEvent(event: ParsedEvent): ReaderOutsideFundEvent {
+    const data = event[OUTSIDE_FUND_EVENT_PATH] as unknown as OutsideFundEventData;
+    return {
+        type: ReaderEventType.OutsideFund,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
         ...data,
@@ -223,6 +244,21 @@ export class StarknetEventReader {
             .map((event) => parseFundEvent(event));
     }
 
+    async getEventsOutsideFund(initialBlock: number, otherPubKey: PubKey): Promise<ReaderOutsideFundEvent[]> {
+        const eventsResults = await this.provider.getEvents({
+            address: this.tongoAddress,
+            from_block: { block_number: initialBlock },
+            to_block: "latest",
+            keys: [[OUTSIDE_FUND_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
+            chunk_size: 100,
+        });
+
+        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
+        return parsedEvents
+            .filter((event) => event[OUTSIDE_FUND_EVENT_PATH] !== undefined)
+            .map((event) => parseOutsideFundEvent(event));
+    }
+
     async getEventsWithdraw(initialBlock: number, otherPubKey: PubKey) {
         const eventsResults = await this.provider.getEvents({
             address: this.tongoAddress,
@@ -301,6 +337,7 @@ export class StarknetEventReader {
     async getAllEvents(initialBlock: number, otherPubKey: PubKey): Promise<ReaderEvent[]> {
         const promises = Promise.all([
             this.getEventsFund(initialBlock, otherPubKey),
+            this.getEventsOutsideFund(initialBlock, otherPubKey),
             this.getEventsRollover(initialBlock, otherPubKey),
             this.getEventsWithdraw(initialBlock, otherPubKey),
             this.getEventsRagequit(initialBlock, otherPubKey),
