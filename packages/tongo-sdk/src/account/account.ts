@@ -56,8 +56,9 @@ export class Account implements IAccount {
     pk: bigint;
     provider: RpcProvider;
     Tongo: TongoContract;
+    reader: StarknetEventReader;
 
-    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
+    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider, chunkSize?: number) {
         this.pk = bytesOrNumToBigInt(pk);
         this.Tongo = new Contract({
             abi: tongoAbi,
@@ -66,6 +67,7 @@ export class Account implements IAccount {
         }).typedv2(tongoAbi);
         this.publicKey = pubKeyFromSecret(this.pk);
         this.provider = provider;
+        this.reader = new StarknetEventReader(provider, contractAddress, chunkSize);
     }
 
     tongoAddress(): TongoAddress {
@@ -448,9 +450,8 @@ export class Account implements IAccount {
         };
     }
 
-    async getEventsFund(initialBlock: number): Promise<AccountFundEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsFund(initialBlock, this.publicKey);
+    async getEventsFund(initialBlock: number, allEvents?: boolean): Promise<AccountFundEvent[]> {
+        const events = await this.reader.getEventsFund(initialBlock, this.publicKey, allEvents);
         return events.map(
             (event) =>
                 ({
@@ -464,9 +465,8 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsRollover(initialBlock: number): Promise<AccountRolloverEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsRollover(initialBlock, this.publicKey);
+    async getEventsRollover(initialBlock: number, allEvents?: boolean): Promise<AccountRolloverEvent[]> {
+        const events = await this.reader.getEventsRollover(initialBlock, this.publicKey, allEvents);
         return events.map(
             (event) =>
                 ({
@@ -479,9 +479,8 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsWithdraw(initialBlock: number): Promise<AccountWithdrawEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsWithdraw(initialBlock, this.publicKey);
+    async getEventsWithdraw(initialBlock: number, allEvents?: boolean): Promise<AccountWithdrawEvent[]> {
+        const events = await this.reader.getEventsWithdraw(initialBlock, this.publicKey, allEvents);
         return events.map(
             (event) =>
                 ({
@@ -495,9 +494,8 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsRagequit(initialBlock: number): Promise<AccountRagequitEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsRagequit(initialBlock, this.publicKey);
+    async getEventsRagequit(initialBlock: number, allEvents?: boolean): Promise<AccountRagequitEvent[]> {
+        const events = await this.reader.getEventsRagequit(initialBlock, this.publicKey, allEvents);
         return events.map(
             (event) =>
                 ({
@@ -511,9 +509,8 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsTransferOut(initialBlock: number): Promise<AccountTransferOutEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsTransferOut(initialBlock, this.publicKey);
+    async getEventsTransferOut(initialBlock: number, allEvents?: boolean): Promise<AccountTransferOutEvent[]> {
+        const events = await this.reader.getEventsTransferOut(initialBlock, this.publicKey, allEvents);
         return Promise.all(events.map(
             async (event) =>
                 ({
@@ -530,9 +527,8 @@ export class Account implements IAccount {
         ));
     }
 
-    async getEventsTransferIn(initialBlock: number): Promise<AccountTransferInEvent[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsTransferIn(initialBlock, this.publicKey);
+    async getEventsTransferIn(initialBlock: number, allEvents?: boolean): Promise<AccountTransferInEvent[]> {
+        const events = await this.reader.getEventsTransferIn(initialBlock, this.publicKey, allEvents);
         return Promise.all(events.map(
             async (event) => ({
                 type: ReaderToAccountEvents[event.type],
@@ -548,14 +544,14 @@ export class Account implements IAccount {
         ));
     }
 
-    async getTxHistory(initialBlock: number): Promise<AccountEvents[]> {
+    async getTxHistory(initialBlock: number, allEvents?: boolean): Promise<AccountEvents[]> {
         const promises = Promise.all([
-            this.getEventsFund(initialBlock),
-            this.getEventsRollover(initialBlock),
-            this.getEventsWithdraw(initialBlock),
-            this.getEventsRagequit(initialBlock),
-            this.getEventsTransferOut(initialBlock),
-            this.getEventsTransferIn(initialBlock),
+            this.getEventsFund(initialBlock, allEvents),
+            this.getEventsRollover(initialBlock, allEvents),
+            this.getEventsWithdraw(initialBlock, allEvents),
+            this.getEventsRagequit(initialBlock, allEvents),
+            this.getEventsTransferOut(initialBlock, allEvents),
+            this.getEventsTransferIn(initialBlock, allEvents),
         ]);
 
         const events = (await promises).flat();
