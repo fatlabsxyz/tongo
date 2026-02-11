@@ -201,11 +201,13 @@ export class StarknetEventReader {
     private readonly provider: RpcProvider;
     private static readonly abiParser = new AbiParser2(tongoAbi);
     private readonly abiParser = StarknetEventReader.abiParser;
+    readonly chunkSize: number;
     tongoAddress: string;
 
-    constructor(provider: RpcProvider, tongoAddress: string) {
+    constructor(provider: RpcProvider, tongoAddress: string, chunkSize: number = 100) {
         this.provider = provider;
         this.tongoAddress = tongoAddress;
+        this.chunkSize = chunkSize;
     }
 
     async getEventsFund(initialBlock: number, otherPubKey: PubKey): Promise<ReaderFundEvent[]> {
@@ -214,7 +216,7 @@ export class StarknetEventReader {
             from_block: { block_number: initialBlock },
             to_block: "latest",
             keys: [[FUND_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            chunk_size: 100,
+            chunk_size: this.chunkSize,
         });
 
         const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
@@ -229,7 +231,7 @@ export class StarknetEventReader {
             from_block: { block_number: initialBlock },
             to_block: "latest",
             keys: [[WITHDRAW_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            chunk_size: 100,
+            chunk_size: this.chunkSize,
         });
 
         const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
@@ -244,7 +246,7 @@ export class StarknetEventReader {
             from_block: { block_number: initialBlock },
             to_block: "latest",
             keys: [[RAGEQUIT_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            chunk_size: 100,
+            chunk_size: this.chunkSize,
         });
 
         const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
@@ -259,7 +261,7 @@ export class StarknetEventReader {
             from_block: { block_number: initialBlock },
             to_block: "latest",
             keys: [[ROLLOVER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            chunk_size: 100,
+            chunk_size: this.chunkSize,
         });
 
         const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
@@ -274,7 +276,7 @@ export class StarknetEventReader {
             from_block: { block_number: initialBlock },
             to_block: "latest",
             keys: [[TRANSFER_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
-            chunk_size: 100,
+            chunk_size: this.chunkSize,
         });
 
         const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
@@ -289,7 +291,7 @@ export class StarknetEventReader {
             from_block: { block_number: initialBlock },
             to_block: "latest",
             keys: [[TRANSFER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            chunk_size: 100,
+            chunk_size: this.chunkSize,
         });
 
         const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
@@ -318,7 +320,7 @@ export class StarknetEventReader {
             from_block: { block_number: initialBlock },
             to_block: "latest",
             keys: [[BALANCE_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            chunk_size: 100,
+            chunk_size: this.chunkSize,
         });
         const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
@@ -332,7 +334,7 @@ export class StarknetEventReader {
             from_block: { block_number: initialBlock },
             to_block: "latest",
             keys: [[TRANSFER_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            chunk_size: 100,
+            chunk_size: this.chunkSize,
         });
 
         const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
@@ -348,7 +350,7 @@ export class StarknetEventReader {
             from_block: { block_number: initialBlock },
             to_block: "latest",
             keys: [[TRANSFER_DECLARED_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
-            chunk_size: 100,
+            chunk_size: this.chunkSize,
         });
 
         const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
