@@ -210,152 +210,107 @@ export class StarknetEventReader {
         this.chunkSize = chunkSize;
     }
 
-    async getEventsFund(initialBlock: number, otherPubKey: PubKey): Promise<ReaderFundEvent[]> {
-        const eventsResults = await this.provider.getEvents({
-            address: this.tongoAddress,
-            from_block: { block_number: initialBlock },
-            to_block: "latest",
-            keys: [[FUND_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            chunk_size: this.chunkSize,
-        });
+    private async fetchEvents<T>(
+        keys: string[][],
+        initialBlock: number,
+        eventPath: string,
+        parser: (event: ParsedEvent) => T,
+        allEvents: boolean = false,
+    ): Promise<T[]> {
+        const allRawEvents: any[] = [];
+        let continuationToken: string | undefined;
 
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
+        do {
+            const result = await this.provider.getEvents({
+                address: this.tongoAddress,
+                from_block: { block_number: initialBlock },
+                to_block: "latest",
+                keys,
+                chunk_size: this.chunkSize,
+                ...(continuationToken && { continuation_token: continuationToken }),
+            });
+            allRawEvents.push(...result.events);
+            continuationToken = allEvents ? result.continuation_token : undefined;
+        } while (continuationToken);
+
+        const parsedEvents = events.parseEvents(allRawEvents, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
-            .filter((event) => event[FUND_EVENT_PATH] !== undefined)
-            .map((event) => parseFundEvent(event));
+            .filter((event) => event[eventPath] !== undefined)
+            .map((event) => parser(event));
     }
 
-    async getEventsWithdraw(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
-            address: this.tongoAddress,
-            from_block: { block_number: initialBlock },
-            to_block: "latest",
-            keys: [[WITHDRAW_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            chunk_size: this.chunkSize,
-        });
-
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
-        return parsedEvents
-            .filter((event) => event[WITHDRAW_EVENT_PATH] !== undefined)
-            .map((event) => parseWithdrawEvent(event));
+    async getEventsFund(initialBlock: number, otherPubKey: PubKey, allEvents = false): Promise<ReaderFundEvent[]> {
+        return this.fetchEvents(
+            [[FUND_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
+            initialBlock, FUND_EVENT_PATH, parseFundEvent, allEvents,
+        );
     }
 
-    async getEventsRagequit(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
-            address: this.tongoAddress,
-            from_block: { block_number: initialBlock },
-            to_block: "latest",
-            keys: [[RAGEQUIT_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            chunk_size: this.chunkSize,
-        });
-
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
-        return parsedEvents
-            .filter((event) => event[RAGEQUIT_EVENT_PATH] !== undefined)
-            .map((event) => parseRagequitEvent(event));
+    async getEventsWithdraw(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+        return this.fetchEvents(
+            [[WITHDRAW_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
+            initialBlock, WITHDRAW_EVENT_PATH, parseWithdrawEvent, allEvents,
+        );
     }
 
-    async getEventsRollover(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
-            address: this.tongoAddress,
-            from_block: { block_number: initialBlock },
-            to_block: "latest",
-            keys: [[ROLLOVER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            chunk_size: this.chunkSize,
-        });
-
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
-        return parsedEvents
-            .filter((event) => event[ROLLOVER_EVENT_PATH] !== undefined)
-            .map((event) => parseRolloverEvent(event));
+    async getEventsRagequit(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+        return this.fetchEvents(
+            [[RAGEQUIT_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
+            initialBlock, RAGEQUIT_EVENT_PATH, parseRagequitEvent, allEvents,
+        );
     }
 
-    async getEventsTransferOut(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
-            address: this.tongoAddress,
-            from_block: { block_number: initialBlock },
-            to_block: "latest",
-            keys: [[TRANSFER_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
-            chunk_size: this.chunkSize,
-        });
-
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
-        return parsedEvents
-            .filter((event) => event[TRANSFER_EVENT_PATH] !== undefined)
-            .map((event) => parseTransferEventOut(event));
+    async getEventsRollover(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+        return this.fetchEvents(
+            [[ROLLOVER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
+            initialBlock, ROLLOVER_EVENT_PATH, parseRolloverEvent, allEvents,
+        );
     }
 
-    async getEventsTransferIn(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
-            address: this.tongoAddress,
-            from_block: { block_number: initialBlock },
-            to_block: "latest",
-            keys: [[TRANSFER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            chunk_size: this.chunkSize,
-        });
-
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
-        return parsedEvents
-            .filter((event) => event[TRANSFER_EVENT_PATH] !== undefined)
-            .map((event) => parseTransferEventIn(event));
+    async getEventsTransferOut(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+        return this.fetchEvents(
+            [[TRANSFER_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
+            initialBlock, TRANSFER_EVENT_PATH, parseTransferEventOut, allEvents,
+        );
     }
 
-    async getAllEvents(initialBlock: number, otherPubKey: PubKey): Promise<ReaderEvent[]> {
-        const promises = Promise.all([
-            this.getEventsFund(initialBlock, otherPubKey),
-            this.getEventsRollover(initialBlock, otherPubKey),
-            this.getEventsWithdraw(initialBlock, otherPubKey),
-            this.getEventsRagequit(initialBlock, otherPubKey),
-            this.getEventsTransferOut(initialBlock, otherPubKey),
-            this.getEventsTransferIn(initialBlock, otherPubKey),
+    async getEventsTransferIn(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+        return this.fetchEvents(
+            [[TRANSFER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
+            initialBlock, TRANSFER_EVENT_PATH, parseTransferEventIn, allEvents,
+        );
+    }
+
+    async getAllEvents(initialBlock: number, otherPubKey: PubKey, allEvents = false): Promise<ReaderEvent[]> {
+        const results = await Promise.all([
+            this.getEventsFund(initialBlock, otherPubKey, allEvents),
+            this.getEventsRollover(initialBlock, otherPubKey, allEvents),
+            this.getEventsWithdraw(initialBlock, otherPubKey, allEvents),
+            this.getEventsRagequit(initialBlock, otherPubKey, allEvents),
+            this.getEventsTransferOut(initialBlock, otherPubKey, allEvents),
+            this.getEventsTransferIn(initialBlock, otherPubKey, allEvents),
         ]);
-
-        const events = (await promises).flat();
-        return events.sort((a, b) => b.block_number - a.block_number);
+        return results.flat().sort((a, b) => b.block_number - a.block_number);
     }
 
-    async getEventsBalanceDeclared(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
-            address: this.tongoAddress,
-            from_block: { block_number: initialBlock },
-            to_block: "latest",
-            keys: [[BALANCE_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            chunk_size: this.chunkSize,
-        });
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
-        return parsedEvents
-            .filter((event) => event[BALANCE_DECLARED_EVENT_PATH] !== undefined)
-            .map((event) => parseBalanceDeclaredEvent(event));
+    async getEventsBalanceDeclared(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+        return this.fetchEvents(
+            [[BALANCE_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
+            initialBlock, BALANCE_DECLARED_EVENT_PATH, parseBalanceDeclaredEvent, allEvents,
+        );
     }
 
-    async getEventsTransferFrom(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
-            address: this.tongoAddress,
-            from_block: { block_number: initialBlock },
-            to_block: "latest",
-            keys: [[TRANSFER_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            chunk_size: this.chunkSize,
-        });
-
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
-        return parsedEvents
-            .filter((event) => event[TRANSFER_DECLARED_EVENT_PATH] !== undefined)
-            .map((event) => parseTransferDeclaredEvent(event));
+    async getEventsTransferFrom(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+        return this.fetchEvents(
+            [[TRANSFER_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
+            initialBlock, TRANSFER_DECLARED_EVENT_PATH, parseTransferDeclaredEvent, allEvents,
+        );
     }
 
-
-    async getEventsTransferTo(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
-            address: this.tongoAddress,
-            from_block: { block_number: initialBlock },
-            to_block: "latest",
-            keys: [[TRANSFER_DECLARED_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
-            chunk_size: this.chunkSize,
-        });
-
-        const parsedEvents = events.parseEvents(eventsResults.events, abiEvents, abiStructs, abiEnums, this.abiParser);
-        return parsedEvents
-            .filter((event) => event[TRANSFER_DECLARED_EVENT_PATH] !== undefined)
-            .map((event) => parseTransferDeclaredEvent(event));
+    async getEventsTransferTo(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+        return this.fetchEvents(
+            [[TRANSFER_DECLARED_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
+            initialBlock, TRANSFER_DECLARED_EVENT_PATH, parseTransferDeclaredEvent, allEvents,
+        );
     }
 }
