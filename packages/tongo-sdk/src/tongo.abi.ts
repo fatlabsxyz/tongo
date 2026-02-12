@@ -302,6 +302,16 @@ export const tongoAbi = [
     },
     {
         "type": "struct",
+        "name": "tongo::structs::common::relayer::RelayData",
+        "members": [
+            {
+                "name": "fee_to_sender",
+                "type": "core::integer::u128"
+            }
+        ]
+    },
+    {
+        "type": "struct",
         "name": "tongo::structs::operations::withdraw::Withdraw",
         "members": [
             {
@@ -327,6 +337,10 @@ export const tongoAbi = [
             {
                 "name": "proof",
                 "type": "tongo::structs::operations::withdraw::ProofOfWithdraw"
+            },
+            {
+                "name": "relayData",
+                "type": "tongo::structs::common::relayer::RelayData"
             },
             {
                 "name": "auditPart",
@@ -375,6 +389,10 @@ export const tongoAbi = [
             {
                 "name": "proof",
                 "type": "tongo::structs::operations::ragequit::ProofOfRagequit"
+            },
+            {
+                "name": "relayData",
+                "type": "tongo::structs::common::relayer::RelayData"
             },
             {
                 "name": "auditPart",
@@ -487,6 +505,10 @@ export const tongoAbi = [
             {
                 "name": "proof",
                 "type": "tongo::structs::operations::transfer::ProofOfTransfer"
+            },
+            {
+                "name": "relayData",
+                "type": "tongo::structs::common::relayer::RelayData"
             },
             {
                 "name": "auditPart",

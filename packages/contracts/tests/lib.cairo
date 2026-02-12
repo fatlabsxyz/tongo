@@ -12,6 +12,7 @@ pub mod tongo {
     pub mod full;
     pub mod validation;
     pub mod operations;
+    pub mod relay;
 }
 
 pub mod verifier {

@@ -7,7 +7,7 @@ use crate::consts::{ AUDITOR_PRIVATE};
 use crate::prover::utils::{decipher_balance};
 use crate::tongo::setup::{setup_tongo};
 use crate::prover::utils::pubkey_from_secret;
-use crate::consts::{USER_CALLER};
+use crate::consts::{USER_ADDRESS};
 
 fn checkBalances(x: felt252, balanceAmount:u128, pendingAmount:u128,auditAmount:u128, dispatcher: ITongoDispatcher) {
     let public_key = pubkey_from_secret(x);
@@ -34,6 +34,7 @@ fn full() {
 
     let x_bar = 9583954385;
     let y_bar = pubkey_from_secret(x_bar);
+    let fee_to_sender = 0;
 
     // The initial pendings, balance, and audits should be 0
     checkBalances(x,0,0,0,dispatcher);
@@ -49,7 +50,7 @@ fn full() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x,USER_CALLER, initial_balance,initial_fund,dispatcher);
+    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
     dispatcher.fund(operation);
 
     //Bufer should be 0, balance initial_balance and audit initial_balance
@@ -59,7 +60,7 @@ fn full() {
     assert!(nonce == 1, "Nonce is not 1");
 
     let transfer_amount = 100_u128;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,dispatcher);
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,dispatcher);
     dispatcher.transfer(operation);
 
     // nonce for y should be 2
@@ -83,7 +84,7 @@ fn full() {
     //y_bar will withdraw amount
     let withdraw_amount = 25;
     let transfer_address: ContractAddress = 'asdf'.try_into().unwrap();
-    let operation = withdrawOperation(x_bar,transfer_amount, withdraw_amount, transfer_address,dispatcher);
+    let operation = withdrawOperation(x_bar,transfer_amount, withdraw_amount, transfer_address,USER_ADDRESS,0, dispatcher);
     dispatcher.withdraw(operation);
 
     //now y_bar noce should be 2
@@ -94,7 +95,7 @@ fn full() {
 
     //y will ragequit
 
-    let operation = ragequitOperation(x, initial_fund - transfer_amount,transfer_address,dispatcher);
+    let operation = ragequitOperation(x, initial_fund - transfer_amount,transfer_address,USER_ADDRESS,0, dispatcher);
     dispatcher.ragequit(operation);
 
     // nonce for y should be 3

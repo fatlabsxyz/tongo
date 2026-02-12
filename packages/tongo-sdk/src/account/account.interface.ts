@@ -69,6 +69,7 @@ export interface TransferDetails {
     amount: bigint;
     to: PubKey;
     sender: string,
+    fee_to_sender?:bigint,
 }
 
 export interface RolloverDetails {
@@ -78,12 +79,14 @@ export interface RolloverDetails {
 export interface RagequitDetails {
     to: string;
     sender: string,
+    fee_to_sender?: bigint,
 }
 
 export interface WithdrawDetails {
     to: string;
     amount: bigint;
     sender: string,
+    fee_to_sender?: bigint,
 }
 
 export interface RawAccountState {
