@@ -1,7 +1,7 @@
 import { poe } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g } from "../constants";
-import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
+import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint, RelayData } from "../types";
 import { createCipherBalance} from "../../src/utils";
 
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
@@ -18,6 +18,7 @@ export const RAGEQUIT_CAIRO_STRING = 8241982478457596276n;
  * @property {bigint} amount - The amount of tongo to ragequit (the total amount of tongos in the account)
  * @property {CipherBalance} currentBalance - The current CipherBalance stored for the account
  * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
+ * @property {RelayData} relay_data - relay data for the operation
  */
 export interface InputsRagequit {
     y: ProjectivePoint;
@@ -26,6 +27,7 @@ export interface InputsRagequit {
     amount: bigint;
     currentBalance: CipherBalance;
     prefix_data: GeneralPrefixData,
+    relay_data: RelayData,
 }
 
 /**
@@ -39,6 +41,7 @@ function prefixRagequit(inputs: InputsRagequit): bigint {
         chain_id,
         tongo_address,
         sender_address,
+        inputs.relay_data.fee_to_sender,
         RAGEQUIT_CAIRO_STRING,
         inputs.y.toAffine().x,
         inputs.y.toAffine().y,
@@ -74,6 +77,7 @@ export function proveRagequit(
     to: bigint,
     full_amount: bigint,
     prefix_data: GeneralPrefixData,
+    fee_to_sender: bigint,
 ): { inputs: InputsRagequit, proof: ProofOfRagequit, newBalance: CipherBalance; } {
 
     const x = private_key;
@@ -85,6 +89,8 @@ export function proveRagequit(
     const temp = g.multiplyUnsafe(full_amount);
     if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
 
+    let relay_data: RelayData = {fee_to_sender};
+
     const inputs: InputsRagequit = {
         y,
         nonce,
@@ -92,6 +98,7 @@ export function proveRagequit(
         amount: full_amount,
         currentBalance: initial_cipherbalance,
         prefix_data,
+        relay_data,
     };
     const prefix = prefixRagequit(inputs);
 

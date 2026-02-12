@@ -26,6 +26,7 @@ use crate::verifier::utils::{generator_h};
 /// EC_ADD: 8 + n*4  = 136 for u32
 pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
     let prefix = inputs.compute_prefix();
+
     let c = proof.compute_challenge(prefix);
 
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
@@ -35,7 +36,14 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
     //
     //verifyOwnership(inputs.y, proof.A_x, c, proof.sx);
 
-    let (L0, R0) = inputs.currentBalance.points_nz();
+    let mut currentBalance = inputs.currentBalance;
+
+    if inputs.relayData.fee_to_sender != 0 {
+        let fee = CipherBalanceTrait::new(inputs.y, inputs.relayData.fee_to_sender.into(), 'fee' );
+        currentBalance = currentBalance.subtract(fee)
+    }
+
+    let (L0, R0) = currentBalance.points_nz();
     let L0 = L0.into() - g.into().mul(inputs.amount.into());
     let (V, R_aux) = inputs.auxiliarCipher.points_nz();
 

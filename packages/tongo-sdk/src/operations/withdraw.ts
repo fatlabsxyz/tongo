@@ -1,4 +1,4 @@
-import { ProjectivePoint } from "../types";
+import { ProjectivePoint, RelayData } from "../types";
 import { ProofOfWithdraw } from "../provers/withdraw";
 import { CipherBalance } from "../types.js";
 import { Call, Contract, num, CairoOption } from "starknet";
@@ -19,6 +19,7 @@ export interface IWithdrawOperation extends IOperation {
  * @property {AEBalance} hint - AE encryption of the final balance of the account
  * @property {ProofOfWithdraw} proof - ZK proof for the withdraw operation
  * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx
+ * @property {RelayData} relayData - relay data for the operation
  * @property {Contract} Tongo - The Tongo instance to interact with
  */
 interface WithdrawOpParams {
@@ -29,6 +30,7 @@ interface WithdrawOpParams {
     hint: AEBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
+    relayData: RelayData;
     Tongo: Contract;
 }
 
@@ -41,9 +43,10 @@ export class WithdrawOperation implements IWithdrawOperation {
     auxiliarCipher: CipherBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
+    relayData: RelayData;
     Tongo: Contract;
 
-    constructor({ from, to, amount, proof, auditPart, Tongo, hint, auxiliarCipher }: WithdrawOpParams) {
+    constructor({ from, to, amount, proof, auditPart, Tongo, hint, auxiliarCipher, relayData}: WithdrawOpParams) {
         this.from = from;
         this.to = to;
         this.amount = amount;
@@ -51,6 +54,7 @@ export class WithdrawOperation implements IWithdrawOperation {
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
+        this.relayData = relayData;
         this.Tongo = Tongo;
     }
 
@@ -64,6 +68,7 @@ export class WithdrawOperation implements IWithdrawOperation {
                 auxiliarCipher: this.auxiliarCipher,
                 auditPart: this.auditPart,
                 proof: this.proof,
+                relayData: this.relayData,
             },
         ]);
     }

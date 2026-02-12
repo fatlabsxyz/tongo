@@ -1,4 +1,4 @@
-import { ProjectivePoint } from "../types";
+import { ProjectivePoint, RelayData } from "../types";
 import { ProofOfRagequit } from "../provers/ragequit";
 import { Call, Contract, CairoOption } from "starknet";
 import { IOperation, OperationType } from "./operation.js";
@@ -18,6 +18,7 @@ export interface IRagequitOperation extends IOperation {
  * @property {AEBalance} hint - AE encryption of the final balance of the account
  * @property {ProofOfRagequit} proof - ZK proof for the ragequit operation
  * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx. (In theory it is not necessary for this operation, but it helps to keep things consistent and clean for a minimal cost)
+ * @property {RelayData} relayData - relay data for the operation
  * @property {Contract} Tongo - The tongo instance to interact with
  */
 interface RagequitOpParams {
@@ -27,6 +28,7 @@ interface RagequitOpParams {
     hint: AEBalance;
     proof: ProofOfRagequit;
     auditPart: CairoOption<Audit>;
+    relayData: RelayData;
     Tongo: Contract;
 }
 
@@ -37,16 +39,18 @@ export class RagequitOperation implements IRagequitOperation {
     amount: bigint;
     hint: AEBalance;
     auditPart: CairoOption<Audit>;
+    relayData: RelayData;
     proof: ProofOfRagequit;
     Tongo: Contract;
 
-    constructor({ from, to, amount, proof, Tongo, hint, auditPart }: RagequitOpParams) {
+    constructor({ from, to, amount, proof, Tongo, hint, auditPart, relayData }: RagequitOpParams) {
         this.from = from;
         this.to = to;
         this.amount = amount;
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
+        this.relayData = relayData;
         this.Tongo = Tongo;
     }
 
@@ -59,6 +63,7 @@ export class RagequitOperation implements IRagequitOperation {
                 proof: this.proof,
                 hint: this.hint,
                 auditPart: this.auditPart,
+                relayData: this.relayData,
             },
         ]);
     }
