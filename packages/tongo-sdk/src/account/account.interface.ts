@@ -51,13 +51,13 @@ export interface IAccount {
     verifyExPost(expost: ExPost): bigint;
 
     // events
-    getEventsFund(initialBlock: number, allEvents?: boolean): Promise<AccountFundEvent[]>;
-    getEventsRollover(initialBlock: number, allEvents?: boolean): Promise<AccountRolloverEvent[]>;
-    getEventsWithdraw(initialBlock: number, allEvents?: boolean): Promise<AccountWithdrawEvent[]>;
-    getEventsRagequit(initialBlock: number, allEvents?: boolean): Promise<AccountRagequitEvent[]>;
-    getEventsTransferOut(initialBlock: number, allEvents?: boolean): Promise<AccountTransferOutEvent[]>;
-    getEventsTransferIn(initialBlock: number, allEvents?: boolean): Promise<AccountTransferInEvent[]>;
-    getTxHistory(initialBlock: number, allEvents?: boolean): Promise<AccountEvents[]>;
+    getEventsFund(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountFundEvent[]>;
+    getEventsRollover(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountRolloverEvent[]>;
+    getEventsWithdraw(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountWithdrawEvent[]>;
+    getEventsRagequit(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountRagequitEvent[]>;
+    getEventsTransferOut(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountTransferOutEvent[]>;
+    getEventsTransferIn(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountTransferInEvent[]>;
+    getTxHistory(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountEvents[]>;
 }
 
 export interface FundDetails {

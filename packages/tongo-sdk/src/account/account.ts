@@ -58,7 +58,7 @@ export class Account implements IAccount {
     Tongo: TongoContract;
     reader: StarknetEventReader;
 
-    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider, chunkSize?: number) {
+    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
         this.pk = bytesOrNumToBigInt(pk);
         this.Tongo = new Contract({
             abi: tongoAbi,
@@ -67,7 +67,7 @@ export class Account implements IAccount {
         }).typedv2(tongoAbi);
         this.publicKey = pubKeyFromSecret(this.pk);
         this.provider = provider;
-        this.reader = new StarknetEventReader(provider, contractAddress, chunkSize);
+        this.reader = new StarknetEventReader(provider, contractAddress);
     }
 
     tongoAddress(): TongoAddress {
@@ -450,8 +450,8 @@ export class Account implements IAccount {
         };
     }
 
-    async getEventsFund(initialBlock: number, allEvents?: boolean): Promise<AccountFundEvent[]> {
-        const events = await this.reader.getEventsFund(initialBlock, this.publicKey, allEvents);
+    async getEventsFund(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountFundEvent[]> {
+        const events = await this.reader.getEventsFund(fromBlock, this.publicKey, toBlock, numEvents);
         return events.map(
             (event) =>
                 ({
@@ -465,8 +465,8 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsRollover(initialBlock: number, allEvents?: boolean): Promise<AccountRolloverEvent[]> {
-        const events = await this.reader.getEventsRollover(initialBlock, this.publicKey, allEvents);
+    async getEventsRollover(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountRolloverEvent[]> {
+        const events = await this.reader.getEventsRollover(fromBlock, this.publicKey, toBlock, numEvents);
         return events.map(
             (event) =>
                 ({
@@ -479,8 +479,8 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsWithdraw(initialBlock: number, allEvents?: boolean): Promise<AccountWithdrawEvent[]> {
-        const events = await this.reader.getEventsWithdraw(initialBlock, this.publicKey, allEvents);
+    async getEventsWithdraw(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountWithdrawEvent[]> {
+        const events = await this.reader.getEventsWithdraw(fromBlock, this.publicKey, toBlock, numEvents);
         return events.map(
             (event) =>
                 ({
@@ -494,8 +494,8 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsRagequit(initialBlock: number, allEvents?: boolean): Promise<AccountRagequitEvent[]> {
-        const events = await this.reader.getEventsRagequit(initialBlock, this.publicKey, allEvents);
+    async getEventsRagequit(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountRagequitEvent[]> {
+        const events = await this.reader.getEventsRagequit(fromBlock, this.publicKey, toBlock, numEvents);
         return events.map(
             (event) =>
                 ({
@@ -509,8 +509,8 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsTransferOut(initialBlock: number, allEvents?: boolean): Promise<AccountTransferOutEvent[]> {
-        const events = await this.reader.getEventsTransferOut(initialBlock, this.publicKey, allEvents);
+    async getEventsTransferOut(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountTransferOutEvent[]> {
+        const events = await this.reader.getEventsTransferOut(fromBlock, this.publicKey, toBlock, numEvents);
         return Promise.all(events.map(
             async (event) =>
                 ({
@@ -527,8 +527,8 @@ export class Account implements IAccount {
         ));
     }
 
-    async getEventsTransferIn(initialBlock: number, allEvents?: boolean): Promise<AccountTransferInEvent[]> {
-        const events = await this.reader.getEventsTransferIn(initialBlock, this.publicKey, allEvents);
+    async getEventsTransferIn(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountTransferInEvent[]> {
+        const events = await this.reader.getEventsTransferIn(fromBlock, this.publicKey, toBlock, numEvents);
         return Promise.all(events.map(
             async (event) => ({
                 type: ReaderToAccountEvents[event.type],
@@ -544,14 +544,14 @@ export class Account implements IAccount {
         ));
     }
 
-    async getTxHistory(initialBlock: number, allEvents?: boolean): Promise<AccountEvents[]> {
+    async getTxHistory(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountEvents[]> {
         const promises = Promise.all([
-            this.getEventsFund(initialBlock, allEvents),
-            this.getEventsRollover(initialBlock, allEvents),
-            this.getEventsWithdraw(initialBlock, allEvents),
-            this.getEventsRagequit(initialBlock, allEvents),
-            this.getEventsTransferOut(initialBlock, allEvents),
-            this.getEventsTransferIn(initialBlock, allEvents),
+            this.getEventsFund(fromBlock, toBlock, numEvents),
+            this.getEventsRollover(fromBlock, toBlock, numEvents),
+            this.getEventsWithdraw(fromBlock, toBlock, numEvents),
+            this.getEventsRagequit(fromBlock, toBlock, numEvents),
+            this.getEventsTransferOut(fromBlock, toBlock, numEvents),
+            this.getEventsTransferIn(fromBlock, toBlock, numEvents),
         ]);
 
         const events = (await promises).flat();

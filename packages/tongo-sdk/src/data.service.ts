@@ -8,6 +8,7 @@ const abiEvents = events.getAbiEvents(tongoAbi);
 const abiStructs = CallData.getAbiStruct(tongoAbi);
 const abiEnums = CallData.getAbiEnum(tongoAbi);
 
+const CHUNK_SIZE = 100;
 const FUND_EVENT = num.toHex(hash.starknetKeccak("FundEvent"));
 const ROLLOVER_EVENT = num.toHex(hash.starknetKeccak("RolloverEvent"));
 const TRANSFER_EVENT = num.toHex(hash.starknetKeccak("TransferEvent"));
@@ -201,21 +202,20 @@ export class StarknetEventReader {
     private readonly provider: RpcProvider;
     private static readonly abiParser = new AbiParser2(tongoAbi);
     private readonly abiParser = StarknetEventReader.abiParser;
-    readonly chunkSize: number;
     tongoAddress: string;
 
-    constructor(provider: RpcProvider, tongoAddress: string, chunkSize: number = 100) {
+    constructor(provider: RpcProvider, tongoAddress: string) {
         this.provider = provider;
         this.tongoAddress = tongoAddress;
-        this.chunkSize = chunkSize;
     }
 
     private async fetchEvents<T>(
         keys: string[][],
-        initialBlock: number,
+        fromBlock: number,
         eventPath: string,
         parser: (event: ParsedEvent) => T,
-        allEvents: boolean = false,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
     ): Promise<T[]> {
         const allRawEvents: any[] = [];
         let continuationToken: string | undefined;
@@ -223,94 +223,100 @@ export class StarknetEventReader {
         do {
             const result = await this.provider.getEvents({
                 address: this.tongoAddress,
-                from_block: { block_number: initialBlock },
-                to_block: "latest",
+                from_block: { block_number: fromBlock },
+                to_block: toBlock === "latest" ? "latest" : { block_number: toBlock },
                 keys,
-                chunk_size: this.chunkSize,
+                chunk_size: CHUNK_SIZE,
                 ...(continuationToken && { continuation_token: continuationToken }),
             });
             allRawEvents.push(...result.events);
-            continuationToken = allEvents ? result.continuation_token : undefined;
+
+            if (numEvents !== "all" && allRawEvents.length >= numEvents) {
+                break;
+            }
+
+            continuationToken = result.continuation_token;
         } while (continuationToken);
 
-        const parsedEvents = events.parseEvents(allRawEvents, abiEvents, abiStructs, abiEnums, this.abiParser);
+        const trimmedEvents = numEvents === "all" ? allRawEvents : allRawEvents.slice(0, numEvents);
+        const parsedEvents = events.parseEvents(trimmedEvents, abiEvents, abiStructs, abiEnums, this.abiParser);
         return parsedEvents
             .filter((event) => event[eventPath] !== undefined)
             .map((event) => parser(event));
     }
 
-    async getEventsFund(initialBlock: number, otherPubKey: PubKey, allEvents = false): Promise<ReaderFundEvent[]> {
+    async getEventsFund(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<ReaderFundEvent[]> {
         return this.fetchEvents(
             [[FUND_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            initialBlock, FUND_EVENT_PATH, parseFundEvent, allEvents,
+            fromBlock, FUND_EVENT_PATH, parseFundEvent, toBlock, numEvents,
         );
     }
 
-    async getEventsWithdraw(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+    async getEventsWithdraw(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
         return this.fetchEvents(
             [[WITHDRAW_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            initialBlock, WITHDRAW_EVENT_PATH, parseWithdrawEvent, allEvents,
+            fromBlock, WITHDRAW_EVENT_PATH, parseWithdrawEvent, toBlock, numEvents,
         );
     }
 
-    async getEventsRagequit(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+    async getEventsRagequit(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
         return this.fetchEvents(
             [[RAGEQUIT_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            initialBlock, RAGEQUIT_EVENT_PATH, parseRagequitEvent, allEvents,
+            fromBlock, RAGEQUIT_EVENT_PATH, parseRagequitEvent, toBlock, numEvents,
         );
     }
 
-    async getEventsRollover(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+    async getEventsRollover(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
         return this.fetchEvents(
             [[ROLLOVER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            initialBlock, ROLLOVER_EVENT_PATH, parseRolloverEvent, allEvents,
+            fromBlock, ROLLOVER_EVENT_PATH, parseRolloverEvent, toBlock, numEvents,
         );
     }
 
-    async getEventsTransferOut(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+    async getEventsTransferOut(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
         return this.fetchEvents(
             [[TRANSFER_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
-            initialBlock, TRANSFER_EVENT_PATH, parseTransferEventOut, allEvents,
+            fromBlock, TRANSFER_EVENT_PATH, parseTransferEventOut, toBlock, numEvents,
         );
     }
 
-    async getEventsTransferIn(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+    async getEventsTransferIn(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
         return this.fetchEvents(
             [[TRANSFER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            initialBlock, TRANSFER_EVENT_PATH, parseTransferEventIn, allEvents,
+            fromBlock, TRANSFER_EVENT_PATH, parseTransferEventIn, toBlock, numEvents,
         );
     }
 
-    async getAllEvents(initialBlock: number, otherPubKey: PubKey, allEvents = false): Promise<ReaderEvent[]> {
+    async getAllEvents(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<ReaderEvent[]> {
         const results = await Promise.all([
-            this.getEventsFund(initialBlock, otherPubKey, allEvents),
-            this.getEventsRollover(initialBlock, otherPubKey, allEvents),
-            this.getEventsWithdraw(initialBlock, otherPubKey, allEvents),
-            this.getEventsRagequit(initialBlock, otherPubKey, allEvents),
-            this.getEventsTransferOut(initialBlock, otherPubKey, allEvents),
-            this.getEventsTransferIn(initialBlock, otherPubKey, allEvents),
+            this.getEventsFund(fromBlock, otherPubKey, toBlock, numEvents),
+            this.getEventsRollover(fromBlock, otherPubKey, toBlock, numEvents),
+            this.getEventsWithdraw(fromBlock, otherPubKey, toBlock, numEvents),
+            this.getEventsRagequit(fromBlock, otherPubKey, toBlock, numEvents),
+            this.getEventsTransferOut(fromBlock, otherPubKey, toBlock, numEvents),
+            this.getEventsTransferIn(fromBlock, otherPubKey, toBlock, numEvents),
         ]);
         return results.flat().sort((a, b) => b.block_number - a.block_number);
     }
 
-    async getEventsBalanceDeclared(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+    async getEventsBalanceDeclared(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
         return this.fetchEvents(
             [[BALANCE_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            initialBlock, BALANCE_DECLARED_EVENT_PATH, parseBalanceDeclaredEvent, allEvents,
+            fromBlock, BALANCE_DECLARED_EVENT_PATH, parseBalanceDeclaredEvent, toBlock, numEvents,
         );
     }
 
-    async getEventsTransferFrom(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+    async getEventsTransferFrom(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
         return this.fetchEvents(
             [[TRANSFER_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            initialBlock, TRANSFER_DECLARED_EVENT_PATH, parseTransferDeclaredEvent, allEvents,
+            fromBlock, TRANSFER_DECLARED_EVENT_PATH, parseTransferDeclaredEvent, toBlock, numEvents,
         );
     }
 
-    async getEventsTransferTo(initialBlock: number, otherPubKey: PubKey, allEvents = false) {
+    async getEventsTransferTo(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
         return this.fetchEvents(
             [[TRANSFER_DECLARED_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
-            initialBlock, TRANSFER_DECLARED_EVENT_PATH, parseTransferDeclaredEvent, allEvents,
+            fromBlock, TRANSFER_DECLARED_EVENT_PATH, parseTransferDeclaredEvent, toBlock, numEvents,
         );
     }
 }
