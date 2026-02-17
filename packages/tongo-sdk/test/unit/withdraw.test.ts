@@ -19,6 +19,7 @@ describe("withdraw", () => {
         const prefix_data: GeneralPrefixData = { chain_id: 1111n, tongo_address: 22222n, sender_address: 33333n };
 
         const bit_size = 32;
+        const fee_to_sender = 1n;
 
         const { inputs, proof } = proveWithdraw(
             private_key,
@@ -29,6 +30,7 @@ describe("withdraw", () => {
             nonce,
             bit_size,
             prefix_data,
+            fee_to_sender,
         );
         verifyWithdraw(inputs, proof);
     });

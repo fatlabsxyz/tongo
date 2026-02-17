@@ -186,21 +186,32 @@ pub mod Tongo {
         ///
         /// Emits WithdrawEvent
         fn withdraw(ref self: ContractState, withdraw: Withdraw) {
-            let Withdraw { from, amount, to, proof, auditPart, hint, auxiliarCipher} = withdraw;
+            let Withdraw { from, amount, to, proof, auditPart, hint, auxiliarCipher, relayData} = withdraw;
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
             let prefix_data = self._get_general_prefix_data();
             let bit_size = self.get_bit_size();
 
             let inputs: InputsWithdraw = InputsWithdraw {
-                y: from, amount, nonce, to, currentBalance, auxiliarCipher, bit_size, prefix_data,
+                y: from, amount, nonce, to, currentBalance, auxiliarCipher, bit_size, prefix_data, relayData
             };
             verify_withdraw(inputs, proof);
 
-            let cipher = CipherBalanceTrait::new(from, amount.into(), 'withdraw');
+            let mut cipher = CipherBalanceTrait::new(from, amount.into(), 'withdraw');
+            if relayData.fee_to_sender != 0 {
+                let fee = CipherBalanceTrait::new(from, relayData.fee_to_sender.into(), 'fee' ); 
+                cipher = cipher.add(fee);
+            }
+
             self._subtract_balance(from, cipher);
             self._overwrite_hint(from, hint);
-            self._transfer_to(to, self._unwrap_tongo_amount(amount));
+
+            if relayData.fee_to_sender == 0 {
+                self._transfer_to(to, self._unwrap_tongo_amount(amount));
+            } else {
+                self._handle_relayed_withdraw(amount, to, relayData.fee_to_sender);
+            }
+
             self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce });
 
             if self.auditor_key.read().is_some() {
@@ -216,21 +227,27 @@ pub mod Tongo {
         ///
         /// Emits RagequitEvent
         fn ragequit(ref self: ContractState, ragequit: Ragequit) {
-            let Ragequit { from, amount, to, proof, hint, auditPart } = ragequit;
+            let Ragequit { from, amount, to, proof, hint, auditPart, relayData } = ragequit;
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
             let prefix_data = self._get_general_prefix_data();
 
             let inputs: InputsRagequit = InputsRagequit {
-                y: from, amount, nonce, to, currentBalance, prefix_data,
+                y: from, amount, nonce, to, currentBalance, prefix_data, relayData
             };
+
             verify_ragequit(inputs, proof);
 
             let zero_balance: CipherBalance = CipherBalanceTrait::new(from, 0, 1);
             self.balance.entry(from).write(zero_balance.into());
             self._overwrite_hint(from, hint);
 
-            self._transfer_to(to, self._unwrap_tongo_amount(amount));
+            if relayData.fee_to_sender == 0 {
+                self._transfer_to(to, self._unwrap_tongo_amount(amount));
+            } else {
+                self._handle_relayed_withdraw(amount, to, relayData.fee_to_sender);
+            }
+
             self.emit(RagequitEvent { from, amount: amount.try_into().unwrap(), to, nonce });
 
             if self.auditor_key.read().is_some() {
@@ -541,6 +558,13 @@ pub mod Tongo {
             let sender_address = get_caller_address();
 
             GeneralPrefixData { chain_id, tongo_address, sender_address }
+        }
+
+        fn _handle_relayed_withdraw(self: @ContractState, amount: u128, to: ContractAddress, fee_to_sender: u128 ) {
+            assert!(fee_to_sender <= amount, "Fee Amount to high");
+            let amount_after_fee = amount - fee_to_sender;
+            self._transfer_to(to, self._unwrap_tongo_amount(amount_after_fee));
+            self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(fee_to_sender));
         }
     }
 }
