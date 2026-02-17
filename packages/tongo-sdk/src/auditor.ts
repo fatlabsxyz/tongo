@@ -179,7 +179,7 @@ export class Auditor {
                 return b.transaction_index - a.transaction_index;
             }
             return b.event_index - a.event_index;
-            })[0];
+            })[0]!;
     }
 
     async getUserTransferOut(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AuditorTransferOutDeclared[]> {
@@ -233,7 +233,7 @@ export class Auditor {
             this.getUserTransferIn(fromBlock, user, toBlock, numEvents),
         ]);
 
-        const events = (await promises).flat();
+        const events = (await promises).flat().filter((e): e is AuditorEvents => e !== null);
         return events.sort((a, b) => b.block_number - a.block_number);
     }
 
@@ -242,7 +242,7 @@ export class Auditor {
 
         if (events.length === 0) return null;
 
-        return events[0];
+        return events[0]!;
     }
 
     async getRealuserBalance(fromBlock: number, user: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<bigint | null> {
