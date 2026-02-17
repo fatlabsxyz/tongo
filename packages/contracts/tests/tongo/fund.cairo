@@ -36,7 +36,7 @@ fn test_outside_fund() {
     
     let outsideFund = OutsideFund {to, amount: tongoAmount};
 
-    dispatcher.fund_from_outside(outsideFund);
+    dispatcher.outside_fund(outsideFund);
 
     let finalErc20 = erc20dispatcher.balance_of(USER_CALLER);
     let rate = dispatcher.get_rate();

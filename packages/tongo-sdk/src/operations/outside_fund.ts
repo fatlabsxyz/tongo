@@ -38,7 +38,7 @@ export class OutsideFundOperation implements IOutsideFundOperation {
     }
 
     toCalldata(): Call {
-        return this.Tongo.populate("fund_from_outside", [
+        return this.Tongo.populate("outside_fund", [
             {
                 to: this.to,
                 amount: this.amount,

@@ -678,7 +678,7 @@ export const tongoAbi = [
             },
             {
                 "type": "function",
-                "name": "fund_from_outside",
+                "name": "outside_fund",
                 "inputs": [
                     {
                         "name": "outsideFund",

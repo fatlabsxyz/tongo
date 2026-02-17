@@ -25,7 +25,7 @@ export interface IAccount {
 
     // Operations
     fund(fundDetails: FundDetails): Promise<FundOperation>;
-    fund_from_outside(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation>;
+    outside_fund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation>;
     transfer(transferDetails: TransferDetails): Promise<TransferOperation>;
     withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation>;
     ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation>;

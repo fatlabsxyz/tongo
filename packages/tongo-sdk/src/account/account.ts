@@ -197,7 +197,7 @@ export class Account implements IAccount {
         return operation;
     }
     
-    async fund_from_outside(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation> {
+    async outside_fund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation> {
         const { amount, to } = outsideFundDetails;
 
         const operation = new OutsideFundOperation({

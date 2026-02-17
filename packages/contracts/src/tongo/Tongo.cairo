@@ -172,7 +172,7 @@ pub mod Tongo {
         /// Funds a tongo acount. Can be called without knowledge of the pk.
         ///
         /// Emits OutsideFundEvent
-        fn fund_from_outside(ref self: ContractState, outsideFund: OutsideFund) {
+        fn outside_fund(ref self: ContractState, outsideFund: OutsideFund) {
             let OutsideFund { to, amount } = outsideFund;
 
             self._transfer_from_caller(self._unwrap_tongo_amount(amount));

@@ -37,7 +37,7 @@ pub trait ITongo<TContractState> {
     /// Funds a tongo acount. Can be called without knowledge of the pk.
     ///
     /// Emits OutsideFundEvent
-    fn fund_from_outside(ref self: TContractState, outsideFund: OutsideFund);
+    fn outside_fund(ref self: TContractState, outsideFund: OutsideFund);
 
     /// Withdraw Tongos and send the ERC20 to a starknet address.
     ///
