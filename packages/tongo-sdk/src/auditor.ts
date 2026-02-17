@@ -68,6 +68,7 @@ export class Auditor {
     private publicKeys: PubKey[];
     provider: RpcProvider;
     Tongo: TypedContractV2<typeof tongoAbi>;
+    reader: StarknetEventReader;
 
     constructor(
         pk: BigNumberish | Uint8Array | (BigNumberish | Uint8Array)[],
@@ -83,6 +84,7 @@ export class Auditor {
             providerOrAccount: provider
         }).typedv2(tongoAbi);
         this.provider = provider;
+        this.reader = new StarknetEventReader(provider, contractAddress);
     }
 
     get pk(): bigint {
@@ -141,9 +143,8 @@ export class Auditor {
         return { balance, keyIndex };
     }
 
-    async getUserBalances(initialBlock: number, otherPubKey: PubKey): Promise<AuditorBalanceDeclared[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsBalanceDeclared(initialBlock, otherPubKey);
+    async getUserBalances(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AuditorBalanceDeclared[]> {
+        const events = await this.reader.getEventsBalanceDeclared(fromBlock, otherPubKey, toBlock, numEvents);
         return Promise.all(events.map(
             async (event) => {
                 const { balance: hint, keyIndex } = await this.decryptAEHintForPubKey(event.hint, event.nonce, otherPubKey, event.auditorPubKey);
@@ -165,8 +166,8 @@ export class Auditor {
         ));
     }
 
-    async getUserBalance(initialBlock: number, otherPubKey: PubKey): Promise<AuditorBalanceDeclared | null> {
-        const balances = await this.getUserBalances(initialBlock, otherPubKey);
+    async getUserBalance(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AuditorBalanceDeclared | null> {
+        const balances = await this.getUserBalances(fromBlock, otherPubKey, toBlock, numEvents);
 
         if (balances.length === 0) return null;
         
@@ -181,9 +182,8 @@ export class Auditor {
             })[0];
     }
 
-    async getUserTransferOut(initialBlock: number, otherPubKey: PubKey): Promise<AuditorTransferOutDeclared[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsTransferFrom(initialBlock, otherPubKey);
+    async getUserTransferOut(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AuditorTransferOutDeclared[]> {
+        const events = await this.reader.getEventsTransferFrom(fromBlock, otherPubKey, toBlock, numEvents);
         return Promise.all(events.map(
             async (event) => {
                 const { balance: hint, keyIndex } = await this.decryptAEHintForPubKey(event.hint, event.nonce, otherPubKey, event.auditorPubKey);
@@ -204,9 +204,8 @@ export class Auditor {
         ));
     }
 
-    async getUserTransferIn(initialBlock: number, otherPubKey: PubKey): Promise<AuditorTransferInDeclared[]> {
-        const reader = new StarknetEventReader(this.provider, this.Tongo.address);
-        const events = await reader.getEventsTransferTo(initialBlock, otherPubKey);
+    async getUserTransferIn(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AuditorTransferInDeclared[]> {
+        const events = await this.reader.getEventsTransferTo(fromBlock, otherPubKey, toBlock, numEvents);
         return Promise.all(events.map(
             async (event) => {
                 const { balance: hint, keyIndex } = await this.decryptAEHintForPubKey(event.hint, event.nonce, event.from, event.auditorPubKey);
@@ -227,31 +226,31 @@ export class Auditor {
         ));
     }
 
-    async getUserHistory(initialBlock: number, user: PubKey): Promise<AuditorEvents[]> {
+    async getUserHistory(fromBlock: number, user: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AuditorEvents[]> {
         const promises = Promise.all([
-            this.getUserBalance(initialBlock, user),
-            this.getUserTransferOut(initialBlock, user),
-            this.getUserTransferIn(initialBlock, user),
+            this.getUserBalance(fromBlock, user, toBlock, numEvents),
+            this.getUserTransferOut(fromBlock, user, toBlock, numEvents),
+            this.getUserTransferIn(fromBlock, user, toBlock, numEvents),
         ]);
 
         const events = (await promises).flat();
         return events.sort((a, b) => b.block_number - a.block_number);
     }
 
-    async getLastUserEvent(initialBlock: number, user: PubKey): Promise<AuditorEvents | null > {
-        const events = await this.getUserHistory(initialBlock, user);
+    async getLastUserEvent(fromBlock: number, user: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AuditorEvents | null > {
+        const events = await this.getUserHistory(fromBlock, user, toBlock, numEvents);
 
         if (events.length === 0) return null;
 
         return events[0];
     }
 
-    async getRealuserBalance(initialBlock: number, user: PubKey): Promise<bigint | null> {
-        const lastDeclaredBalance = await this.getUserBalance(initialBlock, user);
+    async getRealuserBalance(fromBlock: number, user: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<bigint | null> {
+        const lastDeclaredBalance = await this.getUserBalance(fromBlock, user, toBlock, numEvents);
 
         if (lastDeclaredBalance === null) return null;
 
-        const incomingTransfers = await this.getUserTransferIn(initialBlock, user);
+        const incomingTransfers = await this.getUserTransferIn(fromBlock, user, toBlock, numEvents);
 
         const pendingIncoming = incomingTransfers.filter(transfer => 
             transfer.block_number > lastDeclaredBalance.block_number ||
@@ -270,9 +269,9 @@ export class Auditor {
             return lastDeclaredBalance.amount + pendingAmount;
     }
 
-    async getOperationsByTxHash(initialBlock: number, user: PubKey, txHash: string):
+    async getOperationsByTxHash(fromBlock: number, user: PubKey, txHash: string, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"):
     Promise<AuditorEvents[]> {
-        const events = await this.getUserHistory(initialBlock, user);
+        const events = await this.getUserHistory(fromBlock, user, toBlock, numEvents);
 
         return events.filter(event => event.tx_hash === txHash);
     }
