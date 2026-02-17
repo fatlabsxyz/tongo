@@ -20,8 +20,18 @@ pub struct Fund {
     pub hint: AEBalance,
     pub proof: ProofOfFund,
     pub auditPart: Option<Audit>,
-
 }
+
+/// Represents the calldata of a outside fund operation
+///
+/// - to: The Tongo account to fund.
+/// - amount: The ammount of tongo to fund.
+#[derive(Drop, Serde)]
+pub struct OutsideFund {
+    pub to: PubKey,
+    pub amount: u128,
+}
+
 /// Public inputs of the verifier for the fund operation.
 ///
 /// - y: The Tongo account to fund.

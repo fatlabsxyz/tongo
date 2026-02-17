@@ -204,6 +204,20 @@ export const tongoAbi = [
     },
     {
         "type": "struct",
+        "name": "tongo::structs::operations::fund::OutsideFund",
+        "members": [
+            {
+                "name": "to",
+                "type": "tongo::structs::common::pubkey::PubKey"
+            },
+            {
+                "name": "amount",
+                "type": "core::integer::u128"
+            }
+        ]
+    },
+    {
+        "type": "struct",
         "name": "core::array::Span::<tongo::structs::common::starkpoint::StarkPoint>",
         "members": [
             {
@@ -664,6 +678,18 @@ export const tongoAbi = [
             },
             {
                 "type": "function",
+                "name": "outside_fund",
+                "inputs": [
+                    {
+                        "name": "outsideFund",
+                        "type": "tongo::structs::operations::fund::OutsideFund"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
                 "name": "withdraw",
                 "inputs": [
                     {
@@ -912,6 +938,28 @@ export const tongoAbi = [
     },
     {
         "type": "event",
+        "name": "tongo::structs::events::OutsideFundEvent",
+        "kind": "struct",
+        "members": [
+            {
+                "name": "to",
+                "type": "tongo::structs::common::pubkey::PubKey",
+                "kind": "key"
+            },
+            {
+                "name": "from",
+                "type": "core::starknet::contract_address::ContractAddress",
+                "kind": "key"
+            },
+            {
+                "name": "amount",
+                "type": "core::integer::u128",
+                "kind": "data"
+            }
+        ]
+    },
+    {
+        "type": "event",
         "name": "tongo::structs::events::RolloverEvent",
         "kind": "struct",
         "members": [
@@ -1085,6 +1133,11 @@ export const tongoAbi = [
             {
                 "name": "FundEvent",
                 "type": "tongo::structs::events::FundEvent",
+                "kind": "nested"
+            },
+            {
+                "name": "OutsideFundEvent",
+                "type": "tongo::structs::events::OutsideFundEvent",
                 "kind": "nested"
             },
             {

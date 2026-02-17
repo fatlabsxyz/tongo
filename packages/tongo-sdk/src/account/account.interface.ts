@@ -1,5 +1,6 @@
 import { PubKey, GeneralPrefixData } from "../types.js";
 import { FundOperation } from "../operations/fund.js";
+import { OutsideFundOperation } from "../operations/outside_fund.js";
 import { RollOverOperation } from "../operations/rollover.js";
 import { TransferOperation } from "../operations/transfer.js";
 import { WithdrawOperation } from "../operations/withdraw.js";
@@ -24,6 +25,7 @@ export interface IAccount {
 
     // Operations
     fund(fundDetails: FundDetails): Promise<FundOperation>;
+    outside_fund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation>;
     transfer(transferDetails: TransferDetails): Promise<TransferOperation>;
     withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation>;
     ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation>;
@@ -63,6 +65,11 @@ export interface IAccount {
 export interface FundDetails {
     amount: bigint;
     sender: string,
+}
+
+export interface OutsideFundDetails {
+    amount: bigint;
+    to: PubKey;
 }
 
 export interface TransferDetails {
