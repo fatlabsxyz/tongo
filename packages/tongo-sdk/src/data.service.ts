@@ -124,6 +124,8 @@ function parseTransferEventOut(event: ParsedEvent): ReaderTransferOutEvent {
         type: ReaderEventType.TransferOut,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
+        event_index: event.event_index! as unknown as number,
+        transaction_index: event.transaction_index! as unknown as number,
         ...data,
     };
 }
@@ -134,6 +136,8 @@ function parseTransferEventIn(event: ParsedEvent): ReaderTransferInEvent {
         type: ReaderEventType.TransferIn,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
+        event_index: event.event_index! as unknown as number,
+        transaction_index: event.transaction_index! as unknown as number,
         ...data,
     };
 }
@@ -144,6 +148,8 @@ function parseFundEvent(event: ParsedEvent): ReaderFundEvent {
         type: ReaderEventType.Fund,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
+        event_index: event.event_index! as unknown as number,
+        transaction_index: event.transaction_index! as unknown as number,
         ...data,
     };
 }
@@ -154,6 +160,8 @@ function parseWithdrawEvent(event: ParsedEvent): ReaderWithdrawEvent {
         type: ReaderEventType.Withdraw,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
+        event_index: event.event_index! as unknown as number,
+        transaction_index: event.transaction_index! as unknown as number,
         ...data,
     };
 }
@@ -164,6 +172,8 @@ function parseRagequitEvent(event: ParsedEvent): ReaderRagequitEvent {
         type: ReaderEventType.Ragequit,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
+        event_index: event.event_index! as unknown as number,
+        transaction_index: event.transaction_index! as unknown as number,
         ...data,
     };
 }
@@ -174,6 +184,8 @@ function parseRolloverEvent(event: ParsedEvent): ReaderRolloverEvent {
         type: ReaderEventType.Rollover,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
+        event_index: event.event_index! as unknown as number,
+        transaction_index: event.transaction_index! as unknown as number,
         ...data,
     };
 }
@@ -184,6 +196,8 @@ function parseBalanceDeclaredEvent(event: ParsedEvent): ReaderBalanceDeclaredEve
         type: ReaderEventType.BalanceDeclared,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
+        event_index: event.event_index! as unknown as number,
+        transaction_index: event.transaction_index! as unknown as number,
         ...data,
     };
 }
@@ -194,6 +208,8 @@ function parseTransferDeclaredEvent(event: ParsedEvent): ReaderTransferDeclaredE
         type: ReaderEventType.TransferDeclared,
         tx_hash: event.transaction_hash!,
         block_number: event.block_number! as number,
+        event_index: event.event_index! as unknown as number,
+        transaction_index: event.transaction_index! as unknown as number,
         ...data,
     };
 }
