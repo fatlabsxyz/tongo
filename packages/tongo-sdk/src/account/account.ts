@@ -230,6 +230,8 @@ export class Account implements IAccount {
             sender_address: BigInt(sender),
         };
 
+        const fee_to_sender = transferDetails.fee_to_sender? transferDetails.fee_to_sender : 0n;
+
         const { inputs, proof, newBalance } = proveTransfer(
             this.pk,
             to,
@@ -238,15 +240,18 @@ export class Account implements IAccount {
             currentBalance,
             nonce,
             bit_size,
-            prefix_data
+            prefix_data,
+            fee_to_sender,
         );
 
+        const balance_left = initialBalance - fee_to_sender - amount;
         const hintTransfer = await this.computeAEHintForPubKey(amount, nonce, to);
-        const hintLeftover = await this.computeAEHintForSelf(initialBalance - amount, nonce + 1n);
+        const hintLeftover = await this.computeAEHintForSelf(balance_left, nonce + 1n);
 
         //audit
-        const auditPart = await this.createAuditPart(initialBalance - amount, newBalance, prefix_data);
+        const auditPart = await this.createAuditPart(balance_left, newBalance, prefix_data);
         const auditPartTransfer = await this.createAuditPart(amount, inputs.transferBalanceSelf, prefix_data);
+
 
         return new TransferOperation({
             from: inputs.from,
@@ -260,6 +265,7 @@ export class Account implements IAccount {
             proof,
             auditPart,
             auditPartTransfer,
+            relayData: inputs.relay_data,
             Tongo: this.Tongo,
         });
     }

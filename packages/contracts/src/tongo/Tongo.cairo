@@ -271,11 +271,14 @@ pub mod Tongo {
                 proof,
                 auditPart,
                 auditPartTransfer,
+                relayData,
                 hintTransfer,
                 hintLeftover,
             } = transfer;
 
             let currentBalance = self.get_balance(from);
+
+
             let nonce = self.get_nonce(from);
             let bit_size = self.get_bit_size();
             let prefix_data = self._get_general_prefix_data();
@@ -291,9 +294,16 @@ pub mod Tongo {
                 auxiliarCipher2,
                 bit_size,
                 prefix_data,
+                relayData,
             };
 
             verify_transfer(inputs, proof);
+
+            if relayData.fee_to_sender != 0 {
+                self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(relayData.fee_to_sender));
+                let cipher = CipherBalanceTrait::new(from, relayData.fee_to_sender.into(), 'fee');
+                self._subtract_balance(from, cipher);
+            };
 
             self._subtract_balance(from, transferBalanceSelf);
             self._overwrite_hint(from, hintLeftover);

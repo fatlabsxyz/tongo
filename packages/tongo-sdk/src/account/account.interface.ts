@@ -76,6 +76,7 @@ export interface TransferDetails {
     amount: bigint;
     to: PubKey;
     sender: string,
+    fee_to_sender?:bigint,
 }
 
 export interface RolloverDetails {
