@@ -209,11 +209,7 @@ pub mod Tongo {
             if relayData.fee_to_sender == 0 {
                 self._transfer_to(to, self._unwrap_tongo_amount(amount));
             } else {
-                let fee_to_sender = relayData.fee_to_sender;
-                assert!(fee_to_sender <= amount, "Fee Amount to high");
-                let amount_after_fee = amount - fee_to_sender;
-                self._transfer_to(to, self._unwrap_tongo_amount(amount_after_fee));
-                self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(fee_to_sender));
+                self._handle_relayed_withdraw(amount, to, relayData.fee_to_sender);
             }
 
             self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce });
@@ -249,11 +245,7 @@ pub mod Tongo {
             if relayData.fee_to_sender == 0 {
                 self._transfer_to(to, self._unwrap_tongo_amount(amount));
             } else {
-                let fee_to_sender = relayData.fee_to_sender;
-                assert!(fee_to_sender <= amount, "Fee Amount to high");
-                let amount_after_fee = amount - fee_to_sender;
-                self._transfer_to(to, self._unwrap_tongo_amount(amount_after_fee));
-                self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(fee_to_sender));
+                self._handle_relayed_withdraw(amount, to, relayData.fee_to_sender);
             }
 
             self.emit(RagequitEvent { from, amount: amount.try_into().unwrap(), to, nonce });
@@ -566,6 +558,13 @@ pub mod Tongo {
             let sender_address = get_caller_address();
 
             GeneralPrefixData { chain_id, tongo_address, sender_address }
+        }
+
+        fn _handle_relayed_withdraw(self: @ContractState, amount: u128, to: ContractAddress, fee_to_sender: u128 ) {
+            assert!(fee_to_sender <= amount, "Fee Amount to high");
+            let amount_after_fee = amount - fee_to_sender;
+            self._transfer_to(to, self._unwrap_tongo_amount(amount_after_fee));
+            self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(fee_to_sender));
         }
     }
 }

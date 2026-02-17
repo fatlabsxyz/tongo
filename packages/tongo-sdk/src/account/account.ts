@@ -281,7 +281,7 @@ export class Account implements IAccount {
             sender_address: BigInt(sender),
         };
 
-        const fee_to_sender = ragequitDetails.fee_to_sender? ragequitDetails.fee_to_sender : 0n;
+        const fee_to_sender = ragequitDetails.fee_to_sender || 0n;
         const { inputs, proof, newBalance } = proveRagequit(
             this.pk,
             currentBalance,
@@ -326,7 +326,7 @@ export class Account implements IAccount {
             sender_address: BigInt(sender),
         };
 
-        const fee_to_sender = withdrawDetails.fee_to_sender? withdrawDetails.fee_to_sender : 0n;
+        const fee_to_sender = withdrawDetails.fee_to_sender || 0n;
 
         const { inputs, proof, newBalance } = proveWithdraw(
             this.pk,
