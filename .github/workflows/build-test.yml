@@ -1,0 +1,63 @@
+name: Build test
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  cairo:
+    name: Build and test Cairo contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: "2.12.2"
+
+      - name: Set up Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@v3
+        with:
+          starknet-foundry-version: "0.50.0"
+
+      - name: Install Universal Sierra Compiler
+        run: |
+          curl -L https://raw.githubusercontent.com/software-mansion/universal-sierra-compiler/master/scripts/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Test contracts
+        run: scarb test
+        working-directory: packages/contracts
+
+  typescript:
+    name: Build and test TypeScript SDK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build SDK
+        run: pnpm build
+        working-directory: packages/tongo-sdk
+
+      - name: Run unit tests
+        run: pnpm test:unit
+        working-directory: packages/tongo-sdk
