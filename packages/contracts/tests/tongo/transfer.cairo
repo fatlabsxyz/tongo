@@ -17,7 +17,10 @@ fn test_transfer() {
 
     let initial_balance = 0;
     let initial_fund = 250;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+
+    let sender = USER_ADDRESS;
+    let fee_to_sender =  0;
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
 

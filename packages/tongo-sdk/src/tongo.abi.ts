@@ -98,6 +98,16 @@ export const tongoAbi = [
     },
     {
         "type": "struct",
+        "name": "tongo::structs::common::relayer::RelayData",
+        "members": [
+            {
+                "name": "fee_to_sender",
+                "type": "core::integer::u128"
+            }
+        ]
+    },
+    {
+        "type": "struct",
         "name": "tongo::structs::common::cipherbalance::CipherBalance",
         "members": [
             {
@@ -195,6 +205,10 @@ export const tongoAbi = [
             {
                 "name": "proof",
                 "type": "tongo::structs::operations::fund::ProofOfFund"
+            },
+            {
+                "name": "relayData",
+                "type": "tongo::structs::common::relayer::RelayData"
             },
             {
                 "name": "auditPart",
@@ -311,16 +325,6 @@ export const tongoAbi = [
             {
                 "name": "range",
                 "type": "tongo::verifier::range::Range"
-            }
-        ]
-    },
-    {
-        "type": "struct",
-        "name": "tongo::structs::common::relayer::RelayData",
-        "members": [
-            {
-                "name": "fee_to_sender",
-                "type": "core::integer::u128"
             }
         ]
     },
