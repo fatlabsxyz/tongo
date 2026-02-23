@@ -105,7 +105,6 @@ fn audit_transfer() {
     let x_bar = 21983092183910283;
     let y_bar = pubkey_from_secret(x_bar);
 
-    let fee_to_sender = 0;
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
@@ -139,7 +138,6 @@ fn audit_rollover() {
     let x_bar = 95849543;
     let y_bar = pubkey_from_secret(x_bar);
 
-    let fee_to_sender = 0;
 
     let initial_balance = 0;
     let initial_fund = 250;

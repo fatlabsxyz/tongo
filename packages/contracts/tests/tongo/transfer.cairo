@@ -13,7 +13,6 @@ fn test_transfer() {
     let x = 2384230948239;
     let x_bar = 2190381209380321;
     let y_bar = pubkey_from_secret(x_bar);
-    let fee_to_sender = 0;
 
     let initial_balance = 0;
     let initial_fund = 250;

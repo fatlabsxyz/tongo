@@ -133,18 +133,22 @@ fn test_tongo_relay_transfer() {
     let y = pubkey_from_secret(x);
     let x_bar = 2190381209380321;
     let y_bar = pubkey_from_secret(x_bar);
-    let fee_to_sender = 10;
+    let fee_to_sender = 0;
     let sender = RELAYER_ADDRESS;
 
     let initial_balance = 0;
     let initial_fund = 250;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+
+    start_cheat_caller_address(tongo_address, sender);
+    let operation = fundOperation(x,initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20Relayer = erc20dispatcher.balance_of(sender);
 
     let transfer_amount = 100;
+    let fee_to_sender = 10;
+
     let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, sender, fee_to_sender,dispatcher);
     start_cheat_caller_address(tongo_address, sender);
     dispatcher.transfer(operation);

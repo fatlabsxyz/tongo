@@ -34,7 +34,6 @@ fn full() {
 
     let x_bar = 9583954385;
     let y_bar = pubkey_from_secret(x_bar);
-    let fee_to_sender = 0;
 
     // The initial pendings, balance, and audits should be 0
     checkBalances(x,0,0,0,dispatcher);
