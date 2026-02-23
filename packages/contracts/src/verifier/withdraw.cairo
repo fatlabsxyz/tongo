@@ -5,11 +5,11 @@ use she::protocols::SameEncryptionUnknownRandom::{
     verify as same_encrypt_unknown_random_verify,
 };
 use she::protocols::range::verify as range_verify;
-use crate::structs::common::cipherbalance::{CipherBalanceTrait};
+use crate::structs::common::cipherbalance::CipherBalanceTrait;
 use crate::structs::operations::withdraw::{InputsWithdraw, ProofOfWithdraw};
 use crate::structs::traits::{Challenge, Prefix};
 use crate::verifier::range::ConvertRangeProofImpl;
-use crate::verifier::utils::{generator_h};
+use crate::verifier::utils::generator_h;
 
 
 /// Verifies the withdraw operation. First, ussers have to show knowledge of the private key. Then,
@@ -26,12 +26,10 @@ use crate::verifier::utils::{generator_h};
 /// EC_ADD: 8 + n*4  = 136 for u32
 pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
     let prefix = inputs.compute_prefix();
-
     let c = proof.compute_challenge(prefix);
-
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
-    // This verification is made as part of same_encrypt_unknown_random_verify(inputs, proof). 
+    // This verification is made as part of same_encrypt_unknown_random_verify(inputs, proof).
     // Is is redundant here.
     //
     //verifyOwnership(inputs.y, proof.A_x, c, proof.sx);
@@ -39,7 +37,7 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
     let mut currentBalance = inputs.currentBalance;
 
     if inputs.relayData.fee_to_sender != 0 {
-        let fee = CipherBalanceTrait::new(inputs.y, inputs.relayData.fee_to_sender.into(), 'fee' );
+        let fee = CipherBalanceTrait::new(inputs.y, inputs.relayData.fee_to_sender.into(), 'fee');
         currentBalance = currentBalance.subtract(fee)
     }
 
@@ -49,8 +47,7 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
 
     let (rangeInputs, rangeProof) = proof.range.to_she_proof(inputs.bit_size, prefix);
     let V_proof = range_verify(rangeInputs, rangeProof).expect('Failed Range  proof for V');
-    assert!(V_proof.coordinates() == V.coordinates(), "V missmatch" );
-      
+    assert!(V_proof.coordinates() == V.coordinates(), "V missmatch");
 
     let inputs = SameEncryptionUnknownRandomInputs {
         L1: L0.try_into().unwrap(),

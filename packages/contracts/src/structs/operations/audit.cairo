@@ -4,7 +4,7 @@ use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::starkpoint::StarkPoint;
-use crate::structs::traits::{AppendPoint, Challenge, Prefix, GeneralPrefixData};
+use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 
 /// Struct for audit declaration. These are optional in Tongo and only enforces if the
 /// Tongo contract was deployed with an Auditor publick key set.
@@ -62,10 +62,10 @@ impl ChallengeAudit of Challenge<ProofOfAudit> {
 /// Computes the prefix by hashing some public inputs.
 impl AuditPrefix of Prefix<InputsAudit> {
     fn compute_prefix(self: @InputsAudit) -> felt252 {
-        let audit_selector= 'audit';
+        let audit_selector = 'audit';
         let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
-        let CipherBalance {L:CL,R:CR} = *self.storedBalance;
-        let CipherBalance {L,R} = *self.auditedBalance;
+        let CipherBalance { L: CL, R: CR } = *self.storedBalance;
+        let CipherBalance { L, R } = *self.auditedBalance;
 
         let array: Array<felt252> = array![
             *chain_id,

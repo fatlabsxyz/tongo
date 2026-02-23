@@ -33,15 +33,24 @@ use crate::verifier::utils::{generator_h, verifyOwnership};
 /// EC_MUL: 27 + 2*n*5  = 347 for u32
 /// EC_ADD: 18  + 2*n*4 = 274 for u32
 pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
-    let (CL, CR) = inputs.currentBalance.points();
+    let prefix = inputs.compute_prefix();
+    let c = proof.compute_challenge(prefix);
+    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
+
+    let mut cipherBalanceAfterFee = inputs.currentBalance;
+    if inputs.relayData.fee_to_sender != 0 {
+        cipherBalanceAfterFee = inputs
+            .currentBalance
+            .subtract(
+                CipherBalanceTrait::new(inputs.from, inputs.relayData.fee_to_sender.into(), 'fee'),
+            )
+    }
+
+    let (CL, CR) = cipherBalanceAfterFee.points();
     let (L, R) = inputs.transferBalanceSelf.points_nz();
     let (L_bar, R_bar) = inputs.transferBalance.points_nz();
     let (V, R_aux) = inputs.auxiliarCipher.points_nz();
     let (V2, R_aux2) = inputs.auxiliarCipher2.points_nz();
-
-    let prefix = inputs.compute_prefix();
-    let c = proof.compute_challenge(prefix);
-    let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
     verifyOwnership(inputs.from, proof.A_x, c, proof.s_x);
 
@@ -71,11 +80,9 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     // Now we need to show that V = g**b h**r with the same b and r.
     let (rangeInputs, rangeProof) = proof.range.to_she_proof(inputs.bit_size, prefix);
     let V_proof = range_verify(rangeInputs, rangeProof).expect('Failed ZK proof for V');
-    assert!(V_proof.coordinates() == V.coordinates(), "V missmatch" );
+    assert!(V_proof.coordinates() == V.coordinates(), "V missmatch");
 
-    let elgamal_inputs = ElGamalInputs {
-        L: V_proof, R: R_aux, g1: g, g2: generator_h(),
-    };
+    let elgamal_inputs = ElGamalInputs { L: V_proof, R: R_aux, g1: g, g2: generator_h() };
 
     let elgamal_proof = ElGamalProof {
         AL: proof.A_v.try_into().unwrap(),
@@ -91,7 +98,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
     let (rangeInputs, rangeProof) = proof.range2.to_she_proof(inputs.bit_size, prefix);
     let V2_proof = range_verify(rangeInputs, rangeProof).expect('Failed ZK proof for V2');
-    assert!(V2_proof.coordinates() == V2.coordinates(), "V2 missmatch" );
+    assert!(V2_proof.coordinates() == V2.coordinates(), "V2 missmatch");
 
     let same_encrypt_inputs = SameEncryptionUnknownRandomInputs {
         L1: L0,

@@ -4,8 +4,8 @@ use starknet::ContractAddress;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
-use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::common::relayer::RelayData;
+use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::operations::audit::Audit;
 use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 
@@ -18,7 +18,8 @@ use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 /// - proof: ZK proof for the ragequit operation.
 /// - relayData: relayer related data.
 /// - auditPart: Optional Audit to declare the balance of the account after the tx. (In theory it is
-///   not necesary for this operation, but it helps to keep things consistent and clean for a minimal cost)
+///   not necesary for this operation, but it helps to keep things consistent and clean for a
+///   minimal cost)
 #[derive(Drop, Serde)]
 pub struct Ragequit {
     pub from: PubKey,
@@ -55,7 +56,7 @@ impl RagequitPrefix of Prefix<InputsRagequit> {
         let ragequit_selector = 'ragequit';
         let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
         let fee_to_sender = *self.relayData.fee_to_sender;
-        let CipherBalance {L,R} = *self.currentBalance;
+        let CipherBalance { L, R } = *self.currentBalance;
 
         let array: Array<felt252> = array![
             *chain_id,
@@ -72,7 +73,6 @@ impl RagequitPrefix of Prefix<InputsRagequit> {
             L.y,
             R.x,
             R.y,
-
         ];
         poseidon_hash_span(array.span())
     }

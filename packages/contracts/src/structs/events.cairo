@@ -16,7 +16,7 @@ pub struct FundEvent {
     #[key]
     pub nonce: u64,
     #[key]
-    pub from:  ContractAddress,
+    pub from: ContractAddress,
     pub amount: u128,
 }
 
@@ -30,7 +30,7 @@ pub struct OutsideFundEvent {
     #[key]
     pub to: PubKey,
     #[key]
-    pub from:  ContractAddress,
+    pub from: ContractAddress,
     pub amount: u128,
 }
 

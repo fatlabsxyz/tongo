@@ -4,8 +4,8 @@ use starknet::ContractAddress;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
-use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::common::relayer::RelayData;
+use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::operations::audit::Audit;
 use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 use crate::verifier::range::Range;
@@ -32,7 +32,6 @@ pub struct Withdraw {
 }
 
 
-
 /// Public inputs of the verifier for the withdarw operation.
 ///
 /// - y: The Tongo account to withdraw from.
@@ -57,12 +56,12 @@ pub struct InputsWithdraw {
 impl WithdrawPrefix of Prefix<InputsWithdraw> {
     fn compute_prefix(self: @InputsWithdraw) -> felt252 {
         let withdraw_selector = 'withdraw';
-        let GeneralPrefixData { chain_id, tongo_address, sender_address} = self.prefix_data;
+        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
 
         let fee_to_sender = *self.relayData.fee_to_sender;
 
-        let CipherBalance {L,R} = *self.currentBalance;
-        let CipherBalance {L:V,R:R_aux} = *self.auxiliarCipher;
+        let CipherBalance { L, R } = *self.currentBalance;
+        let CipherBalance { L: V, R: R_aux } = *self.auxiliarCipher;
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
@@ -81,7 +80,7 @@ impl WithdrawPrefix of Prefix<InputsWithdraw> {
             V.x,
             V.y,
             R_aux.x,
-            R_aux.y
+            R_aux.y,
         ];
         poseidon_hash_span(array.span())
     }
