@@ -18,6 +18,7 @@ casm = true
 
 [scripts]
 test = "snforge test"
+format = "cairo-format --merge-use-items=true --sort-mod-level-items=true -r src"
 
 # Needed for compilation to declare and deploy with sncast scripts
 [lib]

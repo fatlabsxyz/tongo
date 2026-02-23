@@ -15,9 +15,9 @@ pub mod structs {
     pub mod common {
         pub mod cipherbalance;
         pub mod pubkey;
+        pub mod relayer;
         pub mod starkpoint;
         pub mod state;
-        pub mod relayer;
     }
 
     pub mod operations {

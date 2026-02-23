@@ -3,8 +3,8 @@ use she::utils::reduce_modulo_order;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
-use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::common::relayer::RelayData;
+use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::operations::audit::Audit;
 use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 use crate::verifier::range::Range;
@@ -69,11 +69,11 @@ impl TransferPrefix of Prefix<InputsTransfer> {
 
         let fee_to_sender = *self.relayData.fee_to_sender;
 
-        let CipherBalance {L:L0, R:R0} = *self.currentBalance;
-        let CipherBalance {L ,R } = *self.transferBalanceSelf;
-        let CipherBalance {L:L_bar,R:R_bar} = *self.transferBalance;
-        let CipherBalance {L:V,R:R_aux} = *self.auxiliarCipher;
-        let CipherBalance {L:V2,R:R_aux2} = *self.auxiliarCipher2;
+        let CipherBalance { L: L0, R: R0 } = *self.currentBalance;
+        let CipherBalance { L, R } = *self.transferBalanceSelf;
+        let CipherBalance { L: L_bar, R: R_bar } = *self.transferBalance;
+        let CipherBalance { L: V, R: R_aux } = *self.auxiliarCipher;
+        let CipherBalance { L: V2, R: R_aux2 } = *self.auxiliarCipher2;
 
         let array: Array<felt252> = array![
             *chain_id,
@@ -105,7 +105,7 @@ impl TransferPrefix of Prefix<InputsTransfer> {
             V2.x,
             V2.y,
             R_aux2.x,
-            R_aux2.y
+            R_aux2.y,
         ];
         poseidon_hash_span(array.span())
     }

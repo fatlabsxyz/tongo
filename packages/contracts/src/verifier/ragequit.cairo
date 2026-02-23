@@ -27,7 +27,9 @@ pub fn verify_ragequit(inputs: InputsRagequit, proof: ProofOfRagequit) {
     let prefix = inputs.compute_prefix();
     let c = proof.compute_challenge(prefix);
 
-    let InputsRagequit { y, currentBalance, amount, to: _, nonce: _, prefix_data: _, relayData: _} = inputs;
+    let InputsRagequit {
+        y, currentBalance, amount, to: _, nonce: _, prefix_data: _, relayData: _,
+    } = inputs;
     let ProofOfRagequit { Ax, AR, sx } = proof;
 
     verifyOwnership(y, Ax, c, sx);
