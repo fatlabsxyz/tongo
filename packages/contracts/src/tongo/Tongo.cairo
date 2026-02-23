@@ -142,14 +142,27 @@ pub mod Tongo {
         ///
         /// Emits FundEvent
         fn fund(ref self: ContractState, fund: Fund) {
-            let Fund { to, amount, proof, auditPart, hint } = fund;
+            let Fund { to, amount, proof, relayData,  auditPart, hint } = fund;
             let nonce = self.get_nonce(to);
             let prefix_data = self._get_general_prefix_data();
 
-            let inputs: InputsFund = InputsFund { y: to, nonce, amount, prefix_data };
+            let inputs: InputsFund = InputsFund { 
+                y: to,
+                nonce,
+                amount,
+                relayData,
+                prefix_data
+            };
+
             verify_fund(inputs, proof);
 
-            self._transfer_from_caller(self._unwrap_tongo_amount(amount));
+            let fee_to_sender = relayData.fee_to_sender;
+
+            self._transfer_from_caller(self._unwrap_tongo_amount(amount+fee_to_sender));
+
+            if fee_to_sender != 0 {
+                self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(fee_to_sender.into()));
+            }
 
             let cipher = CipherBalanceTrait::new(to, amount.into(), 'fund');
             self._add_balance(to, cipher);

@@ -34,7 +34,6 @@ fn full() {
 
     let x_bar = 9583954385;
     let y_bar = pubkey_from_secret(x_bar);
-    let fee_to_sender = 0;
 
     // The initial pendings, balance, and audits should be 0
     checkBalances(x,0,0,0,dispatcher);
@@ -50,7 +49,10 @@ fn full() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+
+    let sender = USER_ADDRESS;
+    let fee_to_sender =  0;
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
     //Bufer should be 0, balance initial_balance and audit initial_balance

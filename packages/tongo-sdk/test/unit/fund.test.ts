@@ -14,6 +14,7 @@ describe("fund", () => {
         const amount_to_fund = 100n;
         const nonce = 1n;
         const prefix_data: GeneralPrefixData = { chain_id: 1111n, tongo_address: 22222n, sender_address: 33333n };
+        const fee_to_sender = 0n;
 
         const { inputs, proof } = proveFund(
             private_key,
@@ -21,7 +22,8 @@ describe("fund", () => {
             initial_balance,
             initial_cipher_balance,
             nonce,
-            prefix_data
+            prefix_data,
+            fee_to_sender,
         );
         verifyFund(inputs, proof);
     });
