@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { RpcProvider, stark } from "starknet";
+import { RpcProvider, stark, config } from "starknet";
 import { AccountConfig, Network } from "../types.js";
 import { getNetworkConfig, isValidNetwork } from "./networks.js";
 
@@ -14,7 +14,7 @@ export function getProvider(config: Config): RpcProvider {
   const rpcUrl = config.rpcUrl || networkConfig.rpcUrl;
   return new RpcProvider({
     nodeUrl: rpcUrl,
-    specVersion: "0.8.1"
+    specVersion: "0.10.0"
   });
 }
 
@@ -84,6 +84,7 @@ export function getAccountConfig() {
 
 export async function getConfig(network?: string): Promise<Config> {
   console.log(chalk.blue("🔧 Configuring deployment settings...\n"));
+  console.log(chalk.blue(`🔗 Using RPC version: ${config.get("rpcVersion")}`));
 
   const selectedNetwork = await parseNetworkOrPrompt(network);
 

@@ -1,22 +1,19 @@
 import chalk from "chalk";
-import { Account, constants, RpcProvider, uint256 } from "starknet";
-import { AccountConfig, Network } from "../types.js";
-import { getNetworkConfig } from "./networks.js";
+import { Account, uint256 } from "starknet";
 import { STRK_ADDRESS } from "../constants.js";
+import { AccountConfig } from "../types.js";
+import { Config, getProvider } from "./config.js";
+import { getNetworkConfig } from "./networks.js";
+
 
 export function createAccount(
   accountConfig: AccountConfig,
-  network: Network,
-  customRpcUrl?: string
+  config: Config,
 ): Account {
-  const networkConfig = getNetworkConfig(network);
-  const rpcUrl = customRpcUrl || networkConfig.rpcUrl;
-  console.log(chalk.blue(`🔗 Connecting to ${network} at ${rpcUrl}`));
-  const provider = new RpcProvider({
-    nodeUrl: rpcUrl,
-    specVersion: "0.9.0"
-  });
-
+  const networkConfig = getNetworkConfig(config.network);
+  const rpcUrl = networkConfig.rpcUrl;
+  console.log(chalk.blue(`🔗 Connecting to ${config.network} at ${rpcUrl}`));
+  const provider = getProvider(config);
   const account = new Account({
     provider,
     address: accountConfig.address,
@@ -24,7 +21,6 @@ export function createAccount(
     cairoVersion: '1',
     transactionVersion: '0x3'
   });
-
   return account;
 }
 
@@ -46,7 +42,7 @@ export async function verifyAccount(account: Account): Promise<void> {
     console.log(chalk.blue("🔍 Verifying account..."));
 
     // Try to get account nonce to verify it exists and is accessible
-    const nonce = await account.getNonce();
+    const nonce = await account.getNonce("latest");
     console.log(chalk.green(`✓ Account verified (nonce: ${nonce})`));
 
     // Get account balance for ETH
