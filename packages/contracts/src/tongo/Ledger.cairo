@@ -135,54 +135,59 @@ pub mod Ledger {
         }
 
         fn add_to_account_balance(ref self: ContractState, to: PubKey, new_balance: CipherBalance) {
-            //only global
+            self._assert_only_global();
             self._add_balance(to, new_balance);
         }
 
         fn subtract_from_account_balance(ref self: ContractState, to: PubKey, new_balance: CipherBalance) {
-            //only global
+            self._assert_only_global();
             self._subtract_balance(to, new_balance);
         }
 
         fn reset_account_balance(ref self: ContractState, to: PubKey) {
-            //only global
+            self._assert_only_global();
             let zero_balance: CipherBalance = CipherBalanceTrait::new(to, 0, 1);
             self.balance.entry(to).write(zero_balance.into());
         }
 
         fn pending_to_balance(ref self: ContractState, to:PubKey) {
-            //only global
+            self._assert_only_global();
             self._pending_to_balance(to);
         }
 
         fn add_to_account_pending(ref self: ContractState, to: PubKey, new_balance: CipherBalance) {
-            //only global
+            self._assert_only_global();
             self._add_pending(to, new_balance);
         }
 
         fn overwrite_hint(ref self: ContractState, to: PubKey, hint: AEBalance) {
-            //only global
+            self._assert_only_global();
             self._overwrite_hint(to,hint);
         }
 
         fn increase_nonce(ref self: ContractState, to: PubKey) {
-            //only global
+            self._assert_only_global();
             self._increase_nonce(to);
         }
 
         fn set_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
-            //only global
+            self._assert_only_global();
             self._set_audit(y, new_audit);
         }
 
         fn overwrite_audit_hint(ref self: ContractState, y: PubKey, hint: AEBalance) {
-            //only global
+            self._assert_only_global();
             self._overwrite_audit_hint(y, hint);
         }
     }
 
     #[generate_trait]
     pub impl PrivateImpl of IPrivate {
+        fn _assert_only_global(self: @ContractState) {
+            let caller = get_caller_address();
+            assert!(caller == self.global_tongo.read(), "Caller is not the Global Tongo");
+        }
+
         /// Adds the given balance to the current balance of the given tongo Account.
         fn _add_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
             let old_balance = self.get_balance(y);
