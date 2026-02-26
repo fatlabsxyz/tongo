@@ -29,6 +29,7 @@ pub struct Withdraw {
     pub proof: ProofOfWithdraw,
     pub relayData: RelayData,
     pub auditPart: Option<Audit>,
+    pub ledger: ContractAddress,
 }
 
 

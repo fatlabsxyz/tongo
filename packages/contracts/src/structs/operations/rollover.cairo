@@ -1,4 +1,5 @@
 use core::poseidon::poseidon_hash_span;
+use starknet::ContractAddress;
 use she::utils::reduce_modulo_order;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::pubkey::PubKey;
@@ -13,6 +14,7 @@ use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 #[derive(Drop, Destruct, Serde, Copy)]
 pub struct Rollover {
     pub to: PubKey,
+    pub ledger: ContractAddress,
     pub hint: AEBalance,
     pub proof: ProofOfRollOver,
 }

@@ -1,3 +1,4 @@
+use starknet::ContractAddress;
 use core::poseidon::poseidon_hash_span;
 use she::utils::reduce_modulo_order;
 use crate::structs::aecipher::AEBalance;
@@ -17,6 +18,7 @@ use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 /// - auditPart: Optional Audit to declare the balance of the account after the tx.
 #[derive(Drop, Serde)]
 pub struct Fund {
+    pub ledger: ContractAddress,
     pub to: PubKey,
     pub amount: u128,
     pub hint: AEBalance,
@@ -33,6 +35,7 @@ pub struct Fund {
 pub struct OutsideFund {
     pub to: PubKey,
     pub amount: u128,
+    pub ledger: ContractAddress,
 }
 
 /// Public inputs of the verifier for the fund operation.

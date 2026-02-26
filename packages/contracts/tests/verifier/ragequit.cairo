@@ -6,7 +6,7 @@ use tongo::structs::common::{
     cipherbalance::{CipherBalance,CipherBalanceTrait},
 };
 use crate::prover::utils::pubkey_from_secret;
-use crate::consts::{USER_ADDRESS, RELAYER_ADDRESS};
+use crate::consts::{USER_ADDRESS, RELAYER_ADDRESS, LEDGER_ADDRESS};
 
 
 #[test]
@@ -35,6 +35,7 @@ fn test_ragequit() {
         nonce,
         USER_ADDRESS,
         0,
+        LEDGER_ADDRESS,
         generate_random(seed, 3)
     );
     verify_ragequit(inputs, proof);
@@ -66,6 +67,7 @@ fn test_relay_ragequit() {
         nonce,
         RELAYER_ADDRESS,
         2,
+        LEDGER_ADDRESS,
         generate_random(seed, 3)
     );
     verify_ragequit(inputs, proof);

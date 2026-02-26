@@ -28,6 +28,7 @@ pub struct Ragequit {
     pub hint: AEBalance,
     pub proof: ProofOfRagequit,
     pub relayData: RelayData,
+    pub ledger: ContractAddress,
     pub auditPart: Option<Audit>,
 }
 

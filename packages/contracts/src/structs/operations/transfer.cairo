@@ -1,4 +1,5 @@
 use core::poseidon::poseidon_hash_span;
+use starknet::ContractAddress;
 use she::utils::reduce_modulo_order;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
@@ -25,6 +26,7 @@ use crate::verifier::range::Range;
 pub struct Transfer {
     pub from: PubKey,
     pub to: PubKey,
+    pub ledger: ContractAddress,
     pub transferBalance: CipherBalance,
     pub transferBalanceSelf: CipherBalance,
     pub hintTransfer: AEBalance,

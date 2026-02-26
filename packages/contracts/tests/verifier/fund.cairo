@@ -6,7 +6,7 @@ use tongo::structs::common::{
     cipherbalance::CipherBalanceTrait,
 };
 use crate::prover::utils::pubkey_from_secret;
-use crate::consts::{USER_ADDRESS, RELAYER_ADDRESS};
+use crate::consts::{USER_ADDRESS, RELAYER_ADDRESS, LEDGER_ADDRESS};
 
 #[test]
 fn test_fund() {
@@ -30,6 +30,7 @@ fn test_fund() {
         nonce,
         USER_ADDRESS,
         fee_to_sender,
+        LEDGER_ADDRESS,
         seed
     );
 
@@ -60,6 +61,7 @@ fn test_fund_relay() {
         nonce,
         RELAYER_ADDRESS,
         fee_to_sender,
+        LEDGER_ADDRESS,
         seed
     );
 

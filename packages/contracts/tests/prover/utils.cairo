@@ -63,7 +63,7 @@ pub fn computeH() -> NonZeroEcPoint {
     return output.unwrap();
 }
 
-#[test]
+//#[test]
 fn showH() {
     let h = computeH();
 //    println!("H: x: {:x}, y: {:x}", h.x(), h.y());

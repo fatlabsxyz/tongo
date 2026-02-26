@@ -1,7 +1,5 @@
 use starknet::ContractAddress;
-use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
-use crate::structs::common::state::State;
 use crate::structs::operations::fund::{Fund, OutsideFund};
 use crate::structs::operations::ragequit::Ragequit;
 use crate::structs::operations::rollover::Rollover;
@@ -9,7 +7,7 @@ use crate::structs::operations::transfer::Transfer;
 use crate::structs::operations::withdraw::Withdraw;
 
 #[starknet::interface]
-pub trait ITongo<TContractState> {
+pub trait IGlobal<TContractState> {
     // Tongo general setup:
     /// Returns the contract address that Tongo is wraping.
     fn ERC20(self: @TContractState) -> ContractAddress;
@@ -24,8 +22,9 @@ pub trait ITongo<TContractState> {
     /// Returns the bit_size set for this Tongo contract.
     fn get_bit_size(self: @TContractState) -> u32;
 
-    /// Returns the contract address of the owner of the Tongo account.
-    fn get_owner(self: @TContractState) -> ContractAddress;
+    fn is_known_ledger(self: @TContractState, ledger: ContractAddress) -> bool;
+
+    fn deploy_ledger(ref self: TContractState, owner: ContractAddress, auditorKey: Option<PubKey>, salt: felt252) -> ContractAddress;
 
     // User operations:
     /// Funds a tongo account. Callable only by the account owner
@@ -58,28 +57,4 @@ pub trait ITongo<TContractState> {
     ///
     /// Emits RolloverEvent
     fn rollover(ref self: TContractState, rollover: Rollover);
-
-    // State reading functions
-    /// Returns the curretn stored balance of a Tongo account
-    fn get_balance(self: @TContractState, y: PubKey) -> CipherBalance;
-
-    /// Returns the current pending balance of a Tongo account
-    fn get_pending(self: @TContractState, y: PubKey) -> CipherBalance;
-
-    /// Return, if the Tongo instance allows, the current declared balance of a Tongo account for
-    /// the auditor
-    fn get_audit(self: @TContractState, y: PubKey) -> Option<CipherBalance>;
-
-    /// Returns the current nonce of a Tongo account
-    fn get_nonce(self: @TContractState, y: PubKey) -> u64;
-
-    /// Returns the current state of a Tongo account.
-    fn get_state(self: @TContractState, y: PubKey) -> State;
-
-    // Auditor handling
-    /// Returns the current auditor public key.
-    fn auditor_key(self: @TContractState) -> Option<PubKey>;
-
-    /// Rotates the current auditor public key.
-    fn change_auditor_key(ref self: TContractState, new_auditor_key: PubKey);
 }

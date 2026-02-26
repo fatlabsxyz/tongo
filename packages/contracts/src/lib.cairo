@@ -34,8 +34,10 @@ pub mod structs {
 
 
 pub mod tongo {
-    pub mod ITongo;
-    pub mod Tongo;
+    pub mod ILedger;
+    pub mod Ledger;
+    pub mod IGlobal;
+    pub mod Global;
 }
 
 //OZ interface

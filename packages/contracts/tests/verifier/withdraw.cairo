@@ -6,7 +6,7 @@ use tongo::structs::common::{
     cipherbalance::CipherBalanceTrait,
 };
 use crate::prover::utils::pubkey_from_secret;
-use crate::consts::{BIT_SIZE, USER_ADDRESS};
+use crate::consts::{BIT_SIZE, USER_ADDRESS, LEDGER_ADDRESS};
 
 #[test]
 fn test_withdraw() {
@@ -24,6 +24,7 @@ fn test_withdraw() {
 
     let amount = 10;
     let nonce = 2;
+    let fee_to_sender = 0;
 
     let (inputs, proof, _) = prove_withdraw(
         x,
@@ -34,7 +35,43 @@ fn test_withdraw() {
         nonce,
         BIT_SIZE,
         USER_ADDRESS,
-        0,
+        fee_to_sender,
+        LEDGER_ADDRESS,
+        generate_random(seed, 3)
+    );
+    verify_withdraw(inputs, proof);
+}
+
+
+#[test]
+fn test_relay_withdraw() {
+    let seed = 21389321;
+    let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
+
+    let x = generate_random(seed, 1);
+    let y = pubkey_from_secret(x);
+
+    // balance stored
+    let initial_balance = 100_u128;
+    let r0 = generate_random(seed, 2);
+    let currentBalance = CipherBalanceTrait::new(y, initial_balance.into(), r0);
+    // end of setup
+
+    let amount = 10;
+    let nonce = 2;
+    let fee_to_sender = 1;
+
+    let (inputs, proof, _) = prove_withdraw(
+        x,
+        amount,
+        tranfer_address,
+        initial_balance,
+        currentBalance,
+        nonce,
+        BIT_SIZE,
+        USER_ADDRESS,
+        fee_to_sender,
+        LEDGER_ADDRESS,
         generate_random(seed, 3)
     );
     verify_withdraw(inputs, proof);

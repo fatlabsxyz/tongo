@@ -31,7 +31,7 @@ use she::utils::{compute_challenge, compute_s};
 use she::protocols::range::{prover_for_testing, pregenerate_random_for_testing};
 use she::protocols::bit::BitProofWithPrefix;
 
-use crate::consts::{CHAIN_ID, TONGO_ADDRESS};
+use crate::consts::{CHAIN_ID};
 use crate::prover::utils::{
     generate_random,
     decipher_balance,
@@ -45,6 +45,7 @@ pub fn prove_audit(
     storedBalance: CipherBalance,
     auditorPubKey: PubKey,
     sender:ContractAddress,
+    ledger: ContractAddress,
     seed:felt252,
 ) -> (InputsAudit, ProofOfAudit) {
 
@@ -57,7 +58,7 @@ pub fn prove_audit(
     let auditedBalance = CipherBalanceTrait::new(auditorPubKey, balance.into(), r);
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
         chain_id: CHAIN_ID,
-        tongo_address:TONGO_ADDRESS,
+        tongo_address:ledger,
         sender_address:sender,
     };
 
@@ -109,6 +110,7 @@ pub fn prove_fund(
     nonce: u64,
     sender:ContractAddress,
     fee_to_sender: u128,
+    ledger: ContractAddress,
     seed: felt252
 ) -> (InputsFund, ProofOfFund, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
@@ -117,7 +119,7 @@ pub fn prove_fund(
     decipher_balance(initialBalance.into(), x, currentBalance);
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
         chain_id: CHAIN_ID,
-        tongo_address:TONGO_ADDRESS,
+        tongo_address:ledger,
         sender_address:sender,
     };
     let relayData = RelayData { fee_to_sender};
@@ -146,13 +148,14 @@ pub fn prove_rollover(
     x: felt252,
     nonce: u64,
     sender:ContractAddress,
+    ledger: ContractAddress,
     seed: felt252,
 ) -> (InputsRollOver, ProofOfRollOver) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y = pubkey_from_secret(x);
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
         chain_id: CHAIN_ID,
-        tongo_address:TONGO_ADDRESS,
+        tongo_address: ledger,
         sender_address:sender,
     };
     let inputs: InputsRollOver = InputsRollOver { y: y.try_into().unwrap(), nonce, prefix_data};
@@ -180,6 +183,7 @@ pub fn prove_ragequit(
     nonce: u64,
     sender: ContractAddress,
     fee_to_sender: u128,
+    ledger: ContractAddress,
     seed: felt252
 ) -> (InputsRagequit, ProofOfRagequit, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
@@ -190,7 +194,7 @@ pub fn prove_ragequit(
 
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
         chain_id: CHAIN_ID,
-        tongo_address:TONGO_ADDRESS,
+        tongo_address:ledger,
         sender_address:sender,
     };
     
@@ -237,6 +241,7 @@ pub fn prove_withdraw(
     bit_size:u32,
     sender: ContractAddress,
     fee_to_sender: u128,
+    ledger: ContractAddress,
     seed: felt252
 ) -> (InputsWithdraw, ProofOfWithdraw, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
@@ -248,7 +253,7 @@ pub fn prove_withdraw(
 
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
         chain_id: CHAIN_ID,
-        tongo_address:TONGO_ADDRESS,
+        tongo_address: ledger,
         sender_address:sender,
     };
 
@@ -333,6 +338,7 @@ pub fn prove_transfer(
     bit_size:u32,
     sender:ContractAddress,
     fee_to_sender: u128,
+    ledger: ContractAddress,
     seed: felt252
 ) -> (InputsTransfer, ProofOfTransfer, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
@@ -353,7 +359,7 @@ pub fn prove_transfer(
 
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
         chain_id: CHAIN_ID,
-        tongo_address:TONGO_ADDRESS,
+        tongo_address:ledger,
         sender_address:sender,
     };
 

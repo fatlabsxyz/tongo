@@ -7,7 +7,8 @@ use crate::prover::utils::pubkey_from_secret;
 
 pub const OWNER_ADDRESS: ContractAddress = 'OWNER'.try_into().unwrap();
 pub const STRK_ADDRESS: ContractAddress = 0x4718F5A0FC34CC1AF16A1CDEE98FFB20C31F5CD61D6AB07201858F4287C938D.try_into().unwrap();
-pub const TONGO_ADDRESS: ContractAddress = 'TONGO'.try_into().unwrap();
+pub const GLOBAL_ADDRESS: ContractAddress = 'GLOBAL'.try_into().unwrap();
+pub const LEDGER_ADDRESS: ContractAddress = 'LEDGER'.try_into().unwrap();
 pub const GLOBAL_CALLER: ContractAddress = (0x1111111).try_into().unwrap();
 pub const USER_ADDRESS: ContractAddress = (0x2222222).try_into().unwrap();
 pub const RELAYER_ADDRESS: ContractAddress = (0x333333).try_into().unwrap();
