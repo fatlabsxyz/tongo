@@ -1,5 +1,6 @@
 use starknet::ContractAddress;
 use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::state::GlobalSetup;
 use crate::structs::operations::fund::{Fund, OutsideFund};
 use crate::structs::operations::ragequit::Ragequit;
 use crate::structs::operations::rollover::Rollover;
@@ -8,6 +9,8 @@ use crate::structs::operations::withdraw::Withdraw;
 
 #[starknet::interface]
 pub trait IGlobal<TContractState> {
+    fn get_global_setup(self: @TContractState) -> GlobalSetup;
+
     // Tongo general setup:
     /// Returns the contract address that Tongo is wraping.
     fn ERC20(self: @TContractState) -> ContractAddress;

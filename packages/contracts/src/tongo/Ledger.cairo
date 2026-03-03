@@ -12,12 +12,14 @@ pub mod Ledger {
     use crate::structs::events::{ AuditorPubKeySet };
     use crate::structs::traits::GeneralPrefixData;
     use crate::tongo::ILedger::ILedger;
-
+    use crate::structs::common::state::GlobalSetup;
 
     #[storage]
     struct Storage {
         /// The contract address that is owner of the Tongo instance.
         owner: ContractAddress,
+        //
+        global_setup: GlobalSetup,
         /// The Tongo Global contract this ledger is part of.
         global_tongo: ContractAddress,
         /// The encrypted balance for the given pubkey.
@@ -55,10 +57,13 @@ pub mod Ledger {
         ref self: ContractState,
         owner: ContractAddress,
         auditor_key: Option<PubKey>,
+        global_setup: GlobalSetup,
     ) {
         self.owner.write(owner);
         
         self.global_tongo.write(get_caller_address());
+
+        self.global_setup.write(global_setup);
 
         if let Some(key) = auditor_key {
             self._set_auditor_key(key);
@@ -74,6 +79,10 @@ pub mod Ledger {
 
     #[abi(embed_v0)]
     impl LedgerImpl of ILedger<ContractState> {
+        fn get_global_setup(self: @ContractState) -> GlobalSetup {
+            self.global_setup.read()
+        }
+
         /// Returns the contract address of the owner of the Tongo account.
         fn get_owner(self: @ContractState) -> ContractAddress {
             self.owner.read()

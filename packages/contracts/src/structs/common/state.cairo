@@ -1,3 +1,4 @@
+use starknet::ContractAddress;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 
@@ -18,3 +19,12 @@ pub struct State {
     pub ae_balance: Option<AEBalance>,
     pub ae_audit_balance: Option<AEBalance>,
 }
+
+#[derive(Serde, Drop, starknet::Store)]
+pub struct GlobalSetup {
+    pub global_tongo: ContractAddress,
+    pub ERC20: ContractAddress,
+    pub rate: u256,
+    pub bit_size: u32,
+}
+

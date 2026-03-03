@@ -9,6 +9,7 @@ pub mod Global {
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::structs::common::cipherbalance::{CipherBalance, CipherBalanceTrait};
     use crate::structs::common::pubkey::PubKey;
+    use crate::structs::common::state::GlobalSetup;
     use crate::structs::operations::audit::{Audit, InputsAudit};
     use crate::structs::operations::fund::{Fund, InputsFund, OutsideFund};
     use crate::structs::operations::ragequit::{InputsRagequit, Ragequit};
@@ -58,12 +59,22 @@ pub mod Global {
 
         assert!(bit_size <= 128_u32, "Bit size should be 128 at max");
         self.bit_size.write(bit_size);
+
         self.ledger_class.write(ledger_class);
     }
 
 
     #[abi(embed_v0)]
     impl GlobalImpl of IGlobal<ContractState> {
+        fn get_global_setup(self: @ContractState) -> GlobalSetup {
+            GlobalSetup {
+                global_tongo: get_contract_address(),
+                ERC20: self.ERC20.read(),
+                rate: self.rate.read(),
+                bit_size: self.bit_size.read(),
+            }
+        }
+
         /// Returns the contract address that Tongo is wraping.
         fn ERC20(self: @ContractState) -> ContractAddress {
             self.ERC20.read()

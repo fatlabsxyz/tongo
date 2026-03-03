@@ -2,10 +2,13 @@ use starknet::ContractAddress;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::state::State;
+use crate::structs::common::state::GlobalSetup;
 use crate::structs::aecipher::AEBalance;
 
 #[starknet::interface]
 pub trait ILedger<TContractState> {
+    fn get_global_setup(self: @TContractState) -> GlobalSetup;
+
     /// Returns the contract address of the owner of the Tongo account.
     fn get_owner(self: @TContractState) -> ContractAddress;
 
