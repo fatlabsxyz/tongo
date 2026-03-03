@@ -24,6 +24,7 @@ fn generateAuditPart(
     sender: ContractAddress,
     dispatcher:ITongoDispatcher
 )-> Option<Audit> {
+    let tongoAddress = dispatcher.contract_address;
     let auditor = dispatcher.auditor_key();
     if auditor.is_some() {
         let (inputsAudit, proofAudit) = prove_audit(
@@ -32,6 +33,7 @@ fn generateAuditPart(
             storedBalance,
             auditor.unwrap(),
             sender,
+            tongoAddress,
             generate_random(pk, 1)
         );
 
@@ -56,6 +58,7 @@ pub fn fundOperation(
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
+    let tongoAddress = dispatcher.contract_address;
 
     let (inputs, proof, newBalance) = prove_fund(
         pk,
@@ -65,6 +68,7 @@ pub fn fundOperation(
         nonce,
         sender,
         fee_to_sender,
+        tongoAddress,
         generate_random(pk, nonce.into())
     );
 
@@ -86,6 +90,7 @@ pub fn withdrawOperation(
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
     let bit_size = dispatcher.get_bit_size();
+    let tongoAddress = dispatcher.contract_address;
 
     let (inputs, proof, newBalance) = prove_withdraw(
         pk,
@@ -97,6 +102,7 @@ pub fn withdrawOperation(
         bit_size,
         sender,
         fee_to_sender,
+        tongoAddress,
         generate_random(pk, nonce.into())
     );
 
@@ -119,6 +125,7 @@ pub fn ragequitOperation(
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
+    let tongoAddress = dispatcher.contract_address;
 
     let (_inputs, proof, newBalance) = prove_ragequit(
         pk,
@@ -128,6 +135,7 @@ pub fn ragequitOperation(
         nonce,
         sender,
         fee_to_sender,
+        tongoAddress,
         generate_random(pk, nonce.into())
     );
 
@@ -150,6 +158,7 @@ pub fn transferOperation(
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
     let bit_size = dispatcher.get_bit_size();
+    let tongoAddress = dispatcher.contract_address;
 
     let (inputs, proof, newBalance) = prove_transfer(
         pk,
@@ -161,6 +170,7 @@ pub fn transferOperation(
         bit_size,
         sender,
         fee_to_sender,
+        tongoAddress,
         generate_random(pk,nonce.into())
     );
 
@@ -190,11 +200,13 @@ pub fn rolloverOperation(
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let sender = USER_ADDRESS;
+    let tongoAddress = dispatcher.contract_address;
 
     let (_inputs, proof) = prove_rollover(
         pk,
         nonce,
         sender,
+        tongoAddress,
         generate_random(pk, nonce.into())
     );
 

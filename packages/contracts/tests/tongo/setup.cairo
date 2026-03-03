@@ -5,11 +5,12 @@ use snforge_std::{
 };
 use starknet::ContractAddress;
 use tongo::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
+use tongo::tongo::IVault::{IVaultDispatcher, IVaultDispatcherTrait};
 use tongo::structs::{
     aecipher::AEBalance,
 };
 
-use crate::consts::{TONGO_ADDRESS,STRK_ADDRESS,USER_ADDRESS,RELAYER_ADDRESS, AUDITOR_PRIVATE, OWNER_ADDRESS, RATE, CHAIN_ID, BIT_SIZE};
+use crate::consts::{VAULT_ADDRESS,STRK_ADDRESS,USER_ADDRESS,RELAYER_ADDRESS, AUDITOR_PRIVATE, OWNER_ADDRESS, RATE, CHAIN_ID, BIT_SIZE};
 use crate::prover::utils::pubkey_from_secret;
 
 pub fn empty_ae_hint() -> AEBalance {
@@ -31,43 +32,53 @@ fn deploy_contract(
     deployed_address
 }
 
-
-pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
-    let _erc20 = setup_erc20();
-    let (tongo_contract, _tongo_class_hash) = declare_class("Tongo");
-
-    let audit_key = pubkey_from_secret(AUDITOR_PRIVATE);
-    // Option<PubKey> se serializa como [0, x, y] si es un some o [1] si es un none
+pub fn setup_vault() -> (ContractAddress, IVaultDispatcher) {
+    let ( _, tongo_class_hash) = declare_class("Tongo");
+    let (vault_contract, _vaul__class_hash) = declare_class("Vault");
     let constructor_calldata: Array<felt252> = array![
-        OWNER_ADDRESS.into(),
         STRK_ADDRESS.into(),
         RATE.low.into(),
         RATE.high.into(),
         BIT_SIZE.into(),
-        0,
-        audit_key.x,
-        audit_key.y
+        tongo_class_hash,
     ];
-    let tongo_address = deploy_contract(
-        tongo_contract, TONGO_ADDRESS.try_into().unwrap(), constructor_calldata,
+
+    let vault_address = deploy_contract(
+        vault_contract, VAULT_ADDRESS.try_into().unwrap(), constructor_calldata,
     );
-    let tongo_dispatcher = ITongoDispatcher { contract_address: tongo_address };
-    start_cheat_caller_address(TONGO_ADDRESS, USER_ADDRESS);
+
+    let dispatcher = IVaultDispatcher {contract_address: vault_address};
+    (vault_address, dispatcher)
+}
+
+
+pub fn setup_tongo() -> (ContractAddress, ITongoDispatcher) {
     start_cheat_chain_id_global(CHAIN_ID);
+    let (_vault_address, Vault) = setup_vault();
+
+    let tag = 'TAG_VAULT';
+
+    let audit_key = pubkey_from_secret(AUDITOR_PRIVATE);
+
+    let tongo_address = Vault.deploy_tongo(OWNER_ADDRESS, tag, Some(audit_key));
+    start_cheat_caller_address(tongo_address, USER_ADDRESS);
+
+    let tongo_dispatcher = ITongoDispatcher {contract_address: tongo_address};
+    setup_erc20(tongo_address);
 
     (tongo_address, tongo_dispatcher)
 }
 
 
-fn setup_erc20() -> IERC20Dispatcher {
+fn setup_erc20(tongo_address: ContractAddress) -> IERC20Dispatcher {
     let dispatcher = IERC20Dispatcher { contract_address: STRK_ADDRESS };
     set_balance(USER_ADDRESS, 100000000000000_u256, Token::STRK);
     set_balance(RELAYER_ADDRESS, 100000000000000_u256, Token::STRK);
 
     start_cheat_caller_address(STRK_ADDRESS, RELAYER_ADDRESS);
-    dispatcher.approve(TONGO_ADDRESS.try_into().unwrap(), 10000000_u256);
+    dispatcher.approve(tongo_address.try_into().unwrap(), 10000000_u256);
     start_cheat_caller_address(STRK_ADDRESS, USER_ADDRESS);
-    dispatcher.approve(TONGO_ADDRESS.try_into().unwrap(), 10000000_u256);
+    dispatcher.approve(tongo_address.try_into().unwrap(), 10000000_u256);
 
     stop_cheat_caller_address(STRK_ADDRESS);
 
@@ -85,7 +96,7 @@ fn test_owner() {
 fn test_asset() {
     let (_address, dispatcher) = setup_tongo();
     let asset = dispatcher.ERC20();
-    assert(asset== STRK_ADDRESS, 'nope');
+    assert(asset == STRK_ADDRESS, 'nope');
 }
 
 #[test]

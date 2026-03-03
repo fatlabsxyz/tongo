@@ -1,5 +1,6 @@
 use starknet::ContractAddress;
 use tongo::tongo::ITongo::{ITongoDispatcherTrait, ITongoDispatcher};
+use tongo::erc20::{IERC20DispatcherTrait, IERC20Dispatcher};
 
 use crate::tongo::operations::{fundOperation, withdrawOperation, ragequitOperation, transferOperation, rolloverOperation};
 
@@ -7,7 +8,7 @@ use crate::consts::{ AUDITOR_PRIVATE};
 use crate::prover::utils::{decipher_balance};
 use crate::tongo::setup::{setup_tongo};
 use crate::prover::utils::pubkey_from_secret;
-use crate::consts::{USER_ADDRESS};
+use crate::consts::{USER_ADDRESS, VAULT_ADDRESS};
 
 fn checkBalances(x: felt252, balanceAmount:u128, pendingAmount:u128,auditAmount:u128, dispatcher: ITongoDispatcher) {
     let public_key = pubkey_from_secret(x);
@@ -28,6 +29,8 @@ fn checkBalances(x: felt252, balanceAmount:u128, pendingAmount:u128,auditAmount:
 fn full() {
     //set up
     let (_address, dispatcher) = setup_tongo();
+    let ERC20 = IERC20Dispatcher {contract_address: dispatcher.ERC20()};
+    let rate = dispatcher.get_rate();
 
     let x = 5873498374578;
     let y = pubkey_from_secret(x);
@@ -46,6 +49,8 @@ fn full() {
     let nonce = dispatcher.get_nonce(y);
     assert!(nonce == 0, "Initial nonce not 0");
 
+    let initialVaulBalance = ERC20.balance_of(VAULT_ADDRESS);
+
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
@@ -60,6 +65,9 @@ fn full() {
 
     let nonce = dispatcher.get_nonce(y);
     assert!(nonce == 1, "Nonce is not 1");
+
+    let VaultBalance = ERC20.balance_of(VAULT_ADDRESS);
+    assert!(VaultBalance - initialVaulBalance == rate*(initial_fund).into(), "Incorrect VaultBalance");
 
     let transfer_amount = 100_u128;
     let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,dispatcher);
@@ -89,6 +97,9 @@ fn full() {
     let operation = withdrawOperation(x_bar,transfer_amount, withdraw_amount, transfer_address,USER_ADDRESS,0, dispatcher);
     dispatcher.withdraw(operation);
 
+    let VaultBalance2 = ERC20.balance_of(VAULT_ADDRESS);
+    assert!(VaultBalance - VaultBalance2 == rate*(withdraw_amount).into(),"Incorrect VaultBalance2");
+
     //now y_bar noce should be 2
     let nonce = dispatcher.get_nonce(y_bar);
     assert!(nonce == 2, "Nonce is not 2");
@@ -97,11 +108,15 @@ fn full() {
 
     //y will ragequit
 
-    let operation = ragequitOperation(x, initial_fund - transfer_amount,transfer_address,USER_ADDRESS,0, dispatcher);
+    let ragequit_amount = initial_fund - transfer_amount;
+    let operation = ragequitOperation(x, ragequit_amount,transfer_address,USER_ADDRESS,0, dispatcher);
     dispatcher.ragequit(operation);
 
     // nonce for y should be 3
     let nonce = dispatcher.get_nonce(y);
     assert!(nonce == 3, "Nonce is not 3");
     checkBalances(x,0,0,0,dispatcher);
+
+    let VaultBalance3 = ERC20.balance_of(VAULT_ADDRESS);
+    assert!(VaultBalance2 - VaultBalance3 == rate*(ragequit_amount).into(),"Incorrect VaultBalance3");
 }

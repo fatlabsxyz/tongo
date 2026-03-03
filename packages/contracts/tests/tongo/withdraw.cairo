@@ -6,7 +6,7 @@ use crate::tongo::setup::{setup_tongo};
 
 use crate::prover::utils::{generate_random, decipher_balance, pubkey_from_secret};
 use tongo::erc20::{IERC20DispatcherTrait, IERC20Dispatcher};
-use crate::consts::{USER_ADDRESS,STRK_ADDRESS};
+use crate::consts::{USER_ADDRESS,STRK_ADDRESS, VAULT_ADDRESS};
 
 
 #[test]
@@ -27,6 +27,7 @@ fn test_ragequit() {
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20 = erc20dispatcher.balance_of(transfer_address);
+    let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
     let operation = ragequitOperation(x, initial_fund,transfer_address,USER_ADDRESS,0,dispatcher);
     dispatcher.ragequit(operation);
@@ -38,8 +39,11 @@ fn test_ragequit() {
     decipher_balance(0, x, pending);
 
     let finalErc20 = erc20dispatcher.balance_of(transfer_address);
+    let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
     let rate = dispatcher.get_rate();
+
     assert(finalErc20  - initialErc20 == rate*initial_fund.into(), 'nope');
+    assert!(initialErc20Vault  - finalErc20Vault == rate*initial_fund.into(), "Incorrect final balance for Vault");
 }
 
 #[test]
@@ -61,6 +65,7 @@ fn test_withdraw() {
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20 = erc20dispatcher.balance_of(transfer_address);
+    let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
     let withdraw_amount = 25_u128;
 
@@ -71,6 +76,9 @@ fn test_withdraw() {
     decipher_balance((initial_fund- withdraw_amount).into(), x, balance);
 
     let finalErc20 = erc20dispatcher.balance_of(transfer_address);
+    let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
+
     let rate = dispatcher.get_rate();
     assert(finalErc20  - initialErc20 == rate*withdraw_amount.into(), 'nope');
+    assert!(initialErc20Vault  - finalErc20Vault == rate*withdraw_amount.into(), "Incorrect final balance for Vault");
 }
