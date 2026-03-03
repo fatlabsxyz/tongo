@@ -1,7 +1,7 @@
 use crate::tongo::setup::{setup_tongo};
 use tongo::tongo::ITongo::{ITongoDispatcherTrait};
 use tongo::erc20::{IERC20DispatcherTrait, IERC20Dispatcher};
-use crate::consts::{USER_ADDRESS, STRK_ADDRESS};
+use crate::consts::{USER_ADDRESS, STRK_ADDRESS, VAULT_ADDRESS};
 use tongo::structs::operations::fund::OutsideFund;
 
 use crate::tongo::operations::{fundOperation};
@@ -14,6 +14,8 @@ fn test_fund() {
     let (_tongo_address, dispatcher) = setup_tongo();
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20 = erc20dispatcher.balance_of(USER_ADDRESS);
+    let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
+
     let tongoAmount = 250;
     let sender = USER_ADDRESS;
     let fee_to_sender =  0;
@@ -22,8 +24,10 @@ fn test_fund() {
     dispatcher.fund(operation);
 
     let finalErc20 = erc20dispatcher.balance_of(USER_ADDRESS);
+    let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
     let rate = dispatcher.get_rate();
     assert(initialErc20 - finalErc20 == rate*tongoAmount.into(), 'nope');
+    assert(finalErc20Vault - initialErc20Vault == rate*(tongoAmount - fee_to_sender).into(), 'nope');
 }
 
 #[test]
@@ -34,6 +38,7 @@ fn test_outside_fund() {
     let (_tongo_address, dispatcher) = setup_tongo();
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20 = erc20dispatcher.balance_of(USER_ADDRESS);
+    let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
     let tongoAmount = 250;
     
     let outsideFund = OutsideFund {to, amount: tongoAmount};
@@ -41,8 +46,10 @@ fn test_outside_fund() {
     dispatcher.outside_fund(outsideFund);
 
     let finalErc20 = erc20dispatcher.balance_of(USER_ADDRESS);
+    let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
     let rate = dispatcher.get_rate();
     assert(initialErc20 - finalErc20 == rate*tongoAmount.into(), 'nope');
+    assert(finalErc20Vault - initialErc20Vault == rate*(tongoAmount).into(), 'nope');
 
     let pending = dispatcher.get_pending(to);
     decipher_balance(tongoAmount.into(), x.into(), pending);

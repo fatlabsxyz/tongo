@@ -17,7 +17,7 @@ import { RagequitOperation } from "../operations/ragequit.js";
 import { RollOverOperation } from "../operations/rollover.js";
 import { TransferOperation } from "../operations/transfer.js";
 import { WithdrawOperation } from "../operations/withdraw.js";
-import { tongoAbi } from "../tongo.abi.js";
+import { tongoAbi } from "../abi/tongo.abi.js";
 import {
     CipherBalance, GeneralPrefixData, parseCipherBalance,
     projectivePointToStarkPoint,

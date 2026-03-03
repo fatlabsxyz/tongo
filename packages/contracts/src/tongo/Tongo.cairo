@@ -5,6 +5,7 @@ pub mod Tongo {
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_caller_address, get_contract_address, get_tx_info};
+    use core::num::traits::Bounded;
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::structs::aecipher::{AEBalance, IntoOptionAEBalance};
     use crate::structs::common::cipherbalance::{CipherBalance, CipherBalanceTrait};
@@ -22,6 +23,7 @@ pub mod Tongo {
     use crate::structs::operations::withdraw::{InputsWithdraw, Withdraw};
     use crate::structs::traits::GeneralPrefixData;
     use crate::tongo::ITongo::ITongo;
+    use crate::tongo::IVault::{IVaultDispatcher, IVaultDispatcherTrait};
     use crate::verifier::audit::verify_audit;
     use crate::verifier::fund::verify_fund;
     use crate::verifier::ragequit::verify_ragequit;
@@ -34,6 +36,9 @@ pub mod Tongo {
     struct Storage {
         /// The contract address that is owner of the Tongo instance.
         owner: ContractAddress,
+        tag: felt252,
+
+        vault: ContractAddress,
         /// The contract address of the ERC20 that Tongo is wrapping.
         ERC20: ContractAddress,
         /// The conversion  rage between the wrapped ERC20 a tongo:
@@ -80,14 +85,18 @@ pub mod Tongo {
     fn constructor(
         ref self: ContractState,
         owner: ContractAddress,
+        tag: felt252,
         ERC20: ContractAddress,
         rate: u256,
         bit_size: u32,
         auditor_key: Option<PubKey>,
     ) {
+        let vault = get_caller_address();
         self.owner.write(owner);
         self.ERC20.write(ERC20);
+        self.vault.write(vault);
         self.rate.write(rate);
+        self.tag.write(tag);
 
         assert!(bit_size <= 128_u32, "Bit size should be 128 at max");
         self.bit_size.write(bit_size);
@@ -95,6 +104,10 @@ pub mod Tongo {
         if let Some(key) = auditor_key {
             self._set_auditor_key(key);
         }
+
+        let ERC20 = IERC20Dispatcher { contract_address: ERC20 };
+        let MAX_U256:u256 = Bounded::<u256>::MAX;
+        ERC20.approve(vault, MAX_U256);
     }
 
     #[event]
@@ -159,6 +172,7 @@ pub mod Tongo {
             let fee_to_sender = relayData.fee_to_sender;
 
             self._transfer_from_caller(self._unwrap_tongo_amount(amount+fee_to_sender));
+            self._send_to_vault(self._unwrap_tongo_amount(amount));
 
             if fee_to_sender != 0 {
                 self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(fee_to_sender.into()));
@@ -188,6 +202,7 @@ pub mod Tongo {
             let OutsideFund { to, amount } = outsideFund;
 
             self._transfer_from_caller(self._unwrap_tongo_amount(amount));
+            self._send_to_vault(self._unwrap_tongo_amount(amount));
 
             let cipher = CipherBalanceTrait::new(to, amount.into(), 'outsideFund');
             self._add_pending(to, cipher);
@@ -228,6 +243,8 @@ pub mod Tongo {
             self._subtract_balance(from, cipher);
             self._overwrite_hint(from, hint);
 
+
+            self._withdraw_from_vaul(self._unwrap_tongo_amount(amount));
             if relayData.fee_to_sender == 0 {
                 self._transfer_to(to, self._unwrap_tongo_amount(amount));
             } else {
@@ -263,6 +280,8 @@ pub mod Tongo {
             let zero_balance: CipherBalance = CipherBalanceTrait::new(from, 0, 1);
             self.balance.entry(from).write(zero_balance.into());
             self._overwrite_hint(from, hint);
+
+            self._withdraw_from_vaul(self._unwrap_tongo_amount(amount));
 
             if relayData.fee_to_sender == 0 {
                 self._transfer_to(to, self._unwrap_tongo_amount(amount));
@@ -321,6 +340,7 @@ pub mod Tongo {
             verify_transfer(inputs, proof);
 
             if relayData.fee_to_sender != 0 {
+                self._withdraw_from_vaul(self._unwrap_tongo_amount(relayData.fee_to_sender));
                 self
                     ._transfer_to(
                         get_caller_address(), self._unwrap_tongo_amount(relayData.fee_to_sender),
@@ -501,6 +521,16 @@ pub mod Tongo {
             let ERC20 = IERC20Dispatcher { contract_address: asset_address };
             let response = ERC20.transfer(to, amount);
             assert!(response, "ERC20 transfer failed");
+        }
+
+        fn _send_to_vault(self: @ContractState, amount: u256) {
+            let Vault = IVaultDispatcher {contract_address: self.vault.read()};
+            Vault.deposit(amount)
+        }
+        
+        fn _withdraw_from_vaul(self: @ContractState, amount: u256) {
+            let Vault = IVaultDispatcher {contract_address: self.vault.read()};
+            Vault.withdraw(amount)
         }
 
         /// Increases the nonce of the given Tongo account.

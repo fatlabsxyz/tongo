@@ -1,3 +1,4 @@
+use starknet::ContractAddress;
 use crate::prover::utils::{generate_random};
 use crate::prover::functions::{prove_fund};
 use tongo::verifier::fund::{verify_fund};
@@ -15,6 +16,7 @@ fn test_fund() {
     let amount = 100_u128;
     let initial_balance = 0_u128;
     let fee_to_sender = 0_128;
+    let tongoAddress: ContractAddress = 'TONGO'.try_into().unwrap();
 
     let nonce = 123;
 
@@ -30,6 +32,7 @@ fn test_fund() {
         nonce,
         USER_ADDRESS,
         fee_to_sender,
+        tongoAddress,
         seed
     );
 
@@ -45,6 +48,7 @@ fn test_fund_relay() {
     let amount = 100_u128;
     let initial_balance = 0_u128;
     let fee_to_sender = 10_128;
+    let tongoAddress: ContractAddress = 'TONGO'.try_into().unwrap();
 
     let nonce = 123;
 
@@ -60,6 +64,7 @@ fn test_fund_relay() {
         nonce,
         RELAYER_ADDRESS,
         fee_to_sender,
+        tongoAddress,
         seed
     );
 
