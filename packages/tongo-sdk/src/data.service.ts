@@ -1,5 +1,5 @@
 import { num, RpcProvider, hash, events, CallData, ParsedEvent, AbiParser2 } from "starknet";
-import { tongoAbi } from "./tongo.abi.js";
+import { tongoAbi } from "./abi/tongo.abi.js";
 import { PubKey } from "./types.js";
 import { StarkPoint } from "./types.js";
 import { AEBalance } from "./ae_balance.js";
