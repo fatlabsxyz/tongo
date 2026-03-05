@@ -104,11 +104,11 @@ pub fn prove_audit(
 pub fn prove_fund(
     x: felt252,
     amount:u128,
-    from: ContractAddress,
     initialBalance:u128,
     currentBalance: CipherBalance,
     nonce: u64,
     sender:ContractAddress,
+    fee_to_sender: u128,
     seed: felt252
 ) -> (InputsFund, ProofOfFund, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
@@ -120,7 +120,8 @@ pub fn prove_fund(
         tongo_address:TONGO_ADDRESS,
         sender_address:sender,
     };
-    let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, nonce, prefix_data};
+    let relayData = RelayData { fee_to_sender};
+    let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, nonce, relayData, prefix_data};
     let prefix = inputs.compute_prefix();
 
     //prover

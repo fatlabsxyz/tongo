@@ -11,7 +11,7 @@ pub const TONGO_ADDRESS: ContractAddress = 'TONGO'.try_into().unwrap();
 pub const GLOBAL_CALLER: ContractAddress = (0x1111111).try_into().unwrap();
 pub const USER_ADDRESS: ContractAddress = (0x2222222).try_into().unwrap();
 pub const RELAYER_ADDRESS: ContractAddress = (0x333333).try_into().unwrap();
-pub const RATE: u256 = 43_u256;
+pub const RATE: u256 = 1000_u256;
 pub const CHAIN_ID:felt252 = 'CHAIN_ID';
 pub const BIT_SIZE: u32 = 32_u32;
 

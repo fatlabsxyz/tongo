@@ -3,7 +3,7 @@ import { poe } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g } from "../constants";
 import { createCipherBalance} from "../../src/utils";
-import { ProjectivePoint, GeneralPrefixData, CipherBalance, compute_prefix } from "../types";
+import { ProjectivePoint, GeneralPrefixData, CipherBalance, compute_prefix, RelayData} from "../types";
 
 
 
@@ -24,6 +24,7 @@ export interface InputsFund {
     amount: bigint;
     nonce: bigint;
     prefix_data: GeneralPrefixData;
+    relay_data: RelayData,
 }
 
 /**
@@ -33,10 +34,12 @@ export interface InputsFund {
  */
 function prefixFund(inputs: InputsFund): bigint {
     const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
+    const fee_to_sender: bigint = inputs.relay_data.fee_to_sender;
     const seq: bigint[] = [
         chain_id,
         tongo_address,
         sender_address,
+        fee_to_sender,
         FUND_CAIRO_STRING,
         inputs.y.toAffine().x,
         inputs.y.toAffine().y,
@@ -64,6 +67,7 @@ export function proveFund(
     initial_cipherbalance: CipherBalance,
     nonce: bigint,
     prefix_data: GeneralPrefixData,
+    fee_to_sender: bigint,
 ): {
     inputs: InputsFund;
     proof: ProofOfFund;
@@ -78,7 +82,9 @@ export function proveFund(
     const temp = g.multiplyUnsafe(initial_balance);
     if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
 
-    const inputs: InputsFund = { y, nonce, amount: amount_to_fund, prefix_data };
+    const relay_data: RelayData = {fee_to_sender};
+
+    const inputs: InputsFund = { y, nonce, amount: amount_to_fund, prefix_data, relay_data};
     const prefix = prefixFund(inputs);
 
     const { proof: { s: sx, A: Ax } } = poe.prove(x, g, prefix);

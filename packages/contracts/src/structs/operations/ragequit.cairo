@@ -39,6 +39,7 @@ pub struct Ragequit {
 /// - to: The starknet contract address to send the funds to.
 /// - amount: The ammount of tongo to ragequit (the total amount of tongos in the account).
 /// - currentBalance: The current CipherBalance stored for the account.
+/// - relayData: relayer related data.
 #[derive(Serde, Drop, Copy)]
 pub struct InputsRagequit {
     pub y: PubKey,

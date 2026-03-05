@@ -15,8 +15,10 @@ fn test_fund() {
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20 = erc20dispatcher.balance_of(USER_ADDRESS);
     let tongoAmount = 250;
+    let sender = USER_ADDRESS;
+    let fee_to_sender =  0;
 
-    let operation = fundOperation(x,USER_ADDRESS, 0, tongoAmount,dispatcher);
+    let operation = fundOperation(x, 0, tongoAmount, sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
     let finalErc20 = erc20dispatcher.balance_of(USER_ADDRESS);

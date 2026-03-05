@@ -47,30 +47,30 @@ fn generateAuditPart(
 
 pub fn fundOperation(
     pk: felt252,
-    from: ContractAddress,
     initialBalance: u128,
     amount: u128,
+    sender: ContractAddress,
+    fee_to_sender: u128,
     dispatcher:ITongoDispatcher
 )-> Fund {
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
-    let sender = USER_ADDRESS;
 
-    let (_inputs, proof, newBalance) = prove_fund(
+    let (inputs, proof, newBalance) = prove_fund(
         pk,
         amount,
-        from,
         initialBalance,
         currentBalance,
         nonce,
         sender,
+        fee_to_sender,
         generate_random(pk, nonce.into())
     );
 
     let auditPart = generateAuditPart(pk, initialBalance+amount, newBalance, sender, dispatcher);
     let hint = empty_ae_hint();
-    return Fund {to: y,amount,proof, hint,auditPart};
+    return Fund {to: y,amount,proof, hint,relayData: inputs.relayData, auditPart};
 }
 
 pub fn withdrawOperation(

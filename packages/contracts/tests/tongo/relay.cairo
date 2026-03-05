@@ -1,4 +1,3 @@
-use starknet::ContractAddress;
 use tongo::tongo::ITongo::ITongoDispatcherTrait;
 
 use crate::tongo::operations::{fundOperation, ragequitOperation, withdrawOperation, transferOperation};
@@ -11,29 +10,62 @@ use crate::consts::{USER_ADDRESS,STRK_ADDRESS, RELAYER_ADDRESS};
 use snforge_std::{start_cheat_caller_address};
 
 
+
+#[test]
+fn test_tongo_relay_fund() {
+    let x = 12931238;
+    let (tongo_address, dispatcher) = setup_tongo();
+
+    let sender = RELAYER_ADDRESS;
+    let fee_to_sender: u128 = 10;
+
+    let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
+    let initialErc20Relayer = erc20dispatcher.balance_of(sender);
+
+    let y = pubkey_from_secret(x);
+    
+    let initial_balance = 0_u128;
+    let initial_fund = 990_u128;
+
+    start_cheat_caller_address(tongo_address, sender);
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
+    dispatcher.fund(operation);
+
+
+    let rate = dispatcher.get_rate();
+    let finalErc20Relayer = erc20dispatcher.balance_of(sender);
+
+    assert( initialErc20Relayer - finalErc20Relayer == rate*(initial_fund).into(), 'nope');
+
+    let balance = dispatcher.get_balance(y);
+    decipher_balance((initial_fund).into(), x, balance);
+}
+
 #[test]
 fn test_tongo_relay_ragequit() {
     let x = 12931238;
     let (tongo_address, dispatcher) = setup_tongo();
-    let transfer_address: ContractAddress = 'asdf'.try_into().unwrap();
+    let transfer_address = USER_ADDRESS;
 
     let sender = RELAYER_ADDRESS;
-    let fee_to_sender: u128 = 10;
+    let fee_to_sender: u128 = 0;
 
     let y = pubkey_from_secret(x);
     
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+
+    start_cheat_caller_address(tongo_address, sender);
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20 = erc20dispatcher.balance_of(transfer_address);
     let initialErc20Relayer = erc20dispatcher.balance_of(sender);
 
+    let fee_to_sender: u128 = 10;
     
     let operation = ragequitOperation(x, initial_fund,transfer_address,sender,fee_to_sender,dispatcher);
-    start_cheat_caller_address(tongo_address, sender);
     dispatcher.ragequit(operation);
     
     let balance = dispatcher.get_balance(y);
@@ -54,17 +86,19 @@ fn test_tongo_relay_withdraw() {
     let seed = 8309218;
 
     let (tongo_address, dispatcher) = setup_tongo();
-    let transfer_address: ContractAddress = 'asdf'.try_into().unwrap();
+    let transfer_address = USER_ADDRESS;
 
     let sender = RELAYER_ADDRESS;
-    let fee_to_sender: u128 = 1;
+    let fee_to_sender: u128 = 0;
 
     let x = generate_random(seed, 1);
     let y = pubkey_from_secret(x);
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+
+    start_cheat_caller_address(tongo_address, sender);
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
@@ -72,9 +106,9 @@ fn test_tongo_relay_withdraw() {
     let initialErc20Relayer = erc20dispatcher.balance_of(sender);
 
     let withdraw_amount = 49_u128;
+    let fee_to_sender: u128 = 10;
 
     let operation = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address, RELAYER_ADDRESS, fee_to_sender, dispatcher);
-    start_cheat_caller_address(tongo_address, sender);
     dispatcher.withdraw(operation);
 
     let balance = dispatcher.get_balance(y);
@@ -99,18 +133,22 @@ fn test_tongo_relay_transfer() {
     let y = pubkey_from_secret(x);
     let x_bar = 2190381209380321;
     let y_bar = pubkey_from_secret(x_bar);
-    let fee_to_sender = 10;
+    let fee_to_sender = 0;
     let sender = RELAYER_ADDRESS;
 
     let initial_balance = 0;
     let initial_fund = 250;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+
+    start_cheat_caller_address(tongo_address, sender);
+    let operation = fundOperation(x,initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20Relayer = erc20dispatcher.balance_of(sender);
 
     let transfer_amount = 100;
+    let fee_to_sender = 10;
+
     let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, sender, fee_to_sender,dispatcher);
     start_cheat_caller_address(tongo_address, sender);
     dispatcher.transfer(operation);

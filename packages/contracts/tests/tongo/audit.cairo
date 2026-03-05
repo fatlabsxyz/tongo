@@ -31,7 +31,10 @@ fn audit_fund() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+
+    let sender = USER_ADDRESS;
+    let fee_to_sender =  0;
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
     let audit = dispatcher.get_audit(y);
@@ -50,7 +53,10 @@ fn audit_withdraw() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+
+    let sender = USER_ADDRESS;
+    let fee_to_sender =  0;
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
     let withdraw_amount = 25_u128;
@@ -73,7 +79,10 @@ fn audit_ragequit() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+    
+    let sender = USER_ADDRESS;
+    let fee_to_sender =  0;
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
 
@@ -96,11 +105,13 @@ fn audit_transfer() {
     let x_bar = 21983092183910283;
     let y_bar = pubkey_from_secret(x_bar);
 
-    let fee_to_sender = 0;
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+
+    let sender = USER_ADDRESS;
+    let fee_to_sender =  0;
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
     let transfer_amount = 100_u128;
@@ -127,11 +138,13 @@ fn audit_rollover() {
     let x_bar = 95849543;
     let y_bar = pubkey_from_secret(x_bar);
 
-    let fee_to_sender = 0;
 
     let initial_balance = 0;
     let initial_fund = 250;
-    let operation = fundOperation(x,USER_ADDRESS, initial_balance,initial_fund,dispatcher);
+
+    let sender = USER_ADDRESS;
+    let fee_to_sender =  0;
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
     dispatcher.fund(operation);
 
     let transfer_amount = 100;

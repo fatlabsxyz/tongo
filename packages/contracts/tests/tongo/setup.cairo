@@ -63,9 +63,14 @@ fn setup_erc20() -> IERC20Dispatcher {
     let dispatcher = IERC20Dispatcher { contract_address: STRK_ADDRESS };
     set_balance(USER_ADDRESS, 100000000000000_u256, Token::STRK);
     set_balance(RELAYER_ADDRESS, 100000000000000_u256, Token::STRK);
+
+    start_cheat_caller_address(STRK_ADDRESS, RELAYER_ADDRESS);
+    dispatcher.approve(TONGO_ADDRESS.try_into().unwrap(), 10000000_u256);
     start_cheat_caller_address(STRK_ADDRESS, USER_ADDRESS);
     dispatcher.approve(TONGO_ADDRESS.try_into().unwrap(), 10000000_u256);
+
     stop_cheat_caller_address(STRK_ADDRESS);
+
     return dispatcher;
 }
 
