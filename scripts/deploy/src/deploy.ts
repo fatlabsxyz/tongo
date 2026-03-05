@@ -40,7 +40,7 @@ async function setupDependencies(network?: string) {
   const accountConfig = getAccountConfig();
 
   // Create and verify account
-  const account = createAccount(accountConfig, config.network, config.rpcUrl);
+  const account = createAccount(accountConfig, config);
   await verifyAccount(account);
 
   // Load or create deployment state
