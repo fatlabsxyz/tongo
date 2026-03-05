@@ -81,8 +81,8 @@ importers:
         specifier: 'catalog:'
         version: 1.1.0
       starknet:
-        specifier: 8.5.4
-        version: 8.5.4
+        specifier: 9.2.1
+        version: 9.2.1(typescript@5.9.2)
     devDependencies:
       starknet-devnet:
         specifier: 0.6.0
@@ -693,9 +693,6 @@ packages:
 
   '@starknet-io/types-js@0.7.10':
     resolution: {integrity: sha512-1VtCqX4AHWJlRRSYGSn+4X1mqolI1Tdq62IwzoU2vUuEE72S1OlEeGhpvd6XsdqXcfHmVzYfj8k1XtKBQqwo9w==}
-
-  '@starknet-io/types-js@0.8.4':
-    resolution: {integrity: sha512-0RZ3TZHcLsUTQaq1JhDSCM8chnzO4/XNsSCozwDET64JK5bjFDIf2ZUkta+tl5Nlbf4usoU7uZiDI/Q57kt2SQ==}
 
   '@starknet-io/types-js@0.9.2':
     resolution: {integrity: sha512-vWOc0FVSn+RmabozIEWcEny1I73nDGTvOrLYJsR1x7LGA3AZmqt4i/aW69o/3i2NN5CVP8Ok6G1ayRQJKye3Wg==}
@@ -1755,10 +1752,6 @@ packages:
   starknet-devnet@0.6.0:
     resolution: {integrity: sha512-mrUyzm4whBAf2TO5r5D+EtXrqMQfH5oom1nd2PwBWi6hicL9RLWlbE5w19ihWJD2/vlPnbJULmxwxnmc4YS2gQ==}
 
-  starknet@8.5.4:
-    resolution: {integrity: sha512-nlD6C+98lxRdSPX9jT+Z+/Hw8o5IhBMCY2gauWjnvU/fd4Y9kWxfgIo2mRGCW1oq9aeQAJasoebbmXlKBhcOPA==}
-    engines: {node: '>=22'}
-
   starknet@9.2.1:
     resolution: {integrity: sha512-bFJY2sMZ9tsLBhPCm719MWjoz+doabXIwPX/xtW56EHwAJMRAS6mICF6H2dCwOQHJmCMKpOSFBwW0SaiHzcioQ==}
     engines: {node: '>=22'}
@@ -2493,8 +2486,6 @@ snapshots:
   '@starknet-io/types-js@0.10.0': {}
 
   '@starknet-io/types-js@0.7.10': {}
-
-  '@starknet-io/types-js@0.8.4': {}
 
   '@starknet-io/types-js@0.9.2': {}
 
@@ -3416,7 +3407,7 @@ snapshots:
   ox@0.4.4(typescript@5.9.2):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
-      '@noble/curves': 1.7.0
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
@@ -3600,19 +3591,6 @@ snapshots:
       decompress-targz: 4.1.1
     transitivePeerDependencies:
       - debug
-
-  starknet@8.5.4:
-    dependencies:
-      '@noble/curves': 1.7.0
-      '@noble/hashes': 1.6.1
-      '@scure/base': 1.2.5
-      '@scure/starknet': 1.1.0
-      '@starknet-io/starknet-types-08': '@starknet-io/types-js@0.8.4'
-      '@starknet-io/starknet-types-09': '@starknet-io/types-js@0.9.2'
-      abi-wan-kanabi: 2.2.4
-      lossless-json: 4.3.0
-      pako: 2.1.0
-      ts-mixer: 6.0.4
 
   starknet@9.2.1(typescript@5.9.2):
     dependencies:
