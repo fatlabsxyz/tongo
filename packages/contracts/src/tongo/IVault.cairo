@@ -22,7 +22,7 @@ pub trait IVault<TContractState> {
     /// The amount variable in all operation refers to the amount of Tongos.
     fn get_rate(self: @TContractState) -> u256;
 
-    /// Returns the bit_size Tongo will work it.
+    /// Returns the bit size Tongo will work it.
     fn get_bit_size(self: @TContractState) -> u32;
 
     /// Returns true if the contract address is a Tongo contract deployed by this Vault.
