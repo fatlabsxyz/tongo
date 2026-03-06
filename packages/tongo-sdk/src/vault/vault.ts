@@ -24,11 +24,13 @@ export class Vault implements IVault {
 
     async deploy_tongo(params: DeployDetails): Promise<DeployOperation> {
         const {owner, tag, auditor} = params;
+        const vaultSetup = await this.vault_setup();
         return new DeployOperation({
             owner: BigInt(owner),
             tag: BigInt(tag),
             auditorKey: auditor,
-            Vault: this.contract
+            Vault: this.contract,
+            vaultSetup,
         });
     }
 
