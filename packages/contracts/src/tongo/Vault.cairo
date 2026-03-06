@@ -45,7 +45,7 @@ pub mod Vault {
         ERC20: ContractAddress,
         rate: u256,
         bit_size: u32,
-        ledger_class: ClassHash,
+        tongo_class: ClassHash,
     ) {
         self.ERC20.write(ERC20);
         self.rate.write(rate);
@@ -53,7 +53,7 @@ pub mod Vault {
         assert!(bit_size <= 128_u32, "Bit size should be 128 at max");
         self.bit_size.write(bit_size);
 
-        self.tongo_class.write(ledger_class);
+        self.tongo_class.write(tongo_class);
     }
 
     #[event]
@@ -121,7 +121,7 @@ pub mod Vault {
         fn deploy_tongo(ref self: ContractState, owner: ContractAddress, tag:felt252, auditorKey: Option<PubKey>) -> ContractAddress {
             assert!(!self._is_known_tag(tag), "Tag is already used in other contract");
 
-            let ledger_class_hash: ClassHash = self.tongo_class.read();
+            let tongo_class_hash: ClassHash = self.tongo_class.read();
             let ERC20 = self.ERC20();
             let rate = self.get_rate();
             let bit_size = self.get_bit_size();
@@ -140,7 +140,7 @@ pub mod Vault {
             let salt = tag;
             
             let (address, _ ) = deploy_syscall(
-                ledger_class_hash,
+                tongo_class_hash,
                 salt,
                 constructor_calldata.span(),
                 deploy_from_zero
