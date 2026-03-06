@@ -1,47 +1,56 @@
 #[starknet::contract]
 pub mod Tongo {
-    use core::ec::NonZeroEcPoint;
+    use core::{ec::NonZeroEcPoint, num::traits::Bounded};
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_caller_address, get_contract_address, get_tx_info};
-    use core::num::traits::Bounded;
-    use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use crate::structs::aecipher::{AEBalance, IntoOptionAEBalance};
-    use crate::structs::common::cipherbalance::{CipherBalance, CipherBalanceTrait};
-    use crate::structs::common::pubkey::PubKey;
-    use crate::structs::common::state::State;
+    use crate::structs::{
+        aecipher::{AEBalance, IntoOptionAEBalance},
+        common::{
+            cipherbalance::{CipherBalance, CipherBalanceTrait},
+            pubkey::PubKey,
+            state::State,
+        },
+    };
     use crate::structs::events::{
         AuditorPubKeySet, BalanceDeclared, FundEvent, OutsideFundEvent, RagequitEvent,
         RolloverEvent, TransferDeclared, TransferEvent, WithdrawEvent,
     };
-    use crate::structs::operations::audit::{Audit, InputsAudit};
-    use crate::structs::operations::fund::{Fund, InputsFund, OutsideFund};
-    use crate::structs::operations::ragequit::{InputsRagequit, Ragequit};
-    use crate::structs::operations::rollover::{InputsRollOver, Rollover};
-    use crate::structs::operations::transfer::{InputsTransfer, Transfer};
-    use crate::structs::operations::withdraw::{InputsWithdraw, Withdraw};
+    use crate::structs::operations::{
+        audit::{Audit, InputsAudit},
+        fund::{Fund, InputsFund, OutsideFund},
+        ragequit::{InputsRagequit, Ragequit},
+        rollover::{InputsRollOver, Rollover},
+        transfer::{InputsTransfer, Transfer},
+        withdraw::{InputsWithdraw, Withdraw},
+    };
     use crate::structs::traits::GeneralPrefixData;
-    use crate::tongo::ITongo::ITongo;
-    use crate::tongo::IVault::{IVaultDispatcher, IVaultDispatcherTrait};
-    use crate::verifier::audit::verify_audit;
-    use crate::verifier::fund::verify_fund;
-    use crate::verifier::ragequit::verify_ragequit;
-    use crate::verifier::rollover::verify_rollover;
-    use crate::verifier::transfer::verify_transfer;
-    use crate::verifier::withdraw::verify_withdraw;
-
+    use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use crate::tongo::{
+        ITongo::ITongo,
+        IVault::{IVaultDispatcher, IVaultDispatcherTrait},
+    };
+    use crate::verifier::{
+        audit::verify_audit,
+        fund::verify_fund,
+        ragequit::verify_ragequit,
+        rollover::verify_rollover,
+        transfer::verify_transfer,
+        withdraw::verify_withdraw,
+    };
 
     #[storage]
     struct Storage {
         /// The contract address that is owner of the Tongo instance.
         owner: ContractAddress,
-        tag: felt252,
-
+        /// The Vault contract this Tongo instantes is going to interact with.
         vault: ContractAddress,
+        /// The tag this contract is registered with.
+        tag: felt252,
         /// The contract address of the ERC20 that Tongo is wrapping.
         ERC20: ContractAddress,
-        /// The conversion  rage between the wrapped ERC20 a tongo:
+        /// The conversion  rage between the wrapped ERC20 and tongo:
         ///
         /// ERC20_amount = Tongo_amount*rate
         rate: u256,
@@ -124,9 +133,13 @@ pub mod Tongo {
         AuditorPubKeySet: AuditorPubKeySet,
     }
 
-
     #[abi(embed_v0)]
     impl TongoImpl of ITongo<ContractState> {
+        /// Returns the Tag this contract is registered with.
+        fn get_tag(self: @ContractState) -> felt252 {
+            self.tag.read()
+        }
+
         /// Returns the contract address that Tongo is wraping.
         fn ERC20(self: @ContractState) -> ContractAddress {
             self.ERC20.read()
@@ -449,7 +462,7 @@ pub mod Tongo {
     }
 
     #[generate_trait]
-    pub impl PrivateImpl of IPrivate {
+    impl PrivateImpl of IPrivate {
         /// Adds the given balance to the current balance of the given tongo Account.
         fn _add_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
             let old_balance = self.get_balance(y);
@@ -620,6 +633,8 @@ pub mod Tongo {
                 );
         }
 
+        /// Returns the general prefix data. It is only used to compute the prefix and bind this
+        /// data to the ZK proof.
         fn _get_general_prefix_data(self: @ContractState) -> GeneralPrefixData {
             let chain_id = get_tx_info().unbox().chain_id;
             let tongo_address = get_contract_address();
@@ -628,6 +643,7 @@ pub mod Tongo {
             GeneralPrefixData { chain_id, tongo_address, sender_address }
         }
 
+        /// Handles the withdraw (and ragequit) asset transfers. 
         fn _handle_relayed_withdraw(
             self: @ContractState, amount: u128, to: ContractAddress, fee_to_sender: u128,
         ) {

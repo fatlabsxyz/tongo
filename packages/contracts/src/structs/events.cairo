@@ -1,7 +1,11 @@
 use starknet::ContractAddress;
-use crate::structs::aecipher::AEBalance;
-use crate::structs::common::cipherbalance::CipherBalance;
-use crate::structs::common::pubkey::PubKey;
+use crate::structs::{
+    aecipher::AEBalance,
+    common::{
+        cipherbalance::CipherBalance,
+        pubkey::PubKey,
+    },
+};
 
 /// Event emitted in a Fund operation.
 ///
