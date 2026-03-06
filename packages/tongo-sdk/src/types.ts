@@ -32,6 +32,12 @@ export interface StarkPoint {
 }
 
 /**
+ * Represents a user public key. Private keys are numbers x ∈ (0, core::ec::stark_curve::CURVE_ORDER) and
+ * public keys are the NonZeroEcPoint y = g**x where g is the starknet curve generator.
+ */
+export type PubKey = StarkPoint;
+
+/**
  * Balances are encrypted with ElGammal, which consists in a tuple of curve points (L, R). Internally the points
  * are constructed with L = g**b y**r, R = g**r where g is the generator of the starknet curve, y is a pubkey, r is 
  * a random value and b is the balance to encrypt.
@@ -71,11 +77,6 @@ export function projectivePointToStarkPoint(p: ProjectivePoint): StarkPoint {
     return { x: pAffine.x, y: pAffine.y };
 }
 
-/**
- * Represents a user public key. Private keys are numbers x ∈ (0, core::ec::stark_curve::CURVE_ORDER) and
- * public keys are the NonZeroEcPoint y = g**x where g is the starknet curve generator.
- */
-export type PubKey = StarkPoint;
 
 /**
  * Constructs a public key from a given private key.

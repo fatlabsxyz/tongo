@@ -23,8 +23,12 @@ export const vaultAbi = [
         "name": "tongo::structs::common::state::GlobalSetup",
         "members": [
             {
-                "name": "global_tongo",
+                "name": "vault_address",
                 "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "tongo_class_hash",
+                "type": "core::starknet::class_hash::ClassHash"
             },
             {
                 "name": "ERC20",
@@ -93,6 +97,17 @@ export const vaultAbi = [
                 "outputs": [
                     {
                         "type": "tongo::structs::common::state::GlobalSetup"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_tongo_class_hash",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::starknet::class_hash::ClassHash"
                     }
                 ],
                 "state_mutability": "view"
@@ -236,8 +251,51 @@ export const vaultAbi = [
     },
     {
         "type": "event",
+        "name": "tongo::structs::events::TongoDeployed",
+        "kind": "struct",
+        "members": [
+            {
+                "name": "tag",
+                "type": "core::felt252",
+                "kind": "key"
+            },
+            {
+                "name": "address",
+                "type": "core::starknet::contract_address::ContractAddress",
+                "kind": "data"
+            },
+            {
+                "name": "ERC20",
+                "type": "core::starknet::contract_address::ContractAddress",
+                "kind": "data"
+            },
+            {
+                "name": "rate",
+                "type": "core::integer::u256",
+                "kind": "data"
+            },
+            {
+                "name": "bit_size",
+                "type": "core::integer::u32",
+                "kind": "data"
+            },
+            {
+                "name": "AuditorPubKey",
+                "type": "core::option::Option::<tongo::structs::common::pubkey::PubKey>",
+                "kind": "data"
+            }
+        ]
+    },
+    {
+        "type": "event",
         "name": "tongo::tongo::Vault::Vault::Event",
         "kind": "enum",
-        "variants": []
+        "variants": [
+            {
+                "name": "TongoDeployed",
+                "type": "tongo::structs::events::TongoDeployed",
+                "kind": "nested"
+            }
+        ]
     }
 ] as const;
