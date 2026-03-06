@@ -5,7 +5,7 @@ import { range as SHE_range} from "@fatsolutions/she/protocols"
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
 import { CipherBalance, compute_prefix,  GeneralPrefixData, ProjectivePoint } from "../types";
-import { createCipherBalance} from "../../src/utils";
+import { createCipherBalance} from "../utils";
 
 // cairo string 'transfer'
 export const TRANSFER_CAIRO_STRING = 8390876182755042674n;

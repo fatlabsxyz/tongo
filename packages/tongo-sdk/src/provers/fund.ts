@@ -2,7 +2,7 @@ import { compute_challenge } from "@fatsolutions/she";
 import { poe } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g } from "../constants";
-import { createCipherBalance} from "../../src/utils";
+import { createCipherBalance} from "../utils";
 import { ProjectivePoint, GeneralPrefixData, CipherBalance, compute_prefix } from "../types";
 
 
