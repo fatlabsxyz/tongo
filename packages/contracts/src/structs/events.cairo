@@ -3,7 +3,7 @@ use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
 
-/// Event emited in a Fund operation.
+/// Event emitted in a Fund operation.
 ///
 /// - to: The Tongo account to fund.
 /// - nonce: The nonce of the Tongo account.
@@ -20,7 +20,7 @@ pub struct FundEvent {
     pub amount: u128,
 }
 
-/// Event emited in a OutsideFund operation
+/// Event emitted in a OutsideFund operation
 ///
 /// - to: The Tongo account to fund.
 /// - from: The contract address is funding the account.
@@ -34,7 +34,7 @@ pub struct OutsideFundEvent {
     pub amount: u128,
 }
 
-/// Event emited in a Rollover operation.
+/// Event emitted in a Rollover operation.
 ///
 /// - to: The Tongo account to rollover.
 /// - nonce: The nonce of the Tongo account.
@@ -49,7 +49,7 @@ pub struct RolloverEvent {
 }
 
 
-/// Event emited in a Withdraw operation.
+/// Event emitted in a Withdraw operation.
 ///
 /// - from: The Tongo account to withdraw from.
 /// - nonce: The nonce of the Tongo account.
@@ -66,7 +66,7 @@ pub struct WithdrawEvent {
 }
 
 
-/// Event emited in a Transfer operation.
+/// Event emitted in a Transfer operation.
 ///
 /// - to: The Tongo account to send tongos to.
 /// - from: The Tongo account to take tongos from.
@@ -90,7 +90,7 @@ pub struct TransferEvent {
 }
 
 
-/// Event emited in a Ragequit operation.
+/// Event emitted in a Ragequit operation.
 ///
 /// - from: The Tongo account to withdraw from.
 /// - nonce: The nonce of the Tongo account.
@@ -106,7 +106,7 @@ pub struct RagequitEvent {
     pub to: ContractAddress,
 }
 
-/// Event emited when users declare their balances to the auditor.
+/// Event emitted when users declare their balances to the auditor.
 ///
 /// - from: The Tongo account that is declaring its balance.
 /// - nonce: The nonce of the Tongo accout.
@@ -125,7 +125,7 @@ pub struct BalanceDeclared {
 }
 
 
-/// Event emited when users declare a transfer to the auditor.
+/// Event emitted when users declare a transfer to the auditor.
 ///
 /// - from: The Tongo account that is executing the transfer.
 /// - to: The Tongo account that is receiving the transfer.
@@ -146,7 +146,7 @@ pub struct TransferDeclared {
     pub hint: AEBalance,
 }
 
-/// Event emited when the owner sets a public key for the auditor.
+/// Event emitted when the owner sets a public key for the auditor.
 ///
 /// - keyNumber: An increasing number that identifies the public key
 /// - AuditorPubKey: The newly set auditor public key.
@@ -155,4 +155,23 @@ pub struct AuditorPubKeySet {
     #[key]
     pub keyNumber: u128,
     pub AuditorPubKey: PubKey,
+}
+
+/// Event emitted when a Tongo contract is deployed by the Vault
+///
+/// - tag: The chosen tag for the contract
+/// - address: The contract address of the Tongo instance
+/// - ERC20: The erc20 is being wrapped
+/// - rate: The conversion  rage between the wrapped ERC20 and Tongo
+/// - bit_size: The bit size the contract will work with
+/// - AuditorPubKey: The auditor public key
+#[derive(Drop, starknet::Event)]
+pub struct TongoDeployed {
+    #[key]
+    pub tag: felt252,
+    pub address: ContractAddress,
+    pub ERC20: ContractAddress,
+    pub rate: u256,
+    pub bit_size: u32,
+    pub AuditorPubKey: Option<PubKey>,
 }

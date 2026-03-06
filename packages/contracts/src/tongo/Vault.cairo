@@ -9,6 +9,7 @@ pub mod Vault {
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::structs::common::pubkey::PubKey;
     use crate::structs::common::state::GlobalSetup;
+    use crate::structs::events::TongoDeployed;
     use crate::tongo::IVault::{IVault};
 
     #[storage]
@@ -46,6 +47,12 @@ pub mod Vault {
         self.bit_size.write(bit_size);
 
         self.tongo_class.write(ledger_class);
+    }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    pub enum Event {
+        TongoDeployed: TongoDeployed,
     }
 
 
@@ -106,6 +113,17 @@ pub mod Vault {
             ).unwrap_syscall();
 
             self.tongo_deployed.entry(address).write(true);
+
+            self.emit(
+                TongoDeployed {
+                    tag,
+                    address,
+                    ERC20,
+                    rate,
+                    bit_size,
+                    AuditorPubKey: auditorKey
+                }
+            );
 
             address
         }
