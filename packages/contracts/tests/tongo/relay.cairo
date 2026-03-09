@@ -5,7 +5,7 @@ use crate::tongo::setup::{setup_tongo};
 
 use crate::prover::utils::{generate_random, decipher_balance, pubkey_from_secret};
 use tongo::erc20::{IERC20DispatcherTrait, IERC20Dispatcher};
-use crate::consts::{USER_ADDRESS,STRK_ADDRESS, RELAYER_ADDRESS};
+use crate::consts::{USER_ADDRESS,STRK_ADDRESS, RELAYER_ADDRESS, VAULT_ADDRESS};
 
 use snforge_std::{start_cheat_caller_address};
 
@@ -21,6 +21,7 @@ fn test_tongo_relay_fund() {
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20Relayer = erc20dispatcher.balance_of(sender);
+    let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
     let y = pubkey_from_secret(x);
     
@@ -34,8 +35,10 @@ fn test_tongo_relay_fund() {
 
     let rate = dispatcher.get_rate();
     let finalErc20Relayer = erc20dispatcher.balance_of(sender);
+    let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
     assert( initialErc20Relayer - finalErc20Relayer == rate*(initial_fund).into(), 'nope');
+    assert!( finalErc20Vault - initialErc20Vault == rate*(initial_fund).into(), "Incorrect balance for Vault");
 
     let balance = dispatcher.get_balance(y);
     decipher_balance((initial_fund).into(), x, balance);
@@ -62,6 +65,7 @@ fn test_tongo_relay_ragequit() {
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20 = erc20dispatcher.balance_of(transfer_address);
     let initialErc20Relayer = erc20dispatcher.balance_of(sender);
+    let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
     let fee_to_sender: u128 = 10;
     
@@ -76,9 +80,12 @@ fn test_tongo_relay_ragequit() {
 
     let finalErc20 = erc20dispatcher.balance_of(transfer_address);
     let finalErc20Relayer = erc20dispatcher.balance_of(sender);
+    let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
+
     let rate = dispatcher.get_rate();
     assert(finalErc20  - initialErc20 == rate*(initial_fund - fee_to_sender).into(), 'nope');
     assert(finalErc20Relayer  - initialErc20Relayer == rate*(fee_to_sender).into(), 'nope');
+    assert!( initialErc20Vault - finalErc20Vault == rate*(initial_fund).into(), "Incorrect balance for Vault");
 }
 
 #[test]
@@ -104,6 +111,7 @@ fn test_tongo_relay_withdraw() {
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20 = erc20dispatcher.balance_of(transfer_address);
     let initialErc20Relayer = erc20dispatcher.balance_of(sender);
+    let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
     let withdraw_amount = 49_u128;
     let fee_to_sender: u128 = 10;
@@ -116,12 +124,13 @@ fn test_tongo_relay_withdraw() {
 
     let finalErc20 = erc20dispatcher.balance_of(transfer_address);
     let finalErc20Relayer = erc20dispatcher.balance_of(sender);
+    let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
+
     let rate = dispatcher.get_rate();
 
-    
-    
     assert(finalErc20  - initialErc20 == rate*(withdraw_amount - fee_to_sender).into(), 'nope');
     assert(finalErc20Relayer  - initialErc20Relayer == rate*(fee_to_sender).into(), 'nope');
+    assert!( initialErc20Vault - finalErc20Vault == rate*(withdraw_amount).into(), "Incorrect balance for Vault");
 }
 
 

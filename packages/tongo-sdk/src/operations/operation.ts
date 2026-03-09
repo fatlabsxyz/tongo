@@ -8,6 +8,7 @@ export const OperationType = {
     Withdraw: "withdraw",
     Rollover: "rollover",
     Transfer: "transfer",
+    Deploy: "deploy",
 } as const;
 export type OperationType = typeof OperationType[keyof typeof OperationType];
 
