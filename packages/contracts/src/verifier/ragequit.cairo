@@ -28,7 +28,7 @@ pub fn verify_ragequit(inputs: InputsRagequit, proof: ProofOfRagequit) {
     let c = proof.compute_challenge(prefix);
 
     let InputsRagequit {
-        y, currentBalance, amount, to: _, nonce: _, prefix_data: _, relayData: _,
+        y, currentBalance, amount, to: _, nonce: _, prefix_data: _, data:_
     } = inputs;
     let ProofOfRagequit { Ax, AR, sx } = proof;
 

@@ -60,8 +60,8 @@ fn audit_withdraw() {
     dispatcher.fund(operation);
 
     let withdraw_amount = 25_u128;
-    let operation = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address, USER_ADDRESS,0, dispatcher);
-    dispatcher.withdraw(operation);
+    let (operation, withdraw_options) = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address, USER_ADDRESS,0, dispatcher);
+    dispatcher.withdraw(operation, withdraw_options);
 
     let audit = dispatcher.get_audit(y);
     if audit.is_some() {
@@ -86,8 +86,8 @@ fn audit_ragequit() {
     dispatcher.fund(operation);
 
 
-    let operation = ragequitOperation(x, initial_fund,transfer_address,USER_ADDRESS,0,dispatcher);
-    dispatcher.ragequit(operation);
+    let (operation, ragequit_options) = ragequitOperation(x, initial_fund,transfer_address,USER_ADDRESS,0,dispatcher);
+    dispatcher.ragequit(operation, ragequit_options);
 
     let audit = dispatcher.get_audit(y);
     if audit.is_some() {
@@ -97,7 +97,7 @@ fn audit_ragequit() {
 
 #[test]
 fn audit_transfer() {
-    let (_address, dispatcher) = setup_tongo();
+    let (tongo_address, dispatcher) = setup_tongo();
 
     let x = 12831209381;
     let y = pubkey_from_secret(x);
@@ -115,8 +115,8 @@ fn audit_transfer() {
     dispatcher.fund(operation);
 
     let transfer_amount = 100_u128;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender, dispatcher);
-    dispatcher.transfer(operation);
+    let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address, dispatcher);
+    dispatcher.transfer(operation,transfer_options);
 
     let audit = dispatcher.get_audit(y);
     if audit.is_some() {
@@ -131,7 +131,7 @@ fn audit_transfer() {
 
 #[test]
 fn audit_rollover() {
-    let (_address, dispatcher) = setup_tongo();
+    let (tongo_address, dispatcher) = setup_tongo();
 
     let x = 129310932;
 
@@ -148,8 +148,8 @@ fn audit_rollover() {
     dispatcher.fund(operation);
 
     let transfer_amount = 100;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,USER_ADDRESS, fee_to_sender, dispatcher);
-    dispatcher.transfer(operation);
+    let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund,USER_ADDRESS, fee_to_sender, tongo_address, dispatcher);
+    dispatcher.transfer(operation,transfer_options);
 
     let operation = rolloverOperation(x_bar,dispatcher);
     dispatcher.rollover(operation);

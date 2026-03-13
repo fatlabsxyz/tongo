@@ -1,13 +1,15 @@
 use core::poseidon::poseidon_hash_span;
+use starknet::ContractAddress;
 use she::utils::reduce_modulo_order;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
-use crate::structs::common::relayer::RelayData;
+use crate::structs::common::relayer::{RelayData, SerializeRelayData};
 use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::operations::audit::Audit;
 use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 use crate::verifier::range::Range;
+use crate::structs::traits::SerializedData;
 
 /// Represents the calldata of a transfer operation.
 ///
@@ -32,9 +34,62 @@ pub struct Transfer {
     pub auxiliarCipher: CipherBalance,
     pub auxiliarCipher2: CipherBalance,
     pub proof: ProofOfTransfer,
-    pub relayData: RelayData,
     pub auditPart: Option<Audit>,
     pub auditPartTransfer: Option<Audit>,
+}
+
+#[derive(Serde, Drop)]
+pub struct TransferOptions {
+    pub relayData: Option<RelayData>,
+    pub externalData: Option<ExternalData>,
+}
+
+pub impl SerializeTransferOptions of SerializedData<Option<TransferOptions>> {
+    fn serialize_data(self: @Option<TransferOptions>) -> Span<felt252> {
+        match self {
+            None => { return array![1].span(); }, 
+            Some(options) => {
+                let mut arr: Array<felt252> = array![0];
+
+                let relay = options.relayData.serialize_data();
+                for r in relay { arr.append(*r) }
+
+                let external = options.externalData.serialize_data();
+                for e in external { arr.append(*e) }
+                return arr.span();
+            }
+        }
+    }
+}
+
+#[derive(Drop, Serde)]
+pub struct ExternalData {
+    pub toTongo: ContractAddress,
+    pub auditPart: Option<Audit>,
+}
+
+pub impl SerializeExternalData of SerializedData<Option<ExternalData>> {
+    fn serialize_data(self: @Option<ExternalData>) -> Span<felt252> {
+        match self {
+            None => { return array![1].span(); },
+            Some(external) => {
+                let mut arr: Array<felt252> = array![0];
+                arr.append((*external.toTongo).into());
+                return arr.span();
+            }
+        }
+    }
+}
+
+//TODO: Docs
+#[derive(Drop, Serde)]
+pub struct ExternalTransfer {
+    pub fromTongo: ContractAddress,
+    pub from: PubKey,
+    pub nonce: u64,
+    pub to: PubKey,
+    pub transferBalance: CipherBalance,
+    pub hintTransfer: AEBalance,
 }
 
 
@@ -58,7 +113,7 @@ pub struct InputsTransfer {
     pub auxiliarCipher2: CipherBalance,
     pub bit_size: u32,
     pub prefix_data: GeneralPrefixData,
-    pub relayData: RelayData,
+    pub data: Span<felt252>
 }
 
 /// Computes the prefix by hashing some public inputs.
@@ -67,19 +122,18 @@ impl TransferPrefix of Prefix<InputsTransfer> {
         let transfer_selector = 'transfer';
         let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
 
-        let fee_to_sender = *self.relayData.fee_to_sender;
 
         let CipherBalance { L: L0, R: R0 } = *self.currentBalance;
         let CipherBalance { L, R } = *self.transferBalanceSelf;
         let CipherBalance { L: L_bar, R: R_bar } = *self.transferBalance;
         let CipherBalance { L: V, R: R_aux } = *self.auxiliarCipher;
         let CipherBalance { L: V2, R: R_aux2 } = *self.auxiliarCipher2;
+        let data = *self.data;
 
-        let array: Array<felt252> = array![
+        let mut array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
             (*sender_address).into(),
-            fee_to_sender.into(),
             transfer_selector,
             *self.from.x,
             *self.from.y,
@@ -107,6 +161,9 @@ impl TransferPrefix of Prefix<InputsTransfer> {
             R_aux2.x,
             R_aux2.y,
         ];
+        for d in data {
+            array.append(*d)
+        }
         poseidon_hash_span(array.span())
     }
 }

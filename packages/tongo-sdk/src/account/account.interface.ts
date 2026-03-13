@@ -15,6 +15,7 @@ import {
     AccountTransferInEvent,
     AccountTransferOutEvent,
     AccountWithdrawEvent,
+    AccountReceivedExternalTransfer,
 } from "./events.js";
 import { CairoOption } from "starknet";
 import { CipherBalance } from "../types";
@@ -46,7 +47,7 @@ export interface IAccount {
     tongoToErc20(tongoAmount: bigint): Promise<bigint>;
 
     //audit
-    createAuditPart(balance: bigint, storedCipherBalance: CipherBalance, prefix_data: GeneralPrefixData): Promise<CairoOption<Audit>>;
+    createAuditPart(balance: bigint,nonce: bigint, storedCipherBalance: CipherBalance, prefix_data: GeneralPrefixData, auditor: CairoOption<PubKey>): Promise<CairoOption<Audit>>;
 
     // ex post
     generateExPost(to: PubKey, cipher: CipherBalance, sender: string): Promise<ExPost>;
@@ -59,6 +60,7 @@ export interface IAccount {
     getEventsRagequit(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountRagequitEvent[]>;
     getEventsTransferOut(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountTransferOutEvent[]>;
     getEventsTransferIn(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountTransferInEvent[]>;
+    getEventsReceivedExternalTransfer(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountReceivedExternalTransfer[]>;
     getTxHistory(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountEvents[]>;
 }
 
@@ -77,6 +79,7 @@ export interface TransferDetails {
     amount: bigint;
     to: PubKey;
     sender: string,
+    toTongo?: bigint,
     fee_to_sender?:bigint,
 }
 

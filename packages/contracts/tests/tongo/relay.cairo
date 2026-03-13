@@ -69,8 +69,8 @@ fn test_tongo_relay_ragequit() {
 
     let fee_to_sender: u128 = 10;
     
-    let operation = ragequitOperation(x, initial_fund,transfer_address,sender,fee_to_sender,dispatcher);
-    dispatcher.ragequit(operation);
+    let (operation, ragequit_options) = ragequitOperation(x, initial_fund,transfer_address,sender,fee_to_sender,dispatcher);
+    dispatcher.ragequit(operation, ragequit_options);
     
     let balance = dispatcher.get_balance(y);
     decipher_balance(0, x, balance);
@@ -113,11 +113,12 @@ fn test_tongo_relay_withdraw() {
     let initialErc20Relayer = erc20dispatcher.balance_of(sender);
     let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
+
     let withdraw_amount = 49_u128;
     let fee_to_sender: u128 = 10;
 
-    let operation = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address, RELAYER_ADDRESS, fee_to_sender, dispatcher);
-    dispatcher.withdraw(operation);
+    let (operation, withdraw_options) = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address, RELAYER_ADDRESS, fee_to_sender, dispatcher);
+    dispatcher.withdraw(operation, withdraw_options);
 
     let balance = dispatcher.get_balance(y);
     decipher_balance((initial_fund- withdraw_amount - fee_to_sender).into(), x, balance);
@@ -126,11 +127,12 @@ fn test_tongo_relay_withdraw() {
     let finalErc20Relayer = erc20dispatcher.balance_of(sender);
     let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
+
     let rate = dispatcher.get_rate();
 
-    assert(finalErc20  - initialErc20 == rate*(withdraw_amount - fee_to_sender).into(), 'nope');
+    assert(finalErc20  - initialErc20 == rate*(withdraw_amount).into(), 'nope');
     assert(finalErc20Relayer  - initialErc20Relayer == rate*(fee_to_sender).into(), 'nope');
-    assert!( initialErc20Vault - finalErc20Vault == rate*(withdraw_amount).into(), "Incorrect balance for Vault");
+    assert!( initialErc20Vault - finalErc20Vault == rate*(withdraw_amount + fee_to_sender).into(), "Incorrect balance for Vault");
 }
 
 
@@ -158,9 +160,9 @@ fn test_tongo_relay_transfer() {
     let transfer_amount = 100;
     let fee_to_sender = 10;
 
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, sender, fee_to_sender,dispatcher);
+    let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund, sender, fee_to_sender,tongo_address, dispatcher);
     start_cheat_caller_address(tongo_address, sender);
-    dispatcher.transfer(operation);
+    dispatcher.transfer(operation, transfer_options);
 
     let balance = dispatcher.get_balance(y);
     decipher_balance((initial_fund - fee_to_sender -  transfer_amount).into(), x, balance);

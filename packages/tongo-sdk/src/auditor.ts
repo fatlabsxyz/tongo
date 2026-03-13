@@ -1,5 +1,5 @@
 import { BigNumberish, Contract, RpcProvider, TypedContractV2 } from "starknet";
-import { StarknetEventReader } from "./data.service.js";
+import {AccountEventReader} from "./account/account.data.service.js";
 import { CipherBalance } from "./types";
 import { assertBalance, decipherBalance } from "./utils";
 
@@ -68,7 +68,7 @@ export class Auditor {
     private publicKeys: PubKey[];
     provider: RpcProvider;
     Tongo: TypedContractV2<typeof tongoAbi>;
-    reader: StarknetEventReader;
+    reader: AccountEventReader;
 
     constructor(
         pk: BigNumberish | Uint8Array | (BigNumberish | Uint8Array)[],
@@ -84,7 +84,7 @@ export class Auditor {
             providerOrAccount: provider
         }).typedv2(tongoAbi);
         this.provider = provider;
-        this.reader = new StarknetEventReader(provider, contractAddress);
+        this.reader = new AccountEventReader(provider, contractAddress);
     }
 
     get pk(): bigint {

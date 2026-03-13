@@ -75,6 +75,7 @@ pub struct WithdrawEvent {
 /// - to: The Tongo account to send tongos to.
 /// - from: The Tongo account to take tongos from.
 /// - nonce: The nonce of the Tongo account (from).
+/// - toTongo: The contract address of the receiver Tongo instance.
 /// - transferBalance: The amount to transfer encrypted for the pubkey of `to`.
 /// - transferBalanceSelf: The amount to transfer encrypted for the pubkey of `from`.
 /// - hintTransfer: AE encryption of the amount to transfer to `to`.
@@ -87,10 +88,31 @@ pub struct TransferEvent {
     pub from: PubKey,
     #[key]
     pub nonce: u64,
+    pub toTongo: ContractAddress,
     pub transferBalance: CipherBalance,
     pub transferBalanceSelf: CipherBalance,
     pub hintTransfer: AEBalance,
     pub hintLeftover: AEBalance,
+}
+
+/// Event emitted when and External Transfer is received
+///
+/// - from: The Tongo sender account
+/// - to: The Tongo receiver account
+/// - fromTongo: The Tongo instance the the transfer came from.
+/// - transferBalance: The amount to transfer encrypted for the pubkey of `to`.
+/// - hintTransfer: AE encryption of the amount to transfer to `to`.
+#[derive(Drop, starknet::Event)]
+pub struct ReceivedExternalTransfer {
+    #[key]
+    pub to: PubKey,
+    #[key]
+    pub from: PubKey,
+    #[key]
+    pub fromTongo: ContractAddress,
+    pub nonce: u64,
+    pub transferBalance: CipherBalance,
+    pub hintTransfer: AEBalance,
 }
 
 
