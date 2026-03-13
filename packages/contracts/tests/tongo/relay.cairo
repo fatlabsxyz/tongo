@@ -158,7 +158,7 @@ fn test_tongo_relay_transfer() {
     let transfer_amount = 100;
     let fee_to_sender = 10;
 
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, sender, fee_to_sender,dispatcher);
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, sender, fee_to_sender,tongo_address, dispatcher);
     start_cheat_caller_address(tongo_address, sender);
     dispatcher.transfer(operation);
 

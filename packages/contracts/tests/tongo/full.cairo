@@ -28,7 +28,7 @@ fn checkBalances(x: felt252, balanceAmount:u128, pendingAmount:u128,auditAmount:
 #[test]
 fn full() {
     //set up
-    let (_address, dispatcher) = setup_tongo();
+    let (tongo_address, dispatcher) = setup_tongo();
     let ERC20 = IERC20Dispatcher {contract_address: dispatcher.ERC20()};
     let rate = dispatcher.get_rate();
 
@@ -70,7 +70,7 @@ fn full() {
     assert!(VaultBalance - initialVaulBalance == rate*(initial_fund).into(), "Incorrect VaultBalance");
 
     let transfer_amount = 100_u128;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,dispatcher);
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address, dispatcher);
     dispatcher.transfer(operation);
 
     // nonce for y should be 2

@@ -13,6 +13,7 @@ pub mod tongo {
     pub mod validation;
     pub mod operations;
     pub mod relay;
+    pub mod external_transfer;
 }
 
 pub mod verifier {

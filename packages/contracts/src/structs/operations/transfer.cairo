@@ -1,4 +1,5 @@
 use core::poseidon::poseidon_hash_span;
+use starknet::ContractAddress;
 use she::utils::reduce_modulo_order;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
@@ -35,6 +36,23 @@ pub struct Transfer {
     pub relayData: RelayData,
     pub auditPart: Option<Audit>,
     pub auditPartTransfer: Option<Audit>,
+    pub externalData: Option<External>,
+}
+
+#[derive(Drop, Serde)]
+pub struct External {
+    pub toTongo: ContractAddress,
+    pub auditPart: Option<Audit>,
+    pub hintTransfer: AEBalance,
+}
+
+#[derive(Drop, Serde)]
+pub struct ExternalTransfer {
+    pub fromTongo: ContractAddress,
+    pub from: PubKey,
+    pub to: PubKey,
+    pub transferBalance: CipherBalance,
+    pub hintTransfer: AEBalance,
 }
 
 

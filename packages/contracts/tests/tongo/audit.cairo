@@ -97,7 +97,7 @@ fn audit_ragequit() {
 
 #[test]
 fn audit_transfer() {
-    let (_address, dispatcher) = setup_tongo();
+    let (tongo_address, dispatcher) = setup_tongo();
 
     let x = 12831209381;
     let y = pubkey_from_secret(x);
@@ -115,7 +115,7 @@ fn audit_transfer() {
     dispatcher.fund(operation);
 
     let transfer_amount = 100_u128;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender, dispatcher);
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address, dispatcher);
     dispatcher.transfer(operation);
 
     let audit = dispatcher.get_audit(y);
@@ -131,7 +131,7 @@ fn audit_transfer() {
 
 #[test]
 fn audit_rollover() {
-    let (_address, dispatcher) = setup_tongo();
+    let (tongo_address, dispatcher) = setup_tongo();
 
     let x = 129310932;
 
@@ -148,7 +148,7 @@ fn audit_rollover() {
     dispatcher.fund(operation);
 
     let transfer_amount = 100;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,USER_ADDRESS, fee_to_sender, dispatcher);
+    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund,USER_ADDRESS, fee_to_sender, tongo_address, dispatcher);
     dispatcher.transfer(operation);
 
     let operation = rolloverOperation(x_bar,dispatcher);
