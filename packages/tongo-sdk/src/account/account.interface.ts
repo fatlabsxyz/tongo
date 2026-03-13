@@ -46,7 +46,7 @@ export interface IAccount {
     tongoToErc20(tongoAmount: bigint): Promise<bigint>;
 
     //audit
-    createAuditPart(balance: bigint, storedCipherBalance: CipherBalance, prefix_data: GeneralPrefixData): Promise<CairoOption<Audit>>;
+    createAuditPart(balance: bigint,nonce: bigint, storedCipherBalance: CipherBalance, prefix_data: GeneralPrefixData, auditor: CairoOption<PubKey>): Promise<CairoOption<Audit>>;
 
     // ex post
     generateExPost(to: PubKey, cipher: CipherBalance, sender: string): Promise<ExPost>;
@@ -77,6 +77,7 @@ export interface TransferDetails {
     amount: bigint;
     to: PubKey;
     sender: string,
+    toTongo?: bigint,
     fee_to_sender?:bigint,
 }
 

@@ -15,20 +15,20 @@ pub mod Tongo {
     };
     use crate::structs::events::{
         AuditorPubKeySet, BalanceDeclared, FundEvent, OutsideFundEvent, RagequitEvent,
-        RolloverEvent, TransferDeclared, TransferEvent, WithdrawEvent,
+        RolloverEvent, TransferDeclared, TransferEvent, WithdrawEvent, ReceivedExternalTransfer,
     };
     use crate::structs::operations::{
         audit::{Audit, InputsAudit},
         fund::{Fund, InputsFund, OutsideFund},
         ragequit::{InputsRagequit, Ragequit},
         rollover::{InputsRollOver, Rollover},
-        transfer::{InputsTransfer, Transfer},
+        transfer::{InputsTransfer, Transfer, ExternalTransfer, ExternalData, TransferOptions, SerializeTransferOptions},
         withdraw::{InputsWithdraw, Withdraw},
     };
     use crate::structs::traits::GeneralPrefixData;
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use crate::tongo::{
-        ITongo::ITongo,
+        ITongo::{ITongo, ITongoDispatcher, ITongoDispatcherTrait},
         IVault::{IVaultDispatcher, IVaultDispatcherTrait},
     };
     use crate::verifier::{
@@ -88,6 +88,9 @@ pub mod Tongo {
         auditor_key: Option<PubKey>,
         /// The increasing number that identifies the public key
         key_number: u128,
+        /// A whitelist of Tongo instances (deployed by the same vault) allowed to interact with this contract
+        /// with the external_transfer mechanism. Only the owner of this contract can approve or revoke Tongo instances.
+        approvedTongo: Map<ContractAddress, bool>
     }
 
     #[constructor]
@@ -130,6 +133,7 @@ pub mod Tongo {
         BalanceDeclared: BalanceDeclared,
         TransferDeclared: TransferDeclared,
         AuditorPubKeySet: AuditorPubKeySet,
+        ReceivedExternalTransfer: ReceivedExternalTransfer,
     }
 
     #[abi(embed_v0)]
@@ -187,7 +191,7 @@ pub mod Tongo {
         fn fund(ref self: ContractState, fund: Fund) {
             let Fund { to, amount, proof, relayData,  auditPart, hint } = fund;
             let nonce = self.get_nonce(to);
-            let prefix_data = self._get_general_prefix_data();
+            let prefix_data = _get_general_prefix_data();
 
             let inputs: InputsFund = InputsFund { 
                 y: to,
@@ -218,8 +222,8 @@ pub mod Tongo {
                     },
                 );
 
-            if self.auditor_key.read().is_some() {
-                self._handle_audit_balance(to, nonce, auditPart);
+            if let Some(auditorKey) = self.auditor_key.read() {
+                self._handle_audit_balance(to, nonce, auditorKey, auditPart, prefix_data);
             }
 
             self._increase_nonce(to);
@@ -248,7 +252,7 @@ pub mod Tongo {
             } = withdraw;
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
-            let prefix_data = self._get_general_prefix_data();
+            let prefix_data = _get_general_prefix_data();
             let bit_size = self.get_bit_size();
 
             let inputs: InputsWithdraw = InputsWithdraw {
@@ -283,8 +287,8 @@ pub mod Tongo {
 
             self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce });
 
-            if self.auditor_key.read().is_some() {
-                self._handle_audit_balance(from, nonce, auditPart);
+            if let Some(auditorKey) = self.auditor_key.read() {
+                self._handle_audit_balance(from, nonce, auditorKey, auditPart, prefix_data);
             }
 
             self._increase_nonce(from);
@@ -299,7 +303,7 @@ pub mod Tongo {
             let Ragequit { from, amount, to, proof, hint, auditPart, relayData } = ragequit;
             let currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
-            let prefix_data = self._get_general_prefix_data();
+            let prefix_data = _get_general_prefix_data();
 
             let inputs: InputsRagequit = InputsRagequit {
                 y: from, amount, nonce, to, currentBalance, prefix_data, relayData,
@@ -321,8 +325,8 @@ pub mod Tongo {
 
             self.emit(RagequitEvent { from, amount: amount.try_into().unwrap(), to, nonce });
 
-            if self.auditor_key.read().is_some() {
-                self._handle_audit_balance(from, nonce, auditPart);
+            if let Some(auditorKey) = self.auditor_key.read() {
+                self._handle_audit_balance(from, nonce, auditorKey, auditPart, prefix_data);
             }
 
             self._increase_nonce(from);
@@ -331,7 +335,7 @@ pub mod Tongo {
         /// Transfer Tongos from the balance of the sender to the pending of the receiver
         ///
         /// Emits TransferEvent
-        fn transfer(ref self: ContractState, transfer: Transfer) {
+        fn transfer(ref self: ContractState, transfer: Transfer, transfer_options: Option<TransferOptions>) {
             let Transfer {
                 from,
                 to,
@@ -342,16 +346,28 @@ pub mod Tongo {
                 proof,
                 auditPart,
                 auditPartTransfer,
-                relayData,
                 hintTransfer,
                 hintLeftover,
             } = transfer;
 
-            let currentBalance = self.get_balance(from);
+            let data = transfer_options.serialize_data();
 
+            let (relayData, externalData) = match transfer_options {
+                Some(opts) => (opts.relayData, opts.externalData),
+                None => (None, None),
+            };
+
+            if let Some(relay) = relayData {
+                self._withdraw_from_vault(self._unwrap_tongo_amount(relay.fee_to_sender));
+                self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(relay.fee_to_sender));
+                let cipher = CipherBalanceTrait::new(from, relay.fee_to_sender.into(), 'fee');
+                self._subtract_balance(from, cipher);
+            }
+
+            let mut currentBalance = self.get_balance(from);
             let nonce = self.get_nonce(from);
             let bit_size = self.get_bit_size();
-            let prefix_data = self._get_general_prefix_data();
+            let prefix_data = _get_general_prefix_data();
 
             let inputs: InputsTransfer = InputsTransfer {
                 from,
@@ -364,47 +380,68 @@ pub mod Tongo {
                 auxiliarCipher2,
                 bit_size,
                 prefix_data,
-                relayData,
+                data,
             };
-
+            
             verify_transfer(inputs, proof);
-
-            if relayData.fee_to_sender != 0 {
-                self._withdraw_from_vault(self._unwrap_tongo_amount(relayData.fee_to_sender));
-                self
-                    ._transfer_to(
-                        get_caller_address(), self._unwrap_tongo_amount(relayData.fee_to_sender),
-                    );
-                let cipher = CipherBalanceTrait::new(from, relayData.fee_to_sender.into(), 'fee');
-                self._subtract_balance(from, cipher);
-            }
-
+            
             self._subtract_balance(from, transferBalanceSelf);
             self._overwrite_hint(from, hintLeftover);
 
-            self._add_pending(to, transferBalance);
-            self
-                .emit(
-                    TransferEvent {
-                        to,
-                        from,
-                        nonce,
-                        transferBalance,
-                        transferBalanceSelf,
-                        hintTransfer,
-                        hintLeftover,
-                    },
-                );
-
-            if self.auditor_key.read().is_some() {
-                self._handle_audit_balance(from, nonce, auditPart);
-                self
-                    ._handle_audit_transfer(
-                        from, nonce, to, transferBalanceSelf, auditPartTransfer,
-                    );
+            match externalData {
+                None => {
+                    self._add_pending(to, transferBalance)
+                },
+                Some(external) => {
+                    self._send_external_transfer(from, to, nonce, transferBalance, transferBalanceSelf, hintTransfer, external,prefix_data);
+                }
             }
 
+            if let Some(auditor) = self.auditor_key.read() {
+                self._handle_audit_balance(from, nonce,auditor, auditPart, prefix_data);
+                self._handle_audit_transfer( from, nonce, to,auditor, transferBalanceSelf, auditPartTransfer, prefix_data);
+            }
+
+            //TODO: add toTongo to event
+            self.emit(
+                TransferEvent {
+                    to,
+                    from,
+                    nonce,
+                    transferBalance,
+                    transferBalanceSelf,
+                    hintTransfer,
+                    hintLeftover,
+                }
+            );
+
             self._increase_nonce(from);
+        }
+
+        fn receive_external_transfer(ref self: ContractState, external: ExternalTransfer) {
+            let caller = get_caller_address();    
+            let Vault = IVaultDispatcher {contract_address: self.vault.read()};
+            assert!(Vault.is_known_tongo(caller), "Caller is not a valid Tongo contract");
+            assert!(self.approvedTongo.entry(caller).read(), "Caller is not approved to operate");
+            
+            let ExternalTransfer {
+                fromTongo,
+                from,
+                to,
+                transferBalance,
+                hintTransfer,
+            } = external;
+
+            self._add_pending(to, transferBalance);
+            self.emit(
+                ReceivedExternalTransfer {
+                    to,
+                    from,
+                    fromTongo,
+                    transferBalance,
+                    hintTransfer,
+                }
+            );
         }
 
         /// Moves to the balance the amount stored in the pending. Callable only by the account
@@ -414,7 +451,7 @@ pub mod Tongo {
         fn rollover(ref self: ContractState, rollover: Rollover) {
             let Rollover { to, proof, hint } = rollover;
             let nonce = self.get_nonce(to);
-            let prefix_data = self._get_general_prefix_data();
+            let prefix_data = _get_general_prefix_data();
 
             let inputs: InputsRollOver = InputsRollOver { y: to, nonce, prefix_data };
             verify_rollover(inputs, proof);
@@ -470,13 +507,41 @@ pub mod Tongo {
 
         /// Rotates the current auditor public key.
         fn change_auditor_key(ref self: ContractState, new_auditor_key: PubKey) {
-            assert!(get_caller_address() == self.owner.read(), "Caller is not owner");
+            self._caller_is_owner();
             assert!(
                 self.auditor_key.read().is_some(), "This contract was deployed without an auditor",
             );
             self._set_auditor_key(new_auditor_key);
         }
+
+        //TODO: docs
+        fn approveTongo(ref self: ContractState, address: ContractAddress) {
+            self._caller_is_owner();    
+            assert!(!self.approvedTongo.entry(address).read(), "Contract allready white-listed");
+            let Vault = IVaultDispatcher {contract_address: self.vault.read()};
+            assert!(Vault.is_known_tongo(address), "Target is not a valid Tongo contract");
+            self.approvedTongo.entry(address).write(true);
+        }
+
+        //TODO: docs
+        fn revokeTongo(ref self: ContractState, address: ContractAddress) {
+            self._caller_is_owner();    
+            assert!(self.approvedTongo.entry(address).read(), "Contract is not white-listed");
+            self.approvedTongo.entry(address).write(false);
+        }
     }
+
+    /// Returns the general prefix data. It is only used to compute the prefix and bind this
+    /// data to the ZK proof.
+    ///TODO: Remove from contract
+    fn _get_general_prefix_data() -> GeneralPrefixData {
+        let chain_id = get_tx_info().unbox().chain_id;
+        let tongo_address = get_contract_address();
+        let sender_address = get_caller_address();
+
+        GeneralPrefixData { chain_id, tongo_address, sender_address }
+    }
+
 
     #[generate_trait]
     impl PrivateImpl of IPrivate {
@@ -588,6 +653,11 @@ pub mod Tongo {
             self.ae_audit_balance.entry(y).write(hint);
         }
 
+        fn _caller_is_owner(self: @ContractState) {
+            let caller = get_caller_address();
+            assert!(caller == self.owner.read(), "Caller is not the Owner");
+        }
+
         /// Returns the ERC20 equivalent of the given Tongo amount.
         ///
         /// ERC20_amount = Tongo_amount*rate
@@ -599,14 +669,17 @@ pub mod Tongo {
         /// Verifies the given Audit with the zk proof are valid. Overwrites the audit Balance
         /// and emits BalanceDeclared Event
         fn _handle_audit_balance(
-            ref self: ContractState, y: PubKey, nonce: u64, audit: Option<Audit>,
+            ref self: ContractState,
+            y:PubKey,
+            nonce:u64,
+            auditorPubKey:PubKey,
+            audit: Option<Audit>,
+            prefix_data: GeneralPrefixData,
         ) {
             assert!(audit.is_some(), "You must declare your balance");
             let Audit { auditedBalance, proof: auditProof, hint } = audit.unwrap();
 
-            let auditorPubKey = self.auditor_key.read().unwrap();
             let storedBalance = self.get_balance(y);
-            let prefix_data = self._get_general_prefix_data();
             let inputs: InputsAudit = InputsAudit {
                 y, auditorPubKey, storedBalance, auditedBalance, prefix_data,
             };
@@ -630,13 +703,13 @@ pub mod Tongo {
             from: PubKey,
             nonce: u64,
             to: PubKey,
+            auditorPubKey: PubKey,
             transferBalance: CipherBalance,
             audit: Option<Audit>,
+            prefix_data: GeneralPrefixData,
         ) {
             assert!(audit.is_some(), "You must declare your balance");
             let Audit { auditedBalance, proof, hint } = audit.unwrap();
-            let auditorPubKey = self.auditor_key.read().unwrap();
-            let prefix_data = self._get_general_prefix_data();
             let inputs: InputsAudit = InputsAudit {
                 y: from, auditorPubKey, storedBalance: transferBalance, auditedBalance, prefix_data,
             };
@@ -650,15 +723,24 @@ pub mod Tongo {
                 );
         }
 
-        /// Returns the general prefix data. It is only used to compute the prefix and bind this
-        /// data to the ZK proof.
-        fn _get_general_prefix_data(self: @ContractState) -> GeneralPrefixData {
-            let chain_id = get_tx_info().unbox().chain_id;
-            let tongo_address = get_contract_address();
-            let sender_address = get_caller_address();
-
-            GeneralPrefixData { chain_id, tongo_address, sender_address }
+        fn _handle_external_transfer_audit(
+            self: @ContractState,
+            from: PubKey,
+            nonce: u64,
+            to: PubKey,
+            auditorPubKey: PubKey,
+            transferBalance: CipherBalance,
+            audit: Option<Audit>,
+            prefix_data: GeneralPrefixData,
+        ) {
+            assert!(audit.is_some(), "You must declare your balance");
+            let Audit { auditedBalance, proof, hint: _ } = audit.unwrap();
+            let inputs: InputsAudit = InputsAudit {
+                y: from, auditorPubKey, storedBalance: transferBalance, auditedBalance, prefix_data,
+            };
+            verify_audit(inputs, proof);
         }
+
 
         /// Handles the withdraw (and ragequit) asset transfers. 
         fn _handle_relayed_withdraw(
@@ -668,6 +750,42 @@ pub mod Tongo {
             let amount_after_fee = amount - fee_to_sender;
             self._transfer_to(to, self._unwrap_tongo_amount(amount_after_fee));
             self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(fee_to_sender));
+        }
+
+        fn _send_external_transfer(
+            ref self: ContractState,
+            from: PubKey,
+            to: PubKey,
+            nonce: u64,
+            transferBalance: CipherBalance,
+            transferBalanceSelf: CipherBalance,
+            hintTransfer: AEBalance,
+            externalData: ExternalData,
+            prefix_data: GeneralPrefixData,
+        ) {
+            let ExternalData {toTongo,  auditPart} = externalData;
+            assert!( toTongo != get_contract_address(), "External tranfer to same instances are not allowed")
+            assert!(self.approvedTongo.entry(toTongo).read(), "Target Tongo instance is not approved");
+            let targetTongo = ITongoDispatcher {contract_address: toTongo};
+
+            let target_prefix_data = GeneralPrefixData {
+                tongo_address: toTongo, 
+                ..prefix_data,
+            };
+
+            if let Some(targetAuditor) = targetTongo.auditor_key() {
+                self._handle_external_transfer_audit(from, nonce, to, targetAuditor,transferBalanceSelf,auditPart, target_prefix_data )    
+            }
+
+            let external = ExternalTransfer {
+                fromTongo: get_contract_address(),
+                from,
+                to,
+                transferBalance,
+                hintTransfer,
+            };
+
+            targetTongo.receive_external_transfer(external);
         }
     }
 }

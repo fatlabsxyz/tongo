@@ -33,6 +33,54 @@ export const tongoAbi = [
         ]
     },
     {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::common::pubkey::PubKey>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::common::pubkey::PubKey"
+            },
+            {
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::common::state::TongoConfig",
+        "members": [
+            {
+                "name": "address",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "ERC20",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "owner",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "vault",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "rate",
+                "type": "core::integer::u256"
+            },
+            {
+                "name": "bit_size",
+                "type": "core::integer::u32"
+            },
+            {
+                "name": "auditor_key",
+                "type": "core::option::Option::<tongo::structs::common::pubkey::PubKey>"
+            }
+        ]
+    },
+    {
         "type": "struct",
         "name": "core::integer::u512",
         "members": [
@@ -525,16 +573,108 @@ export const tongoAbi = [
                 "type": "tongo::structs::operations::transfer::ProofOfTransfer"
             },
             {
-                "name": "relayData",
-                "type": "tongo::structs::common::relayer::RelayData"
-            },
-            {
                 "name": "auditPart",
                 "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
             },
             {
                 "name": "auditPartTransfer",
                 "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::common::relayer::RelayData>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::common::relayer::RelayData"
+            },
+            {
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::transfer::ExternalData",
+        "members": [
+            {
+                "name": "toTongo",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "auditPart",
+                "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::operations::transfer::ExternalData>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::operations::transfer::ExternalData"
+            },
+            {
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::transfer::TransferOptions",
+        "members": [
+            {
+                "name": "relayData",
+                "type": "core::option::Option::<tongo::structs::common::relayer::RelayData>"
+            },
+            {
+                "name": "externalData",
+                "type": "core::option::Option::<tongo::structs::operations::transfer::ExternalData>"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::operations::transfer::TransferOptions>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::operations::transfer::TransferOptions"
+            },
+            {
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::transfer::ExternalTransfer",
+        "members": [
+            {
+                "name": "fromTongo",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "from",
+                "type": "tongo::structs::common::pubkey::PubKey"
+            },
+            {
+                "name": "to",
+                "type": "tongo::structs::common::pubkey::PubKey"
+            },
+            {
+                "name": "transferBalance",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance"
+            },
+            {
+                "name": "hintTransfer",
+                "type": "tongo::structs::aecipher::AEBalance"
             }
         ]
     },
@@ -629,23 +769,42 @@ export const tongoAbi = [
         ]
     },
     {
-        "type": "enum",
-        "name": "core::option::Option::<tongo::structs::common::pubkey::PubKey>",
-        "variants": [
-            {
-                "name": "Some",
-                "type": "tongo::structs::common::pubkey::PubKey"
-            },
-            {
-                "name": "None",
-                "type": "()"
-            }
-        ]
-    },
-    {
         "type": "interface",
         "name": "tongo::tongo::ITongo::ITongo",
         "items": [
+            {
+                "type": "function",
+                "name": "get_tongo_config",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "tongo::structs::common::state::TongoConfig"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_vault",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::starknet::contract_address::ContractAddress"
+                    }
+                ],
+                "state_mutability": "view"
+            },
+            {
+                "type": "function",
+                "name": "get_tag",
+                "inputs": [],
+                "outputs": [
+                    {
+                        "type": "core::felt252"
+                    }
+                ],
+                "state_mutability": "view"
+            },
             {
                 "type": "function",
                 "name": "ERC20",
@@ -745,6 +904,22 @@ export const tongoAbi = [
                     {
                         "name": "transfer",
                         "type": "tongo::structs::operations::transfer::Transfer"
+                    },
+                    {
+                        "name": "transfer_options",
+                        "type": "core::option::Option::<tongo::structs::operations::transfer::TransferOptions>"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "receive_external_transfer",
+                "inputs": [
+                    {
+                        "name": "external",
+                        "type": "tongo::structs::operations::transfer::ExternalTransfer"
                     }
                 ],
                 "outputs": [],
@@ -860,6 +1035,30 @@ export const tongoAbi = [
                     {
                         "name": "new_auditor_key",
                         "type": "tongo::structs::common::pubkey::PubKey"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "approveTongo",
+                "inputs": [
+                    {
+                        "name": "address",
+                        "type": "core::starknet::contract_address::ContractAddress"
+                    }
+                ],
+                "outputs": [],
+                "state_mutability": "external"
+            },
+            {
+                "type": "function",
+                "name": "revokeTongo",
+                "inputs": [
+                    {
+                        "name": "address",
+                        "type": "core::starknet::contract_address::ContractAddress"
                     }
                 ],
                 "outputs": [],
@@ -1152,6 +1351,38 @@ export const tongoAbi = [
     },
     {
         "type": "event",
+        "name": "tongo::structs::events::ReceivedExternalTransfer",
+        "kind": "struct",
+        "members": [
+            {
+                "name": "to",
+                "type": "tongo::structs::common::pubkey::PubKey",
+                "kind": "key"
+            },
+            {
+                "name": "from",
+                "type": "tongo::structs::common::pubkey::PubKey",
+                "kind": "key"
+            },
+            {
+                "name": "fromTongo",
+                "type": "core::starknet::contract_address::ContractAddress",
+                "kind": "key"
+            },
+            {
+                "name": "transferBalance",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance",
+                "kind": "data"
+            },
+            {
+                "name": "hintTransfer",
+                "type": "tongo::structs::aecipher::AEBalance",
+                "kind": "data"
+            }
+        ]
+    },
+    {
+        "type": "event",
         "name": "tongo::tongo::Tongo::Tongo::Event",
         "kind": "enum",
         "variants": [
@@ -1198,6 +1429,11 @@ export const tongoAbi = [
             {
                 "name": "AuditorPubKeySet",
                 "type": "tongo::structs::events::AuditorPubKeySet",
+                "kind": "nested"
+            },
+            {
+                "name": "ReceivedExternalTransfer",
+                "type": "tongo::structs::events::ReceivedExternalTransfer",
                 "kind": "nested"
             }
         ]

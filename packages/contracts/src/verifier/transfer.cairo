@@ -37,16 +37,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let c = proof.compute_challenge(prefix);
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
-    let mut cipherBalanceAfterFee = inputs.currentBalance;
-    if inputs.relayData.fee_to_sender != 0 {
-        cipherBalanceAfterFee = inputs
-            .currentBalance
-            .subtract(
-                CipherBalanceTrait::new(inputs.from, inputs.relayData.fee_to_sender.into(), 'fee'),
-            )
-    }
-
-    let (CL, CR) = cipherBalanceAfterFee.points();
+    let (CL, CR) = inputs.currentBalance.points();
     let (L, R) = inputs.transferBalanceSelf.points_nz();
     let (L_bar, R_bar) = inputs.transferBalance.points_nz();
     let (V, R_aux) = inputs.auxiliarCipher.points_nz();

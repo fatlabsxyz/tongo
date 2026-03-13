@@ -4,7 +4,7 @@ import { range as SHE_range} from "@fatsolutions/she/protocols"
 
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
-import { CipherBalance, compute_prefix,  GeneralPrefixData, ProjectivePoint, RelayData } from "../types";
+import { CipherBalance, compute_prefix,  GeneralPrefixData, ProjectivePoint} from "../types";
 import { createCipherBalance} from "../../src/utils";
 
 // cairo string 'transfer'
@@ -36,7 +36,7 @@ export interface InputsTransfer {
     auxiliarCipher2: CipherBalance,
     bit_size: number,
     prefix_data: GeneralPrefixData,
-    relay_data: RelayData,
+    serialized_data: bigint[],
 }
 
 /**
@@ -55,7 +55,6 @@ function prefixTransfer(inputs: InputsTransfer): bigint {
         chain_id,
         tongo_address,
         sender_address,
-        inputs.relay_data.fee_to_sender,
         TRANSFER_CAIRO_STRING,
         inputs.from.toAffine().x,
         inputs.from.toAffine().y,
@@ -82,6 +81,7 @@ function prefixTransfer(inputs: InputsTransfer): bigint {
         V2.toAffine().y,
         R_aux2.toAffine().x,
         R_aux2.toAffine().y,
+        ...inputs.serialized_data,
     ];
     return compute_prefix(seq);
 }
@@ -113,7 +113,7 @@ export function proveTransfer(
     nonce: bigint,
     bit_size: number,
     prefix_data: GeneralPrefixData,
-    fee_to_sender?: bigint,
+    serialized_data: bigint[],
 ): {
     inputs: InputsTransfer;
     proof: ProofOfTransfer;
@@ -122,11 +122,9 @@ export function proveTransfer(
     const x = private_key;
     const y = g.multiply(x);
 
-    let relay_data: RelayData = fee_to_sender ? {fee_to_sender} : {fee_to_sender: 0n};
-
     const b = amount_to_transfer;
     const b0 = initial_balance;
-    const b_left = b0 - relay_data.fee_to_sender - b;
+    const b_left = b0 - b;
 
     // This precomputation is usefull to know add R_aux and V to the prefix computation
     const  {randomness, total_random} = SHE_range.pregenerate_randomness(bit_size);
@@ -149,21 +147,12 @@ export function proveTransfer(
         auxiliarCipher2,
         bit_size,
         prefix_data,
-        relay_data,
+        serialized_data,
     };
 
     const prefix = prefixTransfer(inputs);
 
-    let cipherBalanceAfterFee = initial_cipherbalance;
-    if (relay_data.fee_to_sender != 0n) {
-        let {L: L_fee, R: R_fee} = createCipherBalance(y, relay_data.fee_to_sender, FEE_CAIRO_STRING);
-        cipherBalanceAfterFee = {
-            L: cipherBalanceAfterFee.L.subtract(L_fee),
-            R: cipherBalanceAfterFee.R.subtract(R_fee)
-        }
-    }
-
-    let {L:L0, R:R0} = cipherBalanceAfterFee;
+    let {L:L0, R:R0} = initial_cipherbalance;
 
     const { r, range } = generateRangeProof(b, bit_size,randomness, prefix);
     if (r !== total_random) {throw new Error("random missmatch") ;}
@@ -270,16 +259,7 @@ export function verifyTransfer(
         proof.A_bar,
     ]);
 
-    let cipherBalanceAfterFee = inputs.currentBalance;
-    if (inputs.relay_data.fee_to_sender != 0n ) {
-        let {L: L_fee, R: R_fee} = createCipherBalance(inputs.from, inputs.relay_data.fee_to_sender, FEE_CAIRO_STRING);
-        cipherBalanceAfterFee = {
-            L: cipherBalanceAfterFee.L.subtract(L_fee),
-            R: cipherBalanceAfterFee.R.subtract(R_fee)
-        }
-    }
-
-    const { L: CL, R: CR } = cipherBalanceAfterFee;
+    const { L: CL, R: CR } = inputs.currentBalance;
     const { L, R } = inputs.transferBalanceSelf;
     const { L: L_bar, R: R_bar } = inputs.transferBalance;
     const { L:V , R:R_aux } = inputs.auxiliarCipher;

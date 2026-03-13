@@ -20,7 +20,7 @@ export const vaultAbi = [
     },
     {
         "type": "struct",
-        "name": "tongo::structs::common::state::GlobalSetup",
+        "name": "tongo::structs::common::state::VaultConfig",
         "members": [
             {
                 "name": "vault_address",
@@ -59,6 +59,20 @@ export const vaultAbi = [
         ]
     },
     {
+        "type": "enum",
+        "name": "core::option::Option::<core::starknet::contract_address::ContractAddress>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
         "type": "struct",
         "name": "tongo::structs::common::pubkey::PubKey",
         "members": [
@@ -92,11 +106,11 @@ export const vaultAbi = [
         "items": [
             {
                 "type": "function",
-                "name": "get_vault_setup",
+                "name": "get_vault_config",
                 "inputs": [],
                 "outputs": [
                     {
-                        "type": "tongo::structs::common::state::GlobalSetup"
+                        "type": "tongo::structs::common::state::VaultConfig"
                     }
                 ],
                 "state_mutability": "view"
@@ -172,7 +186,7 @@ export const vaultAbi = [
                 ],
                 "outputs": [
                     {
-                        "type": "core::starknet::contract_address::ContractAddress"
+                        "type": "core::option::Option::<core::starknet::contract_address::ContractAddress>"
                     }
                 ],
                 "state_mutability": "view"
@@ -244,7 +258,7 @@ export const vaultAbi = [
                 "type": "core::integer::u32"
             },
             {
-                "name": "ledger_class",
+                "name": "tongo_class",
                 "type": "core::starknet::class_hash::ClassHash"
             }
         ]
@@ -280,7 +294,7 @@ export const vaultAbi = [
                 "kind": "data"
             },
             {
-                "name": "AuditorPubKey",
+                "name": "auditor_key",
                 "type": "core::option::Option::<tongo::structs::common::pubkey::PubKey>",
                 "kind": "data"
             }

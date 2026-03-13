@@ -93,6 +93,19 @@ pub struct TransferEvent {
     pub hintLeftover: AEBalance,
 }
 
+//TODO:
+#[derive(Drop, starknet::Event)]
+pub struct ReceivedExternalTransfer {
+    #[key]
+    pub to: PubKey,
+    #[key]
+    pub from: PubKey,
+    #[key]
+    pub fromTongo: ContractAddress,
+    pub transferBalance: CipherBalance,
+    pub hintTransfer: AEBalance,
+}
+
 
 /// Event emitted in a Ragequit operation.
 ///

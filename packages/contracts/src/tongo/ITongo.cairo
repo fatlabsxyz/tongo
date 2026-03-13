@@ -8,7 +8,7 @@ use crate::structs::operations::{
     fund::{Fund, OutsideFund},
     ragequit::Ragequit,
     rollover::Rollover,
-    transfer::Transfer,
+    transfer::{Transfer, ExternalTransfer, TransferOptions},
     withdraw::Withdraw,
 };
 
@@ -64,7 +64,9 @@ pub trait ITongo<TContractState> {
     /// Transfer Tongos from the balanca of te sender to the pending of the receiver
     ///
     /// Emits TransferEvent
-    fn transfer(ref self: TContractState, transfer: Transfer);
+    fn transfer(ref self: TContractState, transfer: Transfer, transfer_options: Option<TransferOptions>);
+
+    fn receive_external_transfer(ref self: TContractState, external: ExternalTransfer);
 
     /// Moves to the balance the amount stored in the pending. Callable only by the account owner.
     ///
@@ -94,4 +96,8 @@ pub trait ITongo<TContractState> {
 
     /// Rotates the current auditor public key.
     fn change_auditor_key(ref self: TContractState, new_auditor_key: PubKey);
+
+    //TODO: docs
+    fn approveTongo(ref self: TContractState, address: ContractAddress);
+    fn revokeTongo(ref self: TContractState, address: ContractAddress);
 }
