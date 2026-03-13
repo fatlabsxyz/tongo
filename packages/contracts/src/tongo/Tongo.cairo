@@ -503,7 +503,7 @@ pub mod Tongo {
             self._caller_is_owner();    
             assert!(!self.approvedTongo.entry(address).read(), "Contract allready white-listed");
             let Vault = IVaultDispatcher {contract_address: self.vault.read()};
-            assert!(Vault.is_known_tongo(address), "Caller is not a valid Tongo contract");
+            assert!(Vault.is_known_tongo(address), "Target is not a valid Tongo contract");
             self.approvedTongo.entry(address).write(true);
         }
 

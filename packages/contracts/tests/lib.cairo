@@ -23,4 +23,8 @@ pub mod verifier {
     pub mod transfer;
 }
 
+pub mod vault {
+    pub mod interactions;
+}
+
 pub mod consts;
