@@ -15,7 +15,7 @@ import { FundOperation } from "../operations/fund.js";
 import { OutsideFundOperation } from "../operations/outside_fund.js";
 import { RagequitOperation } from "../operations/ragequit.js";
 import { RollOverOperation } from "../operations/rollover.js";
-import { TransferOperation } from "../operations/transfer.js";
+import { TransferOperation, External } from "../operations/transfer.js";
 import { WithdrawOperation } from "../operations/withdraw.js";
 import { tongoAbi } from "../abi/tongo.abi.js";
 import {
@@ -144,11 +144,12 @@ export class Account implements IAccount {
     /// Returns Option(None) if tongo has not and auditor and Some(Audit) if tongo has an auditor
     async createAuditPart(
         balance: bigint,
+        nonce: bigint,
         storedCipherBalance: CipherBalance,
-        prefix_data:GeneralPrefixData
+        prefix_data:GeneralPrefixData,
+        auditor: CairoOption<PubKey>,
     ): Promise<CairoOption<Audit>> {
         let auditPart = new CairoOption<Audit>(CairoOptionVariant.None);
-        const auditor = await this.auditorKey();
         if (auditor.isSome()) {
             const auditorPubKey = starkPointToProjectivePoint(auditor.unwrap()!);
             const { inputs: inputsAudit, proof: proofAudit } = proveAudit(
@@ -158,7 +159,6 @@ export class Account implements IAccount {
                 auditorPubKey,
                 prefix_data,
             );
-            const nonce = await this.nonce();
             const hint = await this.computeAEHintForPubKey(balance, nonce, auditorPubKey);
             const audit: Audit = { auditedBalance: inputsAudit.auditedBalance, hint, proof: proofAudit };
             auditPart = new CairoOption<Audit>(CairoOptionVariant.Some, audit);
@@ -192,7 +192,8 @@ export class Account implements IAccount {
         );
 
         //audit
-        const auditPart = await this.createAuditPart(amount + initialBalance, newBalance, prefix_data);
+        const auditor = await this.auditorKey();
+        const auditPart = await this.createAuditPart(amount + initialBalance,nonce, newBalance, prefix_data, auditor);
         const hint = await this.computeAEHintForSelf(amount + initialBalance, nonce + 1n);
 
         const operation = new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo, relayData: inputs.relay_data });
@@ -252,8 +253,37 @@ export class Account implements IAccount {
         const hintLeftover = await this.computeAEHintForSelf(balance_left, nonce + 1n);
 
         //audit
-        const auditPart = await this.createAuditPart(balance_left, newBalance, prefix_data);
-        const auditPartTransfer = await this.createAuditPart(amount, inputs.transferBalanceSelf, prefix_data);
+        const auditor = await this.auditorKey();
+        const auditPart = await this.createAuditPart(balance_left, nonce, newBalance, prefix_data, auditor);
+        const auditPartTransfer = await this.createAuditPart(amount, nonce, inputs.transferBalanceSelf, prefix_data, auditor);
+
+        
+        let externalData = new CairoOption<External>(CairoOptionVariant.None);
+        if (transferDetails.toTongo) {
+            const toTongo = transferDetails.toTongo;
+
+            //TODO: Check with the vault that it is a valid tongo contract
+            const Tongo2 = new Contract({
+                abi: tongoAbi,
+                address: num.toHex(toTongo),
+                providerOrAccount: this.provider
+            }).typedv2(tongoAbi);
+            const auditorTarget: CairoOption<PubKey> = await Tongo2.auditor_key();
+
+            const prefix_data_target: GeneralPrefixData = {
+                chain_id: prefix_data.chain_id,
+                sender_address: prefix_data.sender_address,
+                tongo_address: toTongo,
+            };
+
+            const auditTarget = await this.createAuditPart(amount, nonce, inputs.transferBalanceSelf, prefix_data_target, auditorTarget )
+            const external: External = {
+               toTongo, 
+               auditPart: auditTarget,
+               hintTransfer,
+            };
+            externalData = new CairoOption<External>(CairoOptionVariant.Some, external);
+        }
 
 
         return new TransferOperation({
@@ -269,6 +299,7 @@ export class Account implements IAccount {
             auditPart,
             auditPartTransfer,
             relayData: inputs.relay_data,
+            externalData,
             Tongo: this.Tongo,
         });
     }
@@ -302,8 +333,9 @@ export class Account implements IAccount {
         );
 
         // zeroing out aehints
+        const auditor = await this.auditorKey();
+        const auditPart = await this.createAuditPart(0n, nonce,  newBalance, prefix_data, auditor);
         const hint = await this.computeAEHintForSelf(0n, nonce + 1n);
-        const auditPart = await this.createAuditPart(0n, newBalance, prefix_data);
 
         return new RagequitOperation({
             from: inputs.y,
@@ -351,7 +383,8 @@ export class Account implements IAccount {
         const hint = await this.computeAEHintForSelf(initialBalance - amount - fee_to_sender, nonce + 1n);
 
         //audit
-        const auditPart = await this.createAuditPart(initialBalance - amount - fee_to_sender, newBalance, prefix_data);
+        const auditor = await this.auditorKey();
+        const auditPart = await this.createAuditPart(initialBalance - amount - fee_to_sender, nonce, newBalance, prefix_data, auditor);
 
         return new WithdrawOperation({
             from: inputs.y,

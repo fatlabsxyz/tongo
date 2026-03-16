@@ -40,7 +40,14 @@ interface TransferOpParams {
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
     relayData: RelayData,
+    externalData: CairoOption<External>;
     Tongo: Contract;
+}
+
+export interface External {
+    toTongo: bigint,
+    auditPart: CairoOption<Audit>,
+    hintTransfer: AEBalance,
 }
 
 export class TransferOperation implements ITransferOperation {
@@ -58,6 +65,7 @@ export class TransferOperation implements ITransferOperation {
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
     relayData: RelayData;
+    externalData: CairoOption<External>;
 
     constructor({
         from,
@@ -73,6 +81,7 @@ export class TransferOperation implements ITransferOperation {
         hintTransfer,
         hintLeftover,
         relayData,
+        externalData,
     }: TransferOpParams) {
         this.from = from;
         this.to = to;
@@ -86,6 +95,7 @@ export class TransferOperation implements ITransferOperation {
         this.auditPart = auditPart;
         this.auditPartTransfer = auditPartTransfer;
         this.relayData = relayData;
+        this.externalData = externalData;
         this.Tongo = Tongo;
     }
 
@@ -104,6 +114,7 @@ export class TransferOperation implements ITransferOperation {
                 auditPart: this.auditPart,
                 auditPartTransfer: this.auditPartTransfer,
                 relayData: this.relayData,
+                externalData: this.externalData
             },
         ]);
     }

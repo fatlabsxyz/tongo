@@ -384,6 +384,7 @@ pub mod Tongo {
 
             if let Some(auditor) = self.auditor_key.read() {
                 self._handle_audit_balance(from, nonce,auditor, auditPart, prefix_data);
+                //This should be only emited in internal transfers?
                 self._handle_audit_transfer( from, nonce, to,auditor, transferBalanceSelf, auditPartTransfer, prefix_data);
             }
 

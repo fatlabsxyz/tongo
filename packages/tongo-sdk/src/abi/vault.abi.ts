@@ -244,7 +244,7 @@ export const vaultAbi = [
                 "type": "core::integer::u32"
             },
             {
-                "name": "ledger_class",
+                "name": "tongo_class",
                 "type": "core::starknet::class_hash::ClassHash"
             }
         ]
