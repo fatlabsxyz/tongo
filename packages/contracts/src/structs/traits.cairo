@@ -1,6 +1,7 @@
 use starknet::ContractAddress;
 use crate::structs::common::starkpoint::StarkPoint;
 
+
 #[derive(Serde, Drop, Copy, Debug)]
 pub struct GeneralPrefixData {
     pub chain_id: felt252,
