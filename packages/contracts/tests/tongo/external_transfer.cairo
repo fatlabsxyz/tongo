@@ -41,8 +41,8 @@ fn test_external_transfer() {
     dispatcher.fund(operation);
 
     let transfer_amount = 100;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address2, dispatcher);
-    dispatcher.transfer(operation);
+    let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address2, dispatcher);
+    dispatcher.transfer(operation, transfer_options);
     
     let balance = dispatcher.get_balance(y);
     decipher_balance((initial_fund - transfer_amount).into(), x, balance);

@@ -1,21 +1,23 @@
 use tongo::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
 use crate::prover::utils::{generate_random, pubkey_from_secret};
+use tongo::structs::traits::{GeneralPrefixData};
 use tongo::structs::common::{
-    cipherbalance::CipherBalance,
+    cipherbalance::{CipherBalance, CipherBalanceTrait},
     pubkey::PubKey,
+    relayer::RelayData,
 };
 use tongo::structs::operations::{
     fund::Fund,
     withdraw::Withdraw,
     ragequit::Ragequit,
     audit::Audit,
-    transfer::{Transfer, External},
+    transfer::{Transfer, TransferOptions, ExternalData, SerializeTransferOptions},
     rollover::Rollover,
 };
 use crate::prover::functions::{prove_fund,prove_withdraw, prove_ragequit, prove_audit,prove_transfer, prove_rollover};
 use crate::tongo::setup::{empty_ae_hint};
 use starknet::ContractAddress;
-use crate::consts::USER_ADDRESS;
+use crate::consts::{USER_ADDRESS, CHAIN_ID};
 
 fn generateAuditPart(
     pk:felt252,
@@ -154,60 +156,85 @@ pub fn transferOperation(
     fee_to_sender: u128,
     targetTongo: ContractAddress,
     dispatcher:ITongoDispatcher,
-)-> Transfer {
+)-> (Transfer, Option<TransferOptions>) {
+    
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
-    let currentBalance = dispatcher.get_balance(y);
+    let mut currentBalance = dispatcher.get_balance(y);
+    let mut currentAmount = initialBalance;
     let bit_size = dispatcher.get_bit_size();
-    let tongoAddress = dispatcher.contract_address;
+
+    let mut relayData: Option<RelayData> = None;
+    let mut externalData: Option<ExternalData> = None;
+
+    if fee_to_sender != 0 {
+        relayData = Some(RelayData {fee_to_sender});
+        currentBalance  = currentBalance.subtract(CipherBalanceTrait::new(y, fee_to_sender.into(),'fee'));
+        currentAmount = currentAmount - fee_to_sender;
+    }
+    
+    if targetTongo != dispatcher.contract_address {
+        externalData = Some(ExternalData {
+            toTongo: targetTongo,
+            auditPart: None,
+        })
+    };
+
+    let mut transfer_options = Some(TransferOptions {relayData, externalData: externalData});
+    let serialized_data = transfer_options.serialize_data();
+
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:dispatcher.contract_address,
+        sender_address:sender,
+    };
 
     let (inputs, proof, newBalance) = prove_transfer(
         pk,
         to,
-        initialBalance.into(),
+        currentAmount.into(),
         amount.into(),
         currentBalance,
         nonce,
         bit_size,
-        sender,
-        fee_to_sender,
-        tongoAddress,
+        prefix_data,
+        serialized_data,
         generate_random(pk,nonce.into())
     );
 
-    let auditPart = generateAuditPart(pk, initialBalance - fee_to_sender.into() - amount, newBalance,sender, dispatcher);
+    let auditPart = generateAuditPart(pk, currentAmount - amount, newBalance,sender, dispatcher);
     let auditPartTransfer = generateAuditPart(pk, amount, inputs.transferBalanceSelf, sender, dispatcher);
-
-    let mut externalData: Option<External> = Option::None;
 
     if targetTongo != dispatcher.contract_address {
         let TargetTongo = ITongoDispatcher {contract_address: targetTongo};
         let auditPart2 = generateAuditPart(pk, amount, inputs.transferBalanceSelf, sender, TargetTongo);
         
         externalData = Some(
-            External {
+            ExternalData {
                 toTongo: targetTongo,
                 auditPart: auditPart2,
-                hintTransfer: empty_ae_hint(),
             }
-        )
+        );
+
+        transfer_options = Some( TransferOptions {relayData, externalData});
     }
 
-    return Transfer {
-        from:y,
-        to,
-        hintTransfer: empty_ae_hint(),
-        hintLeftover: empty_ae_hint(),
-        transferBalance: inputs.transferBalance,
-        transferBalanceSelf: inputs.transferBalanceSelf,
-        auxiliarCipher: inputs.auxiliarCipher,
-        auxiliarCipher2: inputs.auxiliarCipher2,
-        auditPart,
-        auditPartTransfer,
-        relayData: inputs.relayData,
-        externalData,
-        proof,
-    };
+    return (
+        Transfer {
+            from:y,
+            to,
+            hintTransfer: empty_ae_hint(),
+            hintLeftover: empty_ae_hint(),
+            transferBalance: inputs.transferBalance,
+            transferBalanceSelf: inputs.transferBalanceSelf,
+            auxiliarCipher: inputs.auxiliarCipher,
+            auxiliarCipher2: inputs.auxiliarCipher2,
+            auditPart,
+            auditPartTransfer,
+            proof,
+        },
+        transfer_options
+    );
 }
 
 pub fn rolloverOperation(

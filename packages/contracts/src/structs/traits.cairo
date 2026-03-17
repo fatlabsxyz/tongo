@@ -23,6 +23,10 @@ pub trait Challenge<T> {
     fn compute_challenge(self: @T, prefix: felt252) -> felt252;
 }
 
+pub trait SerializedData<T> {
+    fn serialize_data(self: @T) -> Span<felt252>;
+}
+
 
 /// Appends the x and y coordinates of a StarkPoint to the end of an array.
 /// This is use as part of challenge computation.

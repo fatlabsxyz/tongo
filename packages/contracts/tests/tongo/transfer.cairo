@@ -24,7 +24,7 @@ fn test_transfer() {
 
 
     let transfer_amount = 100;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address,dispatcher);
-    dispatcher.transfer(operation);
+    let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address,dispatcher);
+    dispatcher.transfer(operation, transfer_options);
 }
 

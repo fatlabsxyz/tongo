@@ -8,7 +8,7 @@ use crate::structs::operations::{
     fund::{Fund, OutsideFund},
     ragequit::Ragequit,
     rollover::Rollover,
-    transfer::{Transfer, ExternalTransfer},
+    transfer::{Transfer, ExternalTransfer, TransferOptions},
     withdraw::Withdraw,
 };
 
@@ -60,7 +60,7 @@ pub trait ITongo<TContractState> {
     /// Transfer Tongos from the balanca of te sender to the pending of the receiver
     ///
     /// Emits TransferEvent
-    fn transfer(ref self: TContractState, transfer: Transfer);
+    fn transfer(ref self: TContractState, transfer: Transfer, transfer_options: Option<TransferOptions>);
 
     fn receive_external_transfer(ref self: TContractState, external: ExternalTransfer);
 
