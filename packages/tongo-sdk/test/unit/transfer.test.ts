@@ -22,6 +22,7 @@ describe("transfer", () => {
         const prefix_data: GeneralPrefixData = { chain_id: 1111n, tongo_address: 22222n, sender_address: 33333n };
 
         const bit_size = 32;
+        const serialized_data = [1n];
 
         const { inputs, proof } = proveTransfer(
             private_key_sender,
@@ -32,11 +33,12 @@ describe("transfer", () => {
             nonce,
             bit_size,
             prefix_data,
+            serialized_data,
         );
         verifyTransfer(inputs, proof);
     });
 
-    it("test transfer with relay", () => {
+    it("test transfer with serialized data", () => {
         const private_key_sender = 290820943832n;
         const public_key_sender = g.multiply(private_key_sender);
 
@@ -46,13 +48,13 @@ describe("transfer", () => {
         const initial_balance = 300n;
         const amount_to_send = 100n;
         const _r = 7432847328432n;
-        const fee_to_sender = 8n;
         const initial_cipher_balance = createCipherBalance(public_key_sender, initial_balance, _r);
 
         const nonce = 1n;
         const prefix_data: GeneralPrefixData = { chain_id: 1111n, tongo_address: 22222n, sender_address: 33333n };
 
         const bit_size = 32;
+        const serialized_data = [0n, 10n];
 
         const { inputs, proof } = proveTransfer(
             private_key_sender,
@@ -63,7 +65,7 @@ describe("transfer", () => {
             nonce,
             bit_size,
             prefix_data,
-            fee_to_sender,
+            serialized_data,
         );
         verifyTransfer(inputs, proof);
     });

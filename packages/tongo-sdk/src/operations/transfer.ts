@@ -39,15 +39,40 @@ interface TransferOpParams {
     hintLeftover: AEBalance;
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
-    relayData: RelayData,
-    externalData: CairoOption<External>;
+    transfer_options: CairoOption<TransferOptions>;
     Tongo: Contract;
 }
 
-export interface External {
+export interface ExternalData {
     toTongo: bigint,
     auditPart: CairoOption<Audit>,
-    hintTransfer: AEBalance,
+}
+
+export interface TransferOptions {
+    relayData: CairoOption<RelayData>,
+    externalData: CairoOption<ExternalData>,
+}
+
+//TODO: handle this better, maybe something similar to the cairo contracts
+export function serializeTransferOptions(transfer_options: CairoOption<TransferOptions>): bigint[] {
+    if (transfer_options.isNone()) {return [1n]}
+
+    let arr = [0n];
+    const {relayData, externalData} = transfer_options.unwrap()!;
+    if (relayData.isNone()) {
+        arr.push(1n)
+    } else {
+        arr.push(0n)
+        arr.push(relayData.unwrap()!.fee_to_sender)
+    }
+
+    if (externalData.isNone()) {
+        arr.push(1n)
+    } else {
+        arr.push(0n)
+        arr.push(externalData.unwrap()!.toTongo)
+    }
+    return arr
 }
 
 export class TransferOperation implements ITransferOperation {
@@ -64,8 +89,7 @@ export class TransferOperation implements ITransferOperation {
     proof: ProofOfTransfer;
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
-    relayData: RelayData;
-    externalData: CairoOption<External>;
+    transfer_options: CairoOption<TransferOptions>;
 
     constructor({
         from,
@@ -80,8 +104,7 @@ export class TransferOperation implements ITransferOperation {
         Tongo,
         hintTransfer,
         hintLeftover,
-        relayData,
-        externalData,
+        transfer_options,
     }: TransferOpParams) {
         this.from = from;
         this.to = to;
@@ -94,8 +117,7 @@ export class TransferOperation implements ITransferOperation {
         this.proof = proof;
         this.auditPart = auditPart;
         this.auditPartTransfer = auditPartTransfer;
-        this.relayData = relayData;
-        this.externalData = externalData;
+        this.transfer_options = transfer_options;
         this.Tongo = Tongo;
     }
 
@@ -113,9 +135,8 @@ export class TransferOperation implements ITransferOperation {
                 proof: this.proof,
                 auditPart: this.auditPart,
                 auditPartTransfer: this.auditPartTransfer,
-                relayData: this.relayData,
-                externalData: this.externalData
             },
+            this.transfer_options,
         ]);
     }
 }

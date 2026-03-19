@@ -389,6 +389,7 @@ pub mod Tongo {
                 self._handle_audit_transfer( from, nonce, to,auditor, transferBalanceSelf, auditPartTransfer, prefix_data);
             }
 
+            //TODO: add toTongo to event
             self.emit(
                 TransferEvent {
                     to,

@@ -486,38 +486,6 @@ export const tongoAbi = [
     },
     {
         "type": "struct",
-        "name": "tongo::structs::operations::transfer::External",
-        "members": [
-            {
-                "name": "toTongo",
-                "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-                "name": "auditPart",
-                "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
-            },
-            {
-                "name": "hintTransfer",
-                "type": "tongo::structs::aecipher::AEBalance"
-            }
-        ]
-    },
-    {
-        "type": "enum",
-        "name": "core::option::Option::<tongo::structs::operations::transfer::External>",
-        "variants": [
-            {
-                "name": "Some",
-                "type": "tongo::structs::operations::transfer::External"
-            },
-            {
-                "name": "None",
-                "type": "()"
-            }
-        ]
-    },
-    {
-        "type": "struct",
         "name": "tongo::structs::operations::transfer::Transfer",
         "members": [
             {
@@ -557,20 +525,82 @@ export const tongoAbi = [
                 "type": "tongo::structs::operations::transfer::ProofOfTransfer"
             },
             {
-                "name": "relayData",
-                "type": "tongo::structs::common::relayer::RelayData"
-            },
-            {
                 "name": "auditPart",
                 "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
             },
             {
                 "name": "auditPartTransfer",
                 "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::common::relayer::RelayData>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::common::relayer::RelayData"
+            },
+            {
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::transfer::ExternalData",
+        "members": [
+            {
+                "name": "toTongo",
+                "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+                "name": "auditPart",
+                "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::operations::transfer::ExternalData>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::operations::transfer::ExternalData"
+            },
+            {
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::transfer::TransferOptions",
+        "members": [
+            {
+                "name": "relayData",
+                "type": "core::option::Option::<tongo::structs::common::relayer::RelayData>"
             },
             {
                 "name": "externalData",
-                "type": "core::option::Option::<tongo::structs::operations::transfer::External>"
+                "type": "core::option::Option::<tongo::structs::operations::transfer::ExternalData>"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::operations::transfer::TransferOptions>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::operations::transfer::TransferOptions"
+            },
+            {
+                "name": "None",
+                "type": "()"
             }
         ]
     },
@@ -829,6 +859,10 @@ export const tongoAbi = [
                     {
                         "name": "transfer",
                         "type": "tongo::structs::operations::transfer::Transfer"
+                    },
+                    {
+                        "name": "transfer_options",
+                        "type": "core::option::Option::<tongo::structs::operations::transfer::TransferOptions>"
                     }
                 ],
                 "outputs": [],
