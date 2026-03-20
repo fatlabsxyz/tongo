@@ -6,10 +6,10 @@ use crate::structs::common::{
 };
 use crate::structs::operations::{
     fund::{Fund, OutsideFund},
-    ragequit::Ragequit,
+    ragequit::{Ragequit, RagequitOptions},
     rollover::Rollover,
     transfer::{Transfer, ExternalTransfer, TransferOptions},
-    withdraw::Withdraw,
+    withdraw::{Withdraw, WithdrawOptions},
 };
 
 #[starknet::interface]
@@ -49,13 +49,13 @@ pub trait ITongo<TContractState> {
     /// Withdraw Tongos and send the ERC20 to a starknet address.
     ///
     /// Emits WithdrawEvent
-    fn withdraw(ref self: TContractState, withdraw: Withdraw);
+    fn withdraw(ref self: TContractState, withdraw: Withdraw, withdraw_options: Option<WithdrawOptions>);
 
     /// Withdraw all the balance of an account and send the ERC20 to a starknet address. This proof
     /// avoids the limitations of the range prove that are present in the regular withdraw.
     ///
     /// Emits RagequitEvent
-    fn ragequit(ref self: TContractState, ragequit: Ragequit);
+    fn ragequit(ref self: TContractState, ragequit: Ragequit, ragequit_options: Option<RagequitOptions>);
 
     /// Transfer Tongos from the balanca of te sender to the pending of the receiver
     ///

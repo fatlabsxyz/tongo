@@ -181,9 +181,8 @@ pub fn prove_ragequit(
     to: ContractAddress,
     currentBalance: CipherBalance,
     nonce: u64,
-    sender: ContractAddress,
-    fee_to_sender: u128,
-    tongoAddress: ContractAddress,
+    prefix_data: GeneralPrefixData,
+    serialized_data: Span<felt252>,
     seed: felt252
 ) -> (InputsRagequit, ProofOfRagequit, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
@@ -192,14 +191,6 @@ pub fn prove_ragequit(
 
     let ( _ , R) = currentBalance.points_nz();
 
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {
-        chain_id: CHAIN_ID,
-        tongo_address:tongoAddress,
-        sender_address:sender,
-    };
-    
-    let mut relayData = RelayData {fee_to_sender};
-
     let inputs: InputsRagequit = InputsRagequit {
         y:y.try_into().unwrap(),
         amount,
@@ -207,7 +198,7 @@ pub fn prove_ragequit(
         nonce,
         currentBalance,
         prefix_data,
-        relayData
+        data: serialized_data, 
     };
     let prefix = inputs.compute_prefix();
 
@@ -239,9 +230,8 @@ pub fn prove_withdraw(
     currentBalance: CipherBalance,
     nonce: u64,
     bit_size:u32,
-    sender: ContractAddress,
-    fee_to_sender: u128,
-    tongoAddress: ContractAddress,
+    prefix_data: GeneralPrefixData,
+    serialized_data: Span<felt252>,
     seed: felt252
 ) -> (InputsWithdraw, ProofOfWithdraw, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
@@ -249,18 +239,10 @@ pub fn prove_withdraw(
     let y = pubkey_from_secret(x);
     decipher_balance(initialBalance.into(), x, currentBalance);
 
-    let left = initialBalance - amount - fee_to_sender;
-
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {
-        chain_id: CHAIN_ID,
-        tongo_address:tongoAddress,
-        sender_address:sender,
-    };
+    let left = initialBalance - amount;
 
     let (randomness, total_random ) = pregenerate_random_for_testing(bit_size, seed + 1);
     let auxiliarCipher = CipherBalanceTrait::new(h.into(),left.into(), total_random);
-
-    let relayData = RelayData {fee_to_sender};
 
     let inputs: InputsWithdraw = InputsWithdraw {
         y: y.try_into().unwrap(),
@@ -271,16 +253,11 @@ pub fn prove_withdraw(
         to,
         bit_size,
         prefix_data,
-        relayData,
+        data: serialized_data,
     };
 
     let prefix = inputs.compute_prefix();
 
-    let mut currentBalance = currentBalance;
-    if inputs.relayData.fee_to_sender != 0 {
-        let fee = CipherBalanceTrait::new(y, fee_to_sender.into(), 'fee' );
-        currentBalance = currentBalance.subtract(fee)
-    }
     let (_,R) = currentBalance.points();
 
     let (r, range) = prove_range(left.try_into().unwrap(),bit_size,randomness, prefix, generate_random(seed + 1, 1));
