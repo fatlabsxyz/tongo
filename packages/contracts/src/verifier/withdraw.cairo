@@ -36,11 +36,6 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
 
     let mut currentBalance = inputs.currentBalance;
 
-    if inputs.relayData.fee_to_sender != 0 {
-        let fee = CipherBalanceTrait::new(inputs.y, inputs.relayData.fee_to_sender.into(), 'fee');
-        currentBalance = currentBalance.subtract(fee)
-    }
-
     let (L0, R0) = currentBalance.points_nz();
     let L0 = L0.into() - g.into().mul(inputs.amount.into());
     let (V, R_aux) = inputs.auxiliarCipher.points_nz();

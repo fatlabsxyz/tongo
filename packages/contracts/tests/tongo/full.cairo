@@ -94,8 +94,8 @@ fn full() {
     //y_bar will withdraw amount
     let withdraw_amount = 25;
     let transfer_address: ContractAddress = 'asdf'.try_into().unwrap();
-    let operation = withdrawOperation(x_bar,transfer_amount, withdraw_amount, transfer_address,USER_ADDRESS,0, dispatcher);
-    dispatcher.withdraw(operation);
+    let (operation, withdraw_options) = withdrawOperation(x_bar,transfer_amount, withdraw_amount, transfer_address,USER_ADDRESS,0, dispatcher);
+    dispatcher.withdraw(operation, withdraw_options);
 
     let VaultBalance2 = ERC20.balance_of(VAULT_ADDRESS);
     assert!(VaultBalance - VaultBalance2 == rate*(withdraw_amount).into(),"Incorrect VaultBalance2");
@@ -109,8 +109,8 @@ fn full() {
     //y will ragequit
 
     let ragequit_amount = initial_fund - transfer_amount;
-    let operation = ragequitOperation(x, ragequit_amount,transfer_address,USER_ADDRESS,0, dispatcher);
-    dispatcher.ragequit(operation);
+    let (operation, ragequit_options) = ragequitOperation(x, ragequit_amount,transfer_address,USER_ADDRESS,0, dispatcher);
+    dispatcher.ragequit(operation, ragequit_options);
 
     // nonce for y should be 3
     let nonce = dispatcher.get_nonce(y);

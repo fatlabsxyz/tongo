@@ -405,12 +405,46 @@ export const tongoAbi = [
                 "type": "tongo::structs::operations::withdraw::ProofOfWithdraw"
             },
             {
-                "name": "relayData",
+                "name": "auditPart",
+                "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::common::relayer::RelayData>",
+        "variants": [
+            {
+                "name": "Some",
                 "type": "tongo::structs::common::relayer::RelayData"
             },
             {
-                "name": "auditPart",
-                "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
+                "name": "None",
+                "type": "()"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::withdraw::WithdrawOptions",
+        "members": [
+            {
+                "name": "relayData",
+                "type": "core::option::Option::<tongo::structs::common::relayer::RelayData>"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::operations::withdraw::WithdrawOptions>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::operations::withdraw::WithdrawOptions"
+            },
+            {
+                "name": "None",
+                "type": "()"
             }
         ]
     },
@@ -457,12 +491,32 @@ export const tongoAbi = [
                 "type": "tongo::structs::operations::ragequit::ProofOfRagequit"
             },
             {
-                "name": "relayData",
-                "type": "tongo::structs::common::relayer::RelayData"
-            },
-            {
                 "name": "auditPart",
                 "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
+            }
+        ]
+    },
+    {
+        "type": "struct",
+        "name": "tongo::structs::operations::ragequit::RagequitOptions",
+        "members": [
+            {
+                "name": "relayData",
+                "type": "core::option::Option::<tongo::structs::common::relayer::RelayData>"
+            }
+        ]
+    },
+    {
+        "type": "enum",
+        "name": "core::option::Option::<tongo::structs::operations::ragequit::RagequitOptions>",
+        "variants": [
+            {
+                "name": "Some",
+                "type": "tongo::structs::operations::ragequit::RagequitOptions"
+            },
+            {
+                "name": "None",
+                "type": "()"
             }
         ]
     },
@@ -579,20 +633,6 @@ export const tongoAbi = [
             {
                 "name": "auditPartTransfer",
                 "type": "core::option::Option::<tongo::structs::operations::audit::Audit>"
-            }
-        ]
-    },
-    {
-        "type": "enum",
-        "name": "core::option::Option::<tongo::structs::common::relayer::RelayData>",
-        "variants": [
-            {
-                "name": "Some",
-                "type": "tongo::structs::common::relayer::RelayData"
-            },
-            {
-                "name": "None",
-                "type": "()"
             }
         ]
     },
@@ -880,6 +920,10 @@ export const tongoAbi = [
                     {
                         "name": "withdraw",
                         "type": "tongo::structs::operations::withdraw::Withdraw"
+                    },
+                    {
+                        "name": "withdraw_options",
+                        "type": "core::option::Option::<tongo::structs::operations::withdraw::WithdrawOptions>"
                     }
                 ],
                 "outputs": [],
@@ -892,6 +936,10 @@ export const tongoAbi = [
                     {
                         "name": "ragequit",
                         "type": "tongo::structs::operations::ragequit::Ragequit"
+                    },
+                    {
+                        "name": "ragequit_options",
+                        "type": "core::option::Option::<tongo::structs::operations::ragequit::RagequitOptions>"
                     }
                 ],
                 "outputs": [],

@@ -30,12 +30,32 @@ interface WithdrawOpParams {
     hint: AEBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
-    relayData: RelayData;
+    withdraw_options: CairoOption<WithdrawOptions>;
     Tongo: Contract;
+}
+
+export interface WithdrawOptions {
+    relayData: CairoOption<RelayData>,
+}
+
+//TODO: handle this better, maybe something similar to the cairo contracts
+export function serializeWithdrawOptions(withdraw_options: CairoOption<WithdrawOptions>): bigint[] {
+    if (withdraw_options.isNone()) {return [1n]}
+
+    let arr = [0n];
+    const {relayData} = withdraw_options.unwrap()!;
+    if (relayData.isNone()) {
+        arr.push(1n)
+    } else {
+        arr.push(0n)
+        arr.push(relayData.unwrap()!.fee_to_sender)
+    }
+    return arr
 }
 
 export class WithdrawOperation implements IWithdrawOperation {
     type: typeof OperationType.Withdraw = OperationType.Withdraw;
+    Tongo: Contract;
     from: ProjectivePoint;
     to: bigint;
     amount: bigint;
@@ -43,10 +63,10 @@ export class WithdrawOperation implements IWithdrawOperation {
     auxiliarCipher: CipherBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
-    relayData: RelayData;
-    Tongo: Contract;
+    withdraw_options: CairoOption<WithdrawOptions>;
 
-    constructor({ from, to, amount, proof, auditPart, Tongo, hint, auxiliarCipher, relayData}: WithdrawOpParams) {
+    constructor({ from, to, amount, proof, auditPart, Tongo, hint, auxiliarCipher, withdraw_options}: WithdrawOpParams) {
+        this.Tongo = Tongo;
         this.from = from;
         this.to = to;
         this.amount = amount;
@@ -54,8 +74,7 @@ export class WithdrawOperation implements IWithdrawOperation {
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
-        this.relayData = relayData;
-        this.Tongo = Tongo;
+        this.withdraw_options = withdraw_options
     }
 
     toCalldata(): Call {
@@ -68,8 +87,8 @@ export class WithdrawOperation implements IWithdrawOperation {
                 auxiliarCipher: this.auxiliarCipher,
                 auditPart: this.auditPart,
                 proof: this.proof,
-                relayData: this.relayData,
             },
+            this.withdraw_options
         ]);
     }
 }

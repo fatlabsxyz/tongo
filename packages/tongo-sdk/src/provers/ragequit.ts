@@ -1,7 +1,7 @@
 import { poe } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g } from "../constants";
-import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint, RelayData } from "../types";
+import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint} from "../types";
 import { createCipherBalance} from "../../src/utils";
 
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
@@ -27,7 +27,7 @@ export interface InputsRagequit {
     amount: bigint;
     currentBalance: CipherBalance;
     prefix_data: GeneralPrefixData,
-    relay_data: RelayData,
+    serialized_data: bigint[],
 }
 
 /**
@@ -41,7 +41,6 @@ function prefixRagequit(inputs: InputsRagequit): bigint {
         chain_id,
         tongo_address,
         sender_address,
-        inputs.relay_data.fee_to_sender,
         RAGEQUIT_CAIRO_STRING,
         inputs.y.toAffine().x,
         inputs.y.toAffine().y,
@@ -52,6 +51,7 @@ function prefixRagequit(inputs: InputsRagequit): bigint {
         inputs.currentBalance.L.toAffine().y,
         inputs.currentBalance.R.toAffine().x,
         inputs.currentBalance.R.toAffine().y,
+        ...inputs.serialized_data,
     ];
     return compute_prefix(seq);
 }
@@ -77,7 +77,7 @@ export function proveRagequit(
     to: bigint,
     full_amount: bigint,
     prefix_data: GeneralPrefixData,
-    fee_to_sender: bigint,
+    serialized_data: bigint[],
 ): { inputs: InputsRagequit, proof: ProofOfRagequit, newBalance: CipherBalance; } {
 
     const x = private_key;
@@ -89,7 +89,6 @@ export function proveRagequit(
     const temp = g.multiplyUnsafe(full_amount);
     if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
 
-    let relay_data: RelayData = {fee_to_sender};
 
     const inputs: InputsRagequit = {
         y,
@@ -98,7 +97,7 @@ export function proveRagequit(
         amount: full_amount,
         currentBalance: initial_cipherbalance,
         prefix_data,
-        relay_data,
+        serialized_data,
     };
     const prefix = prefixRagequit(inputs);
 

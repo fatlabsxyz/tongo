@@ -8,8 +8,8 @@ use tongo::structs::common::{
 };
 use tongo::structs::operations::{
     fund::Fund,
-    withdraw::Withdraw,
-    ragequit::Ragequit,
+    withdraw::{Withdraw, WithdrawOptions, SerializeWithdrawOptions},
+    ragequit::{Ragequit, RagequitOptions, SerializeRagequitOptions},
     audit::Audit,
     transfer::{Transfer, TransferOptions, ExternalData, SerializeTransferOptions},
     rollover::Rollover,
@@ -87,33 +87,53 @@ pub fn withdrawOperation(
     sender: ContractAddress,
     fee_to_sender: u128,
     dispatcher:ITongoDispatcher,
-)-> Withdraw {
+)-> (Withdraw, Option<WithdrawOptions>) {
+
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
-    let currentBalance = dispatcher.get_balance(y);
+    let mut currentBalance = dispatcher.get_balance(y);
+    let mut currentAmount = initialBalance;
     let bit_size = dispatcher.get_bit_size();
-    let tongoAddress = dispatcher.contract_address;
+
+    let mut relayData: Option<RelayData> = None;
+    let mut withdraw_options: Option<WithdrawOptions> = None;
+
+    if fee_to_sender != 0 {
+        relayData = Some(RelayData {fee_to_sender});
+        currentBalance  = currentBalance.subtract(CipherBalanceTrait::new(y, fee_to_sender.into(),'fee'));
+        currentAmount = currentAmount - fee_to_sender;
+        withdraw_options = Some(WithdrawOptions{relayData});
+    }
+    
+    let serialized_data = withdraw_options.serialize_data();
+
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:dispatcher.contract_address,
+        sender_address:sender,
+    };
 
     let (inputs, proof, newBalance) = prove_withdraw(
         pk,
         amount,
         to,
-        initialBalance,
+        currentAmount,
         currentBalance,
         nonce,
         bit_size,
-        sender,
-        fee_to_sender,
-        tongoAddress,
+        prefix_data,
+        serialized_data,
         generate_random(pk, nonce.into())
     );
 
-    let auditPart = generateAuditPart(pk, initialBalance - amount - fee_to_sender, newBalance,sender, dispatcher);
+    let auditPart = generateAuditPart(pk, currentAmount - amount , newBalance,sender, dispatcher);
 
     let hint = empty_ae_hint();
 
-    let relayData = inputs.relayData;
-    return Withdraw {from:y, to,amount,proof,hint, auxiliarCipher: inputs.auxiliarCipher,auditPart, relayData};
+    return (
+        Withdraw {from:y, to,amount,proof,hint, auxiliarCipher: inputs.auxiliarCipher,auditPart},
+        withdraw_options
+    );
 }
 
 pub fn ragequitOperation(
@@ -123,28 +143,47 @@ pub fn ragequitOperation(
     sender: ContractAddress,
     fee_to_sender: u128,
     dispatcher:ITongoDispatcher,
-)-> Ragequit {
+)-> (Ragequit, Option<RagequitOptions>) {
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
-    let currentBalance = dispatcher.get_balance(y);
-    let tongoAddress = dispatcher.contract_address;
+    let mut currentBalance = dispatcher.get_balance(y);
+    let mut currentAmount = initialBalance;
+
+    let mut relayData: Option<RelayData> = None;
+    let mut ragequit_options: Option<RagequitOptions> = None;
+
+    if fee_to_sender != 0 {
+        relayData = Some(RelayData {fee_to_sender});
+        currentBalance  = currentBalance.subtract(CipherBalanceTrait::new(y, fee_to_sender.into(),'fee'));
+        currentAmount = currentAmount - fee_to_sender;
+        ragequit_options = Some(RagequitOptions{relayData});
+    }
+
+    let serialized_data = ragequit_options.serialize_data();
+
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:dispatcher.contract_address,
+        sender_address:sender,
+    };
 
     let (_inputs, proof, newBalance) = prove_ragequit(
         pk,
-        initialBalance,
+        currentAmount,
         to,
         currentBalance,
         nonce,
-        sender,
-        fee_to_sender,
-        tongoAddress,
+        prefix_data,
+        serialized_data,
         generate_random(pk, nonce.into())
     );
 
     let auditPart = generateAuditPart(pk, 0, newBalance, sender, dispatcher);
     let hint = empty_ae_hint();
-    let relayData = _inputs.relayData;
-    return Ragequit {from:y,to,amount:initialBalance,proof, hint, auditPart, relayData};
+    return (
+        Ragequit {from:y,to,amount:currentAmount,proof, hint, auditPart},
+        ragequit_options,
+    );
 }
 
 pub fn transferOperation(

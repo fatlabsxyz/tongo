@@ -28,30 +28,49 @@ interface RagequitOpParams {
     hint: AEBalance;
     proof: ProofOfRagequit;
     auditPart: CairoOption<Audit>;
-    relayData: RelayData;
+    ragequit_options: CairoOption<RagequitOptions>;
     Tongo: Contract;
+}
+
+export interface RagequitOptions {
+    relayData: CairoOption<RelayData>,
+}
+
+//TODO: handle this better, maybe something similar to the cairo contracts
+export function serializeRagequitOptions(ragequit_options: CairoOption<RagequitOptions>): bigint[] {
+    if (ragequit_options.isNone()) {return [1n]}
+
+    let arr = [0n];
+    const {relayData} = ragequit_options.unwrap()!;
+    if (relayData.isNone()) {
+        arr.push(1n)
+    } else {
+        arr.push(0n)
+        arr.push(relayData.unwrap()!.fee_to_sender)
+    }
+    return arr
 }
 
 export class RagequitOperation implements IRagequitOperation {
     type: typeof OperationType.Ragequit = OperationType.Ragequit;
+    Tongo: Contract;
     from: ProjectivePoint;
     to: bigint;
     amount: bigint;
     hint: AEBalance;
     auditPart: CairoOption<Audit>;
-    relayData: RelayData;
     proof: ProofOfRagequit;
-    Tongo: Contract;
+    ragequit_options: CairoOption<RagequitOptions>;
 
-    constructor({ from, to, amount, proof, Tongo, hint, auditPart, relayData }: RagequitOpParams) {
+    constructor({ from, to, amount, proof, Tongo, hint, auditPart, ragequit_options }: RagequitOpParams) {
+        this.Tongo = Tongo;
         this.from = from;
         this.to = to;
         this.amount = amount;
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
-        this.relayData = relayData;
-        this.Tongo = Tongo;
+        this.ragequit_options = ragequit_options
     }
 
     toCalldata(): Call {
@@ -63,8 +82,8 @@ export class RagequitOperation implements IRagequitOperation {
                 proof: this.proof,
                 hint: this.hint,
                 auditPart: this.auditPart,
-                relayData: this.relayData,
             },
+            this.ragequit_options
         ]);
     }
 }
