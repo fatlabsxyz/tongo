@@ -9,8 +9,8 @@ use crate::verifier::utils::verifyOwnership;
 
 /// Verifies the ragequit operation. First, ussers have to show knowledge of the private key. Then,
 /// users  have to provide a cleartext of the amount b stored in their balances. The stored balance
-/// (L,R) = (g**b y**r, g**r) == (g**b R**x, R).
-/// The owner can show that b is stored in (L,R) showing that b satisfies L/g**b == R**x (poe) with
+/// `(L,R) = (g**b y**r, g**r) == (g**b R**x, R)`.
+/// The owner can show that b is stored in (L,R) showing that b satisfies `L/g**b == R**x` (poe) with
 /// x the private key.
 /// The protocols runs as follows,
 ///

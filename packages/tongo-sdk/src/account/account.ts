@@ -184,8 +184,6 @@ export class Account implements IAccount {
             sender_address: BigInt(sender)
         };
 
-        const fee_to_sender = fundDetails.fee_to_sender || 0n;
-
         const { inputs, proof, newBalance } = proveFund(
             this.pk,
             amount,
@@ -193,7 +191,6 @@ export class Account implements IAccount {
             currentBalance,
             nonce,
             prefix_data,
-            fee_to_sender,
         );
 
         //audit
@@ -201,7 +198,7 @@ export class Account implements IAccount {
         const auditPart = await this.createAuditPart(amount + initialBalance,nonce, newBalance, prefix_data, auditor);
         const hint = await this.computeAEHintForSelf(amount + initialBalance, nonce + 1n);
 
-        const operation = new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo, relayData: inputs.relay_data });
+        const operation = new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo});
         await operation.populateApprove();
         return operation;
     }

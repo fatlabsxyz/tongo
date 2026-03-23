@@ -10,7 +10,6 @@ use tongo::structs::common::{
     pubkey::{PubKey},
     cipherbalance::{CipherBalance, CipherBalanceTrait},
     starkpoint::StarkPoint,
-    relayer::RelayData,
 };
 use tongo::structs::traits::{GeneralPrefixData,Prefix};
 use tongo::structs::operations::{
@@ -109,21 +108,14 @@ pub fn prove_fund(
     currentBalance: CipherBalance,
     nonce: u64,
     sender:ContractAddress,
-    fee_to_sender: u128,
-    tongoAddress: ContractAddress,
+    prefix_data: GeneralPrefixData,
     seed: felt252
 ) -> (InputsFund, ProofOfFund, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y = pubkey_from_secret(x);
 
     decipher_balance(initialBalance.into(), x, currentBalance);
-    let prefix_data: GeneralPrefixData = GeneralPrefixData {
-        chain_id: CHAIN_ID,
-        tongo_address:tongoAddress,
-        sender_address:sender,
-    };
-    let relayData = RelayData { fee_to_sender};
-    let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, nonce, relayData, prefix_data};
+    let inputs: InputsFund = InputsFund { y: y.try_into().unwrap(), amount, nonce, prefix_data};
     let prefix = inputs.compute_prefix();
 
     //prover

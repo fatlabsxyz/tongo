@@ -36,10 +36,10 @@ fn test_external_transfer() {
     let initial_fund = 250;
 
     let sender = USER_ADDRESS;
-    let fee_to_sender =  0;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
     dispatcher.fund(operation);
 
+    let fee_to_sender =  0;
     let transfer_amount = 100;
     let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address2, dispatcher);
     dispatcher.transfer(operation, transfer_options);
