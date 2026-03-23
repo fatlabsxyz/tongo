@@ -189,7 +189,7 @@ pub mod Tongo {
         ///
         /// Emits FundEvent
         fn fund(ref self: ContractState, fund: Fund) {
-            let Fund { to, amount, proof, relayData,  auditPart, hint } = fund;
+            let Fund { to, amount, proof,  auditPart, hint } = fund;
             let nonce = self.get_nonce(to);
             let prefix_data = _get_general_prefix_data();
 
@@ -197,20 +197,13 @@ pub mod Tongo {
                 y: to,
                 nonce,
                 amount,
-                relayData,
                 prefix_data
             };
 
             verify_fund(inputs, proof);
 
-            let fee_to_sender = relayData.fee_to_sender;
-
-            self._transfer_from_caller(self._unwrap_tongo_amount(amount+fee_to_sender));
+            self._transfer_from_caller(self._unwrap_tongo_amount(amount));
             self._send_to_vault(self._unwrap_tongo_amount(amount));
-
-            if fee_to_sender != 0 {
-                self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(fee_to_sender.into()));
-            }
 
             let cipher = CipherBalanceTrait::new(to, amount.into(), 'fund');
             self._add_balance(to, cipher);
@@ -433,6 +426,10 @@ pub mod Tongo {
             self._increase_nonce(from);
         }
 
+        /// Receive an encrypted transfer from another Tongo contract deployed by the same Vault.
+        /// The interaction between these contract has to be approved by the owners.
+        ///
+        /// Emits ReceivedExternalTransfer
         fn receive_external_transfer(ref self: ContractState, external: ExternalTransfer) {
             let caller = get_caller_address();    
             let Vault = IVaultDispatcher {contract_address: self.vault.read()};
@@ -529,7 +526,8 @@ pub mod Tongo {
             self._set_auditor_key(new_auditor_key);
         }
 
-        //TODO: docs
+        /// Approve a Tongo instance deployed by the same Vault to interact with
+        /// this contract with the External Transfer mechanism.
         fn approveTongo(ref self: ContractState, address: ContractAddress) {
             self._caller_is_owner();    
             assert!(!self.approvedTongo.entry(address).read(), "Contract allready white-listed");
@@ -538,7 +536,8 @@ pub mod Tongo {
             self.approvedTongo.entry(address).write(true);
         }
 
-        //TODO: docs
+        /// Revoke a previously approved Tongo instance  to interact with
+        /// this contract with the External Transfer mechanism.
         fn revokeTongo(ref self: ContractState, address: ContractAddress) {
             self._caller_is_owner();    
             assert!(self.approvedTongo.entry(address).read(), "Contract is not white-listed");
@@ -633,6 +632,7 @@ pub mod Tongo {
             assert!(response, "ERC20 transfer failed");
         }
 
+        /// Sends ERC20 to the Vault
         fn _send_to_vault(self: @ContractState, amount: u256) {
             let Vault = IVaultDispatcher {contract_address: self.vault.read()};
             Vault.deposit(amount)
@@ -668,6 +668,7 @@ pub mod Tongo {
             self.ae_audit_balance.entry(y).write(hint);
         }
 
+        /// Asserts the calles is the owner of the contract
         fn _caller_is_owner(self: @ContractState) {
             let caller = get_caller_address();
             assert!(caller == self.owner.read(), "Caller is not the Owner");
@@ -738,6 +739,8 @@ pub mod Tongo {
                 );
         }
 
+        /// Verifies that, in an external transfer, the given Audit proof is valid for the 
+        /// auditor of the target Tongo instance.
         fn _handle_external_transfer_audit(
             self: @ContractState,
             from: PubKey,
@@ -767,6 +770,7 @@ pub mod Tongo {
             self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(fee_to_sender));
         }
 
+        /// Sends the external transfer operation to another Tongo instance
         fn _send_external_transfer(
             ref self: ContractState,
             from: PubKey,

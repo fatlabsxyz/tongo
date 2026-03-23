@@ -18,8 +18,7 @@ fn tamperPubKey() {
     let initial_fund = 250;
 
     let sender = USER_ADDRESS;
-    let fee_to_sender =  0;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
 
 
     let tamperTo =  PubKey {x: operation.to.x, y: operation.to.y + 1 };

@@ -54,29 +54,32 @@ pub fn fundOperation(
     initialBalance: u128,
     amount: u128,
     sender: ContractAddress,
-    fee_to_sender: u128,
     dispatcher:ITongoDispatcher
 )-> Fund {
     let y = pubkey_from_secret(pk);
     let nonce = dispatcher.get_nonce(y);
     let currentBalance = dispatcher.get_balance(y);
-    let tongoAddress = dispatcher.contract_address;
 
-    let (inputs, proof, newBalance) = prove_fund(
+    let prefix_data: GeneralPrefixData = GeneralPrefixData {
+        chain_id: CHAIN_ID,
+        tongo_address:dispatcher.contract_address,
+        sender_address:sender,
+    };
+
+    let (_inputs, proof, newBalance) = prove_fund(
         pk,
         amount,
         initialBalance,
         currentBalance,
         nonce,
         sender,
-        fee_to_sender,
-        tongoAddress,
+        prefix_data,
         generate_random(pk, nonce.into())
     );
 
     let auditPart = generateAuditPart(pk, initialBalance+amount, newBalance, sender, dispatcher);
     let hint = empty_ae_hint();
-    return Fund {to: y,amount,proof, hint,relayData: inputs.relayData, auditPart};
+    return Fund {to: y,amount,proof, hint, auditPart};
 }
 
 pub fn withdrawOperation(

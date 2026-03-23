@@ -66,12 +66,12 @@ pub trait ITongo<TContractState> {
     /// Emits TransferEvent
     fn transfer(ref self: TContractState, transfer: Transfer, transfer_options: Option<TransferOptions>);
 
-    fn receive_external_transfer(ref self: TContractState, external: ExternalTransfer);
 
     /// Moves to the balance the amount stored in the pending. Callable only by the account owner.
     ///
     /// Emits RolloverEvent
     fn rollover(ref self: TContractState, rollover: Rollover);
+    
 
     // State reading functions
     /// Returns the curretn stored balance of a Tongo account
@@ -97,7 +97,20 @@ pub trait ITongo<TContractState> {
     /// Rotates the current auditor public key.
     fn change_auditor_key(ref self: TContractState, new_auditor_key: PubKey);
 
-    //TODO: docs
+    // External Transfers 
+    /// Approve a Tongo instance
+
+    /// Receive an encrypted transfer from another Tongo contract deployed by the same Vault.
+    /// The interaction between these contract has to be approved by the owners.
+    ///
+    /// Emits ReceivedExternalTransfer
+    fn receive_external_transfer(ref self: TContractState, external: ExternalTransfer);
+
+    /// Approve a Tongo instance deployed by the same Vault to interact with
+    /// this contract with the External Transfer mechanism.
     fn approveTongo(ref self: TContractState, address: ContractAddress);
+
+    /// Revoke a previously approved Tongo instance  to interact with
+    /// this contract with the External Transfer mechanism.
     fn revokeTongo(ref self: TContractState, address: ContractAddress);
 }

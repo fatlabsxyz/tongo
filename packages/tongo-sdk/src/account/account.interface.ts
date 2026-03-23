@@ -65,7 +65,6 @@ export interface IAccount {
 export interface FundDetails {
     amount: bigint;
     sender: string,
-    fee_to_sender?: bigint,
 }
 
 export interface OutsideFundDetails {
