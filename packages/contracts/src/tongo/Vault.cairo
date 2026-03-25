@@ -12,7 +12,7 @@ pub mod Vault {
         events::TongoDeployed,
         common::{
             pubkey::PubKey,
-            state::GlobalSetup,
+            state::VaultConfig,
         },
     };
 
@@ -66,12 +66,10 @@ pub mod Vault {
     #[abi(embed_v0)]
     impl VaultImpl of IVault<ContractState> {
         /// Returns the global setup of the Vaul.
-        fn get_vault_setup(self: @ContractState) -> GlobalSetup {
-            let vault_address = get_contract_address();
-            let tongo_class_hash = self.tongo_class.read();
-            GlobalSetup {
-                vault_address,
-                tongo_class_hash,
+        fn get_vault_config(self: @ContractState) -> VaultConfig {
+            VaultConfig {
+                vault_address: get_contract_address(),
+                tongo_class_hash: self.get_tongo_class_hash(),
                 ERC20: self.ERC20.read(),
                 rate: self.rate.read(),
                 bit_size: self.bit_size.read(),
@@ -109,9 +107,11 @@ pub mod Vault {
         }
 
         /// Returns the address of a given tag if a Tongo contract was deployed with that particular tag.
-        fn tag_to_address(self: @ContractState, tag: felt252) -> ContractAddress {
-            assert!(self._is_known_tag(tag), "Tag is not registered");
-            self.tag_to_address.entry(tag).read()
+        fn tag_to_address(self: @ContractState, tag: felt252) -> Option<ContractAddress> {
+            if self._is_known_tag(tag) {
+                return Some(self.tag_to_address.entry(tag).read());
+            }
+            None
         }
 
 
@@ -155,7 +155,7 @@ pub mod Vault {
                     ERC20,
                     rate,
                     bit_size,
-                    AuditorPubKey: auditorKey
+                    auditor_key: auditorKey
                 }
             );
 
@@ -166,21 +166,21 @@ pub mod Vault {
         fn deposit(ref self: ContractState, amount: u256){
             let caller = get_caller_address();
             assert!(self.is_known_tongo(caller), "Caller is not a valid Tongo contract");
-            self._transfer_from_caller(amount);
+            self._pull_from_caller(amount);
         }
 
         /// Sends ERC20 to the caller. The caller can only be a Tongo instance deployed by this Vault.
         fn withdraw(ref self: ContractState, amount: u256) {
             let caller = get_caller_address();
             assert!(self.is_known_tongo(caller), "Caller is not a valid Tongo contract");
-            self._transfer_to_caller(amount);
+            self._push_to_caller(amount);
         }
     }
 
     #[generate_trait]
     impl PrivateImpl of IPrivate {
         /// Pull some ERC20 amount from the caller.
-        fn _transfer_from_caller(self: @ContractState, amount: u256) {
+        fn _pull_from_caller(self: @ContractState, amount: u256) {
             let from = get_caller_address();
             let asset_address = self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address };
@@ -190,7 +190,7 @@ pub mod Vault {
         }
 
         /// Transfer some amount of ERC20 to the given starknet address.
-        fn _transfer_to_caller(self: @ContractState, amount: u256) {
+        fn _push_to_caller(self: @ContractState, amount: u256) {
             let to = get_caller_address();
             let asset_address = self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address };
@@ -200,7 +200,7 @@ pub mod Vault {
 
         /// Returns true if the tag is known.
         fn _is_known_tag(self: @ContractState, tag:felt252) -> bool {
-            let address: felt252 = self.tag_to_address.entry(tag).read().try_into().unwrap();
+            let address: felt252 = self.tag_to_address.entry(tag).read().into();
             address != 0
         }
 

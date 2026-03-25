@@ -1,6 +1,9 @@
 use starknet::{ContractAddress, ClassHash};
 use crate::structs::aecipher::AEBalance;
-use crate::structs::common::cipherbalance::CipherBalance;
+use crate::structs::common::{
+    cipherbalance::CipherBalance,
+    pubkey::PubKey,
+};
 
 /// Represent the full state of an account.
 ///
@@ -20,7 +23,7 @@ pub struct State {
     pub ae_audit_balance: Option<AEBalance>,
 }
 
-/// Represent the setup of the Vaul
+/// Represent the setup of the Vault
 ///
 /// - vault_address: The contract address of the Vault.
 /// - tongo_class_hash: The class hash of the Tongo this contract will work with.
@@ -28,10 +31,30 @@ pub struct State {
 /// - rate: The rate of conversion between the wrapped ERC20 and Tongo
 /// - bit_size: The bit size Tongo will work it.
 #[derive(Serde, Drop, starknet::Store)]
-pub struct GlobalSetup {
+pub struct VaultConfig {
     pub vault_address: ContractAddress,
     pub tongo_class_hash: ClassHash,
     pub ERC20: ContractAddress,
     pub rate: u256,
     pub bit_size: u32,
+}
+
+/// Represent the setup of the Tongo contract
+///
+/// - address: The address of the Tongo contract
+/// - ERC20: The address of of the ERC20 that this Tongo instances wraps
+/// - owner: The address of the owner of this Tongo instance
+/// - vault: The address of the Vault that deployed this Tongo instance
+/// - rate: The rate of conversion between the wrapped ERC20 and Tongo
+/// - bit_size: The bit size Tongo will work it.
+/// - auditor_key: The auditor key, if set, of this Tongo instance
+#[derive(Serde, Drop)]
+pub struct TongoConfig {
+    pub address: ContractAddress,
+    pub ERC20: ContractAddress,
+    pub owner: ContractAddress,
+    pub vault: ContractAddress,
+    pub rate: u256,
+    pub bit_size: u32,
+    pub auditor_key: Option<PubKey>,
 }

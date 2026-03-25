@@ -1,13 +1,13 @@
 use starknet::{ContractAddress, ClassHash};
 use crate::structs::common::{
     pubkey::PubKey,
-    state::GlobalSetup,
+    state::VaultConfig,
 };
 
 #[starknet::interface]
 pub trait IVault<TContractState> {
     /// Returns the global setup of the Vaul.
-    fn get_vault_setup(self: @TContractState) -> GlobalSetup;
+    fn get_vault_config(self: @TContractState) -> VaultConfig;
 
     /// Returns the class hash of the Tongo this contract will work with.
     fn get_tongo_class_hash(self: @TContractState) -> ClassHash;
@@ -30,7 +30,7 @@ pub trait IVault<TContractState> {
     fn is_known_tongo(self: @TContractState, address: ContractAddress) -> bool;
 
     /// Returns the address of a given tag if a Tongo contract was deployed with that particular tag.
-    fn tag_to_address(self: @TContractState, tag: felt252) -> ContractAddress;
+    fn tag_to_address(self: @TContractState, tag: felt252) -> Option<ContractAddress>;
 
     /// Deploys a Tongo instance for the given owner and tag with the given auditor.
     ///

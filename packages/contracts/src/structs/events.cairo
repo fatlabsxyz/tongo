@@ -163,7 +163,7 @@ pub struct AuditorPubKeySet {
 
 /// Event emitted when a Tongo contract is deployed by the Vault
 ///
-/// - tag: The chosen tag for the contract
+/// - tag: The chosen tag for the contract. Must be unique across all deployed contracts
 /// - address: The contract address of the Tongo instance
 /// - ERC20: The erc20 is being wrapped
 /// - rate: The conversion  rage between the wrapped ERC20 and Tongo
@@ -177,5 +177,5 @@ pub struct TongoDeployed {
     pub ERC20: ContractAddress,
     pub rate: u256,
     pub bit_size: u32,
-    pub AuditorPubKey: Option<PubKey>,
+    pub auditor_key: Option<PubKey>,
 }

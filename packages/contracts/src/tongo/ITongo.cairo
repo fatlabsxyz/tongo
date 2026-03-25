@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 use crate::structs::common::{
     cipherbalance::CipherBalance,
     pubkey::PubKey,
-    state::State,
+    state::{State, TongoConfig}
 };
 use crate::structs::operations::{
     fund::{Fund, OutsideFund},
@@ -14,6 +14,12 @@ use crate::structs::operations::{
 
 #[starknet::interface]
 pub trait ITongo<TContractState> {
+    /// Returns the complete Setup of this Tongo instance
+    fn get_tongo_config(self: @TContractState) -> TongoConfig;
+
+    /// Returns the address of the Vault that deployed this Tongo instance
+    fn get_vault(self: @TContractState) -> ContractAddress;
+
     /// Returns the Tag this contract is registered with.
     fn get_tag(self: @TContractState) -> felt252;
 

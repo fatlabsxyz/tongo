@@ -10,7 +10,7 @@ pub mod Tongo {
         common::{
             cipherbalance::{CipherBalance, CipherBalanceTrait},
             pubkey::PubKey,
-            state::State,
+            state::{State, TongoConfig},
         },
     };
     use crate::structs::events::{
@@ -115,8 +115,7 @@ pub mod Tongo {
         }
 
         let ERC20 = IERC20Dispatcher { contract_address: ERC20 };
-        let MAX_U256:u256 = Bounded::<u256>::MAX;
-        ERC20.approve(vault, MAX_U256);
+        ERC20.approve(vault, Bounded::<u256>::MAX);
     }
 
     #[event]
@@ -135,6 +134,24 @@ pub mod Tongo {
 
     #[abi(embed_v0)]
     impl TongoImpl of ITongo<ContractState> {
+        /// Returns the complete Setup of this Tongo instance
+        fn get_tongo_config(self: @ContractState) -> TongoConfig {
+            TongoConfig {
+                address: get_contract_address(),
+                ERC20: self.ERC20(),
+                owner: self.get_owner(),
+                vault: self.get_vault(),
+                rate: self.get_rate(),
+                bit_size: self.get_bit_size(), 
+                auditor_key: self.auditor_key(),
+            }
+        }
+
+        /// Returns the address of the Vault that deployed this Tongo instance
+        fn get_vault(self: @ContractState) -> ContractAddress {
+            self.vault.read()
+        }
+
         /// Returns the Tag this contract is registered with.
         fn get_tag(self: @ContractState) -> felt252 {
             self.tag.read()
@@ -257,7 +274,7 @@ pub mod Tongo {
             self._overwrite_hint(from, hint);
 
 
-            self._withdraw_from_vaul(self._unwrap_tongo_amount(amount));
+            self._withdraw_from_vault(self._unwrap_tongo_amount(amount));
             if relayData.fee_to_sender == 0 {
                 self._transfer_to(to, self._unwrap_tongo_amount(amount));
             } else {
@@ -294,7 +311,7 @@ pub mod Tongo {
             self.balance.entry(from).write(zero_balance.into());
             self._overwrite_hint(from, hint);
 
-            self._withdraw_from_vaul(self._unwrap_tongo_amount(amount));
+            self._withdraw_from_vault(self._unwrap_tongo_amount(amount));
 
             if relayData.fee_to_sender == 0 {
                 self._transfer_to(to, self._unwrap_tongo_amount(amount));
@@ -353,7 +370,7 @@ pub mod Tongo {
             verify_transfer(inputs, proof);
 
             if relayData.fee_to_sender != 0 {
-                self._withdraw_from_vaul(self._unwrap_tongo_amount(relayData.fee_to_sender));
+                self._withdraw_from_vault(self._unwrap_tongo_amount(relayData.fee_to_sender));
                 self
                     ._transfer_to(
                         get_caller_address(), self._unwrap_tongo_amount(relayData.fee_to_sender),
@@ -541,7 +558,7 @@ pub mod Tongo {
             Vault.deposit(amount)
         }
         
-        fn _withdraw_from_vaul(self: @ContractState, amount: u256) {
+        fn _withdraw_from_vault(self: @ContractState, amount: u256) {
             let Vault = IVaultDispatcher {contract_address: self.vault.read()};
             Vault.withdraw(amount)
         }
