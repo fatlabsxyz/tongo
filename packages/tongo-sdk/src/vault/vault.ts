@@ -1,6 +1,6 @@
 import { Contract,  RpcProvider,num,  TypedContractV2 } from "starknet";
 import { DeployOperation } from "../operations/deploy.js";
-import { IVault, GlobalSetup, DeployDetails } from "./vault.interface.js"
+import { IVault, VaultConfig, DeployDetails } from "./vault.interface.js"
 import { vaultAbi } from "../abi/vault.abi.js";
 import { castBigInt } from "../utils.js";
 
@@ -24,7 +24,7 @@ export class Vault implements IVault {
 
     async deploy_tongo(params: DeployDetails): Promise<DeployOperation> {
         const {owner, tag, auditor} = params;
-        const vaultSetup = await this.vault_setup();
+        const vaultSetup = await this.vault_config();
         return new DeployOperation({
             owner: BigInt(owner),
             tag: BigInt(tag),
@@ -55,7 +55,7 @@ export class Vault implements IVault {
         return castBigInt(rate);
     }
 
-    async vault_setup(): Promise<GlobalSetup> {
+    async vault_config(): Promise<VaultConfig> {
         const {vault_address, tongo_class_hash, ERC20, rate, bit_size: bit} = await this.contract.get_vault_setup();
         const bit_size: number = typeof bit == 'bigint' ? Number(bit) : bit;
 

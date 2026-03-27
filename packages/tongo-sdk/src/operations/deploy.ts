@@ -1,8 +1,9 @@
 import { StarkPoint } from "../types";
-import { Call, Contract, CairoOption, CairoOptionVariant, num, hash, CallData} from "starknet";
+import { Call, CairoOption, CairoOptionVariant, num, hash, CallData} from "starknet";
 import { tongoAbi } from "../abi/tongo.abi.js"
 import { IOperation, OperationType } from "./operation.js";
-import { GlobalSetup } from "../vault/vault.interface.js";
+import { VaultConfig } from "../vault/vault.interface.js";
+import { VaultContract } from "../vault/vault.js";
 
 export interface IDeployOperation extends IOperation {
     type: typeof OperationType.Deploy;
@@ -12,9 +13,10 @@ interface DeployOpParams {
     owner: bigint;
     tag: bigint;
     auditorKey: StarkPoint | undefined;
-    vaultSetup: GlobalSetup;
-    Vault: Contract;
+    vaultSetup: VaultConfig;
+    Vault: VaultContract;
 }
+
 
 export class DeployOperation implements IDeployOperation {
     type: typeof OperationType.Deploy = OperationType.Deploy;
@@ -22,11 +24,10 @@ export class DeployOperation implements IDeployOperation {
     tag: bigint;
     targetAddress: string;
     auditorKey: CairoOption<StarkPoint>;
-    Vault: Contract;
+    Vault: VaultContract;
 
     constructor({ owner, tag, auditorKey: auditor, Vault, vaultSetup }: DeployOpParams) {
-        const {vault_address, tongo_class_hash, ERC20, rate, bit_size: bit} = vaultSetup;
-        const bit_size: number = typeof bit == 'bigint' ? Number(bit) : bit;
+        const {vault_address, tongo_class_hash, ERC20, rate, bit_size} = vaultSetup;
 
         let auditorKey = new CairoOption<StarkPoint>(CairoOptionVariant.None);
         if (auditor) {

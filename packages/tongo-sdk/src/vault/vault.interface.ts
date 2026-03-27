@@ -8,7 +8,7 @@ export interface IVault {
     ERC20(): Promise<string>;
     bit_size(): Promise<number>;
     rate(): Promise<bigint>;
-    vault_setup(): Promise<GlobalSetup>;
+    vault_config(): Promise<VaultConfig>;
 
     deploy_tongo(params: DeployDetails): Promise<DeployOperation>;
 // 
@@ -16,7 +16,7 @@ export interface IVault {
 //     tag_to_address(): Promise<string>;
 }
 
-export interface GlobalSetup{
+export interface VaultConfig{
     vault_address: string,
     tongo_class_hash: string,
     ERC20: string,
