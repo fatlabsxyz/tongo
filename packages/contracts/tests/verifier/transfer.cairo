@@ -1,3 +1,4 @@
+use starknet::ContractAddress;
 use crate::prover::utils::{generate_random};
 use crate::prover::functions::{prove_transfer};
 use tongo::verifier::transfer::verify_transfer;
@@ -13,6 +14,7 @@ use crate::consts::USER_ADDRESS;
 fn test_transfer() {
     // setup
 
+    let tongoAddress: ContractAddress = 'TONGO'.try_into().unwrap();
     let seed = 47198274198273;
     let x = generate_random(seed, 1);
     let y = pubkey_from_secret(x);
@@ -31,7 +33,7 @@ fn test_transfer() {
     let sender = USER_ADDRESS;
 
     let (inputs, proof,_) = prove_transfer(
-        x, y_bar, b0, b, balance, nonce,BIT_SIZE,sender,fee_to_sender, generate_random(seed, 4)
+        x, y_bar, b0, b, balance, nonce,BIT_SIZE,sender,fee_to_sender,tongoAddress, generate_random(seed, 4)
     );
 
     verify_transfer(inputs, proof);

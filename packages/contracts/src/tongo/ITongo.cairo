@@ -1,20 +1,32 @@
 use starknet::ContractAddress;
-use crate::structs::common::cipherbalance::CipherBalance;
-use crate::structs::common::pubkey::PubKey;
-use crate::structs::common::state::State;
-use crate::structs::operations::fund::{Fund, OutsideFund};
-use crate::structs::operations::ragequit::Ragequit;
-use crate::structs::operations::rollover::Rollover;
-use crate::structs::operations::transfer::Transfer;
-use crate::structs::operations::withdraw::Withdraw;
+use crate::structs::common::{
+    cipherbalance::CipherBalance,
+    pubkey::PubKey,
+    state::{State, TongoConfig}
+};
+use crate::structs::operations::{
+    fund::{Fund, OutsideFund},
+    ragequit::Ragequit,
+    rollover::Rollover,
+    transfer::Transfer,
+    withdraw::Withdraw,
+};
 
 #[starknet::interface]
 pub trait ITongo<TContractState> {
-    // Tongo general setup:
-    /// Returns the contract address that Tongo is wraping.
+    /// Returns the complete Setup of this Tongo instance
+    fn get_tongo_config(self: @TContractState) -> TongoConfig;
+
+    /// Returns the address of the Vault that deployed this Tongo instance
+    fn get_vault(self: @TContractState) -> ContractAddress;
+
+    /// Returns the Tag this contract is registered with.
+    fn get_tag(self: @TContractState) -> felt252;
+
+    /// Returns the contract address of the ERC20 that is wrapped
     fn ERC20(self: @TContractState) -> ContractAddress;
 
-    /// Returns the rate of conversion between the wrapped ERC20 a tongo:
+    /// Returns the rate of conversion between the wrapped ERC20 and tongo:
     ///
     /// ERC20_amount = Tongo_amount*rate
     ///

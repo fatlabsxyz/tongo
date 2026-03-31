@@ -14,7 +14,7 @@ import {
 
 import { AEBalance, AEChaCha, AEHintToBytes } from "./ae_balance.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
-import { tongoAbi } from "./tongo.abi.js";
+import { tongoAbi } from "./abi/tongo.abi.js";
 import { bytesOrNumToBigInt } from "./utils.js";
 
 

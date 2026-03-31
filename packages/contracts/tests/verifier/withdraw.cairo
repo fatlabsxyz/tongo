@@ -12,6 +12,7 @@ use crate::consts::{BIT_SIZE, USER_ADDRESS};
 fn test_withdraw() {
     let seed = 21389321;
     let tranfer_address: ContractAddress = 'asdf'.try_into().unwrap();
+    let tongoAddress: ContractAddress = 'TONGO'.try_into().unwrap();
 
     let x = generate_random(seed, 1);
     let y = pubkey_from_secret(x);
@@ -35,6 +36,7 @@ fn test_withdraw() {
         BIT_SIZE,
         USER_ADDRESS,
         0,
+        tongoAddress,
         generate_random(seed, 3)
     );
     verify_withdraw(inputs, proof);

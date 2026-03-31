@@ -876,6 +876,10 @@ export const tongoAbi = [
                 "type": "core::starknet::contract_address::ContractAddress"
             },
             {
+                "name": "tag",
+                "type": "core::felt252"
+            },
+            {
                 "name": "ERC20",
                 "type": "core::starknet::contract_address::ContractAddress"
             },

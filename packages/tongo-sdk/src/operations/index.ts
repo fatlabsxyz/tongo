@@ -5,3 +5,4 @@ export * from "./ragequit.js";
 export * from "./rollover.js";
 export * from "./transfer.js";
 export * from "./withdraw.js";
+export * from "./deploy.js";
