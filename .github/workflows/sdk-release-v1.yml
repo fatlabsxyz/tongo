@@ -1,0 +1,77 @@
+name: Release v1 legacy SDK to npm
+
+on:
+  push:
+    branches:
+      - v1
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, Test and generate artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check-out repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set-up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build sdk
+        run: pnpm build
+        working-directory: packages/tongo-sdk
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: .
+
+  publish:
+    name: Publish v1 legacy npm package
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: .
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+          version: 10.4.1
+
+      - name: Set-up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org/"
+          package-manager-cache: false
+
+      - name: Publish
+        working-directory: packages/tongo-sdk
+        run: |
+          NODE_AUTH_TOKEN="" pnpm publish --access public --tag latest --no-git-checks
