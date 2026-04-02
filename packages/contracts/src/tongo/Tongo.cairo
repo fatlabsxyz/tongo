@@ -435,8 +435,7 @@ pub mod Tongo {
         /// Emits ReceivedExternalTransfer
         fn receive_external_transfer(ref self: ContractState, external: ExternalTransfer) {
             let caller = get_caller_address();    
-            let Vault = IVaultDispatcher {contract_address: self.vault.read()};
-            assert!(Vault.is_known_tongo(caller), "Caller is not a valid Tongo contract");
+            assert!(self._vault().is_known_tongo(caller), "Caller is not a valid Tongo contract");
             assert!(self.approvedTongo.entry(caller).read(), "Caller is not approved to operate");
             
             let ExternalTransfer {
@@ -536,8 +535,7 @@ pub mod Tongo {
         fn approveTongo(ref self: ContractState, address: ContractAddress) {
             self._caller_is_owner();    
             assert!(!self.approvedTongo.entry(address).read(), "Contract allready white-listed");
-            let Vault = IVaultDispatcher {contract_address: self.vault.read()};
-            assert!(Vault.is_known_tongo(address), "Target is not a valid Tongo contract");
+            assert!(self._vault().is_known_tongo(address), "Target is not a valid Tongo contract");
             self.approvedTongo.entry(address).write(true);
         }
 
@@ -639,13 +637,11 @@ pub mod Tongo {
 
         /// Sends ERC20 to the Vault
         fn _send_to_vault(self: @ContractState, amount: u256) {
-            let Vault = IVaultDispatcher {contract_address: self.vault.read()};
-            Vault.deposit(amount)
+            self._vault().deposit(amount)
         }
         
         fn _withdraw_from_vault(self: @ContractState, amount: u256) {
-            let Vault = IVaultDispatcher {contract_address: self.vault.read()};
-            Vault.withdraw(amount)
+            self._vault().withdraw(amount)
         }
 
         /// Increases the nonce of the given Tongo account.
@@ -811,6 +807,10 @@ pub mod Tongo {
             };
 
             targetTongo.receive_external_transfer(external);
+        }
+
+        fn _vault(self: @ContractState) -> IVaultDispatcher {
+            return IVaultDispatcher {contract_address: self.vault.read()};
         }
     }
 }
