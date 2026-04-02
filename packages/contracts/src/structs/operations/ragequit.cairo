@@ -75,7 +75,6 @@ impl RagequitPrefix of Prefix<InputsRagequit> {
     fn compute_prefix(self: @InputsRagequit) -> felt252 {
         let ragequit_selector = 'ragequit';
         let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
-        let data = *self.data;
         let CipherBalance { L, R } = *self.currentBalance;
 
         let mut array: Array<felt252> = array![
@@ -93,7 +92,7 @@ impl RagequitPrefix of Prefix<InputsRagequit> {
             R.x,
             R.y,
         ];
-        for d in data {
+        for d in self.data {
             array.append(*d)
         }
         poseidon_hash_span(array.span())

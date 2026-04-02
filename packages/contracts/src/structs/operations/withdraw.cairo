@@ -78,7 +78,6 @@ impl WithdrawPrefix of Prefix<InputsWithdraw> {
         let withdraw_selector = 'withdraw';
         let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
 
-        let data = *self.data;
 
         let CipherBalance { L, R } = *self.currentBalance;
         let CipherBalance { L: V, R: R_aux } = *self.auxiliarCipher;
@@ -101,7 +100,7 @@ impl WithdrawPrefix of Prefix<InputsWithdraw> {
             R_aux.x,
             R_aux.y,
         ];
-        for d in data {
+        for d in self.data {
             array.append(*d)
         }
         poseidon_hash_span(array.span())

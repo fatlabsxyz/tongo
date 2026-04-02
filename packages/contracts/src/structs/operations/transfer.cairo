@@ -128,7 +128,6 @@ impl TransferPrefix of Prefix<InputsTransfer> {
         let CipherBalance { L: L_bar, R: R_bar } = *self.transferBalance;
         let CipherBalance { L: V, R: R_aux } = *self.auxiliarCipher;
         let CipherBalance { L: V2, R: R_aux2 } = *self.auxiliarCipher2;
-        let data = *self.data;
 
         let mut array: Array<felt252> = array![
             *chain_id,
@@ -161,7 +160,7 @@ impl TransferPrefix of Prefix<InputsTransfer> {
             R_aux2.x,
             R_aux2.y,
         ];
-        for d in data {
+        for d in self.data {
             array.append(*d)
         }
         poseidon_hash_span(array.span())
