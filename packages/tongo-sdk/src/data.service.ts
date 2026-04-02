@@ -24,6 +24,8 @@ const RAGEQUIT_EVENT_PATH = "tongo::structs::events::RagequitEvent";
 const BALANCE_DECLARED_EVENT_PATH = "tongo::structs::events::BalanceDeclared";
 const TRANSFER_DECLARED_EVENT_PATH = "tongo::structs::events::TransferDeclared";
 
+type RPC_VERSION = "0.10.0"
+
 export const ReaderEventType = {
     Fund: "fund",
     Withdraw: "withdraw",
@@ -206,7 +208,7 @@ export class StarknetEventReader {
     }
 
     async getEventsFund(initialBlock: number, otherPubKey: PubKey): Promise<ReaderFundEvent[]> {
-        const eventsResults = await this.provider.getEvents({
+        const eventsResults = await this.provider.getEvents<RPC_VERSION>({
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",
@@ -221,7 +223,7 @@ export class StarknetEventReader {
     }
 
     async getEventsWithdraw(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
+        const eventsResults = await this.provider.getEvents<RPC_VERSION>({
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",
@@ -236,7 +238,7 @@ export class StarknetEventReader {
     }
 
     async getEventsRagequit(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
+        const eventsResults = await this.provider.getEvents<RPC_VERSION>({
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",
@@ -251,7 +253,7 @@ export class StarknetEventReader {
     }
 
     async getEventsRollover(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
+        const eventsResults = await this.provider.getEvents<RPC_VERSION>({
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",
@@ -266,7 +268,7 @@ export class StarknetEventReader {
     }
 
     async getEventsTransferOut(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
+        const eventsResults = await this.provider.getEvents<RPC_VERSION>({
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",
@@ -281,7 +283,7 @@ export class StarknetEventReader {
     }
 
     async getEventsTransferIn(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
+        const eventsResults = await this.provider.getEvents<RPC_VERSION>({
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",
@@ -310,7 +312,7 @@ export class StarknetEventReader {
     }
 
     async getEventsBalanceDeclared(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
+        const eventsResults = await this.provider.getEvents<RPC_VERSION>({
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",
@@ -324,7 +326,7 @@ export class StarknetEventReader {
     }
 
     async getEventsTransferFrom(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
+        const eventsResults = await this.provider.getEvents<RPC_VERSION>({
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",
@@ -340,7 +342,7 @@ export class StarknetEventReader {
 
 
     async getEventsTransferTo(initialBlock: number, otherPubKey: PubKey) {
-        const eventsResults = await this.provider.getEvents({
+        const eventsResults = await this.provider.getEvents<RPC_VERSION>({
             address: this.tongoAddress,
             from_block: { block_number: initialBlock },
             to_block: "latest",

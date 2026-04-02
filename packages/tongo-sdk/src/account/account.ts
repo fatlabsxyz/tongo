@@ -57,7 +57,21 @@ export class Account implements IAccount {
     provider: RpcProvider;
     Tongo: TongoContract;
 
-    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
+    /** @deprecated Use rpc url for the third argument. */
+    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider)
+
+    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, rpcUrl: string)
+    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, providerOrUrl: RpcProvider | string ) {
+        let provider: RpcProvider;
+        if (typeof providerOrUrl === "string") {
+            provider = new RpcProvider({
+                nodeUrl: providerOrUrl,
+                specVersion: "0.10.0",
+            });
+        } else {
+            provider = providerOrUrl
+        }
+
         this.pk = bytesOrNumToBigInt(pk);
         this.Tongo = new Contract({
             abi: tongoAbi,
