@@ -1,4 +1,5 @@
 import { RpcProvider, events, CallData, ParsedEvent, AbiParser2 } from "starknet";
+import {TongoAbi,VaultAbi} from "./abi/abi.types.js"
 
 const CHUNK_SIZE = 100;
 
@@ -7,9 +8,9 @@ export class ContractEventReader {
     private static readonly abiParser: AbiParser2;
     private readonly abiParser: AbiParser2 = ContractEventReader.abiParser;
     contractAddress: string;
-    contractAbi: any;
+    contractAbi: TongoAbi | VaultAbi ;
 
-    constructor(provider: RpcProvider, contractAddress: string, contractAbi: any) {
+    constructor(provider: RpcProvider, contractAddress: string, contractAbi: TongoAbi | VaultAbi ) {
         this.provider = provider;
         this.abiParser = new AbiParser2(contractAbi);
         this.contractAddress = contractAddress;
