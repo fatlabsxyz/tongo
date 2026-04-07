@@ -28,7 +28,7 @@ fn checkBalances(x: felt252, balanceAmount:u128, pendingAmount:u128,auditAmount:
 #[test]
 fn full() {
     //set up
-    let (_address, dispatcher) = setup_tongo();
+    let (tongo_address, dispatcher) = setup_tongo();
     let ERC20 = IERC20Dispatcher {contract_address: dispatcher.ERC20()};
     let rate = dispatcher.get_rate();
 
@@ -57,7 +57,7 @@ fn full() {
 
     let sender = USER_ADDRESS;
     let fee_to_sender =  0;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
     dispatcher.fund(operation);
 
     //Bufer should be 0, balance initial_balance and audit initial_balance
@@ -70,8 +70,8 @@ fn full() {
     assert!(VaultBalance - initialVaulBalance == rate*(initial_fund).into(), "Incorrect VaultBalance");
 
     let transfer_amount = 100_u128;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,dispatcher);
-    dispatcher.transfer(operation);
+    let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address, dispatcher);
+    dispatcher.transfer(operation, transfer_options);
 
     // nonce for y should be 2
     let nonce = dispatcher.get_nonce(y);
@@ -94,8 +94,8 @@ fn full() {
     //y_bar will withdraw amount
     let withdraw_amount = 25;
     let transfer_address: ContractAddress = 'asdf'.try_into().unwrap();
-    let operation = withdrawOperation(x_bar,transfer_amount, withdraw_amount, transfer_address,USER_ADDRESS,0, dispatcher);
-    dispatcher.withdraw(operation);
+    let (operation, withdraw_options) = withdrawOperation(x_bar,transfer_amount, withdraw_amount, transfer_address,USER_ADDRESS,0, dispatcher);
+    dispatcher.withdraw(operation, withdraw_options);
 
     let VaultBalance2 = ERC20.balance_of(VAULT_ADDRESS);
     assert!(VaultBalance - VaultBalance2 == rate*(withdraw_amount).into(),"Incorrect VaultBalance2");
@@ -109,8 +109,8 @@ fn full() {
     //y will ragequit
 
     let ragequit_amount = initial_fund - transfer_amount;
-    let operation = ragequitOperation(x, ragequit_amount,transfer_address,USER_ADDRESS,0, dispatcher);
-    dispatcher.ragequit(operation);
+    let (operation, ragequit_options) = ragequitOperation(x, ragequit_amount,transfer_address,USER_ADDRESS,0, dispatcher);
+    dispatcher.ragequit(operation, ragequit_options);
 
     // nonce for y should be 3
     let nonce = dispatcher.get_nonce(y);

@@ -21,16 +21,15 @@ fn test_ragequit() {
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
     let sender = USER_ADDRESS;
-    let fee_to_sender =  0;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
     dispatcher.fund(operation);
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
     let initialErc20 = erc20dispatcher.balance_of(transfer_address);
     let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
-    let operation = ragequitOperation(x, initial_fund,transfer_address,USER_ADDRESS,0,dispatcher);
-    dispatcher.ragequit(operation);
+    let (operation, ragequit_options) = ragequitOperation(x, initial_fund,transfer_address,USER_ADDRESS,0,dispatcher);
+    dispatcher.ragequit(operation, ragequit_options);
     
     let balance = dispatcher.get_balance(y);
     decipher_balance(0, x, balance);
@@ -59,8 +58,7 @@ fn test_withdraw() {
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
     let sender = USER_ADDRESS;
-    let fee_to_sender =  0;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
     dispatcher.fund(operation);
 
     let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
@@ -68,9 +66,10 @@ fn test_withdraw() {
     let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
     let withdraw_amount = 25_u128;
+    let fee_to_sender =  0;
 
-    let operation = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address, USER_ADDRESS, 0, dispatcher);
-    dispatcher.withdraw(operation);
+    let (operation, withdraw_options) = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address, USER_ADDRESS, fee_to_sender, dispatcher);
+    dispatcher.withdraw(operation, withdraw_options);
 
     let balance = dispatcher.get_balance(y);
     decipher_balance((initial_fund- withdraw_amount).into(), x, balance);

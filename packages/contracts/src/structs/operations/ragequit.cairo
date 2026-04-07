@@ -4,10 +4,11 @@ use starknet::ContractAddress;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
-use crate::structs::common::relayer::RelayData;
+use crate::structs::common::relayer::{RelayData, SerializeRelayData};
 use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::operations::audit::Audit;
 use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
+use crate::structs::traits::SerializedData;
 
 /// Represents the calldata of a ragequit operation.
 ///
@@ -27,10 +28,28 @@ pub struct Ragequit {
     pub amount: u128,
     pub hint: AEBalance,
     pub proof: ProofOfRagequit,
-    pub relayData: RelayData,
     pub auditPart: Option<Audit>,
 }
 
+#[derive(Drop, Serde)]
+pub struct RagequitOptions {
+    pub relayData: Option<RelayData>
+}
+
+pub impl SerializeRagequitOptions of SerializedData<Option<RagequitOptions>> {
+    fn serialize_data(self: @Option<RagequitOptions>) -> Span<felt252> {
+        match self {
+            None => { return array![1].span(); }, 
+            Some(options) => {
+                let mut arr: Array<felt252> = array![0];
+
+                let relay = options.relayData.serialize_data();
+                for r in relay { arr.append(*r) }
+                return arr.span();
+            }
+        }
+    }
+}
 
 /// Public inputs of the verifier for the ragequit operation.
 ///
@@ -48,7 +67,7 @@ pub struct InputsRagequit {
     pub amount: u128,
     pub currentBalance: CipherBalance,
     pub prefix_data: GeneralPrefixData,
-    pub relayData: RelayData,
+    pub data: Span<felt252>,
 }
 
 /// Computes the prefix by hashing some public inputs.
@@ -56,14 +75,12 @@ impl RagequitPrefix of Prefix<InputsRagequit> {
     fn compute_prefix(self: @InputsRagequit) -> felt252 {
         let ragequit_selector = 'ragequit';
         let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
-        let fee_to_sender = *self.relayData.fee_to_sender;
         let CipherBalance { L, R } = *self.currentBalance;
 
-        let array: Array<felt252> = array![
+        let mut array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
             (*sender_address).into(),
-            fee_to_sender.into(),
             ragequit_selector,
             *self.y.x,
             *self.y.y,
@@ -75,6 +92,9 @@ impl RagequitPrefix of Prefix<InputsRagequit> {
             R.x,
             R.y,
         ];
+        for d in self.data {
+            array.append(*d)
+        }
         poseidon_hash_span(array.span())
     }
 }

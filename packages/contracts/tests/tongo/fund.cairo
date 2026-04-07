@@ -18,16 +18,15 @@ fn test_fund() {
 
     let tongoAmount = 250;
     let sender = USER_ADDRESS;
-    let fee_to_sender =  0;
 
-    let operation = fundOperation(x, 0, tongoAmount, sender, fee_to_sender,dispatcher);
+    let operation = fundOperation(x, 0, tongoAmount, sender,dispatcher);
     dispatcher.fund(operation);
 
     let finalErc20 = erc20dispatcher.balance_of(USER_ADDRESS);
     let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
     let rate = dispatcher.get_rate();
     assert(initialErc20 - finalErc20 == rate*tongoAmount.into(), 'nope');
-    assert(finalErc20Vault - initialErc20Vault == rate*(tongoAmount - fee_to_sender).into(), 'nope');
+    assert(finalErc20Vault - initialErc20Vault == rate*(tongoAmount ).into(), 'nope');
 }
 
 #[test]

@@ -23,7 +23,7 @@ pub fn verifyOwnership(y: PubKey, Ax: StarkPoint, c: felt252, sx: felt252) {
     verify(inputs, proof).expect('Proof Of Ownership failed');
 }
 
-/// This generatos has been computed hashing:
+/// This generatos has been computed by hashing:
 /// x = poseidon(input, nonce) for nonce from 1,... until x is a coordinate of a valid point
 /// of the starknet curve, currently input= GEN_X.
 pub fn generator_h() -> NonZeroEcPoint {

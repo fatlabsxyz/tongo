@@ -17,18 +17,18 @@ use crate::verifier::utils::{generator_h, verifyOwnership};
 
 
 /// Verifies the withdraw operation. First, ussers have to show knowledge of the private key. Then,
-/// users  have to provide two cipher balance, one (L,R) is a encryption of the transfer amount b
-/// under its public key, the other (L_bar, R_bar)
+/// users  have to provide two cipher balance, one `(L,R)` is a encryption of the transfer amount b
+/// under its public key, the other `(L_bar, R_bar)`
 /// a encryption of the trasnfer amount b under the receiver public key. Users have to provide a ZK
 /// proof that both encryption are indeed encrypting the same amount for the correct public keys. To
-/// show the transfer amount b is positive, when the first RangeProof is verified, it returns a V1 =
-/// g**b h**r1, with b positive. V1 is used as a L part of a cipher blalance, users have to prove
-/// that the cipher balance (V1, R_aux1 = g**r1) is encrypting the same amount that (L,R). The
-/// cipher balance after the operation would be (L0,R0) = (CL/L, CR/R) where (CL,CR) is the current
-/// balance. To show that (L0, R0) is encrypting an amount b_left positive, when the second
-/// RangeProof is verified, it returns a V2 = g**b_left h**r2, with b_left positive. V2 is used as a
-/// L part of a cipher blalance, users have to prove that the cipher balance (V2, R_aux2 = g**r2) is
-/// encrypting the same amount that (L0,R0)
+/// show the transfer amount b is positive, when the first RangeProof is verified, it returns a `V1 =
+/// g**b h**r1`, with `b` positive. `V1` is used as a `L` part of a cipher blalance, users have to prove
+/// that the cipher balance `(V1, R_aux1 = g**r1)` is encrypting the same amount that `(L,R)`. The
+/// cipher balance after the operation would be `(L0,R0) = (CL/L, CR/R)` where `(CL,CR)` is the current
+/// balance. To show that `(L0, R0)` is encrypting an amount `b_left` positive, when the second
+/// RangeProof is verified, it returns a `V2 = g**b_left h**r2`, with b_left positive. `V2` is used as a
+/// `L` part of a cipher blalance, users have to prove that the cipher balance `(V2, R_aux2 = g**r2)` is
+/// encrypting the same amount that `(L0,R0)`
 ///
 /// EC_MUL: 27 + 2*n*5  = 347 for u32
 /// EC_ADD: 18  + 2*n*4 = 274 for u32
@@ -37,16 +37,7 @@ pub fn verify_transfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     let c = proof.compute_challenge(prefix);
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
 
-    let mut cipherBalanceAfterFee = inputs.currentBalance;
-    if inputs.relayData.fee_to_sender != 0 {
-        cipherBalanceAfterFee = inputs
-            .currentBalance
-            .subtract(
-                CipherBalanceTrait::new(inputs.from, inputs.relayData.fee_to_sender.into(), 'fee'),
-            )
-    }
-
-    let (CL, CR) = cipherBalanceAfterFee.points();
+    let (CL, CR) = inputs.currentBalance.points();
     let (L, R) = inputs.transferBalanceSelf.points_nz();
     let (L_bar, R_bar) = inputs.transferBalance.points_nz();
     let (V, R_aux) = inputs.auxiliarCipher.points_nz();

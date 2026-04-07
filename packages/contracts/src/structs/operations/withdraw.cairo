@@ -4,11 +4,12 @@ use starknet::ContractAddress;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
-use crate::structs::common::relayer::RelayData;
+use crate::structs::common::relayer::{RelayData, SerializeRelayData};
 use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::operations::audit::Audit;
 use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
 use crate::verifier::range::Range;
+use crate::structs::traits::SerializedData;
 
 /// Represents the calldata of a withdraw operation.
 ///
@@ -27,8 +28,27 @@ pub struct Withdraw {
     pub hint: AEBalance,
     pub auxiliarCipher: CipherBalance,
     pub proof: ProofOfWithdraw,
-    pub relayData: RelayData,
     pub auditPart: Option<Audit>,
+}
+
+#[derive(Drop, Serde)]
+pub struct WithdrawOptions {
+    pub relayData: Option<RelayData>
+}
+
+pub impl SerializeWithdrawOptions of SerializedData<Option<WithdrawOptions>> {
+    fn serialize_data(self: @Option<WithdrawOptions>) -> Span<felt252> {
+        match self {
+            None => { return array![1].span(); }, 
+            Some(options) => {
+                let mut arr: Array<felt252> = array![0];
+
+                let relay = options.relayData.serialize_data();
+                for r in relay { arr.append(*r) }
+                return arr.span();
+            }
+        }
+    }
 }
 
 
@@ -49,7 +69,7 @@ pub struct InputsWithdraw {
     pub auxiliarCipher: CipherBalance,
     pub bit_size: u32,
     pub prefix_data: GeneralPrefixData,
-    pub relayData: RelayData,
+    pub data: Span<felt252>,
 }
 
 /// Computes the prefix by hashing some public inputs.
@@ -58,15 +78,13 @@ impl WithdrawPrefix of Prefix<InputsWithdraw> {
         let withdraw_selector = 'withdraw';
         let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
 
-        let fee_to_sender = *self.relayData.fee_to_sender;
 
         let CipherBalance { L, R } = *self.currentBalance;
         let CipherBalance { L: V, R: R_aux } = *self.auxiliarCipher;
-        let array: Array<felt252> = array![
+        let mut array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
             (*sender_address).into(),
-            fee_to_sender.into(),
             withdraw_selector,
             *self.y.x,
             *self.y.y,
@@ -82,6 +100,9 @@ impl WithdrawPrefix of Prefix<InputsWithdraw> {
             R_aux.x,
             R_aux.y,
         ];
+        for d in self.data {
+            array.append(*d)
+        }
         poseidon_hash_span(array.span())
     }
 }
