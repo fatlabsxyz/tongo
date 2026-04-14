@@ -1,12 +1,12 @@
 import { keccak } from "@scure/starknet";
-import { Account, RpcProvider } from "starknet";
+import { Account, CairoOption, CairoOptionVariant, RpcProvider } from "starknet";
 import { DevnetProvider } from "starknet-devnet";
 import { GENERATOR } from "../src/constants.js";
 import { StarkPoint, starkPointToProjectivePoint } from "../src/types.js";
 
 export const provider = new RpcProvider({
     nodeUrl: "http://127.0.0.1:5050/rpc",
-    specVersion: "0.9.0",
+    specVersion: "0.10.0",
 });
 
 export class RelayerHandler {
@@ -66,4 +66,12 @@ export class KeyGen {
     from(x: number) {
         return this.seed + BigInt(x);
     }
+}
+
+export function Some<T>(data: T) {
+    return new CairoOption<T>(CairoOptionVariant.Some, data);
+}
+
+export function None<T>() {
+    return new CairoOption<T>(CairoOptionVariant.None);
 }
