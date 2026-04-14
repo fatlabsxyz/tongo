@@ -1,9 +1,9 @@
 import { cairo, CairoOption, Call, CallData, Contract, num } from "starknet";
 
-import { ProjectivePoint } from "../types";
 import { ProofOfFund } from "../provers/fund";
 
 import { AEBalance } from "../ae_balance.js";
+import { StarkPoint } from "../types.js";
 import { castBigInt } from "../utils.js";
 import { Audit } from "./audit.js";
 import { IOperation, OperationType } from "./operation.js";
@@ -24,7 +24,7 @@ interface IFundOperation extends IOperation {
  * @property {Contract} Tongo - The Tongo instance to interact with
  */
 interface FundOpParams {
-    to: ProjectivePoint;
+    to: StarkPoint;
     amount: bigint;
     hint: AEBalance;
     proof: ProofOfFund;
@@ -35,7 +35,7 @@ interface FundOpParams {
 export class FundOperation implements IFundOperation {
     type: typeof OperationType.Fund;
     Tongo: Contract;
-    to: ProjectivePoint;
+    to: StarkPoint;
     amount: bigint;
     hint: AEBalance;
     proof: ProofOfFund;
