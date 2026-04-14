@@ -2,21 +2,14 @@ import { ProjectivePoint as SheProjectivePoint, type ProjectivePoint as SheProje
 import { BigNumberish } from "starknet";
 import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";
-
 import {
     poseidonHashMany,
 } from "@scure/starknet";
 import { GENERATOR } from "./constants";
+import { AuxAbiType, TongoAbiType } from "./abi/abi.types.js";
 
-export interface GeneralPrefixData {
-    chain_id: bigint,
-    tongo_address: bigint,
-    sender_address: bigint,
-}
-
-export interface RelayData {
-    fee_to_sender:bigint,
-}
+export type GeneralPrefixData = AuxAbiType<"tongo::structs::traits::GeneralPrefixData">;
+export type RelayData = TongoAbiType<"tongo::structs::common::relayer::RelayData">;
 
 export const ProjectivePoint: typeof SheProjectivePoint = SheProjectivePoint;
 export type ProjectivePoint = SheProjectivePointType;
