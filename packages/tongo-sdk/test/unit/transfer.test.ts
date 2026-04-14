@@ -1,4 +1,4 @@
-import { describe, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { GENERATOR as g } from "../../src/constants";
 import { proveTransfer, verifyTransfer } from "../../src/provers/transfer";
@@ -19,7 +19,11 @@ describe("transfer", () => {
         const initial_cipher_balance = createCipherBalance(public_key_sender, initial_balance, _r);
 
         const nonce = 1n;
-        const prefix_data: GeneralPrefixData = { chain_id: 1111n, tongo_address: 22222n, sender_address: 33333n };
+        const prefix_data: GeneralPrefixData = {
+          chain_id: 1111n,
+          tongo_address: (22222n).toString(10),
+          sender_address: (33333n).toString(10)
+        };
 
         const bit_size = 32;
         const serialized_data = [1n];
@@ -35,7 +39,7 @@ describe("transfer", () => {
             prefix_data,
             serialized_data,
         );
-        verifyTransfer(inputs, proof);
+        expect(verifyTransfer(inputs, proof)).toBe(true);
     });
 
     it("test transfer with serialized data", () => {
@@ -51,7 +55,11 @@ describe("transfer", () => {
         const initial_cipher_balance = createCipherBalance(public_key_sender, initial_balance, _r);
 
         const nonce = 1n;
-        const prefix_data: GeneralPrefixData = { chain_id: 1111n, tongo_address: 22222n, sender_address: 33333n };
+        const prefix_data: GeneralPrefixData = {
+          chain_id: 1111n,
+          tongo_address: (22222n).toString(10),
+          sender_address: (33333n).toString(10)
+        };
 
         const bit_size = 32;
         const serialized_data = [0n, 10n];

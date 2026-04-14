@@ -1,11 +1,12 @@
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
-import {SameEncrypt, ElGamal, SameEncryptUnknownRandom, poe} from "@fatsolutions/she/protocols";
-import { range as SHE_range} from "@fatsolutions/she/protocols"
+import { SameEncrypt, ElGamal, SameEncryptUnknownRandom, poe } from "@fatsolutions/she/protocols";
+import { range as SHE_range } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
-import { CipherBalance, compute_prefix,  GeneralPrefixData, ProjectivePoint} from "../types";
-import { createCipherBalance} from "../../src/utils";
+import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint, projectivePointToStarkPoint, starkPointToProjectivePoint } from "../types";
+import { createCipherBalance } from "../../src/utils";
+import { AuxAbiType, auxCodec } from "../abi/abi.types";
 
 // cairo string 'transfer'
 export const TRANSFER_CAIRO_STRING = 8390876182755042674n;
@@ -14,30 +15,19 @@ export const FEE_CAIRO_STRING = 6710629n;
 
 /**
  * Public inputs of the verifier for the transfer operation.
- * @interface InputsTransfer
- * @property {ProjectivePoint} from - The Tongo account to take tongos from
- * @property {ProjectivePoint} to - The Tongo account to send tongos to
+ * @property {PubKey} from - The Tongo account to take tongos from
+ * @property {PubKey} to - The Tongo account to send tongos to
  * @property {bigint} nonce - The nonce of the Tongo account (from)
  * @property {CipherBalance} currentBalance - The current CipherBalance stored for the account (from)
  * @property {CipherBalance} transferBalance - The amount to transfer encrypted for the pubkey of `to`
  * @property {CipherBalance} transferBalanceSelf - The amount to transfer encrypted for the pubkey of `from`
+ * @property {CipherBalance} auxiliarCipher - Auxiliary cipher for range proof
+ * @property {CipherBalance} auxiliarCipher2 - Auxiliary cipher for second range proof
  * @property {number} bit_size - The bit size for range proofs
  * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
- * @property {RelayData} relay_data - relay data for the operation
+ * @property {bigint[]} data - Serialized operation options
  */
-export interface InputsTransfer {
-    from: ProjectivePoint,
-    to: ProjectivePoint,
-    nonce: bigint,
-    currentBalance: CipherBalance,
-    transferBalance: CipherBalance,
-    transferBalanceSelf: CipherBalance,
-    auxiliarCipher: CipherBalance,
-    auxiliarCipher2: CipherBalance,
-    bit_size: number,
-    prefix_data: GeneralPrefixData,
-    serialized_data: bigint[],
-}
+export type InputsTransfer = AuxAbiType<"tongo::structs::operations::transfer::InputsTransfer">;
 
 /**
  * Computes the prefix by hashing some public inputs.
@@ -45,43 +35,10 @@ export interface InputsTransfer {
  * @returns {bigint} The computed prefix hash
  */
 function prefixTransfer(inputs: InputsTransfer): bigint {
-    const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
-    const {L:L0, R:R0} = inputs.currentBalance;
-    const {L:L, R:R} = inputs.transferBalanceSelf;
-    const {L:L_bar, R:R_bar} = inputs.transferBalance;
-    const {L:V, R:R_aux} = inputs.auxiliarCipher;
-    const {L:V2, R:R_aux2} = inputs.auxiliarCipher2;
+    const _serialized = auxCodec.encode("tongo::structs::operations::transfer::InputsTransfer", inputs);
     const seq: bigint[] = [
-        chain_id,
-        tongo_address,
-        sender_address,
         TRANSFER_CAIRO_STRING,
-        inputs.from.toAffine().x,
-        inputs.from.toAffine().y,
-        inputs.to.toAffine().x,
-        inputs.to.toAffine().y,
-        inputs.nonce,
-        L0.toAffine().x,
-        L0.toAffine().y,
-        R0.toAffine().x,
-        R0.toAffine().y,
-        L.toAffine().x,
-        L.toAffine().y,
-        R.toAffine().x,
-        R.toAffine().y,
-        L_bar.toAffine().x,
-        L_bar.toAffine().y,
-        R_bar.toAffine().x,
-        R_bar.toAffine().y,
-        V.toAffine().x,
-        V.toAffine().y,
-        R_aux.toAffine().x,
-        R_aux.toAffine().y,
-        V2.toAffine().x,
-        V2.toAffine().y,
-        R_aux2.toAffine().x,
-        R_aux2.toAffine().y,
-        ...inputs.serialized_data,
+        ..._serialized.map(BigInt)
     ];
     return compute_prefix(seq);
 }
@@ -127,38 +84,43 @@ export function proveTransfer(
     const b_left = b0 - b;
 
     // This precomputation is usefull to know add R_aux and V to the prefix computation
-    const  {randomness, total_random} = SHE_range.pregenerate_randomness(bit_size);
-    const auxiliarCipher = createCipherBalance(h,amount_to_transfer,total_random);
+    const { randomness, total_random } = SHE_range.pregenerate_randomness(bit_size);
+    const auxiliarCipher = createCipherBalance(h, amount_to_transfer, total_random);
 
     const transferBalanceSelf = createCipherBalance(y, b, total_random);
     const transferBalance = createCipherBalance(to, b, total_random);
 
-    const  {randomness: randomness2, total_random:total_random2} = SHE_range.pregenerate_randomness(bit_size);
-    const auxiliarCipher2 = createCipherBalance(h,b_left,total_random2);
+    const { randomness: randomness2, total_random: total_random2 } = SHE_range.pregenerate_randomness(bit_size);
+    const auxiliarCipher2 = createCipherBalance(h, b_left, total_random2);
+
+    const cipherToStark = (cb: CipherBalance) => ({
+        L: projectivePointToStarkPoint(cb.L),
+        R: projectivePointToStarkPoint(cb.R),
+    });
 
     const inputs: InputsTransfer = {
-        from: y,
-        to,
+        from: projectivePointToStarkPoint(y),
+        to: projectivePointToStarkPoint(to),
         nonce,
-        currentBalance: initial_cipherbalance,
-        transferBalance,
-        transferBalanceSelf,
-        auxiliarCipher,
-        auxiliarCipher2,
-        bit_size,
+        currentBalance: cipherToStark(initial_cipherbalance),
+        transferBalance: cipherToStark(transferBalance),
+        transferBalanceSelf: cipherToStark(transferBalanceSelf),
+        auxiliarCipher: cipherToStark(auxiliarCipher),
+        auxiliarCipher2: cipherToStark(auxiliarCipher2),
+        bit_size: BigInt(bit_size),
         prefix_data,
-        serialized_data,
+        data: serialized_data,
     };
 
     const prefix = prefixTransfer(inputs);
 
-    let {L:L0, R:R0} = initial_cipherbalance;
+    let { L: L0, R: R0 } = initial_cipherbalance;
 
-    const { r, range } = generateRangeProof(b, bit_size,randomness, prefix);
-    if (r !== total_random) {throw new Error("random missmatch") ;}
+    const { r, range } = generateRangeProof(b, bit_size, randomness, prefix);
+    if (r !== total_random) { throw new Error("random missmatch"); }
 
-    const { r: r2, range: range2 } = generateRangeProof(b_left, bit_size,randomness2, prefix);
-    if (r2 !== total_random2) {throw new Error("random missmatch") ;}
+    const { r: r2, range: range2 } = generateRangeProof(b_left, bit_size, randomness2, prefix);
+    if (r2 !== total_random2) { throw new Error("random missmatch"); }
 
 
     const G = R0.subtract(transferBalanceSelf.R);
@@ -245,7 +207,7 @@ export function verifyTransfer(
     inputs: InputsTransfer,
     proof: ProofOfTransfer,
 ) {
-    const bit_size = inputs.bit_size;
+    const bit_size = Number(inputs.bit_size);
     const prefix = prefixTransfer(inputs);
 
     const c = compute_challenge(prefix, [
@@ -259,14 +221,22 @@ export function verifyTransfer(
         proof.A_bar,
     ]);
 
-    const { L: CL, R: CR } = inputs.currentBalance;
-    const { L, R } = inputs.transferBalanceSelf;
-    const { L: L_bar, R: R_bar } = inputs.transferBalance;
-    const { L:V , R:R_aux } = inputs.auxiliarCipher;
-    const { L:V2 , R:R_aux2 } = inputs.auxiliarCipher2;
+    const starkToP = starkPointToProjectivePoint;
+    const CL = starkToP(inputs.currentBalance.L);
+    const CR = starkToP(inputs.currentBalance.R);
+    const L = starkToP(inputs.transferBalanceSelf.L);
+    const R = starkToP(inputs.transferBalanceSelf.R);
+    const L_bar = starkToP(inputs.transferBalance.L);
+    const R_bar = starkToP(inputs.transferBalance.R);
+    const V = starkToP(inputs.auxiliarCipher.L);
+    const R_aux = starkToP(inputs.auxiliarCipher.R);
+    const V2 = starkToP(inputs.auxiliarCipher2.L);
+    const R_aux2 = starkToP(inputs.auxiliarCipher2.R);
+    const from = starkToP(inputs.from);
+    const to = starkToP(inputs.to);
 
 
-    let res = poe._verify(inputs.from, g, proof.A_x, c, proof.s_x);
+    let res = poe._verify(from, g, proof.A_x, c, proof.s_x);
     if (res == false) { throw new Error("error in poe for y"); }
 
     let sameEncryptInputs = {
@@ -275,8 +245,8 @@ export function verifyTransfer(
         L2: L_bar,
         R2: R_bar,
         g,
-        y1: inputs.from,
-        y2: inputs.to,
+        y1: from,
+        y2: to,
     };
 
     let sameEncryptProof = {
@@ -290,12 +260,12 @@ export function verifyTransfer(
         sr2: proof.s_r,
     };
 
-    res =  SameEncrypt.verify(sameEncryptInputs,sameEncryptProof);
+    res = SameEncrypt.verify(sameEncryptInputs, sameEncryptProof);
     if (res == false) { throw new Error("error SameEncryp"); }
 
     const V_proof = verifyRangeProof(proof.range, bit_size, prefix);
     if (V_proof == false) { throw new Error("erro in range for V"); }
-    if (!V.equals(V_proof)) {throw new Error( "V missmatch" )};
+    if (!V.equals(V_proof)) { throw new Error("V missmatch"); };
 
     let elGamalInputs = {
         L: V,
@@ -320,7 +290,7 @@ export function verifyTransfer(
 
     const V2_proof = verifyRangeProof(proof.range2, bit_size, prefix);
     if (V2_proof == false) { throw new Error("erro in range for V2"); }
-    if (!V2.equals(V2_proof)) {throw new Error( "V2 missmatch" )};
+    if (!V2.equals(V2_proof)) { throw new Error("V2 missmatch"); };
 
     let sameEncryptUnkownRandomInputs = {
         L1: L0,
@@ -328,9 +298,9 @@ export function verifyTransfer(
         L2: V2,
         R2: R_aux2,
         g,
-        y1: inputs.from,
+        y1: from,
         y2: h,
-    }
+    };
 
     let sameEncryptUnkownRandomProof = {
         Ax: proof.A_x,
@@ -341,11 +311,18 @@ export function verifyTransfer(
         sb: proof.s_b2,
         sx: proof.s_x,
         sr2: proof.s_r2,
-    }
+    };
 
-    res = SameEncryptUnknownRandom.verify(
+    return SameEncryptUnknownRandom.verify(
         sameEncryptUnkownRandomInputs,
         sameEncryptUnkownRandomProof
     );
-    if (res == false) { throw new Error("error in sameEncrypUnkownRandom"); }
+}
+
+export function verifyTransferOrThrow(
+    inputs: InputsTransfer,
+    proof: ProofOfTransfer,
+) {
+    const verified = verifyTransfer(inputs, proof);
+    if (!verified) { throw new Error("error in sameEncrypUnkownRandom"); }
 }
