@@ -186,11 +186,7 @@ export class Account implements IAccount {
         const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
         const initialBalance = this.decryptCipherBalance(currentBalance, current_hint);
 
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender)
-        };
+        const prefix_data = await this.prefixData(sender);
 
         const { inputs, proof, newBalance } = proveFund(
             this.pk,
@@ -240,11 +236,7 @@ export class Account implements IAccount {
         }
 
         const to = starkPointToProjectivePoint(transferDetails.to);
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender),
-        };
+        const prefix_data = await this.prefixData(sender);
 
         let relayData  = new CairoOption<RelayData>(CairoOptionVariant.None);
         let externalData  = new CairoOption<ExternalData>(CairoOptionVariant.None);
@@ -350,11 +342,7 @@ export class Account implements IAccount {
             throw new Error("You dont have enough balance");
         }
 
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender),
-        };
+        const prefix_data = await this.prefixData(sender);
 
         const fee_to_sender = ragequitDetails.fee_to_sender || 0n;
         let relayData  = new CairoOption<RelayData>(CairoOptionVariant.None);
@@ -412,11 +400,7 @@ export class Account implements IAccount {
             throw new Error("You dont have enought balance");
         }
 
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender),
-        };
+        const prefix_data = await this.prefixData(sender);
 
         const fee_to_sender = withdrawDetails.fee_to_sender || 0n;
         let relayData  = new CairoOption<RelayData>(CairoOptionVariant.None);
@@ -477,11 +461,7 @@ export class Account implements IAccount {
         if (pendingAmount == 0n) {
             throw new Error("Your pending ammount is 0");
         }
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender), 
-        };
+        const prefix_data = await this.prefixData(sender);
         const { inputs, proof } = proveRollover(this.pk, nonce, prefix_data);
 
         const hint = await this.computeAEHintForSelf(pendingAmount + unlockedAmount, nonce + 1n);
@@ -516,11 +496,7 @@ export class Account implements IAccount {
         if (cipher.R == null) {
             throw new Error("R is null");
         }
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender), 
-        };
+        const prefix_data = await this.prefixData(sender);
 
         const balance = this.decryptCipherBalance(cipher);
         const { inputs, proof } = proveAudit(this.pk, balance, cipher, starkPointToProjectivePoint(to), prefix_data);
