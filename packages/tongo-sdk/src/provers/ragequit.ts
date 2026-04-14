@@ -1,8 +1,9 @@
 import { poe } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g } from "../constants";
-import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint} from "../types";
+import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint, projectivePointToStarkPoint, starkPointToProjectivePoint } from "../types";
 import { createCipherBalance} from "../../src/utils";
+import { AuxAbiType, auxCodec } from "../abi/abi.types";
 
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 
@@ -11,24 +12,15 @@ export const RAGEQUIT_CAIRO_STRING = 8241982478457596276n;
 
 /**
  * Public inputs of the verifier for the ragequit operation.
- * @interface InputsRagequit
- * @property {ProjectivePoint} y - The Tongo account to withdraw from
+ * @property {PubKey} y - The Tongo account to withdraw from
  * @property {bigint} nonce - The nonce of the Tongo account
- * @property {bigint} to - The starknet contract address to send the funds to
+ * @property {string} to - The starknet contract address to send the funds to
  * @property {bigint} amount - The amount of tongo to ragequit (the total amount of tongos in the account)
  * @property {CipherBalance} currentBalance - The current CipherBalance stored for the account
  * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
- * @property {RelayData} relay_data - relay data for the operation
+ * @property {bigint[]} data - Serialized operation options
  */
-export interface InputsRagequit {
-    y: ProjectivePoint;
-    nonce: bigint;
-    to: bigint;
-    amount: bigint;
-    currentBalance: CipherBalance;
-    prefix_data: GeneralPrefixData,
-    serialized_data: bigint[],
-}
+export type InputsRagequit = AuxAbiType<"tongo::structs::operations::ragequit::InputsRagequit">;
 
 /**
  * Computes the prefix by hashing some public inputs.
@@ -36,22 +28,10 @@ export interface InputsRagequit {
  * @returns {bigint} The computed prefix hash
  */
 function prefixRagequit(inputs: InputsRagequit): bigint {
-    const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
+    const _serialized = auxCodec.encode("tongo::structs::operations::ragequit::InputsRagequit", inputs);
     const seq: bigint[] = [
-        chain_id,
-        tongo_address,
-        sender_address,
         RAGEQUIT_CAIRO_STRING,
-        inputs.y.toAffine().x,
-        inputs.y.toAffine().y,
-        inputs.nonce,
-        inputs.amount,
-        inputs.to,
-        inputs.currentBalance.L.toAffine().x,
-        inputs.currentBalance.L.toAffine().y,
-        inputs.currentBalance.R.toAffine().x,
-        inputs.currentBalance.R.toAffine().y,
-        ...inputs.serialized_data,
+        ..._serialized.map(BigInt)
     ];
     return compute_prefix(seq);
 }
@@ -91,13 +71,16 @@ export function proveRagequit(
 
 
     const inputs: InputsRagequit = {
-        y,
+        y: projectivePointToStarkPoint(y),
         nonce,
-        to,
+        to: "0x" + to.toString(16),
         amount: full_amount,
-        currentBalance: initial_cipherbalance,
+        currentBalance: {
+            L: projectivePointToStarkPoint(initial_cipherbalance.L),
+            R: projectivePointToStarkPoint(initial_cipherbalance.R),
+        },
         prefix_data,
-        serialized_data,
+        data: serialized_data,
     };
     const prefix = prefixRagequit(inputs);
 
@@ -146,14 +129,15 @@ export function verifyRagequit(
     const prefix = prefixRagequit(inputs);
     const c = compute_challenge(prefix, [proof.Ax, proof.AR]);
 
-    let res = poe._verify(inputs.y, g, proof.Ax, c, proof.sx);
+    let res = poe._verify(starkPointToProjectivePoint(inputs.y), g, proof.Ax, c, proof.sx);
     if (res == false) {
         throw new Error("error in poe y");
     }
 
-    const { L: L1, R: R1 } = inputs.currentBalance;
+    const L1 = starkPointToProjectivePoint(inputs.currentBalance.L);
+    const R1 = starkPointToProjectivePoint(inputs.currentBalance.R);
 
-    const L = L1.subtract(g.multiply(inputs.amount));
+    const L = L1.subtract(g.multiply(BigInt(inputs.amount)));
 
     res = poe._verify(L, R1, proof.AR, c, proof.sx);
     if (res == false) {
