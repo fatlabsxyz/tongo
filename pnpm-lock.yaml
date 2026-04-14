@@ -1,7 +1,7 @@
 lockfileVersion: '9.0'
 
 settings:
-  autoInstallPeers: true
+  autoInstallPeers: false
   excludeLinksFromLockfile: false
 
 catalogs:
@@ -65,6 +65,9 @@ importers:
 
   packages/tongo-sdk:
     dependencies:
+      '@fatsolutions/cairo-abi-codec':
+        specifier: 0.0.4
+        version: 0.0.4(typescript@5.9.2)
       '@fatsolutions/she':
         specifier: 0.4.0
         version: 0.4.0
@@ -80,6 +83,9 @@ importers:
       '@scure/starknet':
         specifier: 'catalog:'
         version: 1.1.0
+      abi-wan-kanabi:
+        specifier: ^2.2.4
+        version: 2.2.4
       starknet:
         specifier: 9.2.1
         version: 9.2.1(typescript@5.9.2)
@@ -342,6 +348,9 @@ packages:
   '@eslint/plugin-kit@0.2.8':
     resolution: {integrity: sha512-ZAoA40rNMPwSm+AeHpCq8STiNAwzWLJuP8Xv4CHIc9wv/PSuExjMrmjfYNj682vW0OOiZ1HKxzvjQr9XZIisQA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@fatsolutions/cairo-abi-codec@0.0.4':
+    resolution: {integrity: sha512-GUrn6O4ez5Mr5RAarRnaF6128KIM+vEsOLDKy9aXwo60DeyIBKaTKHw8yEI2GEqMYg69WMGoN1MbQc82B/EoYA==}
 
   '@fatsolutions/she@0.4.0':
     resolution: {integrity: sha512-zPwERSMQ1w0QmoSyhSqCApAeyG8WLRkefsk/alHzx9OeZ503d8pGbNg7DDJBQ/UyfqCKevs6sjql6/k/cE/jaw==}
@@ -1757,6 +1766,10 @@ packages:
     resolution: {integrity: sha512-bFJY2sMZ9tsLBhPCm719MWjoz+doabXIwPX/xtW56EHwAJMRAS6mICF6H2dCwOQHJmCMKpOSFBwW0SaiHzcioQ==}
     engines: {node: '>=22'}
 
+  starknet@9.4.2:
+    resolution: {integrity: sha512-NFtg077DjddHUSh8sLZ5uB149LEF4NR90FuJ0oF7+zhce7l0oG9Ubqr3H4+jHm/ghHtV+yjlv1UhEoo4SBfILA==}
+    engines: {node: '>=22'}
+
   std-env@3.9.0:
     resolution: {integrity: sha512-UGvjygr6F6tpH7o2qyqR6QYpwraIjKSdtzyBdyytFOHmPZY917kwdwLG0RbOjWOnKmnm3PeHjaoLLMie7kPLQw==}
 
@@ -2183,6 +2196,14 @@ snapshots:
     dependencies:
       '@eslint/core': 0.13.0
       levn: 0.4.1
+
+  '@fatsolutions/cairo-abi-codec@0.0.4(typescript@5.9.2)':
+    dependencies:
+      abi-wan-kanabi: 2.2.4
+      starknet: 9.4.2(typescript@5.9.2)
+    transitivePeerDependencies:
+      - typescript
+      - zod
 
   '@fatsolutions/she@0.4.0':
     dependencies:
@@ -3594,6 +3615,23 @@ snapshots:
       - debug
 
   starknet@9.2.1(typescript@5.9.2):
+    dependencies:
+      '@noble/curves': 1.7.0
+      '@noble/hashes': 1.6.1
+      '@scure/base': 1.2.5
+      '@scure/starknet': 1.1.0
+      '@starknet-io/get-starknet-wallet-standard': 5.0.0(typescript@5.9.2)
+      '@starknet-io/starknet-types-010': '@starknet-io/types-js@0.10.0'
+      '@starknet-io/starknet-types-09': '@starknet-io/types-js@0.9.2'
+      abi-wan-kanabi: 2.2.4
+      lossless-json: 4.3.0
+      pako: 2.1.0
+      ts-mixer: 6.0.4
+    transitivePeerDependencies:
+      - typescript
+      - zod
+
+  starknet@9.4.2(typescript@5.9.2):
     dependencies:
       '@noble/curves': 1.7.0
       '@noble/hashes': 1.6.1
