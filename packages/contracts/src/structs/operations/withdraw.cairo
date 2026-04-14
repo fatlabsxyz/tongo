@@ -76,33 +76,10 @@ pub struct InputsWithdraw {
 impl WithdrawPrefix of Prefix<InputsWithdraw> {
     fn compute_prefix(self: @InputsWithdraw) -> felt252 {
         let withdraw_selector = 'withdraw';
-        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
-
-
-        let CipherBalance { L, R } = *self.currentBalance;
-        let CipherBalance { L: V, R: R_aux } = *self.auxiliarCipher;
         let mut array: Array<felt252> = array![
-            *chain_id,
-            (*tongo_address).into(),
-            (*sender_address).into(),
             withdraw_selector,
-            *self.y.x,
-            *self.y.y,
-            (*self.nonce).into(),
-            (*self.amount).into(),
-            (*self.to).into(),
-            L.x,
-            L.y,
-            R.x,
-            R.y,
-            V.x,
-            V.y,
-            R_aux.x,
-            R_aux.y,
         ];
-        for d in self.data {
-            array.append(*d)
-        }
+        self.serialize(ref array);
         poseidon_hash_span(array.span())
     }
 }
