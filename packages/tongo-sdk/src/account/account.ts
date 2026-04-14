@@ -281,11 +281,15 @@ export class Account implements IAccount {
         const hintLeftover = await this.computeAEHintForSelf(balance_left, nonce + 1n);
 
         //audit
+        const transferBalanceSelfCipher: CipherBalance = {
+            L: starkPointToProjectivePoint(inputs.transferBalanceSelf.L),
+            R: starkPointToProjectivePoint(inputs.transferBalanceSelf.R),
+        };
         const auditor = await this.auditorKey();
         const auditPart = await this.createAuditPart(balance_left, nonce, newBalance, prefix_data, auditor);
-        const auditPartTransfer = await this.createAuditPart(amount, nonce, inputs.transferBalanceSelf, prefix_data, auditor);
+        const auditPartTransfer = await this.createAuditPart(amount, nonce, transferBalanceSelfCipher, prefix_data, auditor);
 
-        
+
         if (externalData.isSome()) {
             const toTongo = externalData.unwrap()!.toTongo;
 
@@ -298,12 +302,11 @@ export class Account implements IAccount {
             const auditorTarget: CairoOption<PubKey> = await Tongo2.auditor_key();
 
             const prefix_data_target: GeneralPrefixData = {
-                chain_id: prefix_data.chain_id,
-                sender_address: prefix_data.sender_address,
+                ...prefix_data,
                 tongo_address: toTongo,
             };
 
-            const auditTarget = await this.createAuditPart(amount, nonce, inputs.transferBalanceSelf, prefix_data_target, auditorTarget )
+            const auditTarget = await this.createAuditPart(amount, nonce, transferBalanceSelfCipher, prefix_data_target, auditorTarget )
             const external: ExternalData = {
                toTongo, 
                auditPart: auditTarget,
