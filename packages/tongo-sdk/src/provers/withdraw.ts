@@ -4,67 +4,37 @@ import { range as SHE_range} from "@fatsolutions/she/protocols"
 
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
-import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
+import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint, projectivePointToStarkPoint, starkPointToProjectivePoint } from "../types";
 import { createCipherBalance} from "../../src/utils";
+import { AuxAbiType, auxCodec } from "../abi/abi.types";
 
 // cairo string 'withdraw'
 export const WITHDRAW_CAIRO_STRING = 8604536554778681719n;
 
 /**
  * Public inputs of the verifier for the withdraw operation.
- * @interface InputsWithdraw
- * @property {ProjectivePoint} y - The Tongo account to withdraw from
+ * @property {PubKey} y - The Tongo account to withdraw from
  * @property {bigint} nonce - The nonce of the Tongo account
- * @property {bigint} to - The starknet contract address to send the funds to
+ * @property {string} to - The starknet contract address to send the funds to
  * @property {bigint} amount - The amount of tongo to withdraw
  * @property {CipherBalance} currentBalance - The current CipherBalance stored for the account
+ * @property {CipherBalance} auxiliarCipher - Auxiliary cipher for range proof
  * @property {number} bit_size - The bit size for range proofs
  * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
- * @property {RelayData} relay_data - relay data for the operation
+ * @property {bigint[]} data - Serialized operation options
  */
-export interface InputsWithdraw {
-    y: ProjectivePoint;
-    nonce: bigint;
-    to: bigint;
-    amount: bigint;
-    currentBalance: CipherBalance,
-    auxiliarCipher: CipherBalance,
-    bit_size: number,
-    prefix_data: GeneralPrefixData,
-    serialized_data: bigint[],
-}
+export type InputsWithdraw = AuxAbiType<"tongo::structs::operations::withdraw::InputsWithdraw">;
 
 /**
  * Computes the prefix by hashing some public inputs.
  * @param {InputsWithdraw} inputs - The inputs from the proof
  * @returns {bigint} The computed prefix hash
  */
-function prefixWithdraw(
-    inputs: InputsWithdraw
-): bigint {
-    const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
-    const {L: L0, R:R0} = inputs.currentBalance;
-    const {L: V, R:R_aux} = inputs.auxiliarCipher;
-
+function prefixWithdraw(inputs: InputsWithdraw): bigint {
+    const _serialized = auxCodec.encode("tongo::structs::operations::withdraw::InputsWithdraw", inputs);
     const seq: bigint[] = [
-        chain_id,
-        tongo_address,
-        sender_address,
         WITHDRAW_CAIRO_STRING,
-        inputs.y.toAffine().x,
-        inputs.y.toAffine().y,
-        inputs.nonce,
-        inputs.amount,
-        inputs.to,
-        L0.toAffine().x,
-        L0.toAffine().y,
-        R0.toAffine().x,
-        R0.toAffine().y,
-        V.toAffine().x,
-        V.toAffine().y,
-        R_aux.toAffine().x,
-        R_aux.toAffine().y,
-        ...inputs.serialized_data,
+        ..._serialized.map(BigInt)
     ];
     return compute_prefix(seq);
 }
@@ -124,15 +94,21 @@ export function proveWithdraw(
     const auxiliarCipher = createCipherBalance(h,left, total_random);
 
     const inputs: InputsWithdraw = {
-        y,
+        y: projectivePointToStarkPoint(y),
         nonce,
-        currentBalance: initial_cipherbalance,
-        to,
+        currentBalance: {
+            L: projectivePointToStarkPoint(initial_cipherbalance.L),
+            R: projectivePointToStarkPoint(initial_cipherbalance.R),
+        },
+        to: "0x" + to.toString(16),
         amount,
-        bit_size,
-        auxiliarCipher,
+        bit_size: BigInt(bit_size),
+        auxiliarCipher: {
+            L: projectivePointToStarkPoint(auxiliarCipher.L),
+            R: projectivePointToStarkPoint(auxiliarCipher.R),
+        },
         prefix_data,
-        serialized_data,
+        data: serialized_data,
     };
 
     const prefix = prefixWithdraw(inputs);
@@ -200,27 +176,29 @@ export function verifyWithdraw(
     inputs: InputsWithdraw,
     proof: ProofOfWithdraw,
 ) {
-    const bit_size = inputs.bit_size;
+    const bit_size = Number(inputs.bit_size);
     const prefix = prefixWithdraw(inputs);
 
-    
+
     const c = compute_challenge(prefix, [proof.A_x, proof.A_r, proof.A, proof.A_v]);
 
-    let { L: L0, R: R0 } = inputs.currentBalance;
+    let L0 = starkPointToProjectivePoint(inputs.currentBalance.L);
+    let R0 = starkPointToProjectivePoint(inputs.currentBalance.R);
 
-    L0 = L0.subtract(g.multiply(inputs.amount));
-    let { L: V, R: R_aux} = inputs.auxiliarCipher;
+    L0 = L0.subtract(g.multiply(BigInt(inputs.amount)));
+    let V = starkPointToProjectivePoint(inputs.auxiliarCipher.L);
+    let R_aux = starkPointToProjectivePoint(inputs.auxiliarCipher.R);
     const V_proof = verifyRangeProof(proof.range, bit_size, prefix);
     if (V_proof == false) { throw new Error("erro in range for V"); }
     if (!V.equals(V_proof)) {throw new Error( "V missmatch" )};
-    
+
     let sameEncryptInputs = {
       L1: L0,
       R1: R0,
       L2: V,
       R2: R_aux,
       g,
-      y1: inputs.y,
+      y1: starkPointToProjectivePoint(inputs.y),
       y2: h,
     };
 
