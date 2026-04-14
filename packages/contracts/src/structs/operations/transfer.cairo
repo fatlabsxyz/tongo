@@ -120,49 +120,10 @@ pub struct InputsTransfer {
 impl TransferPrefix of Prefix<InputsTransfer> {
     fn compute_prefix(self: @InputsTransfer) -> felt252 {
         let transfer_selector = 'transfer';
-        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
-
-
-        let CipherBalance { L: L0, R: R0 } = *self.currentBalance;
-        let CipherBalance { L, R } = *self.transferBalanceSelf;
-        let CipherBalance { L: L_bar, R: R_bar } = *self.transferBalance;
-        let CipherBalance { L: V, R: R_aux } = *self.auxiliarCipher;
-        let CipherBalance { L: V2, R: R_aux2 } = *self.auxiliarCipher2;
-
         let mut array: Array<felt252> = array![
-            *chain_id,
-            (*tongo_address).into(),
-            (*sender_address).into(),
             transfer_selector,
-            *self.from.x,
-            *self.from.y,
-            *self.to.x,
-            *self.to.y,
-            (*self.nonce).into(),
-            L0.x,
-            L0.y,
-            R0.x,
-            R0.y,
-            L.x,
-            L.y,
-            R.x,
-            R.y,
-            L_bar.x,
-            L_bar.y,
-            R_bar.x,
-            R_bar.y,
-            V.x,
-            V.y,
-            R_aux.x,
-            R_aux.y,
-            V2.x,
-            V2.y,
-            R_aux2.x,
-            R_aux2.y,
         ];
-        for d in self.data {
-            array.append(*d)
-        }
+        self.serialize(ref array);
         poseidon_hash_span(array.span())
     }
 }

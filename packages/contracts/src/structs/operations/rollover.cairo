@@ -32,16 +32,10 @@ pub struct InputsRollOver {
 impl RollOverPrefix of Prefix<InputsRollOver> {
     fn compute_prefix(self: @InputsRollOver) -> felt252 {
         let rollover_selector = 'rollover';
-        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
-        let array: Array<felt252> = array![
-            *chain_id,
-            (*tongo_address).into(),
-            (*sender_address).into(),
+        let mut array: Array<felt252> = array![
             rollover_selector,
-            *self.y.x,
-            *self.y.y,
-            (*self.nonce).into(),
         ];
+        self.serialize(ref array);
         poseidon_hash_span(array.span())
     }
 }
