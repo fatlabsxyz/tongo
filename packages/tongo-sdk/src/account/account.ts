@@ -86,6 +86,14 @@ export class Account implements IAccount {
         return pubKeyAffineToBase58(pubKeyFromSecret(bytesOrNumToBigInt(pk)));
     }
 
+    async prefixData(sender: string): Promise<GeneralPrefixData> {
+        return {
+            chain_id: BigInt(await this.provider.getChainId()),
+            tongo_address: this.Tongo.address,
+            sender_address: sender,
+        };
+    }
+
     async nonce(): Promise<bigint> {
         const { nonce } = await this.rawState();
         return nonce;
