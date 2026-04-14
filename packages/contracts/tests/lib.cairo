@@ -27,4 +27,6 @@ pub mod vault {
     pub mod interactions;
 }
 
+pub mod serde;
+
 pub mod consts;
