@@ -2,19 +2,16 @@ import { xchacha20poly1305 } from "@noble/ciphers/chacha.js";
 import { bytesToNumberBE, numberToBytesBE } from "@noble/ciphers/utils.js";
 import { randomBytes } from "@noble/ciphers/webcrypto.js";
 import { BigNumberish, uint256, Uint256 } from "starknet";
-
-import { isUint256 } from "./utils.js";
+import { castBigInt, isUint256 } from "./utils.js";
+import { TongoAbiType } from "./abi/abi.types.js";
 
 /**
  * The AEBalance represents a simetrically encrypted balance using authenticated
- * encryption. This interface represents the upstream values found in the
+ * encryption. This type represents the upstream values found in the
  * contract, which are stored as numbers, although they must be interpreted
- * as bytes.
+ * as bytes. (ciphertext: Cairo.U512, nonce: Cairo.U256)
  */
-export interface AEBalance {
-    ciphertext: bigint;   // Cairo.U512
-    nonce: bigint;        // Cairo.U256
-}
+export type AEBalance = TongoAbiType<"tongo::structs::aecipher::AEBalance">;
 
 export interface AEBalanceBytes {
     ciphertext: Uint8Array;    // 64 B
@@ -23,8 +20,8 @@ export interface AEBalanceBytes {
 
 export function AEHintToBytes({ ciphertext, nonce }: AEBalance): AEBalanceBytes {
     return {
-        ciphertext: numberToBytesBE(ciphertext, 64),
-        nonce: numberToBytesBE(nonce, 24),                // XChaCha20 nonce is 192 bits
+        ciphertext: numberToBytesBE(BigInt(ciphertext as BigNumberish), 64),
+        nonce: numberToBytesBE(castBigInt(nonce), 24),    // XChaCha20 nonce is 192 bits
     };
 }
 
