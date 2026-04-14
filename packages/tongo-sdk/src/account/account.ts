@@ -256,7 +256,7 @@ export class Account implements IAccount {
 
         if (transferDetails.toTongo) {
             const toTongo = transferDetails.toTongo;
-            if (toTongo == this.Tongo.contractAddress) { throw new Error("Cannot make and external transfer to same tongo") }
+            if (toTongo == this.Tongo.address) { throw new Error("Cannot make and external transfer to same tongo") }
             let emptyAudit = new CairoOption<Audit>(CairoOptionVariant.None);
             externalData = new CairoOption<ExternalData>(CairoOptionVariant.Some, { toTongo, auditPart: emptyAudit })
         }
