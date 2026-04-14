@@ -17,7 +17,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
-          include: [ "test/unit/*" ],
+          include: [ "test/unit/*", "test/serde/*.test.ts" ],
         },
       },
       {

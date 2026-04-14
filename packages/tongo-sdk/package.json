@@ -48,6 +48,7 @@
     "format": "prettier --config ./prettier.config.js --check \"{src,test}/**/*.{js,ts,json}\"",
     "format:fix": "prettier --config ./prettier.config.js --write \"{src,test,tests}/**/*.{js,ts,json}\"",
     "devnet:state": ". ./test/envvars && starknet-devnet --dump-path ./test/state/devnet.state",
+    "serde": "vitest 'serde'",
     "aux": "tsx ./aux.ts"
   },
   "license": "Apache-2.0",
