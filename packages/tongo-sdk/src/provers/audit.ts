@@ -31,9 +31,9 @@ export interface InputsAudit {
 function prefixAudit(inputs: InputsAudit): bigint {
     const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
     const seq: bigint[] = [
-        chain_id,
-        tongo_address,
-        sender_address,
+        BigInt(chain_id),
+        BigInt(tongo_address),
+        BigInt(sender_address),
         AUDIT_CAIRO_STRING,
         inputs.y.toAffine().x,
         inputs.y.toAffine().y,
