@@ -1,4 +1,4 @@
-import { ProjectivePoint } from "../types";
+import { StarkPoint } from "../types.js";
 import { Call, Contract } from "starknet";
 import { IOperation, OperationType } from "./operation.js";
 import { ProofOfRollover } from "../provers/rollover";
@@ -11,13 +11,13 @@ export interface IRollOverOperation extends IOperation {
 /**
  * Represents the calldata of a rollover operation.
  * @interface RollOverOpParams
- * @property {ProjectivePoint} to - The Tongo account to rollover
+ * @property {StarkPoint} to - The Tongo account to rollover
  * @property {AEBalance} hint - AE encryption of the final balance (tentative in this case) of the account
  * @property {ProofOfRollover} proof - ZK proof for the rollover operation
  * @property {Contract} Tongo - The tongo instance to interact with
  */
 interface RollOverOpParams {
-    to: ProjectivePoint;
+    to: StarkPoint;
     hint: AEBalance;
     proof: ProofOfRollover;
     Tongo: Contract;
@@ -25,7 +25,7 @@ interface RollOverOpParams {
 
 export class RollOverOperation implements IRollOverOperation {
     type: typeof OperationType.Rollover = OperationType.Rollover;
-    to: ProjectivePoint;
+    to: StarkPoint;
     proof: ProofOfRollover;
     Tongo: Contract;
     hint: AEBalance;

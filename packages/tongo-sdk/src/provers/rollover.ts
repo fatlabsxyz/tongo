@@ -2,7 +2,8 @@ import { compute_challenge } from "@fatsolutions/she";
 import { poe } from "@fatsolutions/she/protocols";
 
 import { GENERATOR as g } from "../constants";
-import { compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
+import { compute_prefix, GeneralPrefixData, ProjectivePoint, projectivePointToStarkPoint, starkPointToProjectivePoint } from "../types";
+import { AuxAbiType, auxCodec } from "../abi/abi.types";
 
 
 // cairo string 'rollover'
@@ -10,16 +11,11 @@ export const ROLLOVER_CAIRO_STRING = 8245928655720965490n;
 
 /**
  * Public inputs of the verifier for the rollover operation.
- * @interface InputsRollover
- * @property {ProjectivePoint} y - The Tongo account to rollover
+ * @property {PubKey} y - The Tongo account to rollover
  * @property {bigint} nonce - The nonce of the Tongo account
  * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
  */
-export interface InputsRollover {
-    y: ProjectivePoint,
-    nonce: bigint,
-    prefix_data: GeneralPrefixData,
-}
+export type InputsRollover = AuxAbiType<"tongo::structs::operations::rollover::InputsRollOver">;
 
 /**
  * Proof of rollover operation.
@@ -33,15 +29,10 @@ export interface ProofOfRollover {
 }
 
 function prefixRollover(inputs: InputsRollover): bigint {
-    const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
+    const _serialized = auxCodec.encode("tongo::structs::operations::rollover::InputsRollOver", inputs);
     const seq: bigint[] = [
-        chain_id,
-        tongo_address,
-        sender_address,
         ROLLOVER_CAIRO_STRING,
-        inputs.y.toAffine().x,
-        inputs.y.toAffine().y,
-        inputs.nonce
+        ..._serialized.map(BigInt)
     ];
     return compute_prefix(seq);
 }
@@ -53,7 +44,7 @@ export function proveRollover(
 ): { inputs: InputsRollover; proof: ProofOfRollover; } {
     const x = private_key;
     const y = g.multiply(x);
-    const inputs: InputsRollover = { y: y, nonce: nonce, prefix_data };
+    const inputs: InputsRollover = { y: projectivePointToStarkPoint(y), nonce, prefix_data };
     const prefix = prefixRollover(inputs);
     const { proof: { A: Ax, s: sx } } = poe.prove(x, g, prefix);
     return { inputs, proof: { Ax, sx } };
@@ -75,7 +66,7 @@ export function proveRollover(
 export function verifyRollover(inputs: InputsRollover, proof: ProofOfRollover) {
     const prefix = prefixRollover(inputs);
     const c = compute_challenge(prefix, [proof.Ax]);
-    const res = poe._verify(inputs.y, g, proof.Ax, c, proof.sx);
+    const res = poe._verify(starkPointToProjectivePoint(inputs.y), g, proof.Ax, c, proof.sx);
     if (res == false) {
         throw new Error("verifyRollover failed");
     }
