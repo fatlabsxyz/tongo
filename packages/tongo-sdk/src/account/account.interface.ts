@@ -78,7 +78,7 @@ export interface TransferDetails {
     amount: bigint;
     to: PubKey;
     sender: string,
-    toTongo?: bigint,
+    toTongo?: string,
     fee_to_sender?:bigint,
 }
 
