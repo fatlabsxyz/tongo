@@ -1,9 +1,12 @@
-import { ProjectivePoint, RelayData } from "../types";
 import { ProofOfRagequit } from "../provers/ragequit";
-import { Call, Contract, CairoOption } from "starknet";
+import { BigNumberish, Call, Contract, CairoOption } from "starknet";
 import { IOperation, OperationType } from "./operation.js";
 import { AEBalance } from "../ae_balance.js";
+import { StarkPoint } from "../types.js";
+import { TongoAbiType } from "../abi/abi.types.js";
 import { Audit } from "./audit.js";
+
+export type RagequitOptions = TongoAbiType<"tongo::structs::operations::ragequit::RagequitOptions">;
 
 export interface IRagequitOperation extends IOperation {
     type: typeof OperationType.Ragequit;
@@ -12,28 +15,24 @@ export interface IRagequitOperation extends IOperation {
 /**
  * Represents the calldata of a ragequit operation.
  * @interface RagequitOpParams
- * @property {ProjectivePoint} from - The Tongo account to withdraw from
+ * @property {StarkPoint} from - The Tongo account to withdraw from
  * @property {bigint} amount - The amount of tongo to ragequit (the total amount of tongos in the account)
- * @property {bigint} to - The starknet contract address to send the funds to
+ * @property {BigNumberish} to - The starknet contract address to send the funds to
  * @property {AEBalance} hint - AE encryption of the final balance of the account
  * @property {ProofOfRagequit} proof - ZK proof for the ragequit operation
  * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx. (In theory it is not necessary for this operation, but it helps to keep things consistent and clean for a minimal cost)
- * @property {RelayData} relayData - relay data for the operation
+ * @property {CairoOption<RagequitOptions>} ragequit_options - Options including relay data
  * @property {Contract} Tongo - The tongo instance to interact with
  */
 interface RagequitOpParams {
-    from: ProjectivePoint;
-    amount: bigint;
-    to: bigint;
+    from: StarkPoint;
+    amount: BigNumberish;
+    to: BigNumberish;
     hint: AEBalance;
     proof: ProofOfRagequit;
     auditPart: CairoOption<Audit>;
     ragequit_options: CairoOption<RagequitOptions>;
     Tongo: Contract;
-}
-
-export interface RagequitOptions {
-    relayData: CairoOption<RelayData>,
 }
 
 //TODO: handle this better, maybe something similar to the cairo contracts
@@ -46,7 +45,7 @@ export function serializeRagequitOptions(ragequit_options: CairoOption<RagequitO
         arr.push(1n)
     } else {
         arr.push(0n)
-        arr.push(relayData.unwrap()!.fee_to_sender)
+        arr.push(BigInt(relayData.unwrap()!.fee_to_sender))
     }
     return arr
 }
@@ -54,9 +53,9 @@ export function serializeRagequitOptions(ragequit_options: CairoOption<RagequitO
 export class RagequitOperation implements IRagequitOperation {
     type: typeof OperationType.Ragequit = OperationType.Ragequit;
     Tongo: Contract;
-    from: ProjectivePoint;
-    to: bigint;
-    amount: bigint;
+    from: StarkPoint;
+    to: BigNumberish;
+    amount: BigNumberish;
     hint: AEBalance;
     auditPart: CairoOption<Audit>;
     proof: ProofOfRagequit;
@@ -78,7 +77,7 @@ export class RagequitOperation implements IRagequitOperation {
             {
                 from: this.from,
                 amount: this.amount,
-                to: "0x" + this.to.toString(16),
+                to: this.to,
                 proof: this.proof,
                 hint: this.hint,
                 auditPart: this.auditPart,
