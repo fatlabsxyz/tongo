@@ -20,7 +20,6 @@ import { RagequitOperation, RagequitOptions, serializeRagequitOptions } from "..
 import { tongoAbi } from "../abi/tongo.abi.js";
 import {
     CipherBalance, GeneralPrefixData, parseCipherBalance,
-    projectivePointToStarkPoint,
     PubKey,
     pubKeyAffineToBase58,
     pubKeyAffineToHex,
@@ -507,14 +506,14 @@ export class Account implements IAccount {
     }
 
     verifyExPost(expost: ExPost): bigint {
-        const y = projectivePointToStarkPoint(expost.inputs.y);
+        const y = expost.inputs.y;
         if (y != this.publicKey) {
             throw new Error("The expost is not for you");
         }
         verifyAudit(expost.inputs, expost.proof);
         const amount = this.decryptCipherBalance({
-            L: expost.inputs.auditedBalance.L,
-            R: expost.inputs.auditedBalance.R,
+            L: starkPointToProjectivePoint(expost.inputs.auditedBalance.L),
+            R: starkPointToProjectivePoint(expost.inputs.auditedBalance.R),
         });
         return amount;
     }

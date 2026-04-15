@@ -332,6 +332,48 @@ export const auxAbi = [
         "state_mutability": "view"
     },
     {
+        "type": "struct",
+        "name": "tongo::structs::operations::audit::InputsAudit",
+        "members": [
+            {
+                "name": "y",
+                "type": "tongo::structs::common::pubkey::PubKey"
+            },
+            {
+                "name": "auditorPubKey",
+                "type": "tongo::structs::common::pubkey::PubKey"
+            },
+            {
+                "name": "storedBalance",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance"
+            },
+            {
+                "name": "auditedBalance",
+                "type": "tongo::structs::common::cipherbalance::CipherBalance"
+            },
+            {
+                "name": "prefix_data",
+                "type": "tongo::structs::traits::GeneralPrefixData"
+            }
+        ]
+    },
+    {
+        "type": "function",
+        "name": "_expose_struct_audit",
+        "inputs": [
+            {
+                "name": "arg0",
+                "type": "tongo::structs::operations::audit::InputsAudit"
+            }
+        ],
+        "outputs": [
+            {
+                "type": "core::array::Span::<core::felt252>"
+            }
+        ],
+        "state_mutability": "view"
+    },
+    {
         "type": "constructor",
         "name": "constructor",
         "inputs": []

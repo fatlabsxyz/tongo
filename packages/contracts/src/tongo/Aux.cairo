@@ -10,6 +10,7 @@ fn _serialize<T, +Serde<T>, +Drop<T>, +Destruct<T>>(s: T) -> Span<felt252> {
 
 #[starknet::contract]
 pub mod Aux {
+    use crate::structs::operations::audit::InputsAudit;
     use crate::structs::operations::fund::InputsFund;
     use crate::structs::operations::ragequit::InputsRagequit;
     use crate::structs::operations::rollover::InputsRollOver;
@@ -47,6 +48,11 @@ pub mod Aux {
     fn _expose_struct_general_prefix_data(
         self: @ContractState, arg0: GeneralPrefixData,
     ) -> Span<felt252> {
+        _serialize(arg0)
+    }
+
+    #[external(v0)]
+    fn _expose_struct_audit(self: @ContractState, arg0: InputsAudit) -> Span<felt252> {
         _serialize(arg0)
     }
 
