@@ -24,14 +24,13 @@ interface OutsideFundOpParams {
 }
 
 export class OutsideFundOperation implements IOutsideFundOperation {
-    type: typeof OperationType.OutsideFund;
+    type: typeof OperationType.OutsideFund = OperationType.OutsideFund;
     Tongo: Contract;
     to: ProjectivePoint;
     amount: bigint;
     approve?: Call;
 
     constructor({ to, amount, Tongo }: OutsideFundOpParams) {
-        this.type = OperationType.OutsideFund;
         this.to = to;
         this.amount = amount;
         this.Tongo = Tongo;

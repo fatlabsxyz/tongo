@@ -33,7 +33,7 @@ interface FundOpParams {
 }
 
 export class FundOperation implements IFundOperation {
-    type: typeof OperationType.Fund;
+    type: typeof OperationType.Fund = OperationType.Fund;
     Tongo: Contract;
     to: StarkPoint;
     amount: bigint;
@@ -43,7 +43,6 @@ export class FundOperation implements IFundOperation {
     approve?: Call;
 
     constructor({ to, amount, proof, auditPart, Tongo, hint }: FundOpParams) {
-        this.type = OperationType.Fund;
         this.to = to;
         this.amount = amount;
         this.hint = hint;
