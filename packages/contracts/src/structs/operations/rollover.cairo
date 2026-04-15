@@ -32,9 +32,7 @@ pub struct InputsRollOver {
 impl RollOverPrefix of Prefix<InputsRollOver> {
     fn compute_prefix(self: @InputsRollOver) -> felt252 {
         let rollover_selector = 'rollover';
-        let mut array: Array<felt252> = array![
-            rollover_selector,
-        ];
+        let mut array: Array<felt252> = array![rollover_selector];
         self.serialize(ref array);
         poseidon_hash_span(array.span())
     }

@@ -1,16 +1,12 @@
 use starknet::ContractAddress;
-use crate::structs::common::{
-    cipherbalance::CipherBalance,
-    pubkey::PubKey,
-    state::{State, TongoConfig}
-};
-use crate::structs::operations::{
-    fund::{Fund, OutsideFund},
-    ragequit::{Ragequit, RagequitOptions},
-    rollover::Rollover,
-    transfer::{Transfer, ExternalTransfer, TransferOptions},
-    withdraw::{Withdraw, WithdrawOptions},
-};
+use crate::structs::common::cipherbalance::CipherBalance;
+use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::state::{State, TongoConfig};
+use crate::structs::operations::fund::{Fund, OutsideFund};
+use crate::structs::operations::ragequit::{Ragequit, RagequitOptions};
+use crate::structs::operations::rollover::Rollover;
+use crate::structs::operations::transfer::{ExternalTransfer, Transfer, TransferOptions};
+use crate::structs::operations::withdraw::{Withdraw, WithdrawOptions};
 
 #[starknet::interface]
 pub trait ITongo<TContractState> {
@@ -53,25 +49,31 @@ pub trait ITongo<TContractState> {
     /// Withdraw Tongos and send the ERC20 to a starknet address.
     ///
     /// Emits WithdrawEvent
-    fn withdraw(ref self: TContractState, withdraw: Withdraw, withdraw_options: Option<WithdrawOptions>);
+    fn withdraw(
+        ref self: TContractState, withdraw: Withdraw, withdraw_options: Option<WithdrawOptions>,
+    );
 
     /// Withdraw all the balance of an account and send the ERC20 to a starknet address. This proof
     /// avoids the limitations of the range prove that are present in the regular withdraw.
     ///
     /// Emits RagequitEvent
-    fn ragequit(ref self: TContractState, ragequit: Ragequit, ragequit_options: Option<RagequitOptions>);
+    fn ragequit(
+        ref self: TContractState, ragequit: Ragequit, ragequit_options: Option<RagequitOptions>,
+    );
 
     /// Transfer Tongos from the balanca of te sender to the pending of the receiver
     ///
     /// Emits TransferEvent
-    fn transfer(ref self: TContractState, transfer: Transfer, transfer_options: Option<TransferOptions>);
+    fn transfer(
+        ref self: TContractState, transfer: Transfer, transfer_options: Option<TransferOptions>,
+    );
 
 
     /// Moves to the balance the amount stored in the pending. Callable only by the account owner.
     ///
     /// Emits RolloverEvent
     fn rollover(ref self: TContractState, rollover: Rollover);
-    
+
 
     // State reading functions
     /// Returns the curretn stored balance of a Tongo account
@@ -97,7 +99,7 @@ pub trait ITongo<TContractState> {
     /// Rotates the current auditor public key.
     fn change_auditor_key(ref self: TContractState, new_auditor_key: PubKey);
 
-    // External Transfers 
+    // External Transfers
     /// Approve a Tongo instance
 
     /// Receive an encrypted transfer from another Tongo contract deployed by the same Vault.

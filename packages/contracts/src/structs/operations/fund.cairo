@@ -50,9 +50,7 @@ pub struct InputsFund {
 pub impl FundPrefix of Prefix<InputsFund> {
     fn compute_prefix(self: @InputsFund) -> felt252 {
         let fund_selector = 'fund';
-        let mut array: Array<felt252> = array![
-            fund_selector
-        ];
+        let mut array: Array<felt252> = array![fund_selector];
         self.serialize(ref array);
 
         poseidon_hash_span(array.span())

@@ -1,10 +1,8 @@
-use crate::tongo::setup::{setup_tongo};
 use tongo::tongo::ITongo::ITongoDispatcherTrait;
+use crate::consts::USER_ADDRESS;
 use crate::prover::utils::pubkey_from_secret;
-use crate::consts::{USER_ADDRESS};
-
-
 use crate::tongo::operations::{fundOperation, transferOperation};
+use crate::tongo::setup::setup_tongo;
 
 #[test]
 fn test_transfer() {
@@ -18,13 +16,21 @@ fn test_transfer() {
     let initial_fund = 250;
 
     let sender = USER_ADDRESS;
-    let fee_to_sender =  0;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
+    let fee_to_sender = 0;
+    let operation = fundOperation(x, initial_balance, initial_fund, sender, dispatcher);
     dispatcher.fund(operation);
 
-
     let transfer_amount = 100;
-    let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address,dispatcher);
+    let (operation, transfer_options) = transferOperation(
+        x,
+        y_bar,
+        transfer_amount,
+        initial_fund,
+        USER_ADDRESS,
+        fee_to_sender,
+        tongo_address,
+        dispatcher,
+    );
     dispatcher.transfer(operation, transfer_options);
 }
 

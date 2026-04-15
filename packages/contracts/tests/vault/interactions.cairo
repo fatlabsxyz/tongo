@@ -1,9 +1,9 @@
+use snforge_std::start_cheat_caller_address;
 use starknet::ContractAddress;
-use crate::tongo::setup::{setup_tongo};
 use tongo::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
 use tongo::tongo::IVault::{IVaultDispatcher, IVaultDispatcherTrait};
-use crate::consts::{USER_ADDRESS, OWNER_ADDRESS};
-use snforge_std::{ start_cheat_caller_address };
+use crate::consts::{OWNER_ADDRESS, USER_ADDRESS};
+use crate::tongo::setup::setup_tongo;
 
 
 #[test]
@@ -31,9 +31,9 @@ fn test_owner() {
 #[test]
 fn test_approve() {
     let (_, Tongo) = setup_tongo();
-    let Vault = IVaultDispatcher {contract_address: Tongo.get_vault()};
+    let Vault = IVaultDispatcher { contract_address: Tongo.get_vault() };
     let Tongo2 = ITongoDispatcher {
-        contract_address: Vault.deploy_tongo(OWNER_ADDRESS, 'TAG2', Option::None)
+        contract_address: Vault.deploy_tongo(OWNER_ADDRESS, 'TAG2', Option::None),
     };
 
     start_cheat_caller_address(Tongo.contract_address, OWNER_ADDRESS);
@@ -45,9 +45,9 @@ fn test_approve() {
 #[should_panic(expected: "Contract allready white-listed")]
 fn test_double_approve() {
     let (_, Tongo) = setup_tongo();
-    let Vault = IVaultDispatcher {contract_address: Tongo.get_vault()};
+    let Vault = IVaultDispatcher { contract_address: Tongo.get_vault() };
     let Tongo2 = ITongoDispatcher {
-        contract_address: Vault.deploy_tongo(OWNER_ADDRESS, 'TAG2', Option::None)
+        contract_address: Vault.deploy_tongo(OWNER_ADDRESS, 'TAG2', Option::None),
     };
 
     start_cheat_caller_address(Tongo.contract_address, OWNER_ADDRESS);

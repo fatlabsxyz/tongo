@@ -1,15 +1,14 @@
 use core::poseidon::poseidon_hash_span;
-use starknet::ContractAddress;
 use she::utils::reduce_modulo_order;
+use starknet::ContractAddress;
 use crate::structs::aecipher::AEBalance;
 use crate::structs::common::cipherbalance::CipherBalance;
 use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::relayer::{RelayData, SerializeRelayData};
 use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::operations::audit::Audit;
-use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
+use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix, SerializedData};
 use crate::verifier::range::Range;
-use crate::structs::traits::SerializedData;
 
 /// Represents the calldata of a transfer operation.
 ///
@@ -47,17 +46,21 @@ pub struct TransferOptions {
 pub impl SerializeTransferOptions of SerializedData<Option<TransferOptions>> {
     fn serialize_data(self: @Option<TransferOptions>) -> Span<felt252> {
         match self {
-            None => { return array![1].span(); }, 
+            None => { return array![1].span(); },
             Some(options) => {
                 let mut arr: Array<felt252> = array![0];
 
                 let relay = options.relayData.serialize_data();
-                for r in relay { arr.append(*r) }
+                for r in relay {
+                    arr.append(*r)
+                }
 
                 let external = options.externalData.serialize_data();
-                for e in external { arr.append(*e) }
+                for e in external {
+                    arr.append(*e)
+                }
                 return arr.span();
-            }
+            },
         }
     }
 }
@@ -76,7 +79,7 @@ pub impl SerializeExternalData of SerializedData<Option<ExternalData>> {
                 let mut arr: Array<felt252> = array![0];
                 arr.append((*external.toTongo).into());
                 return arr.span();
-            }
+            },
         }
     }
 }
@@ -113,16 +116,14 @@ pub struct InputsTransfer {
     pub auxiliarCipher2: CipherBalance,
     pub bit_size: u32,
     pub prefix_data: GeneralPrefixData,
-    pub data: Span<felt252>
+    pub data: Span<felt252>,
 }
 
 /// Computes the prefix by hashing some public inputs.
 impl TransferPrefix of Prefix<InputsTransfer> {
     fn compute_prefix(self: @InputsTransfer) -> felt252 {
         let transfer_selector = 'transfer';
-        let mut array: Array<felt252> = array![
-            transfer_selector,
-        ];
+        let mut array: Array<felt252> = array![transfer_selector];
         self.serialize(ref array);
         poseidon_hash_span(array.span())
     }
