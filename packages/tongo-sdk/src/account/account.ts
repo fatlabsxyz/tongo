@@ -185,6 +185,38 @@ export class Account implements IAccount {
         return auditorKey;
     }
 
+    private applyRelayFee(
+        fee_to_sender: bigint,
+        currentAmount: bigint,
+        currentBalance: CipherBalance,
+    ): {
+        relayData: CairoOption<RelayData>;
+        currentAmount: bigint;
+        currentBalance: CipherBalance;
+    } {
+        if (fee_to_sender == 0n) {
+            return {
+                relayData: new CairoOption<RelayData>(CairoOptionVariant.None),
+                currentAmount,
+                currentBalance,
+            };
+        }
+        const relayData = new CairoOption<RelayData>(CairoOptionVariant.Some, { fee_to_sender });
+        const { L: L_fee, R: R_fee } = createCipherBalance(
+            starkPointToProjectivePoint(this.publicKey),
+            fee_to_sender,
+            FEE_CAIRO_STRING,
+        );
+        return {
+            relayData,
+            currentAmount: currentAmount - fee_to_sender,
+            currentBalance: {
+                L: currentBalance.L.subtract(L_fee),
+                R: currentBalance.R.subtract(R_fee),
+            },
+        };
+    }
+
     /// Returns Option(None) if tongo has not and auditor and Some(Audit) if tongo has an auditor
     async createAuditPart(
         balance: bigint,
@@ -272,38 +304,26 @@ export class Account implements IAccount {
         const bit_size: number = await this.bit_size();
 
         const { nonce, balance, aeBalance } = await this.rawState();
-        let currentBalance = balance;
 
         const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        let currentAmount = this.decryptCipherBalance(currentBalance, current_hint);
+        const initialAmount = this.decryptCipherBalance(balance, current_hint);
 
         //TODO check if the mount in pending would help
-        if (currentAmount < amount) {
+        if (initialAmount < amount) {
             throw new Error("You dont have enough balance");
         }
 
         const to = starkPointToProjectivePoint(transferDetails.to);
         const prefix_data = await this.prefixData(sender);
 
-        let relayData = new CairoOption<RelayData>(CairoOptionVariant.None);
         let externalData = new CairoOption<ExternalData>(CairoOptionVariant.None);
 
-        const fee_to_sender = transferDetails.fee_to_sender || 0n;
         //TODO implement a max fee in the contract?
-        if (fee_to_sender != 0n) {
-            relayData = new CairoOption<RelayData>(CairoOptionVariant.Some, { fee_to_sender });
-
-            const { L: L_fee, R: R_fee } = createCipherBalance(
-                starkPointToProjectivePoint(this.publicKey),
-                fee_to_sender,
-                FEE_CAIRO_STRING,
-            );
-            currentAmount = currentAmount - fee_to_sender;
-            currentBalance = {
-                L: currentBalance.L.subtract(L_fee),
-                R: currentBalance.R.subtract(R_fee),
-            };
-        }
+        const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
+            transferDetails.fee_to_sender || 0n,
+            initialAmount,
+            balance,
+        );
 
         if (transferDetails.toTongo) {
             const toTongo = transferDetails.toTongo;
@@ -413,33 +433,21 @@ export class Account implements IAccount {
     async ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation> {
         const { to, sender } = ragequitDetails;
         const { nonce, balance, aeBalance } = await this.rawState();
-        let currentBalance = balance;
 
         const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        let currentAmount = this.decryptCipherBalance(currentBalance, current_hint);
+        const initialAmount = this.decryptCipherBalance(balance, current_hint);
 
-        if (currentAmount === 0n) {
+        if (initialAmount === 0n) {
             throw new Error("You dont have enough balance");
         }
 
         const prefix_data = await this.prefixData(sender);
 
-        const fee_to_sender = ragequitDetails.fee_to_sender || 0n;
-        let relayData = new CairoOption<RelayData>(CairoOptionVariant.None);
-        if (fee_to_sender != 0n) {
-            relayData = new CairoOption<RelayData>(CairoOptionVariant.Some, { fee_to_sender });
-
-            const { L: L_fee, R: R_fee } = createCipherBalance(
-                starkPointToProjectivePoint(this.publicKey),
-                fee_to_sender,
-                FEE_CAIRO_STRING,
-            );
-            currentAmount = currentAmount - fee_to_sender;
-            currentBalance = {
-                L: currentBalance.L.subtract(L_fee),
-                R: currentBalance.R.subtract(R_fee),
-            };
-        }
+        const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
+            ragequitDetails.fee_to_sender || 0n,
+            initialAmount,
+            balance,
+        );
 
         const ragequit_options = new CairoOption<RagequitOptions>(CairoOptionVariant.Some, {
             relayData,
@@ -477,33 +485,21 @@ export class Account implements IAccount {
         const { amount, to, sender } = withdrawDetails;
         const bit_size = await this.bit_size();
         const { nonce, balance, aeBalance } = await this.rawState();
-        let currentBalance = balance;
 
         const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        let currentAmount = this.decryptCipherBalance(currentBalance, current_hint);
+        const initialAmount = this.decryptCipherBalance(balance, current_hint);
 
-        if (currentAmount < amount) {
+        if (initialAmount < amount) {
             throw new Error("You dont have enought balance");
         }
 
         const prefix_data = await this.prefixData(sender);
 
-        const fee_to_sender = withdrawDetails.fee_to_sender || 0n;
-        let relayData = new CairoOption<RelayData>(CairoOptionVariant.None);
-        if (fee_to_sender != 0n) {
-            relayData = new CairoOption<RelayData>(CairoOptionVariant.Some, { fee_to_sender });
-
-            const { L: L_fee, R: R_fee } = createCipherBalance(
-                starkPointToProjectivePoint(this.publicKey),
-                fee_to_sender,
-                FEE_CAIRO_STRING,
-            );
-            currentAmount = currentAmount - fee_to_sender;
-            currentBalance = {
-                L: currentBalance.L.subtract(L_fee),
-                R: currentBalance.R.subtract(R_fee),
-            };
-        }
+        const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
+            withdrawDetails.fee_to_sender || 0n,
+            initialAmount,
+            balance,
+        );
 
         const withdraw_options = new CairoOption<WithdrawOptions>(CairoOptionVariant.Some, {
             relayData,
