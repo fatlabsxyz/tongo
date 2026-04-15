@@ -231,7 +231,7 @@ export class AccountEventReader {
         otherPubKey: PubKey,
         toBlock: number | "latest" = "latest",
         numEvents: number | "all" = "all",
-    ) {
+    ): Promise<TongoReaderWithdrawEvent[]> {
         return this.eventReader.fetchEvents(
             [[WITHDRAW_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
             fromBlock,
@@ -247,7 +247,7 @@ export class AccountEventReader {
         otherPubKey: PubKey,
         toBlock: number | "latest" = "latest",
         numEvents: number | "all" = "all",
-    ) {
+    ): Promise<TongoReaderRagequitEvent[]> {
         return this.eventReader.fetchEvents(
             [[RAGEQUIT_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
             fromBlock,
@@ -263,7 +263,7 @@ export class AccountEventReader {
         otherPubKey: PubKey,
         toBlock: number | "latest" = "latest",
         numEvents: number | "all" = "all",
-    ) {
+    ): Promise<TongoReaderRolloverEvent[]> {
         return this.eventReader.fetchEvents(
             [[ROLLOVER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
             fromBlock,
@@ -279,7 +279,7 @@ export class AccountEventReader {
         otherPubKey: PubKey,
         toBlock: number | "latest" = "latest",
         numEvents: number | "all" = "all",
-    ) {
+    ): Promise<TongoReaderTransferOutEvent[]> {
         return this.eventReader.fetchEvents(
             [[TRANSFER_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
             fromBlock,
@@ -295,7 +295,7 @@ export class AccountEventReader {
         otherPubKey: PubKey,
         toBlock: number | "latest" = "latest",
         numEvents: number | "all" = "all",
-    ) {
+    ): Promise<TongoReaderTransferInEvent[]> {
         return this.eventReader.fetchEvents(
             [[TRANSFER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
             fromBlock,
@@ -330,7 +330,7 @@ export class AccountEventReader {
         otherPubKey: PubKey,
         toBlock: number | "latest" = "latest",
         numEvents: number | "all" = "all",
-    ) {
+    ): Promise<TongoReaderBalanceDeclaredEvent[]> {
         return this.eventReader.fetchEvents(
             [
                 [BALANCE_DECLARED_EVENT],
@@ -353,7 +353,7 @@ export class AccountEventReader {
         otherPubKey: PubKey,
         toBlock: number | "latest" = "latest",
         numEvents: number | "all" = "all",
-    ) {
+    ): Promise<TongoReaderTransferDeclaredEvent[]> {
         return this.eventReader.fetchEvents(
             [
                 [TRANSFER_DECLARED_EVENT],
@@ -376,7 +376,7 @@ export class AccountEventReader {
         otherPubKey: PubKey,
         toBlock: number | "latest" = "latest",
         numEvents: number | "all" = "all",
-    ) {
+    ): Promise<TongoReaderTransferDeclaredEvent[]> {
         return this.eventReader.fetchEvents(
             [
                 [TRANSFER_DECLARED_EVENT],
@@ -399,7 +399,7 @@ export class AccountEventReader {
         otherPubKey: PubKey,
         toBlock: number | "latest" = "latest",
         numEvents: number | "all" = "all",
-    ) {
+    ): Promise<TongoReaderExternalTransferEvent[]> {
         return this.eventReader.fetchEvents(
             [
                 [EXTERNAL_TRANSFER_EVENT],
