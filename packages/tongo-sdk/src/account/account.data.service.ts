@@ -24,7 +24,6 @@ const BALANCE_DECLARED_EVENT_PATH = "tongo::structs::events::BalanceDeclared";
 const TRANSFER_DECLARED_EVENT_PATH = "tongo::structs::events::TransferDeclared";
 const EXTERNAL_TRANSFER_EVENT_PATH = "tongo::structs::events::ReceivedExternalTransfer";
 
-
 export const TongoReaderEventType = {
     Fund: "fund",
     OutsideFund: "outsideFund",
@@ -37,7 +36,7 @@ export const TongoReaderEventType = {
     TransferDeclared: "transferDeclared",
     ExternalTransfer: "externalTransfer",
 } as const;
-type TongoReaderEventType = typeof TongoReaderEventType[keyof typeof TongoReaderEventType];
+type TongoReaderEventType = (typeof TongoReaderEventType)[keyof typeof TongoReaderEventType];
 
 interface BaseEvent {
     type: TongoReaderEventType;
@@ -77,7 +76,7 @@ interface RagequitEventData {
 interface RolloverEventData {
     to: StarkPoint;
     nonce: bigint;
-    rollovered: { L: StarkPoint; R: StarkPoint; };
+    rollovered: { L: StarkPoint; R: StarkPoint };
 }
 
 interface TransferEventData {
@@ -85,26 +84,26 @@ interface TransferEventData {
     from: StarkPoint;
     nonce: bigint;
     toTongo: bigint;
-    transferBalance: { L: StarkPoint; R: StarkPoint; };
-    transferBalanceSelf: { L: StarkPoint; R: StarkPoint; };
+    transferBalance: { L: StarkPoint; R: StarkPoint };
+    transferBalanceSelf: { L: StarkPoint; R: StarkPoint };
     hintTransfer: AEBalance;
     hintLeftover: AEBalance;
 }
 
 interface ExternalTransferEventData {
-    to: StarkPoint,
-    from: StarkPoint,
-    nonce: bigint,
-    fromTongo: bigint,
-    transferBalance: { L: StarkPoint; R: StarkPoint; };
-    hintTransfer: AEBalance,
+    to: StarkPoint;
+    from: StarkPoint;
+    nonce: bigint;
+    fromTongo: bigint;
+    transferBalance: { L: StarkPoint; R: StarkPoint };
+    hintTransfer: AEBalance;
 }
 
 interface BalanceDeclaredEventData {
     from: StarkPoint;
     nonce: bigint;
     auditorPubKey: StarkPoint;
-    declaredCipherBalance: { L: StarkPoint; R: StarkPoint; };
+    declaredCipherBalance: { L: StarkPoint; R: StarkPoint };
     hint: AEBalance;
 }
 
@@ -113,34 +112,41 @@ interface TransferDeclaredEventData {
     to: StarkPoint;
     nonce: bigint;
     auditorPubKey: StarkPoint;
-    declaredCipherBalance: { L: StarkPoint; R: StarkPoint; };
+    declaredCipherBalance: { L: StarkPoint; R: StarkPoint };
     hint: AEBalance;
 }
 
-type TongoReaderFundEvent = FundEventData & BaseEvent & { type: typeof TongoReaderEventType.Fund; };
-type TongoReaderOutsideFundEvent = OutsideFundEventData & BaseEvent & { type: typeof TongoReaderEventType.OutsideFund; };
-type TongoReaderWithdrawEvent = WithdrawEventData & BaseEvent & { type: typeof TongoReaderEventType.Withdraw; };
-type TongoReaderRagequitEvent = RagequitEventData & BaseEvent & { type: typeof TongoReaderEventType.Ragequit; };
-type TongoReaderRolloverEvent = RolloverEventData & BaseEvent & { type: typeof TongoReaderEventType.Rollover; };
-type TongoReaderTransferInEvent = TransferEventData & BaseEvent & { type: typeof TongoReaderEventType.TransferIn; };
-type TongoReaderTransferOutEvent = TransferEventData & BaseEvent & { type: typeof TongoReaderEventType.TransferOut; };
-type TongoReaderBalanceDeclaredEvent = BalanceDeclaredEventData & BaseEvent & { type: typeof TongoReaderEventType.BalanceDeclared; };
-type TongoReaderTransferDeclaredEvent = TransferDeclaredEventData & BaseEvent & { type: typeof TongoReaderEventType.TransferDeclared; };
-type TongoReaderExternalTransferEvent = ExternalTransferEventData & BaseEvent & { type: typeof TongoReaderEventType.ExternalTransfer; };
+type TongoReaderFundEvent = BaseEvent & FundEventData & { type: typeof TongoReaderEventType.Fund };
+type TongoReaderOutsideFundEvent = BaseEvent &
+    OutsideFundEventData & { type: typeof TongoReaderEventType.OutsideFund };
+type TongoReaderWithdrawEvent = BaseEvent &
+    WithdrawEventData & { type: typeof TongoReaderEventType.Withdraw };
+type TongoReaderRagequitEvent = BaseEvent &
+    RagequitEventData & { type: typeof TongoReaderEventType.Ragequit };
+type TongoReaderRolloverEvent = BaseEvent &
+    RolloverEventData & { type: typeof TongoReaderEventType.Rollover };
+type TongoReaderTransferInEvent = BaseEvent &
+    TransferEventData & { type: typeof TongoReaderEventType.TransferIn };
+type TongoReaderTransferOutEvent = BaseEvent &
+    TransferEventData & { type: typeof TongoReaderEventType.TransferOut };
+type TongoReaderBalanceDeclaredEvent = BaseEvent &
+    BalanceDeclaredEventData & { type: typeof TongoReaderEventType.BalanceDeclared };
+type TongoReaderTransferDeclaredEvent = BaseEvent &
+    TransferDeclaredEventData & { type: typeof TongoReaderEventType.TransferDeclared };
+type TongoReaderExternalTransferEvent = BaseEvent &
+    ExternalTransferEventData & { type: typeof TongoReaderEventType.ExternalTransfer };
 
 type TongoReaderEvent =
-    TongoReaderFundEvent |
-    TongoReaderOutsideFundEvent |
-    TongoReaderWithdrawEvent |
-    TongoReaderRagequitEvent |
-    TongoReaderRolloverEvent |
-    TongoReaderTransferInEvent |
-    TongoReaderTransferOutEvent |
-    TongoReaderBalanceDeclaredEvent |
-    TongoReaderTransferDeclaredEvent |
-    TongoReaderExternalTransferEvent ;
-
-
+    | TongoReaderFundEvent
+    | TongoReaderOutsideFundEvent
+    | TongoReaderWithdrawEvent
+    | TongoReaderRagequitEvent
+    | TongoReaderRolloverEvent
+    | TongoReaderTransferInEvent
+    | TongoReaderTransferOutEvent
+    | TongoReaderBalanceDeclaredEvent
+    | TongoReaderTransferDeclaredEvent
+    | TongoReaderExternalTransferEvent;
 
 function parseTransferEventOut(event: ParsedEvent): TongoReaderTransferOutEvent {
     const data = event[TRANSFER_EVENT_PATH] as unknown as TransferEventData;
@@ -271,57 +277,124 @@ export class AccountEventReader {
         this.eventReader = new ContractEventReader(provider, tongoAddress, tongoAbi);
     }
 
-
-    async getEventsFund(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<TongoReaderFundEvent[]> {
+    async getEventsFund(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<TongoReaderFundEvent[]> {
         return this.eventReader.fetchEvents(
             [[FUND_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            fromBlock, FUND_EVENT_PATH, parseFundEvent, toBlock, numEvents,
+            fromBlock,
+            FUND_EVENT_PATH,
+            parseFundEvent,
+            toBlock,
+            numEvents,
         );
     }
 
-    async getEventsOutsideFund(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<TongoReaderOutsideFundEvent[]> {
+    async getEventsOutsideFund(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<TongoReaderOutsideFundEvent[]> {
         return this.eventReader.fetchEvents(
             [[OUTSIDE_FUND_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            fromBlock, OUTSIDE_FUND_EVENT_PATH, parseOutsideFundEvent, toBlock, numEvents,
+            fromBlock,
+            OUTSIDE_FUND_EVENT_PATH,
+            parseOutsideFundEvent,
+            toBlock,
+            numEvents,
         );
     }
 
-    async getEventsWithdraw(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
+    async getEventsWithdraw(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ) {
         return this.eventReader.fetchEvents(
             [[WITHDRAW_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            fromBlock, WITHDRAW_EVENT_PATH, parseWithdrawEvent, toBlock, numEvents,
+            fromBlock,
+            WITHDRAW_EVENT_PATH,
+            parseWithdrawEvent,
+            toBlock,
+            numEvents,
         );
     }
 
-    async getEventsRagequit(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
+    async getEventsRagequit(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ) {
         return this.eventReader.fetchEvents(
             [[RAGEQUIT_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            fromBlock, RAGEQUIT_EVENT_PATH, parseRagequitEvent, toBlock, numEvents,
+            fromBlock,
+            RAGEQUIT_EVENT_PATH,
+            parseRagequitEvent,
+            toBlock,
+            numEvents,
         );
     }
 
-    async getEventsRollover(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
+    async getEventsRollover(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ) {
         return this.eventReader.fetchEvents(
             [[ROLLOVER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)]],
-            fromBlock, ROLLOVER_EVENT_PATH, parseRolloverEvent, toBlock, numEvents,
+            fromBlock,
+            ROLLOVER_EVENT_PATH,
+            parseRolloverEvent,
+            toBlock,
+            numEvents,
         );
     }
 
-    async getEventsTransferOut(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
+    async getEventsTransferOut(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ) {
         return this.eventReader.fetchEvents(
             [[TRANSFER_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
-            fromBlock, TRANSFER_EVENT_PATH, parseTransferEventOut, toBlock, numEvents,
+            fromBlock,
+            TRANSFER_EVENT_PATH,
+            parseTransferEventOut,
+            toBlock,
+            numEvents,
         );
     }
 
-    async getEventsTransferIn(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
+    async getEventsTransferIn(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ) {
         return this.eventReader.fetchEvents(
             [[TRANSFER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            fromBlock, TRANSFER_EVENT_PATH, parseTransferEventIn, toBlock, numEvents,
+            fromBlock,
+            TRANSFER_EVENT_PATH,
+            parseTransferEventIn,
+            toBlock,
+            numEvents,
         );
     }
 
-    async getAllEvents(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<TongoReaderEvent[]> {
+    async getAllEvents(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<TongoReaderEvent[]> {
         const results = await Promise.all([
             this.getEventsFund(fromBlock, otherPubKey, toBlock, numEvents),
             this.getEventsOutsideFund(fromBlock, otherPubKey, toBlock, numEvents),
@@ -330,36 +403,100 @@ export class AccountEventReader {
             this.getEventsRagequit(fromBlock, otherPubKey, toBlock, numEvents),
             this.getEventsTransferOut(fromBlock, otherPubKey, toBlock, numEvents),
             this.getEventsTransferIn(fromBlock, otherPubKey, toBlock, numEvents),
-            this.getReceivedExternalTransferTo(fromBlock, otherPubKey, toBlock,  numEvents)
+            this.getReceivedExternalTransferTo(fromBlock, otherPubKey, toBlock, numEvents),
         ]);
         return results.flat().sort((a, b) => b.block_number - a.block_number);
     }
 
-    async getEventsBalanceDeclared(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
+    async getEventsBalanceDeclared(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ) {
         return this.eventReader.fetchEvents(
-            [[BALANCE_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            fromBlock, BALANCE_DECLARED_EVENT_PATH, parseBalanceDeclaredEvent, toBlock, numEvents,
+            [
+                [BALANCE_DECLARED_EVENT],
+                [num.toHex(otherPubKey.x)],
+                [num.toHex(otherPubKey.y)],
+                [],
+                [],
+                [],
+            ],
+            fromBlock,
+            BALANCE_DECLARED_EVENT_PATH,
+            parseBalanceDeclaredEvent,
+            toBlock,
+            numEvents,
         );
     }
 
-    async getEventsTransferFrom(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
+    async getEventsTransferFrom(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ) {
         return this.eventReader.fetchEvents(
-            [[TRANSFER_DECLARED_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            fromBlock, TRANSFER_DECLARED_EVENT_PATH, parseTransferDeclaredEvent, toBlock, numEvents,
+            [
+                [TRANSFER_DECLARED_EVENT],
+                [num.toHex(otherPubKey.x)],
+                [num.toHex(otherPubKey.y)],
+                [],
+                [],
+                [],
+            ],
+            fromBlock,
+            TRANSFER_DECLARED_EVENT_PATH,
+            parseTransferDeclaredEvent,
+            toBlock,
+            numEvents,
         );
     }
 
-    async getEventsTransferTo(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
+    async getEventsTransferTo(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ) {
         return this.eventReader.fetchEvents(
-            [[TRANSFER_DECLARED_EVENT], [], [], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], []],
-            fromBlock, TRANSFER_DECLARED_EVENT_PATH, parseTransferDeclaredEvent, toBlock, numEvents,
+            [
+                [TRANSFER_DECLARED_EVENT],
+                [],
+                [],
+                [num.toHex(otherPubKey.x)],
+                [num.toHex(otherPubKey.y)],
+                [],
+            ],
+            fromBlock,
+            TRANSFER_DECLARED_EVENT_PATH,
+            parseTransferDeclaredEvent,
+            toBlock,
+            numEvents,
         );
     }
 
-    async getReceivedExternalTransferTo(fromBlock: number, otherPubKey: PubKey, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all") {
+    async getReceivedExternalTransferTo(
+        fromBlock: number,
+        otherPubKey: PubKey,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ) {
         return this.eventReader.fetchEvents(
-            [[EXTERNAL_TRANSFER_EVENT], [num.toHex(otherPubKey.x)], [num.toHex(otherPubKey.y)], [], [], []],
-            fromBlock, TRANSFER_DECLARED_EVENT_PATH, parseReceivedExternalTransfer, toBlock, numEvents,
+            [
+                [EXTERNAL_TRANSFER_EVENT],
+                [num.toHex(otherPubKey.x)],
+                [num.toHex(otherPubKey.y)],
+                [],
+                [],
+                [],
+            ],
+            fromBlock,
+            TRANSFER_DECLARED_EVENT_PATH,
+            parseReceivedExternalTransfer,
+            toBlock,
+            numEvents,
         );
     }
 }

@@ -1,6 +1,6 @@
 import { cairo, Call, CallData, Contract, num } from "starknet";
 
-import { ProjectivePoint } from "../types";
+import { ProjectivePoint } from "../types.js";
 
 import { castBigInt } from "../utils.js";
 import { IOperation, OperationType } from "./operation.js";

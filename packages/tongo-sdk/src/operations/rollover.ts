@@ -1,7 +1,7 @@
 import { StarkPoint } from "../types.js";
 import { Call, Contract } from "starknet";
 import { IOperation, OperationType } from "./operation.js";
-import { ProofOfRollover } from "../provers/rollover";
+import { ProofOfRollover } from "../provers/rollover.js";
 import { AEBalance } from "../ae_balance.js";
 
 export interface IRollOverOperation extends IOperation {
@@ -38,6 +38,8 @@ export class RollOverOperation implements IRollOverOperation {
     }
 
     toCalldata(): Call {
-        return this.Tongo.populate("rollover", [{ to: this.to, proof: this.proof, hint: this.hint }]);
+        return this.Tongo.populate("rollover", [
+            { to: this.to, proof: this.proof, hint: this.hint },
+        ]);
     }
 }

@@ -1,4 +1,4 @@
-import { ProofOfWithdraw } from "../provers/withdraw";
+import { ProofOfWithdraw } from "../provers/withdraw.js";
 import { BigNumberish, Call, Contract, num, CairoOption } from "starknet";
 import { AEBalance } from "../ae_balance.js";
 import { StarkPoint } from "../types.js";
@@ -43,17 +43,19 @@ interface WithdrawOpParams {
 
 //TODO: handle this better, maybe something similar to the cairo contracts
 export function serializeWithdrawOptions(withdraw_options: CairoOption<WithdrawOptions>): bigint[] {
-    if (withdraw_options.isNone()) {return [1n]}
-
-    let arr = [0n];
-    const {relayData} = withdraw_options.unwrap()!;
-    if (relayData.isNone()) {
-        arr.push(1n)
-    } else {
-        arr.push(0n)
-        arr.push(BigInt(relayData.unwrap()!.fee_to_sender))
+    if (withdraw_options.isNone()) {
+        return [1n];
     }
-    return arr
+
+    const arr = [0n];
+    const { relayData } = withdraw_options.unwrap()!;
+    if (relayData.isNone()) {
+        arr.push(1n);
+    } else {
+        arr.push(0n);
+        arr.push(BigInt(relayData.unwrap()!.fee_to_sender));
+    }
+    return arr;
 }
 
 export class WithdrawOperation implements IWithdrawOperation {
@@ -68,7 +70,17 @@ export class WithdrawOperation implements IWithdrawOperation {
     auditPart: CairoOption<Audit>;
     withdraw_options: CairoOption<WithdrawOptions>;
 
-    constructor({ from, to, amount, proof, auditPart, Tongo, hint, auxiliarCipher, withdraw_options}: WithdrawOpParams) {
+    constructor({
+        from,
+        to,
+        amount,
+        proof,
+        auditPart,
+        Tongo,
+        hint,
+        auxiliarCipher,
+        withdraw_options,
+    }: WithdrawOpParams) {
         this.Tongo = Tongo;
         this.from = from;
         this.to = to;
@@ -77,7 +89,7 @@ export class WithdrawOperation implements IWithdrawOperation {
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
-        this.withdraw_options = withdraw_options
+        this.withdraw_options = withdraw_options;
     }
 
     toCalldata(): Call {
@@ -91,7 +103,7 @@ export class WithdrawOperation implements IWithdrawOperation {
                 auditPart: this.auditPart,
                 proof: this.proof,
             },
-            this.withdraw_options
+            this.withdraw_options,
         ]);
     }
 }

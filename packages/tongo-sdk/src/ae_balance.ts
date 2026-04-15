@@ -14,14 +14,14 @@ import { TongoAbiType } from "./abi/abi.types.js";
 export type AEBalance = TongoAbiType<"tongo::structs::aecipher::AEBalance">;
 
 export interface AEBalanceBytes {
-    ciphertext: Uint8Array;    // 64 B
-    nonce: Uint8Array;         // 32 B
+    ciphertext: Uint8Array; // 64 B
+    nonce: Uint8Array; // 32 B
 }
 
 export function AEHintToBytes({ ciphertext, nonce }: AEBalance): AEBalanceBytes {
     return {
         ciphertext: numberToBytesBE(BigInt(ciphertext as BigNumberish), 64),
-        nonce: numberToBytesBE(castBigInt(nonce), 24),    // XChaCha20 nonce is 192 bits
+        nonce: numberToBytesBE(castBigInt(nonce), 24), // XChaCha20 nonce is 192 bits
     };
 }
 
@@ -69,7 +69,7 @@ export class AEChaCha {
         }
         // 512  = ( TAG [128] ) + ( NOISE/RESERVED [352] ) + ( BALANCE [32] )
         // 64 B      16 B                44 B                    4 B
-        const nonce = randomBytes(24);  // XChaCha20 uses random nonces of 192 bit = 24 B
+        const nonce = randomBytes(24); // XChaCha20 uses random nonces of 192 bit = 24 B
         const noise = randomBytes(3 * 16 - 4);
         const numberBytes = numberToBytesBE(balance, 48);
         numberBytes.set(noise, 0);

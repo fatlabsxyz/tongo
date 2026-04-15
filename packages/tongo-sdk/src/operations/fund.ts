@@ -1,6 +1,6 @@
 import { cairo, CairoOption, Call, CallData, Contract, num } from "starknet";
 
-import { ProofOfFund } from "../provers/fund";
+import { ProofOfFund } from "../provers/fund.js";
 
 import { AEBalance } from "../ae_balance.js";
 import { StarkPoint } from "../types.js";
@@ -42,7 +42,7 @@ export class FundOperation implements IFundOperation {
     auditPart: CairoOption<Audit>;
     approve?: Call;
 
-    constructor({ to, amount, proof, auditPart, Tongo,  hint }: FundOpParams) {
+    constructor({ to, amount, proof, auditPart, Tongo, hint }: FundOpParams) {
         this.type = OperationType.Fund;
         this.to = to;
         this.amount = amount;

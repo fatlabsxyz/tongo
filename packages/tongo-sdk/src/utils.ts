@@ -1,8 +1,8 @@
 import { bytesToHex } from "@noble/hashes/utils";
 import { BigNumberish, num, uint256, Uint256 } from "starknet";
 
-import { GENERATOR } from "./constants";
-import { ProjectivePoint, projectivePointToStarkPoint, CipherBalance} from "./types";
+import { GENERATOR } from "./constants.js";
+import { ProjectivePoint, projectivePointToStarkPoint, CipherBalance } from "./types.js";
 
 export function bytesOrNumToBigInt(x: BigNumberish | Uint8Array): bigint {
     if (x instanceof Uint8Array) {
@@ -41,8 +41,6 @@ export function createCipherBalance(
     return { L, R };
 }
 
-
-
 /**
  * Decipher the given cipher balance with the given secret key.
  * This function has to bruteforce for `b` in `g^b`. It starts at `b = 0` and
@@ -54,14 +52,11 @@ export function createCipherBalance(
  * @throws {Error} If decryption fails
  * @todo Parametrize bit size
  */
-export function decipherBalance(
-    x: bigint,
-    L: ProjectivePoint,
-    R: ProjectivePoint,
-): bigint {
-
+export function decipherBalance(x: bigint, L: ProjectivePoint, R: ProjectivePoint): bigint {
     const Rx = R.multiply(x);
-    if (Rx.equals(L)) { return 0n; }
+    if (Rx.equals(L)) {
+        return 0n;
+    }
 
     const g_b = L.subtract(Rx);
     let b = 1n;
@@ -76,7 +71,7 @@ export function decipherBalance(
             return b;
         }
     }
-    throw new Error('Decription of Cipherbalance has failed');
+    throw new Error("Decription of Cipherbalance has failed");
 }
 
 /**
@@ -98,7 +93,6 @@ export function assertBalance(
     const g_b = L.subtract(Rx);
     return g_b.equals(GENERATOR.multiplyUnsafe(balance));
 }
-
 
 export function pubKeyFromSecret(secret: bigint) {
     return projectivePointToStarkPoint(GENERATOR.multiply(secret));

@@ -16,9 +16,9 @@ describe("audit", () => {
         const _r = 89327498324n;
         const initial_cipher_balance = createCipherBalance(public_key, initial_balance, _r);
         const prefix_data: GeneralPrefixData = {
-          chain_id: 1111n,
-          tongo_address: (22222n).toString(10),
-          sender_address: (33333n).toString(10)
+            chain_id: 1111n,
+            tongo_address: 22222n.toString(10),
+            sender_address: 33333n.toString(10),
         };
 
         const { inputs, proof } = proveAudit(

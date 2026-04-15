@@ -1,9 +1,16 @@
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 import { SameEncryptUnknownRandom } from "@fatsolutions/she/protocols";
-import { GENERATOR as g } from "../constants";
-import { CipherBalance, ProjectivePoint, GeneralPrefixData, compute_prefix, projectivePointToStarkPoint, starkPointToProjectivePoint } from "../types";
-import { createCipherBalance} from "../../src/utils";
-import { AuxAbiType, auxCodec } from "../abi/abi.types";
+import { GENERATOR as g } from "../constants.js";
+import {
+    CipherBalance,
+    ProjectivePoint,
+    GeneralPrefixData,
+    compute_prefix,
+    projectivePointToStarkPoint,
+    starkPointToProjectivePoint,
+} from "../types.js";
+import { createCipherBalance } from "../../src/utils.js";
+import { AuxAbiType, auxCodec } from "../abi/abi.types.js";
 
 // cairo string 'audit'
 export const AUDIT_CAIRO_STRING = 418581342580n;
@@ -25,10 +32,7 @@ export type InputsAudit = AuxAbiType<"tongo::structs::operations::audit::InputsA
  */
 function prefixAudit(inputs: InputsAudit): bigint {
     const _serialized = auxCodec.encode("tongo::structs::operations::audit::InputsAudit", inputs);
-    const seq: bigint[] = [
-        AUDIT_CAIRO_STRING,
-        ..._serialized.map(BigInt)
-    ];
+    const seq: bigint[] = [AUDIT_CAIRO_STRING, ..._serialized.map(BigInt)];
     return compute_prefix(seq);
 }
 
@@ -44,13 +48,13 @@ function prefixAudit(inputs: InputsAudit): bigint {
  * @property {bigint} sb - The proof scalar sb
  */
 export interface ProofOfAudit {
-    Ax: ProjectivePoint,
-    AL0: ProjectivePoint,
-    AL1: ProjectivePoint,
-    AR1: ProjectivePoint,
-    sx: bigint,
-    sr: bigint,
-    sb: bigint,
+    Ax: ProjectivePoint;
+    AL0: ProjectivePoint;
+    AL1: ProjectivePoint;
+    AR1: ProjectivePoint;
+    sx: bigint;
+    sr: bigint;
+    sb: bigint;
 }
 
 export function proveAudit(
@@ -59,7 +63,7 @@ export function proveAudit(
     initial_cipherbalance: CipherBalance,
     auditorPubKey: ProjectivePoint,
     prefix_data: GeneralPrefixData,
-): { inputs: InputsAudit, proof: ProofOfAudit; } {
+): { inputs: InputsAudit; proof: ProofOfAudit } {
     const x = private_key;
     const y = g.multiply(x);
     const { L: L0, R: R0 } = initial_cipherbalance;
@@ -67,7 +71,9 @@ export function proveAudit(
     //this is to assert that storedbalance is an encription of the balance amount
     const g_b = L0.subtract(R0.multiplyUnsafe(x));
     const temp = g.multiplyUnsafe(initial_balance);
-    if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
+    if (!g_b.equals(temp)) {
+        throw new Error("storedBalance is not an encryption of balance");
+    }
     //
 
     const r = generateRandom();
@@ -106,15 +112,14 @@ export function proveAudit(
     return { inputs, proof };
 }
 
-
 /**
- * Verifies that the given ZK proof is a valid proof of the audit declaration. If the proof checks then the public 
+ * Verifies that the given ZK proof is a valid proof of the audit declaration. If the proof checks then the public
  * inputs check:
- * 
+ *
  * - The caller knows the private key of the Tongo account.
  * - The provided encryption is a valid encryption for the auditor key
  * - The provided encryption is encrypting the same amount encrypted in the current balance of the Tongo account.
- * 
+ *
  * @param {InputsAudit} inputs - The audit operation inputs
  * @param {ProofOfAudit} proof - The proof to verify
  * @returns {boolean} True if the proof is valid, false otherwise

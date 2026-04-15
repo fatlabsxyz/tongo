@@ -17,9 +17,9 @@ describe("withdraw", () => {
 
         const nonce = 1n;
         const prefix_data: GeneralPrefixData = {
-          chain_id: 1111n,
-          tongo_address: (22222n).toString(10),
-          sender_address: (33333n).toString(10)
+            chain_id: 1111n,
+            tongo_address: 22222n.toString(10),
+            sender_address: 33333n.toString(10),
         };
 
         const bit_size = 32;
