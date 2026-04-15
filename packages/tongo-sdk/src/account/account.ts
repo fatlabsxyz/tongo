@@ -142,8 +142,8 @@ export class Account implements IAccount {
         return { balance: balanceAmount, pending: pendingAmount, nonce };
     }
 
-    /// Retunrs the `almost` raw account state. The only handing that happens here is type
-    // convertion from CairoOption::None to undefinded and from StarkPoints to ProjectivePoints
+    /// Returns the `almost` raw account state. The only handling that happens here is type
+    // conversion from CairoOption::None to undefined and from StarkPoints to ProjectivePoints
     async rawState(): Promise<RawAccountState> {
         const state = await this.Tongo.get_state(this.publicKey);
         return Account.parseAccountState(state);
@@ -307,7 +307,7 @@ export class Account implements IAccount {
 
         //TODO check if the mount in pending would help
         if (initialAmount < amount) {
-            throw new Error("You dont have enough balance");
+            throw new Error("You don't have enough balance");
         }
 
         const to = starkPointToProjectivePoint(transferDetails.to);
@@ -325,7 +325,7 @@ export class Account implements IAccount {
         if (transferDetails.toTongo) {
             const toTongo = transferDetails.toTongo;
             if (toTongo == this.Tongo.address) {
-                throw new Error("Cannot make and external transfer to same tongo");
+                throw new Error("Cannot make an external transfer to same tongo");
             }
             const emptyAudit = new CairoOption<Audit>(CairoOptionVariant.None);
             externalData = new CairoOption<ExternalData>(CairoOptionVariant.Some, {
@@ -435,7 +435,7 @@ export class Account implements IAccount {
         const initialAmount = this.decryptCipherBalance(balance, current_hint);
 
         if (initialAmount === 0n) {
-            throw new Error("You dont have enough balance");
+            throw new Error("You don't have enough balance");
         }
 
         const prefix_data = await this.prefixData(sender);
@@ -487,7 +487,7 @@ export class Account implements IAccount {
         const initialAmount = this.decryptCipherBalance(balance, current_hint);
 
         if (initialAmount < amount) {
-            throw new Error("You dont have enought balance");
+            throw new Error("You don't have enough balance");
         }
 
         const prefix_data = await this.prefixData(sender);
@@ -550,7 +550,7 @@ export class Account implements IAccount {
         const pendingAmount = this.decryptCipherBalance(pending!);
 
         if (pendingAmount == 0n) {
-            throw new Error("Your pending ammount is 0");
+            throw new Error("Your pending amount is 0");
         }
         const prefix_data = await this.prefixData(sender);
         const { inputs, proof } = proveRollover(this.pk, nonce, prefix_data);

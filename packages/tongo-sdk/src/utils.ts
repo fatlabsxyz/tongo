@@ -75,7 +75,7 @@ export function decipherBalance(x: bigint, L: ProjectivePoint, R: ProjectivePoin
             return b;
         }
     }
-    throw new Error("Decription of Cipherbalance has failed");
+    throw new Error("Decryption of Cipherbalance has failed");
 }
 
 /**

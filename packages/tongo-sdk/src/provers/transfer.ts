@@ -120,12 +120,12 @@ export function proveTransfer(
 
     const { r, range } = generateRangeProof(b, bit_size, randomness, prefix);
     if (r !== total_random) {
-        throw new Error("random missmatch");
+        throw new Error("random mismatch");
     }
 
     const { r: r2, range: range2 } = generateRangeProof(b_left, bit_size, randomness2, prefix);
     if (r2 !== total_random2) {
-        throw new Error("random missmatch");
+        throw new Error("random mismatch");
     }
 
     const G = R0.subtract(transferBalanceSelf.R);
@@ -263,10 +263,10 @@ export function verifyTransfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
     const V_proof = verifyRangeProof(proof.range, bit_size, prefix);
     if (V_proof == false) {
-        throw new Error("erro in range for V");
+        throw new Error("error in range for V");
     }
     if (!V.equals(V_proof)) {
-        throw new Error("V missmatch");
+        throw new Error("V mismatch");
     }
 
     const elGamalInputs = {
@@ -285,7 +285,7 @@ export function verifyTransfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
     };
     res = ElGamal.verify(elGamalInputs, elGamalProof);
     if (res == false) {
-        throw new Error("erro elGamalProof");
+        throw new Error("error elGamalProof");
     }
 
     const L0 = CL.subtract(L);
@@ -293,10 +293,10 @@ export function verifyTransfer(inputs: InputsTransfer, proof: ProofOfTransfer) {
 
     const V2_proof = verifyRangeProof(proof.range2, bit_size, prefix);
     if (V2_proof == false) {
-        throw new Error("erro in range for V2");
+        throw new Error("error in range for V2");
     }
     if (!V2.equals(V2_proof)) {
-        throw new Error("V2 missmatch");
+        throw new Error("V2 mismatch");
     }
 
     const sameEncryptUnkownRandomInputs = {
