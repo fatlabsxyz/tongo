@@ -5,8 +5,8 @@ import {
     Contract,
     num,
     RpcProvider,
-    TypedContractV2,
 } from "starknet";
+import { TongoContract } from "../contracts.js";
 
 import { proveAudit, verifyAudit } from "../provers/audit.js";
 import { proveFund } from "../provers/fund.js";
@@ -89,8 +89,6 @@ import {
     AccountWithdrawEvent,
     AccountReceivedExternalTransfer,
 } from "./events.js";
-
-type TongoContract = TypedContractV2<typeof tongoAbi>;
 
 export class Account implements IAccount {
     publicKey: PubKey;

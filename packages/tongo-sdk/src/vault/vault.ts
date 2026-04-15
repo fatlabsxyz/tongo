@@ -1,10 +1,9 @@
-import { Contract, RpcProvider, num, TypedContractV2 } from "starknet";
+import { Contract, RpcProvider, num } from "starknet";
 import { DeployOperation } from "../operations/deploy.js";
 import { IVault, VaultConfig, DeployDetails } from "./vault.interface.js";
 import { vaultAbi } from "../abi/vault.abi.js";
+import { VaultContract } from "../contracts.js";
 import { castBigInt, toNumber } from "../utils.js";
-
-export type VaultContract = TypedContractV2<typeof vaultAbi>;
 
 export class Vault implements IVault {
     address: string;

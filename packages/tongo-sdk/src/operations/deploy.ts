@@ -3,7 +3,7 @@ import { Call, CairoOption, CairoOptionVariant, num, hash, CallData } from "star
 import { tongoAbi } from "../abi/tongo.abi.js";
 import { IOperation, OperationType } from "./operation.js";
 import { VaultConfig } from "../vault/vault.interface.js";
-import { VaultContract } from "../vault/vault.js";
+import { VaultContract } from "../contracts.js";
 
 export interface IDeployOperation extends IOperation {
     type: typeof OperationType.Deploy;
