@@ -3,6 +3,7 @@ import { tongoAbi } from "../abi/tongo.abi.js";
 import { PubKey, StarkPoint } from "../types.js";
 import { AEBalance } from "../ae_balance.js";
 import { ContractEventReader } from "../data.service.js";
+import { EventType } from "../events.js";
 
 const FUND_EVENT = num.toHex(hash.starknetKeccak("FundEvent"));
 const OUTSIDE_FUND_EVENT = num.toHex(hash.starknetKeccak("OutsideFundEvent"));
@@ -24,22 +25,8 @@ const BALANCE_DECLARED_EVENT_PATH = "tongo::structs::events::BalanceDeclared";
 const TRANSFER_DECLARED_EVENT_PATH = "tongo::structs::events::TransferDeclared";
 const EXTERNAL_TRANSFER_EVENT_PATH = "tongo::structs::events::ReceivedExternalTransfer";
 
-export const TongoReaderEventType = {
-    Fund: "fund",
-    OutsideFund: "outsideFund",
-    Withdraw: "withdraw",
-    Ragequit: "ragequit",
-    Rollover: "rollover",
-    TransferIn: "transferIn",
-    TransferOut: "transferOut",
-    BalanceDeclared: "balanceDeclared",
-    TransferDeclared: "transferDeclared",
-    ExternalTransfer: "externalTransfer",
-} as const;
-type TongoReaderEventType = (typeof TongoReaderEventType)[keyof typeof TongoReaderEventType];
-
 interface BaseEvent {
-    type: TongoReaderEventType;
+    type: EventType;
     tx_hash: string;
     block_number: number;
     event_index: number;
@@ -116,25 +103,22 @@ interface TransferDeclaredEventData {
     hint: AEBalance;
 }
 
-type TongoReaderFundEvent = BaseEvent & FundEventData & { type: typeof TongoReaderEventType.Fund };
+type TongoReaderFundEvent = BaseEvent & FundEventData & { type: typeof EventType.Fund };
 type TongoReaderOutsideFundEvent = BaseEvent &
-    OutsideFundEventData & { type: typeof TongoReaderEventType.OutsideFund };
-type TongoReaderWithdrawEvent = BaseEvent &
-    WithdrawEventData & { type: typeof TongoReaderEventType.Withdraw };
-type TongoReaderRagequitEvent = BaseEvent &
-    RagequitEventData & { type: typeof TongoReaderEventType.Ragequit };
-type TongoReaderRolloverEvent = BaseEvent &
-    RolloverEventData & { type: typeof TongoReaderEventType.Rollover };
+    OutsideFundEventData & { type: typeof EventType.OutsideFund };
+type TongoReaderWithdrawEvent = BaseEvent & WithdrawEventData & { type: typeof EventType.Withdraw };
+type TongoReaderRagequitEvent = BaseEvent & RagequitEventData & { type: typeof EventType.Ragequit };
+type TongoReaderRolloverEvent = BaseEvent & RolloverEventData & { type: typeof EventType.Rollover };
 type TongoReaderTransferInEvent = BaseEvent &
-    TransferEventData & { type: typeof TongoReaderEventType.TransferIn };
+    TransferEventData & { type: typeof EventType.TransferIn };
 type TongoReaderTransferOutEvent = BaseEvent &
-    TransferEventData & { type: typeof TongoReaderEventType.TransferOut };
+    TransferEventData & { type: typeof EventType.TransferOut };
 type TongoReaderBalanceDeclaredEvent = BaseEvent &
-    BalanceDeclaredEventData & { type: typeof TongoReaderEventType.BalanceDeclared };
+    BalanceDeclaredEventData & { type: typeof EventType.BalanceDeclared };
 type TongoReaderTransferDeclaredEvent = BaseEvent &
-    TransferDeclaredEventData & { type: typeof TongoReaderEventType.TransferDeclared };
+    TransferDeclaredEventData & { type: typeof EventType.TransferDeclared };
 type TongoReaderExternalTransferEvent = BaseEvent &
-    ExternalTransferEventData & { type: typeof TongoReaderEventType.ExternalTransfer };
+    ExternalTransferEventData & { type: typeof EventType.ExternalTransferIn };
 
 type TongoReaderEvent =
     | TongoReaderFundEvent
@@ -148,7 +132,7 @@ type TongoReaderEvent =
     | TongoReaderTransferDeclaredEvent
     | TongoReaderExternalTransferEvent;
 
-function makeEventParser<T extends TongoReaderEventType, D>(type: T, path: string) {
+function makeEventParser<T extends EventType, D>(type: T, path: string) {
     return (event: ParsedEvent): BaseEvent & D & { type: T } =>
         ({
             type,
@@ -160,46 +144,46 @@ function makeEventParser<T extends TongoReaderEventType, D>(type: T, path: strin
         }) as BaseEvent & D & { type: T };
 }
 
-const parseFundEvent = makeEventParser<typeof TongoReaderEventType.Fund, FundEventData>(
-    TongoReaderEventType.Fund,
+const parseFundEvent = makeEventParser<typeof EventType.Fund, FundEventData>(
+    EventType.Fund,
     FUND_EVENT_PATH,
 );
-const parseOutsideFundEvent = makeEventParser<
-    typeof TongoReaderEventType.OutsideFund,
-    OutsideFundEventData
->(TongoReaderEventType.OutsideFund, OUTSIDE_FUND_EVENT_PATH);
-const parseWithdrawEvent = makeEventParser<typeof TongoReaderEventType.Withdraw, WithdrawEventData>(
-    TongoReaderEventType.Withdraw,
+const parseOutsideFundEvent = makeEventParser<typeof EventType.OutsideFund, OutsideFundEventData>(
+    EventType.OutsideFund,
+    OUTSIDE_FUND_EVENT_PATH,
+);
+const parseWithdrawEvent = makeEventParser<typeof EventType.Withdraw, WithdrawEventData>(
+    EventType.Withdraw,
     WITHDRAW_EVENT_PATH,
 );
-const parseRagequitEvent = makeEventParser<typeof TongoReaderEventType.Ragequit, RagequitEventData>(
-    TongoReaderEventType.Ragequit,
+const parseRagequitEvent = makeEventParser<typeof EventType.Ragequit, RagequitEventData>(
+    EventType.Ragequit,
     RAGEQUIT_EVENT_PATH,
 );
-const parseRolloverEvent = makeEventParser<typeof TongoReaderEventType.Rollover, RolloverEventData>(
-    TongoReaderEventType.Rollover,
+const parseRolloverEvent = makeEventParser<typeof EventType.Rollover, RolloverEventData>(
+    EventType.Rollover,
     ROLLOVER_EVENT_PATH,
 );
-const parseTransferEventIn = makeEventParser<
-    typeof TongoReaderEventType.TransferIn,
-    TransferEventData
->(TongoReaderEventType.TransferIn, TRANSFER_EVENT_PATH);
-const parseTransferEventOut = makeEventParser<
-    typeof TongoReaderEventType.TransferOut,
-    TransferEventData
->(TongoReaderEventType.TransferOut, TRANSFER_EVENT_PATH);
+const parseTransferEventIn = makeEventParser<typeof EventType.TransferIn, TransferEventData>(
+    EventType.TransferIn,
+    TRANSFER_EVENT_PATH,
+);
+const parseTransferEventOut = makeEventParser<typeof EventType.TransferOut, TransferEventData>(
+    EventType.TransferOut,
+    TRANSFER_EVENT_PATH,
+);
 const parseBalanceDeclaredEvent = makeEventParser<
-    typeof TongoReaderEventType.BalanceDeclared,
+    typeof EventType.BalanceDeclared,
     BalanceDeclaredEventData
->(TongoReaderEventType.BalanceDeclared, BALANCE_DECLARED_EVENT_PATH);
+>(EventType.BalanceDeclared, BALANCE_DECLARED_EVENT_PATH);
 const parseTransferDeclaredEvent = makeEventParser<
-    typeof TongoReaderEventType.TransferDeclared,
+    typeof EventType.TransferDeclared,
     TransferDeclaredEventData
->(TongoReaderEventType.TransferDeclared, TRANSFER_DECLARED_EVENT_PATH);
+>(EventType.TransferDeclared, TRANSFER_DECLARED_EVENT_PATH);
 const parseReceivedExternalTransfer = makeEventParser<
-    typeof TongoReaderEventType.ExternalTransfer,
+    typeof EventType.ExternalTransferIn,
     ExternalTransferEventData
->(TongoReaderEventType.ExternalTransfer, EXTERNAL_TRANSFER_EVENT_PATH);
+>(EventType.ExternalTransferIn, EXTERNAL_TRANSFER_EVENT_PATH);
 
 export class AccountEventReader {
     tongoAddress: string;

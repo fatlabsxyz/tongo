@@ -12,19 +12,12 @@ import {
 } from "./types.js";
 
 import { AEBalance, decryptAEHint } from "./ae_balance.js";
+import { EventType } from "./events.js";
 import { tongoAbi } from "./abi/tongo.abi.js";
 import { bytesOrNumToBigInt } from "./utils.js";
 
-export const AuditorEvent = {
-    BalanceDeclared: "balanceDeclared",
-    TransferOutDeclared: "transferOutDeclared",
-    TransferInDeclared: "transferInDeclared",
-} as const;
-
-export type AuditorEvent = (typeof AuditorEvent)[keyof typeof AuditorEvent];
-
 interface AuditorBaseEvent {
-    type: AuditorEvent;
+    type: EventType;
     tx_hash: string;
     block_number: number;
     transaction_index: number;
@@ -32,14 +25,14 @@ interface AuditorBaseEvent {
 }
 
 interface AuditorBalanceDeclared extends AuditorBaseEvent {
-    type: typeof AuditorEvent.BalanceDeclared;
+    type: typeof EventType.BalanceDeclared;
     nonce: bigint;
     user: TongoAddress;
     amount: bigint;
 }
 
 interface AuditorTransferOutDeclared extends AuditorBaseEvent {
-    type: typeof AuditorEvent.TransferOutDeclared;
+    type: typeof EventType.TransferOut;
     sender_nonce: bigint;
     user: TongoAddress;
     amount: bigint;
@@ -47,7 +40,7 @@ interface AuditorTransferOutDeclared extends AuditorBaseEvent {
 }
 
 interface AuditorTransferInDeclared extends AuditorBaseEvent {
-    type: typeof AuditorEvent.TransferInDeclared;
+    type: typeof EventType.TransferIn;
     sender_nonce: bigint;
     user: TongoAddress;
     amount: bigint;
@@ -159,7 +152,7 @@ export class Auditor {
                     event.auditorPubKey,
                 );
                 return {
-                    type: AuditorEvent.BalanceDeclared,
+                    type: EventType.BalanceDeclared,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     transaction_index: event.transaction_index,
@@ -218,7 +211,7 @@ export class Auditor {
                     event.auditorPubKey,
                 );
                 return {
-                    type: AuditorEvent.TransferOutDeclared,
+                    type: EventType.TransferOut,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     sender_nonce: event.nonce,
@@ -255,7 +248,7 @@ export class Auditor {
                     event.auditorPubKey,
                 );
                 return {
-                    type: AuditorEvent.TransferInDeclared,
+                    type: EventType.TransferIn,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     sender_nonce: event.nonce,

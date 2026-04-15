@@ -88,7 +88,6 @@ import {
     AccountTransferOutEvent,
     AccountWithdrawEvent,
     AccountReceivedExternalTransfer,
-    ReaderToAccountEvents,
 } from "./events.js";
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
@@ -678,7 +677,7 @@ export class Account implements IAccount {
         return events.map(
             (event) =>
                 ({
-                    type: ReaderToAccountEvents[event.type],
+                    type: event.type,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     nonce: event.nonce,
@@ -702,7 +701,7 @@ export class Account implements IAccount {
         return events.map(
             (event) =>
                 ({
-                    type: ReaderToAccountEvents[event.type],
+                    type: event.type,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     amount: event.amount,
@@ -725,7 +724,7 @@ export class Account implements IAccount {
         return events.map(
             (event) =>
                 ({
-                    type: ReaderToAccountEvents[event.type],
+                    type: event.type,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     nonce: event.nonce,
@@ -748,7 +747,7 @@ export class Account implements IAccount {
         return events.map(
             (event) =>
                 ({
-                    type: ReaderToAccountEvents[event.type],
+                    type: event.type,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     nonce: event.nonce,
@@ -772,7 +771,7 @@ export class Account implements IAccount {
         return events.map(
             (event) =>
                 ({
-                    type: ReaderToAccountEvents[event.type],
+                    type: event.type,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     nonce: event.nonce,
@@ -797,7 +796,7 @@ export class Account implements IAccount {
             events.map(
                 async (event) =>
                     ({
-                        type: ReaderToAccountEvents[event.type],
+                        type: event.type,
                         tx_hash: event.tx_hash,
                         block_number: event.block_number,
                         nonce: event.nonce,
@@ -830,7 +829,7 @@ export class Account implements IAccount {
             events.map(
                 async (event) =>
                     ({
-                        type: ReaderToAccountEvents[event.type],
+                        type: event.type,
                         tx_hash: event.tx_hash,
                         block_number: event.block_number,
                         nonce: event.nonce,
@@ -863,7 +862,7 @@ export class Account implements IAccount {
             events.map(
                 async (event) =>
                     ({
-                        type: ReaderToAccountEvents[event.type],
+                        type: event.type,
                         tx_hash: event.tx_hash,
                         block_number: event.block_number,
                         amount: this.decryptCipherBalance(
