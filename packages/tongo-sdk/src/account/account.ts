@@ -321,17 +321,13 @@ export class Account implements IAccount {
             if (toTongo == this.Tongo.address) {
                 throw new Error("Cannot make an external transfer to same tongo");
             }
-            const emptyAudit = None<Audit>();
             externalData = Some<ExternalData>({
                 toTongo,
-                auditPart: emptyAudit,
+                auditPart: None<Audit>(),
             });
         }
 
-        let transferOptions = Some<TransferOptions>({
-            relayData,
-            externalData,
-        });
+        let transferOptions = Some<TransferOptions>({ relayData, externalData });
         const serializedData = serializeTransferOptions(transferOptions);
 
         const { inputs, proof, newBalance } = proveTransfer(
@@ -398,10 +394,7 @@ export class Account implements IAccount {
                 auditPart: auditTarget,
             };
             externalData = Some<ExternalData>(external);
-            transferOptions = Some<TransferOptions>({
-                relayData,
-                externalData,
-            });
+            transferOptions = Some<TransferOptions>({ relayData, externalData });
         }
 
         return new TransferOperation({
@@ -440,9 +433,7 @@ export class Account implements IAccount {
             balance,
         );
 
-        const ragequitOptions = Some<RagequitOptions>({
-            relayData,
-        });
+        const ragequitOptions = Some<RagequitOptions>({ relayData });
         const serializedData = serializeRagequitOptions(ragequitOptions);
 
         const { inputs, proof, newBalance } = proveRagequit(
@@ -492,9 +483,7 @@ export class Account implements IAccount {
             balance,
         );
 
-        const withdrawOptions = Some<WithdrawOptions>({
-            relayData,
-        });
+        const withdrawOptions = Some<WithdrawOptions>({ relayData });
         const serializedData = serializeWithdrawOptions(withdrawOptions);
 
         const { inputs, proof, newBalance } = proveWithdraw(

@@ -1,9 +1,9 @@
 import { ProofOfRagequit } from "../provers/ragequit.js";
 import { BigNumberish, Call, Contract, CairoOption } from "starknet";
-import { IOperation, OperationType, serializeRelayData } from "./operation.js";
+import { IOperation, OperationType } from "./operation.js";
 import { AEBalance } from "../ae_balance.js";
 import { StarkPoint } from "../types.js";
-import { TongoAbiType } from "../abi/abi.types.js";
+import { TongoAbiType, tongoCodec } from "../abi/abi.types.js";
 import { Audit } from "./audit.js";
 
 export type RagequitOptions = TongoAbiType<"tongo::structs::operations::ragequit::RagequitOptions">;
@@ -35,11 +35,11 @@ interface RagequitOpParams {
     Tongo: Contract;
 }
 
-export function serializeRagequitOptions(ragequitOptions: CairoOption<RagequitOptions>): bigint[] {
-    if (ragequitOptions.isNone()) {
-        return [1n];
-    }
-    return [0n, ...serializeRelayData(ragequitOptions.unwrap()!.relayData)];
+const OptionalRagequitOption =
+    "core::option::Option::<tongo::structs::operations::ragequit::RagequitOptions>" as const;
+export type CairoRagequitOptions = TongoAbiType<typeof OptionalRagequitOption>;
+export function serializeRagequitOptions(ragequitOptions: CairoRagequitOptions): bigint[] {
+    return tongoCodec.encode(OptionalRagequitOption, ragequitOptions).map(BigInt);
 }
 
 export class RagequitOperation implements IRagequitOperation {

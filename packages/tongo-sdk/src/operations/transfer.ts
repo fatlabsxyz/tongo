@@ -5,8 +5,8 @@ import { StarkCipherBalance, StarkPoint } from "../types.js";
 
 import { AEBalance } from "../ae_balance.js";
 import { Audit } from "./audit.js";
-import { TongoAbiType } from "../abi/abi.types.js";
-import { IOperation, OperationType, serializeRelayData } from "./operation.js";
+import { TongoAbiType, tongoCodec } from "../abi/abi.types.js";
+import { IOperation, OperationType } from "./operation.js";
 
 export type ExternalData = TongoAbiType<"tongo::structs::operations::transfer::ExternalData">;
 export type TransferOptions = TongoAbiType<"tongo::structs::operations::transfer::TransferOptions">;
@@ -46,19 +46,11 @@ interface TransferOpParams {
     Tongo: Contract;
 }
 
-export function serializeTransferOptions(transferOptions: CairoOption<TransferOptions>): bigint[] {
-    if (transferOptions.isNone()) {
-        return [1n];
-    }
-    const { relayData, externalData } = transferOptions.unwrap()!;
-    const arr = [0n, ...serializeRelayData(relayData)];
-    if (externalData.isNone()) {
-        arr.push(1n);
-    } else {
-        arr.push(0n);
-        arr.push(BigInt(externalData.unwrap()!.toTongo));
-    }
-    return arr;
+const OptionalTransferOption =
+    "core::option::Option::<tongo::structs::operations::transfer::TransferOptions>" as const;
+export type CairoTransferOptions = TongoAbiType<typeof OptionalTransferOption>;
+export function serializeTransferOptions(transferOptions: CairoTransferOptions): bigint[] {
+    return tongoCodec.encode(OptionalTransferOption, transferOptions).map(BigInt);
 }
 
 export class TransferOperation implements ITransferOperation {
