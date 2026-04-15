@@ -1,26 +1,17 @@
-use core::ec::{
-    NonZeroEcPoint,
-    EcPointTrait,
-    stark_curve::{GEN_X, GEN_Y, ORDER},
-};
-use core::{
-    pedersen::PedersenTrait,
-    poseidon::poseidon_hash_span,
-    hash::HashStateTrait,
-};
-
-use tongo::structs::common::{
-    pubkey::PubKey,
-    cipherbalance::{CipherBalance, CipherBalanceTrait},
-};
-
-use tongo::verifier::utils::generator_h;
+use core::ec::stark_curve::{GEN_X, GEN_Y, ORDER};
+use core::ec::{EcPointTrait, NonZeroEcPoint};
+use core::hash::HashStateTrait;
+use core::pedersen::PedersenTrait;
+use core::poseidon::poseidon_hash_span;
 use she::utils::in_curve_order;
+use tongo::structs::common::cipherbalance::{CipherBalance, CipherBalanceTrait};
+use tongo::structs::common::pubkey::PubKey;
+use tongo::verifier::utils::generator_h;
 
-pub fn pubkey_from_secret(x:felt252) -> PubKey {
-        let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
-        let key:NonZeroEcPoint = g.mul(x).try_into().unwrap();
-        key.into()
+pub fn pubkey_from_secret(x: felt252) -> PubKey {
+    let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
+    let key: NonZeroEcPoint = g.mul(x).try_into().unwrap();
+    key.into()
 }
 
 /// Generates a "random" number in the curve order.
@@ -30,7 +21,7 @@ pub fn generate_random(seed: felt252, multiplicity: felt252) -> felt252 {
     while in_curve_order(c).is_err() {
         c = PedersenTrait::new(seed).update(multiplicity).update(salt).finalize();
         salt = salt + 1;
-    };
+    }
     return c;
 }
 
@@ -56,7 +47,7 @@ pub fn computeH() -> NonZeroEcPoint {
     let mut output = Option::None;
     let mut nonce: felt252 = 1;
     while (output.is_none()) {
-        let x = poseidon_hash_span([input,nonce].span());
+        let x = poseidon_hash_span([input, nonce].span());
         output = EcPointTrait::new_nz_from_x(x);
         nonce = nonce + 1;
     }
@@ -66,6 +57,6 @@ pub fn computeH() -> NonZeroEcPoint {
 #[test]
 fn showH() {
     let h = computeH();
-//    println!("H: x: {:x}, y: {:x}", h.x(), h.y());
+    //    println!("H: x: {:x}, y: {:x}", h.x(), h.y());
     assert(h.coordinates() == generator_h().coordinates(), 'False');
 }

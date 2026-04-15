@@ -1,44 +1,42 @@
 #[starknet::contract]
 pub mod Tongo {
-    use core::{ec::NonZeroEcPoint, num::traits::Bounded};
+    use core::ec::NonZeroEcPoint;
+    use core::num::traits::Bounded;
     use starknet::storage::{
         Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
     };
     use starknet::{ContractAddress, get_caller_address, get_contract_address, get_tx_info};
-    use crate::structs::{
-        aecipher::{AEBalance, IntoOptionAEBalance},
-        common::{
-            cipherbalance::{CipherBalance, CipherBalanceTrait},
-            pubkey::PubKey,
-            state::{State, TongoConfig},
-        },
-    };
+    use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use crate::structs::aecipher::{AEBalance, IntoOptionAEBalance};
+    use crate::structs::common::cipherbalance::{CipherBalance, CipherBalanceTrait};
+    use crate::structs::common::pubkey::PubKey;
+    use crate::structs::common::state::{State, TongoConfig};
     use crate::structs::events::{
         AuditorPubKeySet, BalanceDeclared, FundEvent, OutsideFundEvent, RagequitEvent,
-        RolloverEvent, TransferDeclared, TransferEvent, WithdrawEvent, ReceivedExternalTransfer,
+        ReceivedExternalTransfer, RolloverEvent, TransferDeclared, TransferEvent, WithdrawEvent,
     };
-    use crate::structs::operations::{
-        audit::{Audit, InputsAudit},
-        fund::{Fund, InputsFund, OutsideFund},
-        ragequit::{InputsRagequit, Ragequit, RagequitOptions, SerializeRagequitOptions},
-        rollover::{InputsRollOver, Rollover},
-        transfer::{InputsTransfer, Transfer, ExternalTransfer, ExternalData, TransferOptions, SerializeTransferOptions},
-        withdraw::{InputsWithdraw, Withdraw, WithdrawOptions, SerializeWithdrawOptions},
+    use crate::structs::operations::audit::{Audit, InputsAudit};
+    use crate::structs::operations::fund::{Fund, InputsFund, OutsideFund};
+    use crate::structs::operations::ragequit::{
+        InputsRagequit, Ragequit, RagequitOptions, SerializeRagequitOptions,
+    };
+    use crate::structs::operations::rollover::{InputsRollOver, Rollover};
+    use crate::structs::operations::transfer::{
+        ExternalData, ExternalTransfer, InputsTransfer, SerializeTransferOptions, Transfer,
+        TransferOptions,
+    };
+    use crate::structs::operations::withdraw::{
+        InputsWithdraw, SerializeWithdrawOptions, Withdraw, WithdrawOptions,
     };
     use crate::structs::traits::GeneralPrefixData;
-    use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use crate::tongo::{
-        ITongo::{ITongo, ITongoDispatcher, ITongoDispatcherTrait},
-        IVault::{IVaultDispatcher, IVaultDispatcherTrait},
-    };
-    use crate::verifier::{
-        audit::verify_audit,
-        fund::verify_fund,
-        ragequit::verify_ragequit,
-        rollover::verify_rollover,
-        transfer::verify_transfer,
-        withdraw::verify_withdraw,
-    };
+    use crate::tongo::ITongo::{ITongo, ITongoDispatcher, ITongoDispatcherTrait};
+    use crate::tongo::IVault::{IVaultDispatcher, IVaultDispatcherTrait};
+    use crate::verifier::audit::verify_audit;
+    use crate::verifier::fund::verify_fund;
+    use crate::verifier::ragequit::verify_ragequit;
+    use crate::verifier::rollover::verify_rollover;
+    use crate::verifier::transfer::verify_transfer;
+    use crate::verifier::withdraw::verify_withdraw;
 
     #[storage]
     struct Storage {
@@ -88,9 +86,10 @@ pub mod Tongo {
         auditor_key: Option<PubKey>,
         /// The increasing number that identifies the public key
         key_number: u128,
-        /// A whitelist of Tongo instances (deployed by the same vault) allowed to interact with this contract
-        /// with the external_transfer mechanism. Only the owner of this contract can approve or revoke Tongo instances.
-        approvedTongo: Map<ContractAddress, bool>
+        /// A whitelist of Tongo instances (deployed by the same vault) allowed to interact with
+        /// this contract with the external_transfer mechanism. Only the owner of this contract can
+        /// approve or revoke Tongo instances.
+        approvedTongo: Map<ContractAddress, bool>,
     }
 
     #[constructor]
@@ -147,7 +146,7 @@ pub mod Tongo {
                 owner: self.get_owner(),
                 vault: self.get_vault(),
                 rate: self.get_rate(),
-                bit_size: self.get_bit_size(), 
+                bit_size: self.get_bit_size(),
                 auditor_key: self.auditor_key(),
             }
         }
@@ -190,16 +189,11 @@ pub mod Tongo {
         ///
         /// Emits FundEvent
         fn fund(ref self: ContractState, fund: Fund) {
-            let Fund { to, amount, proof,  auditPart, hint } = fund;
+            let Fund { to, amount, proof, auditPart, hint } = fund;
             let nonce = self.get_nonce(to);
             let prefix_data = _get_general_prefix_data();
 
-            let inputs: InputsFund = InputsFund { 
-                y: to,
-                nonce,
-                amount,
-                prefix_data
-            };
+            let inputs: InputsFund = InputsFund { y: to, nonce, amount, prefix_data };
 
             verify_fund(inputs, proof);
 
@@ -240,21 +234,24 @@ pub mod Tongo {
         /// Withdraw Tongos and send the ERC20 to a starknet address.
         ///
         /// Emits WithdrawEvent
-        fn withdraw(ref self: ContractState, withdraw: Withdraw, withdraw_options: Option<WithdrawOptions>) {
-            let Withdraw {
-                from, amount, to, proof, auditPart, hint, auxiliarCipher,
-            } = withdraw;
+        fn withdraw(
+            ref self: ContractState, withdraw: Withdraw, withdraw_options: Option<WithdrawOptions>,
+        ) {
+            let Withdraw { from, amount, to, proof, auditPart, hint, auxiliarCipher } = withdraw;
 
             let data = withdraw_options.serialize_data();
 
-            let  relayData = match withdraw_options {
+            let relayData = match withdraw_options {
                 None => None,
                 Some(o) => o.relayData,
             };
 
             if let Some(relay) = relayData {
                 self._withdraw_from_vault(self._unwrap_tongo_amount(relay.fee_to_sender));
-                self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(relay.fee_to_sender));
+                self
+                    ._transfer_to(
+                        get_caller_address(), self._unwrap_tongo_amount(relay.fee_to_sender),
+                    );
                 let cipher = CipherBalanceTrait::new(from, relay.fee_to_sender.into(), 'fee');
                 self._subtract_balance(from, cipher);
             }
@@ -298,19 +295,24 @@ pub mod Tongo {
         /// withdraw.
         ///
         /// Emits RagequitEvent
-        fn ragequit(ref self: ContractState, ragequit: Ragequit, ragequit_options: Option<RagequitOptions>) {
-            let Ragequit { from, amount, to, proof, hint, auditPart} = ragequit;
+        fn ragequit(
+            ref self: ContractState, ragequit: Ragequit, ragequit_options: Option<RagequitOptions>,
+        ) {
+            let Ragequit { from, amount, to, proof, hint, auditPart } = ragequit;
 
             let data = ragequit_options.serialize_data();
 
-            let  relayData = match ragequit_options {
+            let relayData = match ragequit_options {
                 None => None,
                 Some(o) => o.relayData,
             };
 
             if let Some(relay) = relayData {
                 self._withdraw_from_vault(self._unwrap_tongo_amount(relay.fee_to_sender));
-                self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(relay.fee_to_sender));
+                self
+                    ._transfer_to(
+                        get_caller_address(), self._unwrap_tongo_amount(relay.fee_to_sender),
+                    );
                 let cipher = CipherBalanceTrait::new(from, relay.fee_to_sender.into(), 'fee');
                 self._subtract_balance(from, cipher);
             }
@@ -344,7 +346,9 @@ pub mod Tongo {
         /// Transfer Tongos from the balance of the sender to the pending of the receiver
         ///
         /// Emits TransferEvent
-        fn transfer(ref self: ContractState, transfer: Transfer, transfer_options: Option<TransferOptions>) {
+        fn transfer(
+            ref self: ContractState, transfer: Transfer, transfer_options: Option<TransferOptions>,
+        ) {
             let Transfer {
                 from,
                 to,
@@ -368,7 +372,10 @@ pub mod Tongo {
 
             if let Some(relay) = relayData {
                 self._withdraw_from_vault(self._unwrap_tongo_amount(relay.fee_to_sender));
-                self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(relay.fee_to_sender));
+                self
+                    ._transfer_to(
+                        get_caller_address(), self._unwrap_tongo_amount(relay.fee_to_sender),
+                    );
                 let cipher = CipherBalanceTrait::new(from, relay.fee_to_sender.into(), 'fee');
                 self._subtract_balance(from, cipher);
             }
@@ -391,40 +398,58 @@ pub mod Tongo {
                 prefix_data,
                 data,
             };
-            
+
             verify_transfer(inputs, proof);
-            
+
             self._subtract_balance(from, transferBalanceSelf);
             self._overwrite_hint(from, hintLeftover);
 
             let mut toTongo = prefix_data.tongo_address;
             match externalData {
-                None => {
-                    self._add_pending(to, transferBalance);
-                },
+                None => { self._add_pending(to, transferBalance); },
                 Some(external) => {
                     toTongo = external.toTongo;
-                    self._send_external_transfer(from, to, nonce, transferBalance, transferBalanceSelf, hintTransfer, external, prefix_data);
-                }
+                    self
+                        ._send_external_transfer(
+                            from,
+                            to,
+                            nonce,
+                            transferBalance,
+                            transferBalanceSelf,
+                            hintTransfer,
+                            external,
+                            prefix_data,
+                        );
+                },
             }
 
             if let Some(auditor) = self.auditor_key.read() {
-                self._handle_audit_balance(from, nonce,auditor, auditPart, prefix_data);
-                self._handle_audit_transfer( from, nonce, to,auditor, transferBalanceSelf, auditPartTransfer, prefix_data);
+                self._handle_audit_balance(from, nonce, auditor, auditPart, prefix_data);
+                self
+                    ._handle_audit_transfer(
+                        from,
+                        nonce,
+                        to,
+                        auditor,
+                        transferBalanceSelf,
+                        auditPartTransfer,
+                        prefix_data,
+                    );
             }
 
-            self.emit(
-                TransferEvent {
-                    to,
-                    from,
-                    nonce,
-                    toTongo,
-                    transferBalance,
-                    transferBalanceSelf,
-                    hintTransfer,
-                    hintLeftover,
-                }
-            );
+            self
+                .emit(
+                    TransferEvent {
+                        to,
+                        from,
+                        nonce,
+                        toTongo,
+                        transferBalance,
+                        transferBalanceSelf,
+                        hintTransfer,
+                        hintLeftover,
+                    },
+                );
 
             self._increase_nonce(from);
         }
@@ -434,30 +459,21 @@ pub mod Tongo {
         ///
         /// Emits ReceivedExternalTransfer
         fn receive_external_transfer(ref self: ContractState, external: ExternalTransfer) {
-            let caller = get_caller_address();    
+            let caller = get_caller_address();
             assert!(self._vault().is_known_tongo(caller), "Caller is not a valid Tongo contract");
             assert!(self.approvedTongo.entry(caller).read(), "Caller is not approved to operate");
-            
+
             let ExternalTransfer {
-                fromTongo,
-                from,
-                nonce,
-                to,
-                transferBalance,
-                hintTransfer,
+                fromTongo, from, nonce, to, transferBalance, hintTransfer,
             } = external;
 
             self._add_pending(to, transferBalance);
-            self.emit(
-                ReceivedExternalTransfer {
-                    to,
-                    from,
-                    nonce,
-                    fromTongo,
-                    transferBalance,
-                    hintTransfer,
-                }
-            );
+            self
+                .emit(
+                    ReceivedExternalTransfer {
+                        to, from, nonce, fromTongo, transferBalance, hintTransfer,
+                    },
+                );
         }
 
         /// Moves to the balance the amount stored in the pending. Callable only by the account
@@ -533,7 +549,7 @@ pub mod Tongo {
         /// Approve a Tongo instance deployed by the same Vault to interact with
         /// this contract with the External Transfer mechanism.
         fn approveTongo(ref self: ContractState, address: ContractAddress) {
-            self._caller_is_owner();    
+            self._caller_is_owner();
             assert!(!self.approvedTongo.entry(address).read(), "Contract allready white-listed");
             assert!(self._vault().is_known_tongo(address), "Target is not a valid Tongo contract");
             self.approvedTongo.entry(address).write(true);
@@ -542,7 +558,7 @@ pub mod Tongo {
         /// Revoke a previously approved Tongo instance  to interact with
         /// this contract with the External Transfer mechanism.
         fn revokeTongo(ref self: ContractState, address: ContractAddress) {
-            self._caller_is_owner();    
+            self._caller_is_owner();
             assert!(self.approvedTongo.entry(address).read(), "Contract is not white-listed");
             self.approvedTongo.entry(address).write(false);
         }
@@ -639,7 +655,7 @@ pub mod Tongo {
         fn _send_to_vault(self: @ContractState, amount: u256) {
             self._vault().deposit(amount)
         }
-        
+
         fn _withdraw_from_vault(self: @ContractState, amount: u256) {
             self._vault().withdraw(amount)
         }
@@ -687,9 +703,9 @@ pub mod Tongo {
         /// and emits BalanceDeclared Event
         fn _handle_audit_balance(
             ref self: ContractState,
-            y:PubKey,
-            nonce:u64,
-            auditorPubKey:PubKey,
+            y: PubKey,
+            nonce: u64,
+            auditorPubKey: PubKey,
             audit: Option<Audit>,
             prefix_data: GeneralPrefixData,
         ) {
@@ -740,7 +756,7 @@ pub mod Tongo {
                 );
         }
 
-        /// Verifies that, in an external transfer, the given Audit proof is valid for the 
+        /// Verifies that, in an external transfer, the given Audit proof is valid for the
         /// auditor of the target Tongo instance.
         fn _handle_external_transfer_audit(
             self: @ContractState,
@@ -761,7 +777,7 @@ pub mod Tongo {
         }
 
 
-        /// Handles the withdraw (and ragequit) asset transfers. 
+        /// Handles the withdraw (and ragequit) asset transfers.
         fn _handle_relayed_withdraw(
             self: @ContractState, amount: u128, to: ContractAddress, fee_to_sender: u128,
         ) {
@@ -783,34 +799,40 @@ pub mod Tongo {
             externalData: ExternalData,
             prefix_data: GeneralPrefixData,
         ) {
-            let ExternalData {toTongo,  auditPart} = externalData;
-            assert!( toTongo != get_contract_address(), "External tranfer to same instances are not allowed")
-            assert!(self.approvedTongo.entry(toTongo).read(), "Target Tongo instance is not approved");
-            let targetTongo = ITongoDispatcher {contract_address: toTongo};
+            let ExternalData { toTongo, auditPart } = externalData;
+            assert!(
+                toTongo != get_contract_address(),
+                "External tranfer to same instances are not allowed",
+            )
+            assert!(
+                self.approvedTongo.entry(toTongo).read(), "Target Tongo instance is not approved",
+            );
+            let targetTongo = ITongoDispatcher { contract_address: toTongo };
 
-            let target_prefix_data = GeneralPrefixData {
-                tongo_address: toTongo, 
-                ..prefix_data,
-            };
+            let target_prefix_data = GeneralPrefixData { tongo_address: toTongo, ..prefix_data };
 
             if let Some(targetAuditor) = targetTongo.auditor_key() {
-                self._handle_external_transfer_audit(from, nonce, to, targetAuditor,transferBalanceSelf,auditPart, target_prefix_data )    
+                self
+                    ._handle_external_transfer_audit(
+                        from,
+                        nonce,
+                        to,
+                        targetAuditor,
+                        transferBalanceSelf,
+                        auditPart,
+                        target_prefix_data,
+                    )
             }
 
             let external = ExternalTransfer {
-                fromTongo: get_contract_address(),
-                from,
-                nonce,
-                to,
-                transferBalance,
-                hintTransfer,
+                fromTongo: get_contract_address(), from, nonce, to, transferBalance, hintTransfer,
             };
 
             targetTongo.receive_external_transfer(external);
         }
 
         fn _vault(self: @ContractState) -> IVaultDispatcher {
-            return IVaultDispatcher {contract_address: self.vault.read()};
+            return IVaultDispatcher { contract_address: self.vault.read() };
         }
     }
 }

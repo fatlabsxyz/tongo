@@ -67,6 +67,7 @@ impl AuditPrefix of Prefix<InputsAudit> {
         let CipherBalance { L: CL, R: CR } = *self.storedBalance;
         let CipherBalance { L, R } = *self.auditedBalance;
 
+        #[cairofmt::skip]
         let array: Array<felt252> = array![
             *chain_id,
             (*tongo_address).into(),
