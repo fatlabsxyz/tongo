@@ -148,125 +148,58 @@ type TongoReaderEvent =
     | TongoReaderTransferDeclaredEvent
     | TongoReaderExternalTransferEvent;
 
-function parseTransferEventOut(event: ParsedEvent): TongoReaderTransferOutEvent {
-    const data = event[TRANSFER_EVENT_PATH] as unknown as TransferEventData;
-    return {
-        type: TongoReaderEventType.TransferOut,
-        tx_hash: event.transaction_hash!,
-        block_number: event.block_number! as number,
-        event_index: event.event_index! as unknown as number,
-        transaction_index: event.transaction_index! as unknown as number,
-        ...data,
-    };
+function makeEventParser<T extends TongoReaderEventType, D>(type: T, path: string) {
+    return (event: ParsedEvent): BaseEvent & D & { type: T } =>
+        ({
+            type,
+            tx_hash: event.transaction_hash!,
+            block_number: event.block_number! as number,
+            event_index: event.event_index! as unknown as number,
+            transaction_index: event.transaction_index! as unknown as number,
+            ...(event[path] as unknown as D),
+        }) as BaseEvent & D & { type: T };
 }
 
-function parseTransferEventIn(event: ParsedEvent): TongoReaderTransferInEvent {
-    const data = event[TRANSFER_EVENT_PATH] as unknown as TransferEventData;
-    return {
-        type: TongoReaderEventType.TransferIn,
-        tx_hash: event.transaction_hash!,
-        block_number: event.block_number! as number,
-        event_index: event.event_index! as unknown as number,
-        transaction_index: event.transaction_index! as unknown as number,
-        ...data,
-    };
-}
-
-function parseReceivedExternalTransfer(event: ParsedEvent): TongoReaderExternalTransferEvent {
-    const data = event[EXTERNAL_TRANSFER_EVENT_PATH] as unknown as ExternalTransferEventData;
-    return {
-        type: TongoReaderEventType.ExternalTransfer,
-        tx_hash: event.transaction_hash!,
-        block_number: event.block_number! as number,
-        event_index: event.event_index! as unknown as number,
-        transaction_index: event.transaction_index! as unknown as number,
-        ...data,
-    };
-}
-
-function parseFundEvent(event: ParsedEvent): TongoReaderFundEvent {
-    const data = event[FUND_EVENT_PATH] as unknown as FundEventData;
-    return {
-        type: TongoReaderEventType.Fund,
-        tx_hash: event.transaction_hash!,
-        block_number: event.block_number! as number,
-        event_index: event.event_index! as unknown as number,
-        transaction_index: event.transaction_index! as unknown as number,
-        ...data,
-    };
-}
-
-function parseOutsideFundEvent(event: ParsedEvent): TongoReaderOutsideFundEvent {
-    const data = event[OUTSIDE_FUND_EVENT_PATH] as unknown as OutsideFundEventData;
-    return {
-        type: TongoReaderEventType.OutsideFund,
-        tx_hash: event.transaction_hash!,
-        block_number: event.block_number! as number,
-        event_index: event.event_index! as unknown as number,
-        transaction_index: event.transaction_index! as unknown as number,
-        ...data,
-    };
-}
-
-function parseWithdrawEvent(event: ParsedEvent): TongoReaderWithdrawEvent {
-    const data = event[WITHDRAW_EVENT_PATH] as unknown as WithdrawEventData;
-    return {
-        type: TongoReaderEventType.Withdraw,
-        tx_hash: event.transaction_hash!,
-        block_number: event.block_number! as number,
-        event_index: event.event_index! as unknown as number,
-        transaction_index: event.transaction_index! as unknown as number,
-        ...data,
-    };
-}
-
-function parseRagequitEvent(event: ParsedEvent): TongoReaderRagequitEvent {
-    const data = event[RAGEQUIT_EVENT_PATH] as unknown as RagequitEventData;
-    return {
-        type: TongoReaderEventType.Ragequit,
-        tx_hash: event.transaction_hash!,
-        block_number: event.block_number! as number,
-        event_index: event.event_index! as unknown as number,
-        transaction_index: event.transaction_index! as unknown as number,
-        ...data,
-    };
-}
-
-function parseRolloverEvent(event: ParsedEvent): TongoReaderRolloverEvent {
-    const data = event[ROLLOVER_EVENT_PATH] as unknown as RolloverEventData;
-    return {
-        type: TongoReaderEventType.Rollover,
-        tx_hash: event.transaction_hash!,
-        block_number: event.block_number! as number,
-        event_index: event.event_index! as unknown as number,
-        transaction_index: event.transaction_index! as unknown as number,
-        ...data,
-    };
-}
-
-function parseBalanceDeclaredEvent(event: ParsedEvent): TongoReaderBalanceDeclaredEvent {
-    const data = event[BALANCE_DECLARED_EVENT_PATH] as unknown as BalanceDeclaredEventData;
-    return {
-        type: TongoReaderEventType.BalanceDeclared,
-        tx_hash: event.transaction_hash!,
-        block_number: event.block_number! as number,
-        event_index: event.event_index! as unknown as number,
-        transaction_index: event.transaction_index! as unknown as number,
-        ...data,
-    };
-}
-
-function parseTransferDeclaredEvent(event: ParsedEvent): TongoReaderTransferDeclaredEvent {
-    const data = event[TRANSFER_DECLARED_EVENT_PATH] as unknown as TransferDeclaredEventData;
-    return {
-        type: TongoReaderEventType.TransferDeclared,
-        tx_hash: event.transaction_hash!,
-        block_number: event.block_number! as number,
-        event_index: event.event_index! as unknown as number,
-        transaction_index: event.transaction_index! as unknown as number,
-        ...data,
-    };
-}
+const parseFundEvent = makeEventParser<typeof TongoReaderEventType.Fund, FundEventData>(
+    TongoReaderEventType.Fund,
+    FUND_EVENT_PATH,
+);
+const parseOutsideFundEvent = makeEventParser<
+    typeof TongoReaderEventType.OutsideFund,
+    OutsideFundEventData
+>(TongoReaderEventType.OutsideFund, OUTSIDE_FUND_EVENT_PATH);
+const parseWithdrawEvent = makeEventParser<typeof TongoReaderEventType.Withdraw, WithdrawEventData>(
+    TongoReaderEventType.Withdraw,
+    WITHDRAW_EVENT_PATH,
+);
+const parseRagequitEvent = makeEventParser<typeof TongoReaderEventType.Ragequit, RagequitEventData>(
+    TongoReaderEventType.Ragequit,
+    RAGEQUIT_EVENT_PATH,
+);
+const parseRolloverEvent = makeEventParser<typeof TongoReaderEventType.Rollover, RolloverEventData>(
+    TongoReaderEventType.Rollover,
+    ROLLOVER_EVENT_PATH,
+);
+const parseTransferEventIn = makeEventParser<
+    typeof TongoReaderEventType.TransferIn,
+    TransferEventData
+>(TongoReaderEventType.TransferIn, TRANSFER_EVENT_PATH);
+const parseTransferEventOut = makeEventParser<
+    typeof TongoReaderEventType.TransferOut,
+    TransferEventData
+>(TongoReaderEventType.TransferOut, TRANSFER_EVENT_PATH);
+const parseBalanceDeclaredEvent = makeEventParser<
+    typeof TongoReaderEventType.BalanceDeclared,
+    BalanceDeclaredEventData
+>(TongoReaderEventType.BalanceDeclared, BALANCE_DECLARED_EVENT_PATH);
+const parseTransferDeclaredEvent = makeEventParser<
+    typeof TongoReaderEventType.TransferDeclared,
+    TransferDeclaredEventData
+>(TongoReaderEventType.TransferDeclared, TRANSFER_DECLARED_EVENT_PATH);
+const parseReceivedExternalTransfer = makeEventParser<
+    typeof TongoReaderEventType.ExternalTransfer,
+    ExternalTransferEventData
+>(TongoReaderEventType.ExternalTransfer, EXTERNAL_TRANSFER_EVENT_PATH);
 
 export class AccountEventReader {
     tongoAddress: string;
