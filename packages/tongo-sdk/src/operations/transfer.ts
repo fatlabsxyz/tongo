@@ -6,7 +6,7 @@ import { StarkCipherBalance, StarkPoint } from "../types.js";
 import { AEBalance } from "../ae_balance.js";
 import { Audit } from "./audit.js";
 import { TongoAbiType } from "../abi/abi.types.js";
-import { IOperation, OperationType } from "./operation.js";
+import { IOperation, OperationType, serializeRelayData } from "./operation.js";
 
 export type ExternalData = TongoAbiType<"tongo::structs::operations::transfer::ExternalData">;
 export type TransferOptions = TongoAbiType<"tongo::structs::operations::transfer::TransferOptions">;
@@ -46,21 +46,12 @@ interface TransferOpParams {
     Tongo: Contract;
 }
 
-//TODO: handle this better, maybe something similar to the cairo contracts
 export function serializeTransferOptions(transfer_options: CairoOption<TransferOptions>): bigint[] {
     if (transfer_options.isNone()) {
         return [1n];
     }
-
-    const arr = [0n];
     const { relayData, externalData } = transfer_options.unwrap()!;
-    if (relayData.isNone()) {
-        arr.push(1n);
-    } else {
-        arr.push(0n);
-        arr.push(BigInt(relayData.unwrap()!.fee_to_sender));
-    }
-
+    const arr = [0n, ...serializeRelayData(relayData)];
     if (externalData.isNone()) {
         arr.push(1n);
     } else {

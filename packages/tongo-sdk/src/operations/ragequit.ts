@@ -1,6 +1,6 @@
 import { ProofOfRagequit } from "../provers/ragequit.js";
 import { BigNumberish, Call, Contract, CairoOption } from "starknet";
-import { IOperation, OperationType } from "./operation.js";
+import { IOperation, OperationType, serializeRelayData } from "./operation.js";
 import { AEBalance } from "../ae_balance.js";
 import { StarkPoint } from "../types.js";
 import { TongoAbiType } from "../abi/abi.types.js";
@@ -35,21 +35,11 @@ interface RagequitOpParams {
     Tongo: Contract;
 }
 
-//TODO: handle this better, maybe something similar to the cairo contracts
 export function serializeRagequitOptions(ragequit_options: CairoOption<RagequitOptions>): bigint[] {
     if (ragequit_options.isNone()) {
         return [1n];
     }
-
-    const arr = [0n];
-    const { relayData } = ragequit_options.unwrap()!;
-    if (relayData.isNone()) {
-        arr.push(1n);
-    } else {
-        arr.push(0n);
-        arr.push(BigInt(relayData.unwrap()!.fee_to_sender));
-    }
-    return arr;
+    return [0n, ...serializeRelayData(ragequit_options.unwrap()!.relayData)];
 }
 
 export class RagequitOperation implements IRagequitOperation {

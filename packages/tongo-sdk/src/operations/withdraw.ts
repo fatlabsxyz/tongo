@@ -3,7 +3,7 @@ import { BigNumberish, Call, Contract, num, CairoOption } from "starknet";
 import { AEBalance } from "../ae_balance.js";
 import { StarkCipherBalance, StarkPoint } from "../types.js";
 import { TongoAbiType } from "../abi/abi.types.js";
-import { IOperation, OperationType } from "./operation.js";
+import { IOperation, OperationType, serializeRelayData } from "./operation.js";
 import { Audit } from "./audit.js";
 
 export type WithdrawOptions = TongoAbiType<"tongo::structs::operations::withdraw::WithdrawOptions">;
@@ -36,21 +36,11 @@ interface WithdrawOpParams {
     Tongo: Contract;
 }
 
-//TODO: handle this better, maybe something similar to the cairo contracts
 export function serializeWithdrawOptions(withdraw_options: CairoOption<WithdrawOptions>): bigint[] {
     if (withdraw_options.isNone()) {
         return [1n];
     }
-
-    const arr = [0n];
-    const { relayData } = withdraw_options.unwrap()!;
-    if (relayData.isNone()) {
-        arr.push(1n);
-    } else {
-        arr.push(0n);
-        arr.push(BigInt(relayData.unwrap()!.fee_to_sender));
-    }
-    return arr;
+    return [0n, ...serializeRelayData(withdraw_options.unwrap()!.relayData)];
 }
 
 export class WithdrawOperation implements IWithdrawOperation {
