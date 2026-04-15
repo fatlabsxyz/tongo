@@ -4,6 +4,8 @@ import { randomBytes } from "@noble/ciphers/webcrypto.js";
 import { BigNumberish, uint256, Uint256 } from "starknet";
 import { castBigInt, isUint256 } from "./utils.js";
 import { TongoAbiType } from "./abi/abi.types.js";
+import { PubKey, pubKeyAffineToHex } from "./types.js";
+import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
 
 /**
  * The AEBalance represents a simetrically encrypted balance using authenticated
@@ -88,4 +90,21 @@ export class AEChaCha {
             throw new Error("Malformed or tampered ciphertext");
         }
     }
+}
+
+export async function decryptAEHint(
+    pk: bigint,
+    hint: AEBalance,
+    accountNonce: bigint,
+    otherPubKey: PubKey,
+    contractAddress: string,
+): Promise<bigint> {
+    const sharedSecret = ECDiffieHellman(pk, pubKeyAffineToHex(otherPubKey));
+    const keyAEHint = await deriveSymmetricEncryptionKey({
+        contractAddress,
+        nonce: accountNonce,
+        secret: sharedSecret,
+    });
+    const { ciphertext, nonce: cipherNonce } = AEHintToBytes(hint);
+    return new AEChaCha(keyAEHint).decryptBalance({ ciphertext, nonce: cipherNonce });
 }

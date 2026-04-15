@@ -8,12 +8,10 @@ import {
     parseCipherBalance,
     PubKey,
     pubKeyAffineToBase58,
-    pubKeyAffineToHex,
     TongoAddress,
 } from "./types.js";
 
-import { AEBalance, AEChaCha, AEHintToBytes } from "./ae_balance.js";
-import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
+import { AEBalance, decryptAEHint } from "./ae_balance.js";
 import { tongoAbi } from "./abi/tongo.abi.js";
 import { bytesOrNumToBigInt } from "./utils.js";
 
@@ -123,16 +121,6 @@ export class Auditor {
         return decipherBalance(pk, L, R);
     }
 
-    async deriveSymmetricKeyForPubKey(nonce: bigint, other: PubKey, keyIndex: number) {
-        const pk = this.pks[keyIndex]!;
-        const sharedSecret = ECDiffieHellman(pk, pubKeyAffineToHex(other));
-        return deriveSymmetricEncryptionKey({
-            contractAddress: this.Tongo.address,
-            nonce,
-            secret: sharedSecret,
-        });
-    }
-
     async decryptAEHintForPubKey(
         aeHint: AEBalance,
         accountNonce: bigint,
@@ -140,9 +128,13 @@ export class Auditor {
         auditorPubKey: PubKey,
     ): Promise<{ balance: bigint; keyIndex: number }> {
         const keyIndex = this.findKeyIndex(auditorPubKey);
-        const { ciphertext, nonce: cipherNonce } = AEHintToBytes(aeHint);
-        const keyAEHint = await this.deriveSymmetricKeyForPubKey(accountNonce, other, keyIndex);
-        const balance = new AEChaCha(keyAEHint).decryptBalance({ ciphertext, nonce: cipherNonce });
+        const balance = await decryptAEHint(
+            this.pks[keyIndex]!,
+            aeHint,
+            accountNonce,
+            other,
+            this.Tongo.address,
+        );
         return { balance, keyIndex };
     }
 

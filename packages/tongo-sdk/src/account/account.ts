@@ -18,8 +18,8 @@ import { proveWithdraw } from "../provers/withdraw.js";
 import {
     AEBalance,
     AEChaCha,
-    AEHintToBytes,
     bytesToAEHint,
+    decryptAEHint,
     parseAEBalance,
 } from "../ae_balance.js";
 import { AccountEventReader } from "./account.data.service.js";
@@ -571,10 +571,7 @@ export class Account implements IAccount {
         accountNonce: bigint,
         other: PubKey,
     ): Promise<bigint> {
-        const keyAEHint = await this.deriveSymmetricKeyForPubKey(accountNonce, other);
-        const { ciphertext, nonce: cipherNonce } = AEHintToBytes(aeHint);
-        const balance = new AEChaCha(keyAEHint).decryptBalance({ ciphertext, nonce: cipherNonce });
-        return balance;
+        return decryptAEHint(this.pk, aeHint, accountNonce, other, this.Tongo.address);
     }
 
     decryptCipherBalance({ L, R }: CipherBalance, hint?: bigint): bigint {
