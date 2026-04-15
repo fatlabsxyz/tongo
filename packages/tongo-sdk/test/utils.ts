@@ -6,7 +6,7 @@ import { StarkPoint, starkPointToProjectivePoint } from "../src/types.js";
 
 export const provider = new RpcProvider({
     nodeUrl: "http://127.0.0.1:5050/rpc",
-    specVersion: "0.10.0",
+    specVersion: "0.10.0" as const,
 });
 
 export class RelayerHandler {
@@ -42,12 +42,6 @@ export class RelayerHandler {
 }
 
 export const Relayers = new RelayerHandler();
-
-export const tongoAddress = (() => {
-    const _address = process.env.TONGO_CONTRACT_ADDRESS;
-    if (_address === undefined) throw new Error("TONGO_CONTRACT_ADDRESS env var is missing");
-    return _address;
-})();
 
 export function encryptNull(publicKey: StarkPoint) {
     return {

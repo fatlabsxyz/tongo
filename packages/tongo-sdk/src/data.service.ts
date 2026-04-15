@@ -1,4 +1,4 @@
-import { RpcProvider, events, CallData, ParsedEvent, AbiParser2 } from "starknet";
+import { AbiParser2, CallData, ParsedEvent, RpcProvider, events } from "starknet";
 import { TongoAbi, VaultAbi } from "./abi/abi.types.js";
 
 const CHUNK_SIZE = 100;
@@ -29,9 +29,9 @@ export class ContractEventReader {
         const abiStructs = CallData.getAbiStruct(this.contractAbi);
         const abiEnums = CallData.getAbiEnum(this.contractAbi);
 
-        const allRawEvents: any[] = [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const allRawEvents: any[] = []; // TODO: figure out a way of handling v10 | v09 events
         let continuationToken: string | undefined;
-
         do {
             const result = await this.provider.getEvents({
                 address: this.contractAddress,

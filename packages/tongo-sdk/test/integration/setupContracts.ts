@@ -1,11 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
 import { config, Contract, EstimateFeeResponseOverhead } from "starknet";
-import { vaultAbi } from "../../src/abi/vault.abi";
-import { GENERATOR as g } from "../../src/constants";
-import { PubKey } from "../../src/types";
-import { Relayers, Some } from "../utils";
-import { vaultCodec } from "../../src/abi/abi.types";
+import { vaultAbi } from "../../src/abi/vault.abi.js";
+import { GENERATOR as g } from "../../src/constants.js";
+import { PubKey } from "../../src/types.js";
+import { Relayers, Some } from "../utils.js";
+import { vaultCodec } from "../../src/abi/abi.types.js";
 
 config.set("resourceBoundsOverhead", {
     l1_gas: {
