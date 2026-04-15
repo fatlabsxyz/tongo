@@ -33,9 +33,6 @@ interface TongoDeployedEventData {
 type VaultReaderTongoDeployedEvent = TongoDeployedEventData &
     BaseEvent & { type: typeof VaultReaderEventType.TongoDeployed };
 
-// type VaultReaderEvent =
-//     VaultReaderTongoDeployedEvent;
-
 function parseTongoDeployedEvent(event: ParsedEvent): VaultReaderTongoDeployedEvent {
     const data = event[TONGO_DEPLOYED_EVENT_PATH] as unknown as TongoDeployedEventData;
     return {
