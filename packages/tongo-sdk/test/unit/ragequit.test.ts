@@ -15,12 +15,11 @@ describe("ragequit", () => {
 
         const nonce = 1n;
         const prefix_data: GeneralPrefixData = {
-          chain_id: 1111n,
-          tongo_address: (22222n).toString(10),
-          sender_address: (33333n).toString(10)
+            chain_id: 1111n,
+            tongo_address: 22222n.toString(10),
+            sender_address: 33333n.toString(10),
         };
         const serialized_data = [0n];
-
 
         const { inputs, proof } = proveRagequit(
             private_key,

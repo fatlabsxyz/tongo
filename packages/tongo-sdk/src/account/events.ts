@@ -11,7 +11,7 @@ const AccountEvent = {
     ReceivedExternalTransfer: "externalTransferIn",
 } as const;
 
-type AccountEvent = typeof AccountEvent[keyof typeof AccountEvent];
+type AccountEvent = (typeof AccountEvent)[keyof typeof AccountEvent];
 
 export const ReaderToAccountEvents = {
     [TongoReaderEventType.Fund]: AccountEvent.Fund,

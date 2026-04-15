@@ -5,9 +5,7 @@ import { encryptNull, KeyGen, provider, Relayers } from "../utils.js";
 import { Account as TongoAccount } from "../../src/account/account.js";
 
 const {
-    tongo: {
-        address: tongoAddress
-    },
+    tongo: { address: tongoAddress },
 } = inject("contracts");
 
 describe("[integration]", () => {

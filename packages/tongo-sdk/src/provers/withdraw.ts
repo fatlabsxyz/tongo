@@ -1,12 +1,19 @@
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 import { SameEncryptUnknownRandom } from "@fatsolutions/she/protocols";
-import { range as SHE_range} from "@fatsolutions/she/protocols"
+import { range as SHE_range } from "@fatsolutions/she/protocols";
 
-import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
-import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
-import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint, projectivePointToStarkPoint, starkPointToProjectivePoint } from "../types";
-import { createCipherBalance} from "../../src/utils";
-import { AuxAbiType, auxCodec } from "../abi/abi.types";
+import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants.js";
+import { generateRangeProof, Range, verifyRangeProof } from "../provers/range.js";
+import {
+    CipherBalance,
+    compute_prefix,
+    GeneralPrefixData,
+    ProjectivePoint,
+    projectivePointToStarkPoint,
+    starkPointToProjectivePoint,
+} from "../types.js";
+import { createCipherBalance } from "../../src/utils.js";
+import { AuxAbiType, auxCodec } from "../abi/abi.types.js";
 
 // cairo string 'withdraw'
 export const WITHDRAW_CAIRO_STRING = 8604536554778681719n;
@@ -31,11 +38,11 @@ export type InputsWithdraw = AuxAbiType<"tongo::structs::operations::withdraw::I
  * @returns {bigint} The computed prefix hash
  */
 function prefixWithdraw(inputs: InputsWithdraw): bigint {
-    const _serialized = auxCodec.encode("tongo::structs::operations::withdraw::InputsWithdraw", inputs);
-    const seq: bigint[] = [
-        WITHDRAW_CAIRO_STRING,
-        ..._serialized.map(BigInt)
-    ];
+    const _serialized = auxCodec.encode(
+        "tongo::structs::operations::withdraw::InputsWithdraw",
+        inputs,
+    );
+    const seq: bigint[] = [WITHDRAW_CAIRO_STRING, ..._serialized.map(BigInt)];
     return compute_prefix(seq);
 }
 
@@ -85,13 +92,15 @@ export function proveWithdraw(
     //this is to assert that storedbalance is an encryption of the balance amount
     const g_b = L0.subtract(R0.multiplyUnsafe(x));
     const temp = g.multiplyUnsafe(initial_balance);
-    if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
+    if (!g_b.equals(temp)) {
+        throw new Error("storedBalance is not an encryption of balance");
+    }
 
     const left = initial_balance - amount;
 
     // This precomputation is usefull to know add R_aux and V to the prefix computation
-    const  {randomness, total_random} = SHE_range.pregenerate_randomness(bit_size);
-    const auxiliarCipher = createCipherBalance(h,left, total_random);
+    const { randomness, total_random } = SHE_range.pregenerate_randomness(bit_size);
+    const auxiliarCipher = createCipherBalance(h, left, total_random);
 
     const inputs: InputsWithdraw = {
         y: projectivePointToStarkPoint(y),
@@ -113,13 +122,15 @@ export function proveWithdraw(
 
     const prefix = prefixWithdraw(inputs);
 
-    let currentBalance = initial_cipherbalance;
+    const currentBalance = initial_cipherbalance;
 
     R0 = currentBalance.R;
     L0 = currentBalance.L;
 
-    const { r, range } = generateRangeProof(left, bit_size,randomness, prefix);
-    if (r !== total_random) {throw new Error("random mismatch")};
+    const { r, range } = generateRangeProof(left, bit_size, randomness, prefix);
+    if (r !== total_random) {
+        throw new Error("random mismatch");
+    }
 
     const kb = generateRandom();
     const kx = generateRandom();
@@ -130,7 +141,7 @@ export function proveWithdraw(
     const A = g.multiplyUnsafe(kb).add(R0.multiplyUnsafe(kx));
     const A_v = g.multiplyUnsafe(kb).add(h.multiplyUnsafe(kr));
 
-    const c = compute_challenge(prefix, [A_x, A_r, A,A_v]);
+    const c = compute_challenge(prefix, [A_x, A_r, A, A_v]);
 
     const sb = compute_s(kb, left, c);
     const sx = compute_s(kx, x, c);
@@ -149,14 +160,16 @@ export function proveWithdraw(
 
     // compute the cipherbalance that y will have at the end of the withdraw
     const cipher = createCipherBalance(y, amount, WITHDRAW_CAIRO_STRING);
-    const newBalance: CipherBalance = { L: currentBalance.L.subtract(cipher.L), R: currentBalance.R.subtract(cipher.R) };
+    const newBalance: CipherBalance = {
+        L: currentBalance.L.subtract(cipher.L),
+        R: currentBalance.R.subtract(cipher.R),
+    };
 
     return { inputs, proof, newBalance };
 }
 
-
 /**
- * Verifies the withdraw operation. First, users have to show knowledge of the private key. Then, users have to provide 
+ * Verifies the withdraw operation. First, users have to show knowledge of the private key. Then, users have to provide
  * a cleartext of the amount b to withdraw. The contract will construct a cipher balance (L2, R2) = (g**b y**r2, g**r2)
  * with randomness r2='withdraw'. The contract will subtract (L2,R2) to the stored balance of the user. The user have
  * to provide a zk proof that the final cipher balance is encrypting a positive (a value in (0, u**32)) amount b_left. To do
@@ -165,44 +178,44 @@ export function proveWithdraw(
  * that the final cipher balance.
  *
  * Complexity:
- * - EC_MUL: 12 + n*5 = 172 for u32 
+ * - EC_MUL: 12 + n*5 = 172 for u32
  * - EC_ADD: 8 + n*4  = 136 for u32
  *
  * @param {InputsWithdraw} inputs - The withdraw operation inputs
  * @param {ProofOfWithdraw} proof - The proof to verify
  * @returns {boolean} True if the proof is valid, false otherwise
  */
-export function verifyWithdraw(
-    inputs: InputsWithdraw,
-    proof: ProofOfWithdraw,
-) {
+export function verifyWithdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
     const bit_size = Number(inputs.bit_size);
     const prefix = prefixWithdraw(inputs);
-
 
     const c = compute_challenge(prefix, [proof.A_x, proof.A_r, proof.A, proof.A_v]);
 
     let L0 = starkPointToProjectivePoint(inputs.currentBalance.L);
-    let R0 = starkPointToProjectivePoint(inputs.currentBalance.R);
+    const R0 = starkPointToProjectivePoint(inputs.currentBalance.R);
 
     L0 = L0.subtract(g.multiply(BigInt(inputs.amount)));
-    let V = starkPointToProjectivePoint(inputs.auxiliarCipher.L);
-    let R_aux = starkPointToProjectivePoint(inputs.auxiliarCipher.R);
+    const V = starkPointToProjectivePoint(inputs.auxiliarCipher.L);
+    const R_aux = starkPointToProjectivePoint(inputs.auxiliarCipher.R);
     const V_proof = verifyRangeProof(proof.range, bit_size, prefix);
-    if (V_proof == false) { throw new Error("erro in range for V"); }
-    if (!V.equals(V_proof)) {throw new Error( "V missmatch" )};
+    if (V_proof == false) {
+        throw new Error("erro in range for V");
+    }
+    if (!V.equals(V_proof)) {
+        throw new Error("V missmatch");
+    }
 
-    let sameEncryptInputs = {
-      L1: L0,
-      R1: R0,
-      L2: V,
-      R2: R_aux,
-      g,
-      y1: starkPointToProjectivePoint(inputs.y),
-      y2: h,
+    const sameEncryptInputs = {
+        L1: L0,
+        R1: R0,
+        L2: V,
+        R2: R_aux,
+        g,
+        y1: starkPointToProjectivePoint(inputs.y),
+        y2: h,
     };
 
-    let sameEncrpyProof= {
+    const sameEncrpyProof = {
         Ax: proof.A_x,
         AL1: proof.A,
         AL2: proof.A_v,
@@ -213,6 +226,8 @@ export function verifyWithdraw(
         sr2: proof.sr,
     };
 
-    let res = SameEncryptUnknownRandom.verify(sameEncryptInputs, sameEncrpyProof);
-    if (res == false) { throw new Error("error in SameEncrpyUnkownRandom"); }
+    const res = SameEncryptUnknownRandom.verify(sameEncryptInputs, sameEncrpyProof);
+    if (res == false) {
+        throw new Error("error in SameEncrpyUnkownRandom");
+    }
 }

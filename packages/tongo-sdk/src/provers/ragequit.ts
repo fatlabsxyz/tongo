@@ -1,9 +1,16 @@
 import { poe } from "@fatsolutions/she/protocols";
 
-import { GENERATOR as g } from "../constants";
-import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint, projectivePointToStarkPoint, starkPointToProjectivePoint } from "../types";
-import { createCipherBalance} from "../../src/utils";
-import { AuxAbiType, auxCodec } from "../abi/abi.types";
+import { GENERATOR as g } from "../constants.js";
+import {
+    CipherBalance,
+    compute_prefix,
+    GeneralPrefixData,
+    ProjectivePoint,
+    projectivePointToStarkPoint,
+    starkPointToProjectivePoint,
+} from "../types.js";
+import { createCipherBalance } from "../../src/utils.js";
+import { AuxAbiType, auxCodec } from "../abi/abi.types.js";
 
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 
@@ -28,11 +35,11 @@ export type InputsRagequit = AuxAbiType<"tongo::structs::operations::ragequit::I
  * @returns {bigint} The computed prefix hash
  */
 function prefixRagequit(inputs: InputsRagequit): bigint {
-    const _serialized = auxCodec.encode("tongo::structs::operations::ragequit::InputsRagequit", inputs);
-    const seq: bigint[] = [
-        RAGEQUIT_CAIRO_STRING,
-        ..._serialized.map(BigInt)
-    ];
+    const _serialized = auxCodec.encode(
+        "tongo::structs::operations::ragequit::InputsRagequit",
+        inputs,
+    );
+    const seq: bigint[] = [RAGEQUIT_CAIRO_STRING, ..._serialized.map(BigInt)];
     return compute_prefix(seq);
 }
 
@@ -49,7 +56,6 @@ export interface ProofOfRagequit {
     sx: bigint;
 }
 
-
 export function proveRagequit(
     private_key: bigint,
     initial_cipherbalance: CipherBalance,
@@ -58,8 +64,7 @@ export function proveRagequit(
     full_amount: bigint,
     prefix_data: GeneralPrefixData,
     serialized_data: bigint[],
-): { inputs: InputsRagequit, proof: ProofOfRagequit, newBalance: CipherBalance; } {
-
+): { inputs: InputsRagequit; proof: ProofOfRagequit; newBalance: CipherBalance } {
     const x = private_key;
     const y = g.multiply(x);
     const { L: L0, R: R0 } = initial_cipherbalance;
@@ -67,8 +72,9 @@ export function proveRagequit(
     //this is to assert that storedbalance is an encription of the balance amount
     const g_b = L0.subtract(R0.multiplyUnsafe(x));
     const temp = g.multiplyUnsafe(full_amount);
-    if (!g_b.equals(temp)) { throw new Error("storedBalance is not an encryption of balance"); };
-
+    if (!g_b.equals(temp)) {
+        throw new Error("storedBalance is not an encryption of balance");
+    }
 
     const inputs: InputsRagequit = {
         y: projectivePointToStarkPoint(y),
@@ -98,10 +104,9 @@ export function proveRagequit(
     return { inputs, proof, newBalance };
 }
 
-
 /**
- * Verifies the ragequit operation. First, users have to show knowledge of the private key. Then, users have to provide 
- * a cleartext of the amount b stored in their balances. The contract will construct a cipher balance 
+ * Verifies the ragequit operation. First, users have to show knowledge of the private key. Then, users have to provide
+ * a cleartext of the amount b stored in their balances. The contract will construct a cipher balance
  * (L2, R2) = (g**b y, g) with randomness r=1. Users have to provide a zk proof that (L2,R2) is encrypting
  * the same amount that the stored cipher balance (L1,R1). This is done by noting that
  * L1/L2 = y**r1/y**r2 = (R1/R2)**x. We need to prove a poe for Y=G**x with Y=L1/L2 and G=R1/R2
@@ -110,22 +115,19 @@ export function proveRagequit(
  * - P:  k <-- R        sends    A=G**k
  * - V:  c <-- R        sends    c
  * - P:  s = k + c*x    send     s
- * 
+ *
  * The verifier asserts:
  * - G**sr == A * (Y**c)
  *
  * Complexity:
  * - EC_MUL: 7
  * - EC_ADD: 5
- * 
+ *
  * @param {InputsRagequit} inputs - The ragequit operation inputs
  * @param {ProofOfRagequit} proof - The proof to verify
  * @returns {boolean} True if the proof is valid, false otherwise
  */
-export function verifyRagequit(
-    inputs: InputsRagequit,
-    proof: ProofOfRagequit,
-) {
+export function verifyRagequit(inputs: InputsRagequit, proof: ProofOfRagequit) {
     const prefix = prefixRagequit(inputs);
     const c = compute_challenge(prefix, [proof.Ax, proof.AR]);
 

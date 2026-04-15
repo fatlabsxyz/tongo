@@ -10,7 +10,7 @@ export const OperationType = {
     Transfer: "transfer",
     Deploy: "deploy",
 } as const;
-export type OperationType = typeof OperationType[keyof typeof OperationType];
+export type OperationType = (typeof OperationType)[keyof typeof OperationType];
 
 export interface IOperation {
     type: OperationType;

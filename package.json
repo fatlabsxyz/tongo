@@ -6,6 +6,7 @@
     "email": "root@fatlabs.xyz",
     "url": "https://fatsolutions.xyz/"
   },
+  "type": "module",
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@fatsolutions/ganchos": "1.1.2",

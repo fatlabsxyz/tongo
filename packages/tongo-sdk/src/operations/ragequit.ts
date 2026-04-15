@@ -1,4 +1,4 @@
-import { ProofOfRagequit } from "../provers/ragequit";
+import { ProofOfRagequit } from "../provers/ragequit.js";
 import { BigNumberish, Call, Contract, CairoOption } from "starknet";
 import { IOperation, OperationType } from "./operation.js";
 import { AEBalance } from "../ae_balance.js";
@@ -37,17 +37,19 @@ interface RagequitOpParams {
 
 //TODO: handle this better, maybe something similar to the cairo contracts
 export function serializeRagequitOptions(ragequit_options: CairoOption<RagequitOptions>): bigint[] {
-    if (ragequit_options.isNone()) {return [1n]}
-
-    let arr = [0n];
-    const {relayData} = ragequit_options.unwrap()!;
-    if (relayData.isNone()) {
-        arr.push(1n)
-    } else {
-        arr.push(0n)
-        arr.push(BigInt(relayData.unwrap()!.fee_to_sender))
+    if (ragequit_options.isNone()) {
+        return [1n];
     }
-    return arr
+
+    const arr = [0n];
+    const { relayData } = ragequit_options.unwrap()!;
+    if (relayData.isNone()) {
+        arr.push(1n);
+    } else {
+        arr.push(0n);
+        arr.push(BigInt(relayData.unwrap()!.fee_to_sender));
+    }
+    return arr;
 }
 
 export class RagequitOperation implements IRagequitOperation {
@@ -61,7 +63,16 @@ export class RagequitOperation implements IRagequitOperation {
     proof: ProofOfRagequit;
     ragequit_options: CairoOption<RagequitOptions>;
 
-    constructor({ from, to, amount, proof, Tongo, hint, auditPart, ragequit_options }: RagequitOpParams) {
+    constructor({
+        from,
+        to,
+        amount,
+        proof,
+        Tongo,
+        hint,
+        auditPart,
+        ragequit_options,
+    }: RagequitOpParams) {
         this.Tongo = Tongo;
         this.from = from;
         this.to = to;
@@ -69,7 +80,7 @@ export class RagequitOperation implements IRagequitOperation {
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
-        this.ragequit_options = ragequit_options
+        this.ragequit_options = ragequit_options;
     }
 
     toCalldata(): Call {
@@ -82,7 +93,7 @@ export class RagequitOperation implements IRagequitOperation {
                 hint: this.hint,
                 auditPart: this.auditPart,
             },
-            this.ragequit_options
+            this.ragequit_options,
         ]);
     }
 }

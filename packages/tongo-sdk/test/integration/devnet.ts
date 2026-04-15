@@ -2,7 +2,6 @@ import { TestProject } from "vitest/node";
 import { Devnet } from "starknet-devnet";
 import { setupContracts } from "./setupContracts";
 
-
 async function startDevnet({
     dumpPath,
     chainId = "MAINNET",
@@ -14,14 +13,21 @@ async function startDevnet({
         // stdout: process.stdout,
         // stderr: process.stderr,
         maxStartupMillis: 15_000,
+        // prettier-ignore-start
         args: [
-            "--seed", "100",
-            "--chain-id", chainId,
-            "--block-generation-on", "transaction",
-            "--accounts", predeployedAccounts.toString(),
+            "--seed",
+            "100",
+            "--chain-id",
+            chainId,
+            "--block-generation-on",
+            "transaction",
+            "--accounts",
+            predeployedAccounts.toString(),
             // "--dump-path", dumpPath,
-            "--port", "5050",
-        ]
+            "--port",
+            "5050",
+        ],
+        // prettier-ignore-end
     });
 }
 
@@ -31,7 +37,7 @@ let devnet: Devnet;
 
 export async function setup({ provide }: TestProject) {
     devnet = await startDevnet({
-        dumpPath: "./test/state/devnet.state"
+        dumpPath: "./test/state/devnet.state",
     });
     const contracts = await setupContracts();
     provide("contracts", contracts);
@@ -46,8 +52,8 @@ export async function teardown() {
     devnet.kill();
 }
 
-declare module 'vitest' {
+declare module "vitest" {
     export interface ProvidedContext {
-        contracts: Awaited<ReturnType<(typeof setupContracts)>>;
+        contracts: Awaited<ReturnType<typeof setupContracts>>;
     }
 }

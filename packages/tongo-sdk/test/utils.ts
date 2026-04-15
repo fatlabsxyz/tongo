@@ -10,7 +10,7 @@ export const provider = new RpcProvider({
 });
 
 export class RelayerHandler {
-    accounts: Record<number, { address: string; privateKey: string; }>;
+    accounts: Record<number, { address: string; privateKey: string }>;
     devnet: DevnetProvider;
 
     constructor() {
@@ -18,7 +18,7 @@ export class RelayerHandler {
     }
 
     async assertDevnetRunning() {
-        if (!await this.devnet.isAlive()) {
+        if (!(await this.devnet.isAlive())) {
             throw Error("Devnet not running!");
         }
     }
@@ -39,7 +39,6 @@ export class RelayerHandler {
             transactionVersion: "0x3",
         });
     }
-
 }
 
 export const Relayers = new RelayerHandler();
