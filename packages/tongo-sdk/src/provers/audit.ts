@@ -1,27 +1,22 @@
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 import { SameEncryptUnknownRandom } from "@fatsolutions/she/protocols";
 import { GENERATOR as g } from "../constants";
-import { CipherBalance, ProjectivePoint, GeneralPrefixData, compute_prefix } from "../types";
+import { CipherBalance, ProjectivePoint, GeneralPrefixData, compute_prefix, projectivePointToStarkPoint, starkPointToProjectivePoint } from "../types";
 import { createCipherBalance} from "../../src/utils";
+import { AuxAbiType, auxCodec } from "../abi/abi.types";
 
 // cairo string 'audit'
 export const AUDIT_CAIRO_STRING = 418581342580n;
 
 /**
  * Public inputs of the verifier for the audit declaration
- * @interface InputsAudit
- * @property {ProjectivePoint} y - The Tongo account that is declaring its balance
- * @property {ProjectivePoint} auditorPubKey - The current auditor public key
+ * @property {PubKey} y - The Tongo account that is declaring its balance
+ * @property {PubKey} auditorPubKey - The current auditor public key
  * @property {CipherBalance} storedBalance - The current CipherBalance stored for the account (y)
  * @property {CipherBalance} auditedBalance - The balance of y encrypted under the auditor public key
+ * @property {GeneralPrefixData} prefix_data - General prefix data for the operation
  */
-export interface InputsAudit {
-    y: ProjectivePoint,
-    storedBalance: CipherBalance,
-    auditorPubKey: ProjectivePoint,
-    auditedBalance: CipherBalance,
-    prefix_data: GeneralPrefixData,
-}
+export type InputsAudit = AuxAbiType<"tongo::structs::operations::audit::InputsAudit">;
 
 /**
  * Computes the prefix by hashing some public inputs.
@@ -29,24 +24,10 @@ export interface InputsAudit {
  * @returns {bigint} The computed prefix hash
  */
 function prefixAudit(inputs: InputsAudit): bigint {
-    const { chain_id, tongo_address, sender_address } = inputs.prefix_data;
+    const _serialized = auxCodec.encode("tongo::structs::operations::audit::InputsAudit", inputs);
     const seq: bigint[] = [
-        BigInt(chain_id),
-        BigInt(tongo_address),
-        BigInt(sender_address),
         AUDIT_CAIRO_STRING,
-        inputs.y.toAffine().x,
-        inputs.y.toAffine().y,
-        inputs.auditorPubKey.toAffine().x,
-        inputs.auditorPubKey.toAffine().y,
-        inputs.storedBalance.L.toAffine().x,
-        inputs.storedBalance.L.toAffine().y,
-        inputs.storedBalance.R.toAffine().x,
-        inputs.storedBalance.R.toAffine().y,
-        inputs.auditedBalance.L.toAffine().x,
-        inputs.auditedBalance.L.toAffine().y,
-        inputs.auditedBalance.R.toAffine().x,
-        inputs.auditedBalance.R.toAffine().y,
+        ..._serialized.map(BigInt)
     ];
     return compute_prefix(seq);
 }
@@ -91,7 +72,19 @@ export function proveAudit(
 
     const r = generateRandom();
     const auditedBalance = createCipherBalance(auditorPubKey, initial_balance, r);
-    const inputs: InputsAudit = { y, storedBalance: initial_cipherbalance, auditorPubKey, auditedBalance, prefix_data };
+    const inputs: InputsAudit = {
+        y: projectivePointToStarkPoint(y),
+        storedBalance: {
+            L: projectivePointToStarkPoint(initial_cipherbalance.L),
+            R: projectivePointToStarkPoint(initial_cipherbalance.R),
+        },
+        auditorPubKey: projectivePointToStarkPoint(auditorPubKey),
+        auditedBalance: {
+            L: projectivePointToStarkPoint(auditedBalance.L),
+            R: projectivePointToStarkPoint(auditedBalance.R),
+        },
+        prefix_data,
+    };
     const prefix = prefixAudit(inputs);
 
     const kx = generateRandom();
@@ -128,8 +121,10 @@ export function proveAudit(
  */
 export function verifyAudit(inputs: InputsAudit, proof: ProofOfAudit): boolean {
     const c = compute_challenge(AUDIT_CAIRO_STRING, [proof.Ax, proof.AL0, proof.AL1, proof.AR1]);
-    const { L: L0, R: R0 } = inputs.storedBalance;
-    const { L: L_audit, R: R_audit } = inputs.auditedBalance;
+    const L0 = starkPointToProjectivePoint(inputs.storedBalance.L);
+    const R0 = starkPointToProjectivePoint(inputs.storedBalance.R);
+    const L_audit = starkPointToProjectivePoint(inputs.auditedBalance.L);
+    const R_audit = starkPointToProjectivePoint(inputs.auditedBalance.R);
 
     return SameEncryptUnknownRandom._verify(
         L0,
@@ -137,8 +132,8 @@ export function verifyAudit(inputs: InputsAudit, proof: ProofOfAudit): boolean {
         L_audit,
         R_audit,
         g,
-        inputs.y,
-        inputs.auditorPubKey,
+        starkPointToProjectivePoint(inputs.y),
+        starkPointToProjectivePoint(inputs.auditorPubKey),
         proof.Ax,
         proof.AL0,
         proof.AL1,

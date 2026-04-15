@@ -63,29 +63,8 @@ impl ChallengeAudit of Challenge<ProofOfAudit> {
 impl AuditPrefix of Prefix<InputsAudit> {
     fn compute_prefix(self: @InputsAudit) -> felt252 {
         let audit_selector = 'audit';
-        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
-        let CipherBalance { L: CL, R: CR } = *self.storedBalance;
-        let CipherBalance { L, R } = *self.auditedBalance;
-
-        #[cairofmt::skip]
-        let array: Array<felt252> = array![
-            *chain_id,
-            (*tongo_address).into(),
-            (*sender_address).into(),
-            audit_selector,
-            *self.y.x,
-            *self.y.y,
-            *self.auditorPubKey.x,
-            *self.auditorPubKey.y,
-            CL.x,
-            CL.y,
-            CR.x,
-            CR.y,
-            L.x,
-            L.y,
-            R.x,
-            R.y,
-        ];
+        let mut array: Array<felt252> = array![audit_selector];
+        self.serialize(ref array);
         poseidon_hash_span(array.span())
     }
 }
