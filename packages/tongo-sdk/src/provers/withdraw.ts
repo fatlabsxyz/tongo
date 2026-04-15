@@ -12,7 +12,7 @@ import {
     projectivePointToStarkPoint,
     starkPointToProjectivePoint,
 } from "../types.js";
-import { createCipherBalance } from "../../src/utils.js";
+import { createCipherBalance } from "../utils.js";
 import { AuxAbiType, auxCodec } from "../abi/abi.types.js";
 
 // cairo string 'withdraw'

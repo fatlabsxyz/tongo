@@ -1,7 +1,7 @@
 import { compute_challenge } from "@fatsolutions/she";
 import { poe } from "@fatsolutions/she/protocols";
 
-import { createCipherBalance } from "../../src/utils.js";
+import { createCipherBalance } from "../utils.js";
 import { AuxAbiType, auxCodec } from "../abi/abi.types.js";
 import { GENERATOR as g } from "../constants.js";
 import {
