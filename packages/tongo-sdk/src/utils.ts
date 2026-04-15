@@ -1,5 +1,5 @@
 import { bytesToHex } from "@noble/hashes/utils";
-import { BigNumberish, num, uint256, Uint256 } from "starknet";
+import { BigNumberish, CairoOption, CairoOptionVariant, num, uint256, Uint256 } from "starknet";
 
 import { GENERATOR } from "./constants.js";
 import { ProjectivePoint, projectivePointToStarkPoint, CipherBalance } from "./types.js";
@@ -100,4 +100,12 @@ export function assertBalance(
 
 export function pubKeyFromSecret(secret: bigint) {
     return projectivePointToStarkPoint(GENERATOR.multiply(secret));
+}
+
+export function Some<T>(data: T) {
+    return new CairoOption<T>(CairoOptionVariant.Some, data);
+}
+
+export function None<T>() {
+    return new CairoOption<T>(CairoOptionVariant.None);
 }

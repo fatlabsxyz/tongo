@@ -1,9 +1,10 @@
 import { StarkPoint } from "../types.js";
-import { Call, CairoOption, CairoOptionVariant, num, hash, CallData } from "starknet";
+import { Call, CairoOption, num, hash, CallData } from "starknet";
 import { tongoAbi } from "../abi/tongo.abi.js";
 import { IOperation, OperationType } from "./operation.js";
 import { VaultConfig } from "../vault/vault.interface.js";
 import { VaultContract } from "../contracts.js";
+import { None, Some } from "../utils.js";
 
 export interface IDeployOperation extends IOperation {
     type: typeof OperationType.Deploy;
@@ -28,9 +29,9 @@ export class DeployOperation implements IDeployOperation {
     constructor({ owner, tag, auditorKey: auditor, Vault, vaultSetup }: DeployOpParams) {
         const { vault_address, tongo_class_hash, ERC20, rate, bit_size } = vaultSetup;
 
-        let auditorKey = new CairoOption<StarkPoint>(CairoOptionVariant.None);
+        let auditorKey = None<StarkPoint>();
         if (auditor) {
-            auditorKey = new CairoOption<StarkPoint>(CairoOptionVariant.Some, auditor);
+            auditorKey = Some<StarkPoint>(auditor);
         }
 
         this.owner = owner;

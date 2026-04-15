@@ -1,11 +1,4 @@
-import {
-    BigNumberish,
-    CairoOption,
-    CairoOptionVariant,
-    Contract,
-    num,
-    RpcProvider,
-} from "starknet";
+import { BigNumberish, CairoOption, Contract, num, RpcProvider } from "starknet";
 import { TongoContract } from "../contracts.js";
 
 import { proveAudit, verifyAudit } from "../provers/audit.js";
@@ -14,7 +7,7 @@ import { proveRagequit } from "../provers/ragequit.js";
 import { proveRollover } from "../provers/rollover.js";
 import { proveTransfer } from "../provers/transfer.js";
 import { proveWithdraw } from "../provers/withdraw.js";
-
+import { tongoAbi } from "../abi/tongo.abi.js";
 import {
     AEBalance,
     AEChaCha,
@@ -22,30 +15,28 @@ import {
     decryptAEHint,
     parseAEBalance,
 } from "../ae_balance.js";
-import { AccountEventReader } from "./account.data.service.js";
+import { FEE_CAIRO_STRING } from "../constants.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "../key.js";
 import { Audit, ExPost } from "../operations/audit.js";
 import { FundOperation } from "../operations/fund.js";
 import { OutsideFundOperation } from "../operations/outside_fund.js";
-import { RollOverOperation } from "../operations/rollover.js";
-import {
-    TransferOperation,
-    ExternalData,
-    TransferOptions,
-    serializeTransferOptions,
-} from "../operations/transfer.js";
-import {
-    WithdrawOperation,
-    WithdrawOptions,
-    serializeWithdrawOptions,
-} from "../operations/withdraw.js";
 import {
     RagequitOperation,
     RagequitOptions,
     serializeRagequitOptions,
 } from "../operations/ragequit.js";
-import { tongoAbi } from "../abi/tongo.abi.js";
-import { FEE_CAIRO_STRING } from "../constants.js";
+import { RollOverOperation } from "../operations/rollover.js";
+import {
+    ExternalData,
+    serializeTransferOptions,
+    TransferOperation,
+    TransferOptions,
+} from "../operations/transfer.js";
+import {
+    serializeWithdrawOptions,
+    WithdrawOperation,
+    WithdrawOptions,
+} from "../operations/withdraw.js";
 import {
     CipherBalance,
     GeneralPrefixData,
@@ -54,40 +45,43 @@ import {
     pubKeyAffineToBase58,
     pubKeyAffineToHex,
     pubKeyBase58ToHex,
+    RelayData,
     starkPointToProjectivePoint,
     TongoAddress,
-    RelayData,
 } from "../types.js";
 import {
     assertBalance,
     bytesOrNumToBigInt,
     castBigInt,
-    decipherBalance,
-    pubKeyFromSecret,
     createCipherBalance,
+    decipherBalance,
+    None,
+    pubKeyFromSecret,
+    Some,
     toNumber,
 } from "../utils.js";
+import { AccountEventReader } from "./account.data.service.js";
 import {
     AccountState,
     FundDetails,
-    OutsideFundDetails,
     IAccount,
+    OutsideFundDetails,
     RagequitDetails,
     RawAccountState,
+    RolloverDetails,
     TransferDetails,
     WithdrawDetails,
-    RolloverDetails,
 } from "./account.interface.js";
 import {
     AccountEvents,
     AccountFundEvent,
     AccountOutsideFundEvent,
     AccountRagequitEvent,
+    AccountReceivedExternalTransfer,
     AccountRolloverEvent,
     AccountTransferInEvent,
     AccountTransferOutEvent,
     AccountWithdrawEvent,
-    AccountReceivedExternalTransfer,
 } from "./events.js";
 
 export class Account implements IAccount {
@@ -193,12 +187,12 @@ export class Account implements IAccount {
     } {
         if (fee_to_sender == 0n) {
             return {
-                relayData: new CairoOption<RelayData>(CairoOptionVariant.None),
+                relayData: None<RelayData>(),
                 currentAmount,
                 currentBalance,
             };
         }
-        const relayData = new CairoOption<RelayData>(CairoOptionVariant.Some, { fee_to_sender });
+        const relayData = Some<RelayData>({ fee_to_sender });
         const { L: L_fee, R: R_fee } = createCipherBalance(
             starkPointToProjectivePoint(this.publicKey),
             fee_to_sender,
@@ -222,7 +216,7 @@ export class Account implements IAccount {
         prefix_data: GeneralPrefixData,
         auditor: CairoOption<PubKey>,
     ): Promise<CairoOption<Audit>> {
-        let auditPart = new CairoOption<Audit>(CairoOptionVariant.None);
+        let auditPart = None<Audit>();
         if (auditor.isSome()) {
             const auditorPubKey = starkPointToProjectivePoint(auditor.unwrap()!);
             const { inputs: inputsAudit, proof: proofAudit } = proveAudit(
@@ -238,7 +232,7 @@ export class Account implements IAccount {
                 hint,
                 proof: proofAudit,
             };
-            auditPart = new CairoOption<Audit>(CairoOptionVariant.Some, audit);
+            auditPart = Some<Audit>(audit);
         }
         return auditPart;
     }
@@ -313,7 +307,7 @@ export class Account implements IAccount {
         const to = starkPointToProjectivePoint(transferDetails.to);
         const prefix_data = await this.prefixData(sender);
 
-        let externalData = new CairoOption<ExternalData>(CairoOptionVariant.None);
+        let externalData = None<ExternalData>();
 
         //TODO implement a max fee in the contract?
         const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
@@ -327,14 +321,14 @@ export class Account implements IAccount {
             if (toTongo == this.Tongo.address) {
                 throw new Error("Cannot make an external transfer to same tongo");
             }
-            const emptyAudit = new CairoOption<Audit>(CairoOptionVariant.None);
-            externalData = new CairoOption<ExternalData>(CairoOptionVariant.Some, {
+            const emptyAudit = None<Audit>();
+            externalData = Some<ExternalData>({
                 toTongo,
                 auditPart: emptyAudit,
             });
         }
 
-        let transferOptions = new CairoOption<TransferOptions>(CairoOptionVariant.Some, {
+        let transferOptions = Some<TransferOptions>({
             relayData,
             externalData,
         });
@@ -403,8 +397,8 @@ export class Account implements IAccount {
                 toTongo,
                 auditPart: auditTarget,
             };
-            externalData = new CairoOption<ExternalData>(CairoOptionVariant.Some, external);
-            transferOptions = new CairoOption<TransferOptions>(CairoOptionVariant.Some, {
+            externalData = Some<ExternalData>(external);
+            transferOptions = Some<TransferOptions>({
                 relayData,
                 externalData,
             });
@@ -446,7 +440,7 @@ export class Account implements IAccount {
             balance,
         );
 
-        const ragequitOptions = new CairoOption<RagequitOptions>(CairoOptionVariant.Some, {
+        const ragequitOptions = Some<RagequitOptions>({
             relayData,
         });
         const serializedData = serializeRagequitOptions(ragequitOptions);
@@ -498,7 +492,7 @@ export class Account implements IAccount {
             balance,
         );
 
-        const withdrawOptions = new CairoOption<WithdrawOptions>(CairoOptionVariant.Some, {
+        const withdrawOptions = Some<WithdrawOptions>({
             relayData,
         });
         const serializedData = serializeWithdrawOptions(withdrawOptions);
