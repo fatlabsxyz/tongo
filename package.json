@@ -2,23 +2,24 @@
   "name": "tongo-cash",
   "private": false,
   "author": {
-      "name": "Fat Solutions",
-      "email": "root@fatlabs.xyz",
-      "url": "https://fatsolutions.xyz/"
+    "name": "Fat Solutions",
+    "email": "root@fatlabs.xyz",
+    "url": "https://fatsolutions.xyz/"
   },
   "devDependencies": {
-    "globals": "^16.0.0",
+    "@eslint/js": "^9.39.2",
+    "@fatsolutions/ganchos": "1.1.2",
     "@types/node": "^22.13.5",
     "@typescript-eslint/eslint-plugin": "^8.24.1",
     "@typescript-eslint/parser": "^8.24.1",
-    "@eslint/js": "^9.25.1",
-    "eslint": "^9.25.1",
-    "eslint-config-prettier": "^10.0.1",
+    "@vitest/coverage-v8": "3.2.4",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.2.3",
+    "globals": "^16.0.0",
     "prettier": "^3.5.1",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.24.1",
-    "@vitest/coverage-v8": "3.2.4",
+    "typescript-eslint": "^8.51.0",
     "vitest": "3.2.4"
   },
   "license": "Apache-2.0",
@@ -26,5 +27,11 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org"
+  },
+  "ganchos": {
+    "languages": [
+      "typescript",
+      "cairo"
+    ]
   }
 }
