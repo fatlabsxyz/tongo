@@ -45,6 +45,7 @@ import {
     serializeRagequitOptions,
 } from "../operations/ragequit.js";
 import { tongoAbi } from "../abi/tongo.abi.js";
+import { FEE_CAIRO_STRING } from "../constants.js";
 import {
     CipherBalance,
     GeneralPrefixData,
@@ -64,6 +65,7 @@ import {
     decipherBalance,
     pubKeyFromSecret,
     createCipherBalance,
+    toNumber,
 } from "../utils.js";
 import {
     AccountState,
@@ -90,9 +92,6 @@ import {
 } from "./events.js";
 
 type TongoContract = TypedContractV2<typeof tongoAbi>;
-
-//TODO decide where to put this string
-export const FEE_CAIRO_STRING = 6710629n;
 
 export class Account implements IAccount {
     publicKey: PubKey;
@@ -161,9 +160,7 @@ export class Account implements IAccount {
 
     /// Returns the bit_size of this Tongo contract
     async bit_size(): Promise<number> {
-        const bit = await this.Tongo.get_bit_size();
-        const bit_size: number = typeof bit == "bigint" ? Number(bit) : bit;
-        return bit_size;
+        return toNumber(await this.Tongo.get_bit_size());
     }
 
     // Warning: This is only for display. This is not the correct amount
@@ -343,10 +340,9 @@ export class Account implements IAccount {
         const hintLeftover = await this.computeAEHintForSelf(balance_left, nonce + 1n);
 
         //audit
-        const transferBalanceSelfCipher: CipherBalance = {
-            L: starkPointToProjectivePoint(inputs.transferBalanceSelf.L),
-            R: starkPointToProjectivePoint(inputs.transferBalanceSelf.R),
-        };
+        const transferBalanceSelfCipher: CipherBalance = parseCipherBalance(
+            inputs.transferBalanceSelf,
+        );
         const auditor = await this.auditorKey();
         const auditPart = await this.createAuditPart(
             balance_left,

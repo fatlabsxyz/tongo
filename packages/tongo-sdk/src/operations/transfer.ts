@@ -1,7 +1,7 @@
 import { CairoOption, Call, Contract } from "starknet";
 
 import { ProofOfTransfer } from "../provers/transfer.js";
-import { StarkPoint } from "../types.js";
+import { StarkCipherBalance, StarkPoint } from "../types.js";
 
 import { AEBalance } from "../ae_balance.js";
 import { Audit } from "./audit.js";
@@ -13,11 +13,6 @@ export type TransferOptions = TongoAbiType<"tongo::structs::operations::transfer
 
 export interface ITransferOperation extends IOperation {
     type: typeof OperationType.Transfer;
-}
-
-interface StarkCipherBalance {
-    L: StarkPoint;
-    R: StarkPoint;
 }
 
 /**

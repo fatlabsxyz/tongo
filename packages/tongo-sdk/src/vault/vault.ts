@@ -2,7 +2,7 @@ import { Contract, RpcProvider, num, TypedContractV2 } from "starknet";
 import { DeployOperation } from "../operations/deploy.js";
 import { IVault, VaultConfig, DeployDetails } from "./vault.interface.js";
 import { vaultAbi } from "../abi/vault.abi.js";
-import { castBigInt } from "../utils.js";
+import { castBigInt, toNumber } from "../utils.js";
 
 export type VaultContract = TypedContractV2<typeof vaultAbi>;
 
@@ -44,9 +44,7 @@ export class Vault implements IVault {
     }
 
     async bit_size(): Promise<number> {
-        const bit = await this.contract.get_bit_size();
-        const bit_size: number = typeof bit == "bigint" ? Number(bit) : bit;
-        return bit_size;
+        return toNumber(await this.contract.get_bit_size());
     }
 
     async rate(): Promise<bigint> {
@@ -55,20 +53,14 @@ export class Vault implements IVault {
     }
 
     async vault_config(): Promise<VaultConfig> {
-        const {
-            vault_address,
-            tongo_class_hash,
-            ERC20,
-            rate,
-            bit_size: bit,
-        } = await this.contract.get_vault_setup();
-        const bit_size: number = typeof bit == "bigint" ? Number(bit) : bit;
+        const { vault_address, tongo_class_hash, ERC20, rate, bit_size } =
+            await this.contract.get_vault_setup();
 
         return {
             vault_address: num.toHex(vault_address),
             tongo_class_hash: num.toHex(tongo_class_hash),
             ERC20: num.toHex(ERC20),
-            bit_size,
+            bit_size: toNumber(bit_size),
             rate: castBigInt(rate),
         };
     }

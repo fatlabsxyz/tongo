@@ -5,6 +5,7 @@ import { range as SHE_range } from "@fatsolutions/she/protocols";
 import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants.js";
 import { generateRangeProof, Range, verifyRangeProof } from "../provers/range.js";
 import {
+    cipherToStark,
     CipherBalance,
     compute_prefix,
     GeneralPrefixData,
@@ -17,8 +18,6 @@ import { AuxAbiType, auxCodec } from "../abi/abi.types.js";
 
 // cairo string 'transfer'
 export const TRANSFER_CAIRO_STRING = 8390876182755042674n;
-
-export const FEE_CAIRO_STRING = 6710629n;
 
 /**
  * Public inputs of the verifier for the transfer operation.
@@ -100,11 +99,6 @@ export function proveTransfer(
     const { randomness: randomness2, total_random: total_random2 } =
         SHE_range.pregenerate_randomness(bit_size);
     const auxiliarCipher2 = createCipherBalance(h, b_left, total_random2);
-
-    const cipherToStark = (cb: CipherBalance) => ({
-        L: projectivePointToStarkPoint(cb.L),
-        R: projectivePointToStarkPoint(cb.R),
-    });
 
     const inputs: InputsTransfer = {
         from: projectivePointToStarkPoint(y),

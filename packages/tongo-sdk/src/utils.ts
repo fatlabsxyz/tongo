@@ -26,6 +26,10 @@ export function castBigInt(x: number | bigint | Uint256) {
     }
 }
 
+export function toNumber(x: number | bigint): number {
+    return typeof x === "bigint" ? Number(x) : x;
+}
+
 export function createCipherBalance(
     y: ProjectivePoint,
     amount: bigint,

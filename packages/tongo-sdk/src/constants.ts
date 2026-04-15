@@ -8,3 +8,6 @@ export const SECONDARY_GENERATOR: ProjectivePoint = new ProjectivePoint(
     962306405833205337611861169387935900858447421343428280515103558221889311122n,
     1n,
 );
+
+// cairo string 'fee'
+export const FEE_CAIRO_STRING = 6710629n;

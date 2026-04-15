@@ -1,17 +1,12 @@
 import { ProofOfWithdraw } from "../provers/withdraw.js";
 import { BigNumberish, Call, Contract, num, CairoOption } from "starknet";
 import { AEBalance } from "../ae_balance.js";
-import { StarkPoint } from "../types.js";
+import { StarkCipherBalance, StarkPoint } from "../types.js";
 import { TongoAbiType } from "../abi/abi.types.js";
 import { IOperation, OperationType } from "./operation.js";
 import { Audit } from "./audit.js";
 
 export type WithdrawOptions = TongoAbiType<"tongo::structs::operations::withdraw::WithdrawOptions">;
-
-interface StarkCipherBalance {
-    L: StarkPoint;
-    R: StarkPoint;
-}
 
 export interface IWithdrawOperation extends IOperation {
     type: typeof OperationType.Withdraw;

@@ -42,6 +42,15 @@ export interface CipherBalance {
 }
 
 /**
+ * The StarkPoint-based counterpart of {@link CipherBalance}. Used at the contract
+ * boundary where curve points are serialized as affine `(x, y)` coordinates.
+ */
+export interface StarkCipherBalance {
+    L: StarkPoint;
+    R: StarkPoint;
+}
+
+/**
  * This function coincides with cairo compute_prefix
  * @param seq - Array of bigint values to hash
  * @returns The computed prefix hash
@@ -127,9 +136,21 @@ export function pubKeyBase58ToHex(b58string: string): string {
  * @param {StarkPoint} param0.R - The right point
  * @returns {CipherBalance} The resulting CipherBalance
  */
-export function parseCipherBalance({ L, R }: { L: StarkPoint; R: StarkPoint }): CipherBalance {
+export function parseCipherBalance({ L, R }: StarkCipherBalance): CipherBalance {
     return {
         L: starkPointToProjectivePoint(L),
         R: starkPointToProjectivePoint(R),
+    };
+}
+
+/**
+ * Converts a CipherBalance (ProjectivePoint pair) to its StarkPoint (affine) form.
+ * @param {CipherBalance} cb - The cipher balance to convert
+ * @returns {StarkCipherBalance} The StarkPoint counterpart
+ */
+export function cipherToStark(cb: CipherBalance): StarkCipherBalance {
+    return {
+        L: projectivePointToStarkPoint(cb.L),
+        R: projectivePointToStarkPoint(cb.R),
     };
 }
