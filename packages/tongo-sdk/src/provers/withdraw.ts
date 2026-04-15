@@ -79,7 +79,7 @@ export function proveWithdraw(
     nonce: bigint,
     bit_size: number,
     prefix_data: GeneralPrefixData,
-    serialized_data: bigint[],
+    serializedData: bigint[],
 ): {
     inputs: InputsWithdraw;
     proof: ProofOfWithdraw;
@@ -117,7 +117,7 @@ export function proveWithdraw(
             R: projectivePointToStarkPoint(auxiliarCipher.R),
         },
         prefix_data,
-        data: serialized_data,
+        data: serializedData,
     };
 
     const prefix = prefixWithdraw(inputs);

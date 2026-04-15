@@ -76,7 +76,7 @@ export function proveTransfer(
     nonce: bigint,
     bit_size: number,
     prefix_data: GeneralPrefixData,
-    serialized_data: bigint[],
+    serializedData: bigint[],
 ): {
     inputs: InputsTransfer;
     proof: ProofOfTransfer;
@@ -111,7 +111,7 @@ export function proveTransfer(
         auxiliarCipher2: cipherToStark(auxiliarCipher2),
         bit_size: BigInt(bit_size),
         prefix_data,
-        data: serialized_data,
+        data: serializedData,
     };
 
     const prefix = prefixTransfer(inputs);

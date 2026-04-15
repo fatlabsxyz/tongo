@@ -20,9 +20,9 @@ export class Vault implements IVault {
         }).typedv2(vaultAbi);
     }
 
-    async deploy_tongo(params: DeployDetails): Promise<DeployOperation> {
+    async deployTongo(params: DeployDetails): Promise<DeployOperation> {
         const { owner, tag, auditor } = params;
-        const vaultSetup = await this.vault_config();
+        const vaultSetup = await this.vaultConfig();
         return new DeployOperation({
             owner: BigInt(owner),
             tag: BigInt(tag),
@@ -42,7 +42,7 @@ export class Vault implements IVault {
         return num.toHex(erc20);
     }
 
-    async bit_size(): Promise<number> {
+    async bitSize(): Promise<number> {
         return toNumber(await this.contract.get_bit_size());
     }
 
@@ -51,7 +51,7 @@ export class Vault implements IVault {
         return castBigInt(rate);
     }
 
-    async vault_config(): Promise<VaultConfig> {
+    async vaultConfig(): Promise<VaultConfig> {
         const { vault_address, tongo_class_hash, ERC20, rate, bit_size } =
             await this.contract.get_vault_setup();
 

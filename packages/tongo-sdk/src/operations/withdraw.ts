@@ -21,7 +21,7 @@ export interface IWithdrawOperation extends IOperation {
  * @property {AEBalance} hint - AE encryption of the final balance of the account
  * @property {ProofOfWithdraw} proof - ZK proof for the withdraw operation
  * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx
- * @property {CairoOption<WithdrawOptions>} withdraw_options - Options including relay data
+ * @property {CairoOption<WithdrawOptions>} withdrawOptions - Options including relay data
  * @property {Contract} Tongo - The Tongo instance to interact with
  */
 interface WithdrawOpParams {
@@ -32,15 +32,15 @@ interface WithdrawOpParams {
     hint: AEBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
-    withdraw_options: CairoOption<WithdrawOptions>;
+    withdrawOptions: CairoOption<WithdrawOptions>;
     Tongo: Contract;
 }
 
-export function serializeWithdrawOptions(withdraw_options: CairoOption<WithdrawOptions>): bigint[] {
-    if (withdraw_options.isNone()) {
+export function serializeWithdrawOptions(withdrawOptions: CairoOption<WithdrawOptions>): bigint[] {
+    if (withdrawOptions.isNone()) {
         return [1n];
     }
-    return [0n, ...serializeRelayData(withdraw_options.unwrap()!.relayData)];
+    return [0n, ...serializeRelayData(withdrawOptions.unwrap()!.relayData)];
 }
 
 export class WithdrawOperation implements IWithdrawOperation {
@@ -53,7 +53,7 @@ export class WithdrawOperation implements IWithdrawOperation {
     auxiliarCipher: StarkCipherBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
-    withdraw_options: CairoOption<WithdrawOptions>;
+    withdrawOptions: CairoOption<WithdrawOptions>;
 
     constructor({
         from,
@@ -64,7 +64,7 @@ export class WithdrawOperation implements IWithdrawOperation {
         Tongo,
         hint,
         auxiliarCipher,
-        withdraw_options,
+        withdrawOptions,
     }: WithdrawOpParams) {
         this.Tongo = Tongo;
         this.from = from;
@@ -74,7 +74,7 @@ export class WithdrawOperation implements IWithdrawOperation {
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
-        this.withdraw_options = withdraw_options;
+        this.withdrawOptions = withdrawOptions;
     }
 
     toCalldata(): Call {
@@ -88,7 +88,7 @@ export class WithdrawOperation implements IWithdrawOperation {
                 auditPart: this.auditPart,
                 proof: this.proof,
             },
-            this.withdraw_options,
+            this.withdrawOptions,
         ]);
     }
 }

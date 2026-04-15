@@ -6,11 +6,11 @@ export interface IVault {
 
     tongoClassHash(): Promise<string>;
     ERC20(): Promise<string>;
-    bit_size(): Promise<number>;
+    bitSize(): Promise<number>;
     rate(): Promise<bigint>;
-    vault_config(): Promise<VaultConfig>;
+    vaultConfig(): Promise<VaultConfig>;
 
-    deploy_tongo(params: DeployDetails): Promise<DeployOperation>;
+    deployTongo(params: DeployDetails): Promise<DeployOperation>;
     //
     //     is_known_tongo(): Promise<boolean>;
     //     tag_to_address(): Promise<string>;

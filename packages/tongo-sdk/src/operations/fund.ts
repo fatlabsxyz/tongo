@@ -66,12 +66,12 @@ export class FundOperation implements IFundOperation {
     // TODO: better ux for this. Maybe return the call?
     async populateApprove() {
         const erc20 = await this.Tongo.ERC20();
-        const erc20_addres = num.toHex(erc20);
-        const tongo_address = this.Tongo.address;
+        const erc20Address = num.toHex(erc20);
+        const tongoAddress = this.Tongo.address;
         const rate = await this.Tongo.get_rate();
-        const total_tongo_amount = this.amount;
-        const amount = cairo.uint256(total_tongo_amount * castBigInt(rate));
-        const calldata = CallData.compile({ spender: tongo_address, amount: amount });
-        this.approve = { contractAddress: erc20_addres, entrypoint: "approve", calldata };
+        const totalTongoAmount = this.amount;
+        const amount = cairo.uint256(totalTongoAmount * castBigInt(rate));
+        const calldata = CallData.compile({ spender: tongoAddress, amount: amount });
+        this.approve = { contractAddress: erc20Address, entrypoint: "approve", calldata };
     }
 }

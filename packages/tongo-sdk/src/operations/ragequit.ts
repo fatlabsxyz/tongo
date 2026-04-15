@@ -21,7 +21,7 @@ export interface IRagequitOperation extends IOperation {
  * @property {AEBalance} hint - AE encryption of the final balance of the account
  * @property {ProofOfRagequit} proof - ZK proof for the ragequit operation
  * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx. (In theory it is not necessary for this operation, but it helps to keep things consistent and clean for a minimal cost)
- * @property {CairoOption<RagequitOptions>} ragequit_options - Options including relay data
+ * @property {CairoOption<RagequitOptions>} ragequitOptions - Options including relay data
  * @property {Contract} Tongo - The tongo instance to interact with
  */
 interface RagequitOpParams {
@@ -31,15 +31,15 @@ interface RagequitOpParams {
     hint: AEBalance;
     proof: ProofOfRagequit;
     auditPart: CairoOption<Audit>;
-    ragequit_options: CairoOption<RagequitOptions>;
+    ragequitOptions: CairoOption<RagequitOptions>;
     Tongo: Contract;
 }
 
-export function serializeRagequitOptions(ragequit_options: CairoOption<RagequitOptions>): bigint[] {
-    if (ragequit_options.isNone()) {
+export function serializeRagequitOptions(ragequitOptions: CairoOption<RagequitOptions>): bigint[] {
+    if (ragequitOptions.isNone()) {
         return [1n];
     }
-    return [0n, ...serializeRelayData(ragequit_options.unwrap()!.relayData)];
+    return [0n, ...serializeRelayData(ragequitOptions.unwrap()!.relayData)];
 }
 
 export class RagequitOperation implements IRagequitOperation {
@@ -51,7 +51,7 @@ export class RagequitOperation implements IRagequitOperation {
     hint: AEBalance;
     auditPart: CairoOption<Audit>;
     proof: ProofOfRagequit;
-    ragequit_options: CairoOption<RagequitOptions>;
+    ragequitOptions: CairoOption<RagequitOptions>;
 
     constructor({
         from,
@@ -61,7 +61,7 @@ export class RagequitOperation implements IRagequitOperation {
         Tongo,
         hint,
         auditPart,
-        ragequit_options,
+        ragequitOptions,
     }: RagequitOpParams) {
         this.Tongo = Tongo;
         this.from = from;
@@ -70,7 +70,7 @@ export class RagequitOperation implements IRagequitOperation {
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
-        this.ragequit_options = ragequit_options;
+        this.ragequitOptions = ragequitOptions;
     }
 
     toCalldata(): Call {
@@ -83,7 +83,7 @@ export class RagequitOperation implements IRagequitOperation {
                 hint: this.hint,
                 auditPart: this.auditPart,
             },
-            this.ragequit_options,
+            this.ragequitOptions,
         ]);
     }
 }

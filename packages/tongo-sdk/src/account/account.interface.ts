@@ -26,7 +26,7 @@ export interface IAccount {
 
     // Operations
     fund(fundDetails: FundDetails): Promise<FundOperation>;
-    outside_fund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation>;
+    outsideFund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation>;
     transfer(transferDetails: TransferDetails): Promise<TransferOperation>;
     withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation>;
     ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation>;
@@ -117,7 +117,7 @@ export interface TransferDetails {
     to: PubKey;
     sender: string;
     toTongo?: string;
-    fee_to_sender?: bigint;
+    feeToSender?: bigint;
 }
 
 export interface RolloverDetails {
@@ -127,14 +127,14 @@ export interface RolloverDetails {
 export interface RagequitDetails {
     to: string;
     sender: string;
-    fee_to_sender?: bigint;
+    feeToSender?: bigint;
 }
 
 export interface WithdrawDetails {
     to: string;
     amount: bigint;
     sender: string;
-    fee_to_sender?: bigint;
+    feeToSender?: bigint;
 }
 
 export interface RawAccountState {

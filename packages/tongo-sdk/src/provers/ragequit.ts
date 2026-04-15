@@ -63,7 +63,7 @@ export function proveRagequit(
     to: bigint,
     full_amount: bigint,
     prefix_data: GeneralPrefixData,
-    serialized_data: bigint[],
+    serializedData: bigint[],
 ): { inputs: InputsRagequit; proof: ProofOfRagequit; newBalance: CipherBalance } {
     const x = private_key;
     const y = g.multiply(x);
@@ -86,7 +86,7 @@ export function proveRagequit(
             R: projectivePointToStarkPoint(initial_cipherbalance.R),
         },
         prefix_data,
-        data: serialized_data,
+        data: serializedData,
     };
     const prefix = prefixRagequit(inputs);
 

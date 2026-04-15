@@ -156,7 +156,7 @@ export class Account implements IAccount {
     }
 
     /// Returns the bit_size of this Tongo contract
-    async bit_size(): Promise<number> {
+    async bitSize(): Promise<number> {
         return toNumber(await this.Tongo.get_bit_size());
     }
 
@@ -247,8 +247,8 @@ export class Account implements IAccount {
         const { amount, sender } = fundDetails;
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
-        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const initialBalance = this.decryptCipherBalance(currentBalance, current_hint);
+        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialBalance = this.decryptCipherBalance(currentBalance, currentHint);
 
         const prefix_data = await this.prefixData(sender);
 
@@ -284,7 +284,7 @@ export class Account implements IAccount {
         return operation;
     }
 
-    async outside_fund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation> {
+    async outsideFund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation> {
         const { amount, to } = outsideFundDetails;
 
         const operation = new OutsideFundOperation({
@@ -298,12 +298,12 @@ export class Account implements IAccount {
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
         const { amount, sender } = transferDetails;
-        const bit_size: number = await this.bit_size();
+        const bitSize: number = await this.bitSize();
 
         const { nonce, balance, aeBalance } = await this.rawState();
 
-        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const initialAmount = this.decryptCipherBalance(balance, current_hint);
+        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialAmount = this.decryptCipherBalance(balance, currentHint);
 
         //TODO check if the mount in pending would help
         if (initialAmount < amount) {
@@ -317,7 +317,7 @@ export class Account implements IAccount {
 
         //TODO implement a max fee in the contract?
         const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
-            transferDetails.fee_to_sender || 0n,
+            transferDetails.feeToSender || 0n,
             initialAmount,
             balance,
         );
@@ -334,11 +334,11 @@ export class Account implements IAccount {
             });
         }
 
-        let transfer_options = new CairoOption<TransferOptions>(CairoOptionVariant.Some, {
+        let transferOptions = new CairoOption<TransferOptions>(CairoOptionVariant.Some, {
             relayData,
             externalData,
         });
-        const serialized_data = serializeTransferOptions(transfer_options);
+        const serializedData = serializeTransferOptions(transferOptions);
 
         const { inputs, proof, newBalance } = proveTransfer(
             this.pk,
@@ -347,14 +347,14 @@ export class Account implements IAccount {
             amount,
             currentBalance,
             nonce,
-            bit_size,
+            bitSize,
             prefix_data,
-            serialized_data,
+            serializedData,
         );
 
-        const balance_left = currentAmount - amount;
+        const balanceLeft = currentAmount - amount;
         const hintTransfer = await this.computeAEHintForPubKey(amount, nonce, to);
-        const hintLeftover = await this.computeAEHintForSelf(balance_left, nonce + 1n);
+        const hintLeftover = await this.computeAEHintForSelf(balanceLeft, nonce + 1n);
 
         //audit
         const transferBalanceSelfCipher: CipherBalance = parseCipherBalance(
@@ -362,7 +362,7 @@ export class Account implements IAccount {
         );
         const auditor = await this.auditorKey();
         const auditPart = await this.createAuditPart(
-            balance_left,
+            balanceLeft,
             nonce,
             newBalance,
             prefix_data,
@@ -404,7 +404,7 @@ export class Account implements IAccount {
                 auditPart: auditTarget,
             };
             externalData = new CairoOption<ExternalData>(CairoOptionVariant.Some, external);
-            transfer_options = new CairoOption<TransferOptions>(CairoOptionVariant.Some, {
+            transferOptions = new CairoOption<TransferOptions>(CairoOptionVariant.Some, {
                 relayData,
                 externalData,
             });
@@ -422,7 +422,7 @@ export class Account implements IAccount {
             proof,
             auditPart,
             auditPartTransfer,
-            transfer_options,
+            transferOptions,
             Tongo: this.Tongo,
         });
     }
@@ -431,8 +431,8 @@ export class Account implements IAccount {
         const { to, sender } = ragequitDetails;
         const { nonce, balance, aeBalance } = await this.rawState();
 
-        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const initialAmount = this.decryptCipherBalance(balance, current_hint);
+        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialAmount = this.decryptCipherBalance(balance, currentHint);
 
         if (initialAmount === 0n) {
             throw new Error("You don't have enough balance");
@@ -441,15 +441,15 @@ export class Account implements IAccount {
         const prefix_data = await this.prefixData(sender);
 
         const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
-            ragequitDetails.fee_to_sender || 0n,
+            ragequitDetails.feeToSender || 0n,
             initialAmount,
             balance,
         );
 
-        const ragequit_options = new CairoOption<RagequitOptions>(CairoOptionVariant.Some, {
+        const ragequitOptions = new CairoOption<RagequitOptions>(CairoOptionVariant.Some, {
             relayData,
         });
-        const serialized_data = serializeRagequitOptions(ragequit_options);
+        const serializedData = serializeRagequitOptions(ragequitOptions);
 
         const { inputs, proof, newBalance } = proveRagequit(
             this.pk,
@@ -458,7 +458,7 @@ export class Account implements IAccount {
             BigInt(to),
             currentAmount,
             prefix_data,
-            serialized_data,
+            serializedData,
         );
 
         // zeroing out aehints
@@ -472,7 +472,7 @@ export class Account implements IAccount {
             amount: inputs.amount,
             hint,
             proof,
-            ragequit_options,
+            ragequitOptions,
             Tongo: this.Tongo,
             auditPart,
         });
@@ -480,11 +480,11 @@ export class Account implements IAccount {
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
         const { amount, to, sender } = withdrawDetails;
-        const bit_size = await this.bit_size();
+        const bitSize = await this.bitSize();
         const { nonce, balance, aeBalance } = await this.rawState();
 
-        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const initialAmount = this.decryptCipherBalance(balance, current_hint);
+        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialAmount = this.decryptCipherBalance(balance, currentHint);
 
         if (initialAmount < amount) {
             throw new Error("You don't have enough balance");
@@ -493,15 +493,15 @@ export class Account implements IAccount {
         const prefix_data = await this.prefixData(sender);
 
         const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
-            withdrawDetails.fee_to_sender || 0n,
+            withdrawDetails.feeToSender || 0n,
             initialAmount,
             balance,
         );
 
-        const withdraw_options = new CairoOption<WithdrawOptions>(CairoOptionVariant.Some, {
+        const withdrawOptions = new CairoOption<WithdrawOptions>(CairoOptionVariant.Some, {
             relayData,
         });
-        const serialized_data = serializeWithdrawOptions(withdraw_options);
+        const serializedData = serializeWithdrawOptions(withdrawOptions);
 
         const { inputs, proof, newBalance } = proveWithdraw(
             this.pk,
@@ -510,9 +510,9 @@ export class Account implements IAccount {
             BigInt(to),
             currentBalance,
             nonce,
-            bit_size,
+            bitSize,
             prefix_data,
-            serialized_data,
+            serializedData,
         );
         const hint = await this.computeAEHintForSelf(currentAmount - amount, nonce + 1n);
 
@@ -535,7 +535,7 @@ export class Account implements IAccount {
             proof,
             auditPart,
             Tongo: this.Tongo,
-            withdraw_options,
+            withdrawOptions,
         });
     }
 
@@ -544,8 +544,8 @@ export class Account implements IAccount {
         const state = await this.rawState();
         const { nonce, balance: currentBalance, aeBalance, pending } = state;
 
-        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const unlockedAmount = this.decryptCipherBalance(currentBalance, current_hint);
+        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const unlockedAmount = this.decryptCipherBalance(currentBalance, currentHint);
 
         const pendingAmount = this.decryptCipherBalance(pending!);
 
