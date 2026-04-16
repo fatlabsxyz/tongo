@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, inject } from "vitest";
 
-import { encryptNull, KeyGen, provider, Relayers, tongoAddress } from "../utils.js";
+import { encryptNull, KeyGen, provider, Relayers } from "../utils.js";
 
 import { Account as TongoAccount } from "../../src/account/account.js";
+
+const {
+    tongo: { address: tongoAddress },
+} = inject("contracts");
 
 describe("[integration]", () => {
     it("[transfer]", async () => {
@@ -12,15 +16,21 @@ describe("[integration]", () => {
         const accSender = new TongoAccount(kg.from(1), tongoAddress, provider);
         const accRec = new TongoAccount(kg.from(2), tongoAddress, provider);
 
-        const fundOp = await accSender.fund({ amount: 100n, sender: relayer.address  });
+        const fundOp = await accSender.fund({ amount: 100n, sender: relayer.address });
         const fund_response = await relayer.execute([fundOp.approve!, fundOp.toCalldata()]);
         await provider.waitForTransaction(fund_response.transaction_hash, { retryInterval: 200 });
 
         // TODO: post fund assertions
 
-        const transferOp = await accSender.transfer({ amount: 23n, to: accRec.publicKey, sender:relayer.address });
+        const transferOp = await accSender.transfer({
+            amount: 23n,
+            to: accRec.publicKey,
+            sender: relayer.address,
+        });
         const transferResponse = await relayer.execute(transferOp.toCalldata());
-        const r = await provider.waitForTransaction(transferResponse.transaction_hash, { retryInterval: 200 });
+        const r = await provider.waitForTransaction(transferResponse.transaction_hash, {
+            retryInterval: 200,
+        });
 
         const senderState = await accSender.rawState();
         expect(senderState.nonce).toStrictEqual(2n);
@@ -29,9 +39,14 @@ describe("[integration]", () => {
         expect(senderState.aeBalance).toBeDefined();
         expect(senderState.aeAuditBalance).toBeDefined();
 
-        const senderAeBalance = await accSender.decryptAEBalance(senderState.aeBalance!, senderState.nonce);
+        const senderAeBalance = await accSender.decryptAEBalance(
+            senderState.aeBalance!,
+            senderState.nonce,
+        );
         expect(senderAeBalance).toStrictEqual(77n);
-        expect(accSender.decryptCipherBalance(senderState.balance!, senderAeBalance)).toStrictEqual(77n); // with hint
+        expect(accSender.decryptCipherBalance(senderState.balance!, senderAeBalance)).toStrictEqual(
+            77n,
+        ); // with hint
         expect(accSender.decryptCipherBalance(senderState.balance!)).toStrictEqual(77n); // without hint
 
         // receiver should only have a pending and audit balance
@@ -46,6 +61,5 @@ describe("[integration]", () => {
 
         // TODO: add auditor decryption
         expect(receiverState.audit).toBeDefined();
-
     });
 });

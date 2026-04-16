@@ -1,12 +1,10 @@
 use starknet::ContractAddress;
-use crate::prover::functions::prove_ragequit;
+use tongo::structs::common::cipherbalance::{CipherBalance, CipherBalanceTrait};
+use tongo::structs::traits::GeneralPrefixData;
 use tongo::verifier::ragequit::verify_ragequit;
-use tongo::structs::traits::{GeneralPrefixData};
-use tongo::structs::common::{
-    cipherbalance::{CipherBalance,CipherBalanceTrait},
-};
+use crate::consts::{CHAIN_ID, USER_ADDRESS};
+use crate::prover::functions::prove_ragequit;
 use crate::prover::utils::{generate_random, pubkey_from_secret};
-use crate::consts::{USER_ADDRESS, CHAIN_ID};
 
 
 #[test]
@@ -22,15 +20,13 @@ fn test_ragequit() {
     // balance stored
     let initial_balance = 100_u128;
     let r0 = generate_random(seed, 2);
-    let currentBalance:CipherBalance = CipherBalanceTrait::new(y, initial_balance.into(), r0);
+    let currentBalance: CipherBalance = CipherBalanceTrait::new(y, initial_balance.into(), r0);
 
     let nonce = 2;
     let sender = USER_ADDRESS;
 
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
-        chain_id: CHAIN_ID,
-        tongo_address:tongoAddress,
-        sender_address:sender,
+        chain_id: CHAIN_ID, tongo_address: tongoAddress, sender_address: sender,
     };
 
     let serialized_data: Span<felt252> = array![13].span();
@@ -43,7 +39,7 @@ fn test_ragequit() {
         nonce,
         prefix_data,
         serialized_data,
-        generate_random(seed, 3)
+        generate_random(seed, 3),
     );
     verify_ragequit(inputs, proof);
 }

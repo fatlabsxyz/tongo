@@ -1,14 +1,10 @@
 use starknet::ContractAddress;
-use crate::prover::utils::{generate_random};
-use crate::prover::functions::{prove_transfer};
+use tongo::structs::common::cipherbalance::CipherBalanceTrait;
+use tongo::structs::traits::GeneralPrefixData;
 use tongo::verifier::transfer::verify_transfer;
-use tongo::structs::traits::{GeneralPrefixData};
-
-use tongo::structs::common::{
-    cipherbalance::CipherBalanceTrait,
-};
-use crate::prover::utils::pubkey_from_secret;
 use crate::consts::{BIT_SIZE, CHAIN_ID, USER_ADDRESS};
+use crate::prover::functions::prove_transfer;
+use crate::prover::utils::{generate_random, pubkey_from_secret};
 
 #[test]
 fn test_transfer() {
@@ -31,16 +27,22 @@ fn test_transfer() {
     let sender = USER_ADDRESS;
 
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
-        chain_id: CHAIN_ID,
-        tongo_address:tongoAddress,
-        sender_address:sender,
+        chain_id: CHAIN_ID, tongo_address: tongoAddress, sender_address: sender,
     };
 
     let serialized_data: Span<felt252> = array![13].span();
 
-
-    let (inputs, proof,_) = prove_transfer(
-        x, y_bar, b0, b, balance, nonce,BIT_SIZE,prefix_data,serialized_data, generate_random(seed, 4)
+    let (inputs, proof, _) = prove_transfer(
+        x,
+        y_bar,
+        b0,
+        b,
+        balance,
+        nonce,
+        BIT_SIZE,
+        prefix_data,
+        serialized_data,
+        generate_random(seed, 4),
     );
 
     verify_transfer(inputs, proof);

@@ -18,7 +18,7 @@ import {
     AccountReceivedExternalTransfer,
 } from "./events.js";
 import { CairoOption } from "starknet";
-import { CipherBalance } from "../types";
+import { CipherBalance } from "../types.js";
 
 export interface IAccount {
     publicKey: PubKey;
@@ -26,7 +26,7 @@ export interface IAccount {
 
     // Operations
     fund(fundDetails: FundDetails): Promise<FundOperation>;
-    outside_fund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation>;
+    outsideFund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation>;
     transfer(transferDetails: TransferDetails): Promise<TransferOperation>;
     withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation>;
     ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation>;
@@ -47,26 +47,64 @@ export interface IAccount {
     tongoToErc20(tongoAmount: bigint): Promise<bigint>;
 
     //audit
-    createAuditPart(balance: bigint,nonce: bigint, storedCipherBalance: CipherBalance, prefix_data: GeneralPrefixData, auditor: CairoOption<PubKey>): Promise<CairoOption<Audit>>;
+    createAuditPart(
+        balance: bigint,
+        nonce: bigint,
+        storedCipherBalance: CipherBalance,
+        prefix_data: GeneralPrefixData,
+        auditor: CairoOption<PubKey>,
+    ): Promise<CairoOption<Audit>>;
 
     // ex post
     generateExPost(to: PubKey, cipher: CipherBalance, sender: string): Promise<ExPost>;
     verifyExPost(expost: ExPost): bigint;
 
     // events
-    getEventsFund(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountFundEvent[]>;
-    getEventsRollover(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountRolloverEvent[]>;
-    getEventsWithdraw(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountWithdrawEvent[]>;
-    getEventsRagequit(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountRagequitEvent[]>;
-    getEventsTransferOut(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountTransferOutEvent[]>;
-    getEventsTransferIn(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountTransferInEvent[]>;
-    getEventsReceivedExternalTransfer(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountReceivedExternalTransfer[]>;
-    getTxHistory(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountEvents[]>;
+    getEventsFund(
+        fromBlock: number,
+        toBlock?: number | "latest",
+        numEvents?: number | "all",
+    ): Promise<AccountFundEvent[]>;
+    getEventsRollover(
+        fromBlock: number,
+        toBlock?: number | "latest",
+        numEvents?: number | "all",
+    ): Promise<AccountRolloverEvent[]>;
+    getEventsWithdraw(
+        fromBlock: number,
+        toBlock?: number | "latest",
+        numEvents?: number | "all",
+    ): Promise<AccountWithdrawEvent[]>;
+    getEventsRagequit(
+        fromBlock: number,
+        toBlock?: number | "latest",
+        numEvents?: number | "all",
+    ): Promise<AccountRagequitEvent[]>;
+    getEventsTransferOut(
+        fromBlock: number,
+        toBlock?: number | "latest",
+        numEvents?: number | "all",
+    ): Promise<AccountTransferOutEvent[]>;
+    getEventsTransferIn(
+        fromBlock: number,
+        toBlock?: number | "latest",
+        numEvents?: number | "all",
+    ): Promise<AccountTransferInEvent[]>;
+    getEventsReceivedExternalTransfer(
+        fromBlock: number,
+        toBlock?: number | "latest",
+        numEvents?: number | "all",
+    ): Promise<AccountReceivedExternalTransfer[]>;
+    getTxHistory(
+        fromBlock: number,
+        toBlock?: number | "latest",
+        numEvents?: number | "all",
+    ): Promise<AccountEvents[]>;
 }
 
 export interface FundDetails {
     amount: bigint;
-    sender: string,
+    sender: string;
 }
 
 export interface OutsideFundDetails {
@@ -77,26 +115,26 @@ export interface OutsideFundDetails {
 export interface TransferDetails {
     amount: bigint;
     to: PubKey;
-    sender: string,
-    toTongo?: bigint,
-    fee_to_sender?:bigint,
+    sender: string;
+    toTongo?: string;
+    feeToSender?: bigint;
 }
 
 export interface RolloverDetails {
-    sender: string,
+    sender: string;
 }
 
 export interface RagequitDetails {
     to: string;
-    sender: string,
-    fee_to_sender?: bigint,
+    sender: string;
+    feeToSender?: bigint;
 }
 
 export interface WithdrawDetails {
     to: string;
     amount: bigint;
-    sender: string,
-    fee_to_sender?: bigint,
+    sender: string;
+    feeToSender?: bigint;
 }
 
 export interface RawAccountState {
@@ -113,4 +151,3 @@ export interface AccountState {
     pending: bigint;
     nonce: bigint;
 }
-

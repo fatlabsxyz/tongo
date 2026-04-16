@@ -1,16 +1,16 @@
 import { keccak } from "@scure/starknet";
-import { Account, RpcProvider } from "starknet";
+import { Account, CairoOption, CairoOptionVariant, RpcProvider } from "starknet";
 import { DevnetProvider } from "starknet-devnet";
 import { GENERATOR } from "../src/constants.js";
 import { StarkPoint, starkPointToProjectivePoint } from "../src/types.js";
 
 export const provider = new RpcProvider({
     nodeUrl: "http://127.0.0.1:5050/rpc",
-    specVersion: "0.9.0",
+    specVersion: "0.10.0" as const,
 });
 
 export class RelayerHandler {
-    accounts: Record<number, { address: string; privateKey: string; }>;
+    accounts: Record<number, { address: string; privateKey: string }>;
     devnet: DevnetProvider;
 
     constructor() {
@@ -18,7 +18,7 @@ export class RelayerHandler {
     }
 
     async assertDevnetRunning() {
-        if (!await this.devnet.isAlive()) {
+        if (!(await this.devnet.isAlive())) {
             throw Error("Devnet not running!");
         }
     }
@@ -39,16 +39,9 @@ export class RelayerHandler {
             transactionVersion: "0x3",
         });
     }
-
 }
 
 export const Relayers = new RelayerHandler();
-
-export const tongoAddress = (() => {
-    const _address = process.env.TONGO_CONTRACT_ADDRESS;
-    if (_address === undefined) throw new Error("TONGO_CONTRACT_ADDRESS env var is missing");
-    return _address;
-})();
 
 export function encryptNull(publicKey: StarkPoint) {
     return {
@@ -66,4 +59,12 @@ export class KeyGen {
     from(x: number) {
         return this.seed + BigInt(x);
     }
+}
+
+export function Some<T>(data: T) {
+    return new CairoOption<T>(CairoOptionVariant.Some, data);
+}
+
+export function None<T>() {
+    return new CairoOption<T>(CairoOptionVariant.None);
 }

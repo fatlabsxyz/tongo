@@ -55,7 +55,9 @@ export async function deriveSymmetricEncryptionKey(deriveSymKeyParams: {
     the length to 256 bits which is the required key size for XChaCha20.
     */
     const derivedKeyType = { name: "HMAC", hash: "SHA-256", length: 256 };
-    const derivedKey = await crypto.subtle.deriveKey(hkdfParams, key, derivedKeyType, true, ["sign"]);
+    const derivedKey = await crypto.subtle.deriveKey(hkdfParams, key, derivedKeyType, true, [
+        "sign",
+    ]);
     const rawKey = await crypto.subtle.exportKey("raw", derivedKey);
     const derivedKeyBytes = new Uint8Array(rawKey);
     return derivedKeyBytes;

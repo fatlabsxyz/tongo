@@ -50,17 +50,9 @@ pub struct InputsFund {
 pub impl FundPrefix of Prefix<InputsFund> {
     fn compute_prefix(self: @InputsFund) -> felt252 {
         let fund_selector = 'fund';
-        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
-        let array: Array<felt252> = array![
-            *chain_id,
-            (*tongo_address).into(),
-            (*sender_address).into(),
-            fund_selector,
-            *self.y.x,
-            *self.y.y,
-            (*self.amount).into(),
-            (*self.nonce).into(),
-        ];
+        let mut array: Array<felt252> = array![fund_selector];
+        self.serialize(ref array);
+
         poseidon_hash_span(array.span())
     }
 }

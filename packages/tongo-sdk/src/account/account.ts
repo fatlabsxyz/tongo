@@ -1,63 +1,88 @@
-import { BigNumberish, CairoOption, CairoOptionVariant, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
+import { BigNumberish, CairoOption, Contract, num, RpcProvider } from "starknet";
+import { TongoContract } from "../contracts.js";
 
-import { proveAudit, verifyAudit } from "../provers/audit";
-import { proveFund } from "../provers/fund";
-import { proveRagequit } from "../provers/ragequit";
-import { proveRollover } from "../provers/rollover";
-import { proveTransfer } from "../provers/transfer";
-import { proveWithdraw } from "../provers/withdraw";
-
-import { AEBalance, AEChaCha, AEHintToBytes, bytesToAEHint, parseAEBalance } from "../ae_balance.js";
-import { AccountEventReader} from "./account.data.service.js";
+import { proveAudit, verifyAudit } from "../provers/audit.js";
+import { proveFund } from "../provers/fund.js";
+import { proveRagequit } from "../provers/ragequit.js";
+import { proveRollover } from "../provers/rollover.js";
+import { proveTransfer } from "../provers/transfer.js";
+import { proveWithdraw } from "../provers/withdraw.js";
+import { tongoAbi } from "../abi/tongo.abi.js";
+import {
+    AEBalance,
+    AEChaCha,
+    bytesToAEHint,
+    decryptAEHint,
+    parseAEBalance,
+} from "../ae_balance.js";
+import { FEE_CAIRO_STRING } from "../constants.js";
 import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "../key.js";
 import { Audit, ExPost } from "../operations/audit.js";
 import { FundOperation } from "../operations/fund.js";
 import { OutsideFundOperation } from "../operations/outside_fund.js";
-import { RollOverOperation } from "../operations/rollover.js";
-import { TransferOperation, ExternalData, TransferOptions, serializeTransferOptions} from "../operations/transfer.js";
-import { WithdrawOperation, WithdrawOptions, serializeWithdrawOptions } from "../operations/withdraw.js";
-import { RagequitOperation, RagequitOptions, serializeRagequitOptions } from "../operations/ragequit.js";
-import { tongoAbi } from "../abi/tongo.abi.js";
 import {
-    CipherBalance, GeneralPrefixData, parseCipherBalance,
-    projectivePointToStarkPoint,
+    RagequitOperation,
+    RagequitOptions,
+    serializeRagequitOptions,
+} from "../operations/ragequit.js";
+import { RollOverOperation } from "../operations/rollover.js";
+import {
+    ExternalData,
+    serializeTransferOptions,
+    TransferOperation,
+    TransferOptions,
+} from "../operations/transfer.js";
+import {
+    serializeWithdrawOptions,
+    WithdrawOperation,
+    WithdrawOptions,
+} from "../operations/withdraw.js";
+import {
+    CipherBalance,
+    GeneralPrefixData,
+    parseCipherBalance,
     PubKey,
     pubKeyAffineToBase58,
     pubKeyAffineToHex,
     pubKeyBase58ToHex,
+    RelayData,
     starkPointToProjectivePoint,
     TongoAddress,
-    RelayData,
 } from "../types.js";
-import { assertBalance, bytesOrNumToBigInt, castBigInt, decipherBalance, pubKeyFromSecret, createCipherBalance } from "../utils.js";
+import {
+    assertBalance,
+    bytesOrNumToBigInt,
+    castBigInt,
+    createCipherBalance,
+    decipherBalance,
+    None,
+    pubKeyFromSecret,
+    Some,
+    toNumber,
+} from "../utils.js";
+import { AccountEventReader } from "./account.data.service.js";
 import {
     AccountState,
     FundDetails,
-    OutsideFundDetails,
     IAccount,
+    OutsideFundDetails,
     RagequitDetails,
     RawAccountState,
+    RolloverDetails,
     TransferDetails,
     WithdrawDetails,
-    RolloverDetails,
 } from "./account.interface.js";
 import {
     AccountEvents,
     AccountFundEvent,
     AccountOutsideFundEvent,
     AccountRagequitEvent,
+    AccountReceivedExternalTransfer,
     AccountRolloverEvent,
     AccountTransferInEvent,
     AccountTransferOutEvent,
     AccountWithdrawEvent,
-    AccountReceivedExternalTransfer,
-    ReaderToAccountEvents,
 } from "./events.js";
-
-type TongoContract = TypedContractV2<typeof tongoAbi>;
-
-//TODO decide where to put this string
-export const FEE_CAIRO_STRING = 6710629n;
 
 export class Account implements IAccount {
     publicKey: PubKey;
@@ -71,7 +96,7 @@ export class Account implements IAccount {
         this.Tongo = new Contract({
             abi: tongoAbi,
             address: contractAddress,
-            providerOrAccount: provider
+            providerOrAccount: provider,
         }).typedv2(tongoAbi);
         this.publicKey = pubKeyFromSecret(this.pk);
         this.provider = provider;
@@ -84,6 +109,14 @@ export class Account implements IAccount {
 
     static tongoAddress(pk: BigNumberish | Uint8Array): TongoAddress {
         return pubKeyAffineToBase58(pubKeyFromSecret(bytesOrNumToBigInt(pk)));
+    }
+
+    async prefixData(sender: string): Promise<GeneralPrefixData> {
+        return {
+            chain_id: BigInt(await this.provider.getChainId()),
+            tongo_address: this.Tongo.address,
+            sender_address: sender,
+        };
     }
 
     async nonce(): Promise<bigint> {
@@ -103,8 +136,8 @@ export class Account implements IAccount {
         return { balance: balanceAmount, pending: pendingAmount, nonce };
     }
 
-    /// Retunrs the `almost` raw account state. The only handing that happens here is type
-    // convertion from CairoOption::None to undefinded and from StarkPoints to ProjectivePoints
+    /// Returns the `almost` raw account state. The only handling that happens here is type
+    // conversion from CairoOption::None to undefined and from StarkPoints to ProjectivePoints
     async rawState(): Promise<RawAccountState> {
         const state = await this.Tongo.get_state(this.publicKey);
         return Account.parseAccountState(state);
@@ -117,10 +150,8 @@ export class Account implements IAccount {
     }
 
     /// Returns the bit_size of this Tongo contract
-    async bit_size(): Promise<number> {
-        const bit = await this.Tongo.get_bit_size();
-        const bit_size: number = typeof bit == 'bigint' ? Number(bit) : bit;
-        return bit_size;
+    async bitSize(): Promise<number> {
+        return toNumber(await this.Tongo.get_bit_size());
     }
 
     // Warning: This is only for display. This is not the correct amount
@@ -140,10 +171,41 @@ export class Account implements IAccount {
         return tongoAmount * rate;
     }
 
-
     async auditorKey(): Promise<CairoOption<PubKey>> {
         const auditorKey = await this.Tongo.auditor_key();
         return auditorKey;
+    }
+
+    private applyRelayFee(
+        fee_to_sender: bigint,
+        currentAmount: bigint,
+        currentBalance: CipherBalance,
+    ): {
+        relayData: CairoOption<RelayData>;
+        currentAmount: bigint;
+        currentBalance: CipherBalance;
+    } {
+        if (fee_to_sender == 0n) {
+            return {
+                relayData: None<RelayData>(),
+                currentAmount,
+                currentBalance,
+            };
+        }
+        const relayData = Some<RelayData>({ fee_to_sender });
+        const { L: L_fee, R: R_fee } = createCipherBalance(
+            starkPointToProjectivePoint(this.publicKey),
+            fee_to_sender,
+            FEE_CAIRO_STRING,
+        );
+        return {
+            relayData,
+            currentAmount: currentAmount - fee_to_sender,
+            currentBalance: {
+                L: currentBalance.L.subtract(L_fee),
+                R: currentBalance.R.subtract(R_fee),
+            },
+        };
     }
 
     /// Returns Option(None) if tongo has not and auditor and Some(Audit) if tongo has an auditor
@@ -151,10 +213,10 @@ export class Account implements IAccount {
         balance: bigint,
         nonce: bigint,
         storedCipherBalance: CipherBalance,
-        prefix_data:GeneralPrefixData,
+        prefix_data: GeneralPrefixData,
         auditor: CairoOption<PubKey>,
     ): Promise<CairoOption<Audit>> {
-        let auditPart = new CairoOption<Audit>(CairoOptionVariant.None);
+        let auditPart = None<Audit>();
         if (auditor.isSome()) {
             const auditorPubKey = starkPointToProjectivePoint(auditor.unwrap()!);
             const { inputs: inputsAudit, proof: proofAudit } = proveAudit(
@@ -165,24 +227,24 @@ export class Account implements IAccount {
                 prefix_data,
             );
             const hint = await this.computeAEHintForPubKey(balance, nonce, auditorPubKey);
-            const audit: Audit = { auditedBalance: inputsAudit.auditedBalance, hint, proof: proofAudit };
-            auditPart = new CairoOption<Audit>(CairoOptionVariant.Some, audit);
+            const audit: Audit = {
+                auditedBalance: inputsAudit.auditedBalance,
+                hint,
+                proof: proofAudit,
+            };
+            auditPart = Some<Audit>(audit);
         }
         return auditPart;
     }
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
-        const { amount, sender }  = fundDetails;
+        const { amount, sender } = fundDetails;
         const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
 
-        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const initialBalance = this.decryptCipherBalance(currentBalance, current_hint);
+        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialBalance = this.decryptCipherBalance(currentBalance, currentHint);
 
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender)
-        };
+        const prefix_data = await this.prefixData(sender);
 
         const { inputs, proof, newBalance } = proveFund(
             this.pk,
@@ -195,74 +257,78 @@ export class Account implements IAccount {
 
         //audit
         const auditor = await this.auditorKey();
-        const auditPart = await this.createAuditPart(amount + initialBalance,nonce, newBalance, prefix_data, auditor);
+        const auditPart = await this.createAuditPart(
+            amount + initialBalance,
+            nonce,
+            newBalance,
+            prefix_data,
+            auditor,
+        );
         const hint = await this.computeAEHintForSelf(amount + initialBalance, nonce + 1n);
 
-        const operation = new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo});
-        await operation.populateApprove();
-        return operation;
-    }
-    
-    async outside_fund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation> {
-        const { amount, to } = outsideFundDetails;
-
-        const operation = new OutsideFundOperation({
-            to: starkPointToProjectivePoint(to),
+        const operation = new FundOperation({
+            to: inputs.y,
             amount,
-            Tongo: this.Tongo
+            hint,
+            proof,
+            auditPart,
+            Tongo: this.Tongo,
         });
         await operation.populateApprove();
         return operation;
     }
 
+    async outsideFund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation> {
+        const { amount, to } = outsideFundDetails;
+
+        const operation = new OutsideFundOperation({
+            to: starkPointToProjectivePoint(to),
+            amount,
+            Tongo: this.Tongo,
+        });
+        await operation.populateApprove();
+        return operation;
+    }
 
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
         const { amount, sender } = transferDetails;
-        const bit_size: number = await this.bit_size();
+        const bitSize: number = await this.bitSize();
 
         const { nonce, balance, aeBalance } = await this.rawState();
-        let currentBalance = balance;
 
-        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        let currentAmount = this.decryptCipherBalance(currentBalance, current_hint);
+        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialAmount = this.decryptCipherBalance(balance, currentHint);
 
         //TODO check if the mount in pending would help
-        if (currentAmount < amount) {
-            throw new Error("You dont have enough balance");
+        if (initialAmount < amount) {
+            throw new Error("You don't have enough balance");
         }
 
         const to = starkPointToProjectivePoint(transferDetails.to);
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender),
-        };
+        const prefix_data = await this.prefixData(sender);
 
-        let relayData  = new CairoOption<RelayData>(CairoOptionVariant.None);
-        let externalData  = new CairoOption<ExternalData>(CairoOptionVariant.None);
+        let externalData = None<ExternalData>();
 
-        const fee_to_sender = transferDetails.fee_to_sender || 0n;
         //TODO implement a max fee in the contract?
-        if (fee_to_sender != 0n) {
-            relayData = new CairoOption<RelayData>(CairoOptionVariant.Some, {fee_to_sender})
-
-            let {L: L_fee, R: R_fee} = createCipherBalance(starkPointToProjectivePoint(this.publicKey), fee_to_sender, FEE_CAIRO_STRING);
-            currentAmount = currentAmount - fee_to_sender;
-            currentBalance = {
-                L: currentBalance.L.subtract(L_fee),
-                R: currentBalance.R.subtract(R_fee)
-            }
-        }
+        const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
+            transferDetails.feeToSender || 0n,
+            initialAmount,
+            balance,
+        );
 
         if (transferDetails.toTongo) {
             const toTongo = transferDetails.toTongo;
-            if (toTongo == this.Tongo.contractAddress) { throw new Error("Cannot make and external transfer to same tongo") }
-            let emptyAudit = new CairoOption<Audit>(CairoOptionVariant.None);
-            externalData = new CairoOption<ExternalData>(CairoOptionVariant.Some, { toTongo, auditPart: emptyAudit })
+            if (toTongo == this.Tongo.address) {
+                throw new Error("Cannot make an external transfer to same tongo");
+            }
+            externalData = Some<ExternalData>({
+                toTongo,
+                auditPart: None<Audit>(),
+            });
         }
 
-        let transfer_options = new CairoOption<TransferOptions>(CairoOptionVariant.Some, {relayData, externalData });
-        let serialized_data = serializeTransferOptions(transfer_options);
+        let transferOptions = Some<TransferOptions>({ relayData, externalData });
+        const serializedData = serializeTransferOptions(transferOptions);
 
         const { inputs, proof, newBalance } = proveTransfer(
             this.pk,
@@ -271,21 +337,35 @@ export class Account implements IAccount {
             amount,
             currentBalance,
             nonce,
-            bit_size,
+            bitSize,
             prefix_data,
-            serialized_data
+            serializedData,
         );
 
-        const balance_left = currentAmount - amount;
+        const balanceLeft = currentAmount - amount;
         const hintTransfer = await this.computeAEHintForPubKey(amount, nonce, to);
-        const hintLeftover = await this.computeAEHintForSelf(balance_left, nonce + 1n);
+        const hintLeftover = await this.computeAEHintForSelf(balanceLeft, nonce + 1n);
 
         //audit
+        const transferBalanceSelfCipher: CipherBalance = parseCipherBalance(
+            inputs.transferBalanceSelf,
+        );
         const auditor = await this.auditorKey();
-        const auditPart = await this.createAuditPart(balance_left, nonce, newBalance, prefix_data, auditor);
-        const auditPartTransfer = await this.createAuditPart(amount, nonce, inputs.transferBalanceSelf, prefix_data, auditor);
+        const auditPart = await this.createAuditPart(
+            balanceLeft,
+            nonce,
+            newBalance,
+            prefix_data,
+            auditor,
+        );
+        const auditPartTransfer = await this.createAuditPart(
+            amount,
+            nonce,
+            transferBalanceSelfCipher,
+            prefix_data,
+            auditor,
+        );
 
-        
         if (externalData.isSome()) {
             const toTongo = externalData.unwrap()!.toTongo;
 
@@ -293,25 +373,29 @@ export class Account implements IAccount {
             const Tongo2 = new Contract({
                 abi: tongoAbi,
                 address: num.toHex(toTongo),
-                providerOrAccount: this.provider
+                providerOrAccount: this.provider,
             }).typedv2(tongoAbi);
             const auditorTarget: CairoOption<PubKey> = await Tongo2.auditor_key();
 
             const prefix_data_target: GeneralPrefixData = {
-                chain_id: prefix_data.chain_id,
-                sender_address: prefix_data.sender_address,
+                ...prefix_data,
                 tongo_address: toTongo,
             };
 
-            const auditTarget = await this.createAuditPart(amount, nonce, inputs.transferBalanceSelf, prefix_data_target, auditorTarget )
+            const auditTarget = await this.createAuditPart(
+                amount,
+                nonce,
+                transferBalanceSelfCipher,
+                prefix_data_target,
+                auditorTarget,
+            );
             const external: ExternalData = {
-               toTongo, 
-               auditPart: auditTarget,
+                toTongo,
+                auditPart: auditTarget,
             };
-            externalData = new CairoOption<ExternalData>(CairoOptionVariant.Some, external);
-            transfer_options = new CairoOption<TransferOptions>(CairoOptionVariant.Some, {relayData, externalData });
+            externalData = Some<ExternalData>(external);
+            transferOptions = Some<TransferOptions>({ relayData, externalData });
         }
-
 
         return new TransferOperation({
             from: inputs.from,
@@ -325,7 +409,7 @@ export class Account implements IAccount {
             proof,
             auditPart,
             auditPartTransfer,
-            transfer_options,
+            transferOptions,
             Tongo: this.Tongo,
         });
     }
@@ -333,36 +417,24 @@ export class Account implements IAccount {
     async ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation> {
         const { to, sender } = ragequitDetails;
         const { nonce, balance, aeBalance } = await this.rawState();
-        let currentBalance = balance
 
-        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        let currentAmount = this.decryptCipherBalance(currentBalance, current_hint);
+        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialAmount = this.decryptCipherBalance(balance, currentHint);
 
-        if (currentAmount === 0n) {
-            throw new Error("You dont have enough balance");
+        if (initialAmount === 0n) {
+            throw new Error("You don't have enough balance");
         }
 
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender),
-        };
+        const prefix_data = await this.prefixData(sender);
 
-        const fee_to_sender = ragequitDetails.fee_to_sender || 0n;
-        let relayData  = new CairoOption<RelayData>(CairoOptionVariant.None);
-        if (fee_to_sender != 0n) {
-            relayData = new CairoOption<RelayData>(CairoOptionVariant.Some, {fee_to_sender})
+        const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
+            ragequitDetails.feeToSender || 0n,
+            initialAmount,
+            balance,
+        );
 
-            let {L: L_fee, R: R_fee} = createCipherBalance(starkPointToProjectivePoint(this.publicKey), fee_to_sender, FEE_CAIRO_STRING);
-            currentAmount = currentAmount - fee_to_sender;
-            currentBalance = {
-                L: currentBalance.L.subtract(L_fee),
-                R: currentBalance.R.subtract(R_fee)
-            }
-        }
-
-        let ragequit_options = new CairoOption<RagequitOptions>(CairoOptionVariant.Some, {relayData});
-        let serialized_data = serializeRagequitOptions(ragequit_options);
+        const ragequitOptions = Some<RagequitOptions>({ relayData });
+        const serializedData = serializeRagequitOptions(ragequitOptions);
 
         const { inputs, proof, newBalance } = proveRagequit(
             this.pk,
@@ -371,12 +443,12 @@ export class Account implements IAccount {
             BigInt(to),
             currentAmount,
             prefix_data,
-            serialized_data,
+            serializedData,
         );
 
         // zeroing out aehints
         const auditor = await this.auditorKey();
-        const auditPart = await this.createAuditPart(0n, nonce,  newBalance, prefix_data, auditor);
+        const auditPart = await this.createAuditPart(0n, nonce, newBalance, prefix_data, auditor);
         const hint = await this.computeAEHintForSelf(0n, nonce + 1n);
 
         return new RagequitOperation({
@@ -385,7 +457,7 @@ export class Account implements IAccount {
             amount: inputs.amount,
             hint,
             proof,
-            ragequit_options, 
+            ragequitOptions,
             Tongo: this.Tongo,
             auditPart,
         });
@@ -393,38 +465,26 @@ export class Account implements IAccount {
 
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
         const { amount, to, sender } = withdrawDetails;
-        const bit_size = await this.bit_size();
+        const bitSize = await this.bitSize();
         const { nonce, balance, aeBalance } = await this.rawState();
-        let currentBalance = balance;
 
-        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        let currentAmount = this.decryptCipherBalance(currentBalance, current_hint);
+        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const initialAmount = this.decryptCipherBalance(balance, currentHint);
 
-        if (currentAmount < amount) {
-            throw new Error("You dont have enought balance");
+        if (initialAmount < amount) {
+            throw new Error("You don't have enough balance");
         }
 
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender),
-        };
+        const prefix_data = await this.prefixData(sender);
 
-        const fee_to_sender = withdrawDetails.fee_to_sender || 0n;
-        let relayData  = new CairoOption<RelayData>(CairoOptionVariant.None);
-        if (fee_to_sender != 0n) {
-            relayData = new CairoOption<RelayData>(CairoOptionVariant.Some, {fee_to_sender})
+        const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
+            withdrawDetails.feeToSender || 0n,
+            initialAmount,
+            balance,
+        );
 
-            let {L: L_fee, R: R_fee} = createCipherBalance(starkPointToProjectivePoint(this.publicKey), fee_to_sender, FEE_CAIRO_STRING);
-            currentAmount = currentAmount - fee_to_sender;
-            currentBalance = {
-                L: currentBalance.L.subtract(L_fee),
-                R: currentBalance.R.subtract(R_fee)
-            }
-        }
-
-        let withdraw_options = new CairoOption<WithdrawOptions>(CairoOptionVariant.Some, {relayData});
-        let serialized_data = serializeWithdrawOptions(withdraw_options);
+        const withdrawOptions = Some<WithdrawOptions>({ relayData });
+        const serializedData = serializeWithdrawOptions(withdrawOptions);
 
         const { inputs, proof, newBalance } = proveWithdraw(
             this.pk,
@@ -433,15 +493,21 @@ export class Account implements IAccount {
             BigInt(to),
             currentBalance,
             nonce,
-            bit_size,
+            bitSize,
             prefix_data,
-            serialized_data,
+            serializedData,
         );
         const hint = await this.computeAEHintForSelf(currentAmount - amount, nonce + 1n);
 
         //audit
         const auditor = await this.auditorKey();
-        const auditPart = await this.createAuditPart(currentAmount- amount , nonce, newBalance, prefix_data, auditor);
+        const auditPart = await this.createAuditPart(
+            currentAmount - amount,
+            nonce,
+            newBalance,
+            prefix_data,
+            auditor,
+        );
 
         return new WithdrawOperation({
             from: inputs.y,
@@ -452,28 +518,24 @@ export class Account implements IAccount {
             proof,
             auditPart,
             Tongo: this.Tongo,
-            withdraw_options,
+            withdrawOptions,
         });
     }
 
     async rollover(rolloverDetails: RolloverDetails): Promise<RollOverOperation> {
-        const {sender} = rolloverDetails; 
+        const { sender } = rolloverDetails;
         const state = await this.rawState();
         const { nonce, balance: currentBalance, aeBalance, pending } = state;
 
-        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const unlockedAmount = this.decryptCipherBalance(currentBalance, current_hint);
+        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const unlockedAmount = this.decryptCipherBalance(currentBalance, currentHint);
 
         const pendingAmount = this.decryptCipherBalance(pending!);
 
         if (pendingAmount == 0n) {
-            throw new Error("Your pending ammount is 0");
+            throw new Error("Your pending amount is 0");
         }
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender), 
-        };
+        const prefix_data = await this.prefixData(sender);
         const { inputs, proof } = proveRollover(this.pk, nonce, prefix_data);
 
         const hint = await this.computeAEHintForSelf(pendingAmount + unlockedAmount, nonce + 1n);
@@ -484,11 +546,12 @@ export class Account implements IAccount {
         return this.decryptAEHintForPubKey(aeBalance, accountNonce, this.publicKey);
     }
 
-    async decryptAEHintForPubKey(aeHint: AEBalance, accountNonce: bigint, other: PubKey): Promise<bigint> {
-        const keyAEHint = await this.deriveSymmetricKeyForPubKey(accountNonce, other);
-        const { ciphertext, nonce: cipherNonce } = AEHintToBytes(aeHint);
-        const balance = new AEChaCha(keyAEHint).decryptBalance({ ciphertext, nonce: cipherNonce });
-        return balance;
+    async decryptAEHintForPubKey(
+        aeHint: AEBalance,
+        accountNonce: bigint,
+        other: PubKey,
+    ): Promise<bigint> {
+        return decryptAEHint(this.pk, aeHint, accountNonce, other, this.Tongo.address);
     }
 
     decryptCipherBalance({ L, R }: CipherBalance, hint?: bigint): bigint {
@@ -501,33 +564,35 @@ export class Account implements IAccount {
     }
 
     //TODO: rethink this to better ux
-    async generateExPost(to: PubKey, cipher: CipherBalance, sender:string): Promise<ExPost> {
+    async generateExPost(to: PubKey, cipher: CipherBalance, sender: string): Promise<ExPost> {
         if (cipher.L == null) {
             throw new Error("L is null");
         }
         if (cipher.R == null) {
             throw new Error("R is null");
         }
-        const prefix_data: GeneralPrefixData = {
-            chain_id: BigInt(await this.provider.getChainId()),
-            tongo_address: BigInt(this.Tongo.address),
-            sender_address: BigInt(sender), 
-        };
+        const prefix_data = await this.prefixData(sender);
 
         const balance = this.decryptCipherBalance(cipher);
-        const { inputs, proof } = proveAudit(this.pk, balance, cipher, starkPointToProjectivePoint(to), prefix_data);
+        const { inputs, proof } = proveAudit(
+            this.pk,
+            balance,
+            cipher,
+            starkPointToProjectivePoint(to),
+            prefix_data,
+        );
         return { inputs, proof };
     }
 
     verifyExPost(expost: ExPost): bigint {
-        const y = projectivePointToStarkPoint(expost.inputs.y);
+        const y = expost.inputs.y;
         if (y != this.publicKey) {
             throw new Error("The expost is not for you");
         }
         verifyAudit(expost.inputs, expost.proof);
         const amount = this.decryptCipherBalance({
-            L: expost.inputs.auditedBalance.L,
-            R: expost.inputs.auditedBalance.R,
+            L: starkPointToProjectivePoint(expost.inputs.auditedBalance.L),
+            R: starkPointToProjectivePoint(expost.inputs.auditedBalance.R),
         });
         return amount;
     }
@@ -537,7 +602,11 @@ export class Account implements IAccount {
         return ECDiffieHellman(this.pk, otherPublicKey);
     }
 
-    async computeAEHintForPubKey(amount: bigint, nonce: bigint, pubKey: PubKey): Promise<AEBalance> {
+    async computeAEHintForPubKey(
+        amount: bigint,
+        nonce: bigint,
+        pubKey: PubKey,
+    ): Promise<AEBalance> {
         const keyAEBal = await this.deriveSymmetricKeyForPubKey(nonce, pubKey);
         return bytesToAEHint(new AEChaCha(keyAEBal).encryptBalance(amount));
     }
@@ -569,16 +638,27 @@ export class Account implements IAccount {
             audit: parsedAudit,
             nonce: num.toBigInt(nonce),
             aeBalance: ae_balance.isSome() ? parseAEBalance(ae_balance.unwrap()!) : undefined,
-            aeAuditBalance: ae_audit_balance.isSome() ? parseAEBalance(ae_audit_balance.unwrap()!) : undefined,
+            aeAuditBalance: ae_audit_balance.isSome()
+                ? parseAEBalance(ae_audit_balance.unwrap()!)
+                : undefined,
         };
     }
 
-    async getEventsFund(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountFundEvent[]> {
-        const events = await this.reader.getEventsFund(fromBlock, this.publicKey, toBlock, numEvents);
+    async getEventsFund(
+        fromBlock: number,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<AccountFundEvent[]> {
+        const events = await this.reader.getEventsFund(
+            fromBlock,
+            this.publicKey,
+            toBlock,
+            numEvents,
+        );
         return events.map(
             (event) =>
                 ({
-                    type: ReaderToAccountEvents[event.type],
+                    type: event.type,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     nonce: event.nonce,
@@ -588,12 +668,21 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsOutsideFund(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountOutsideFundEvent[]> {
-        const events = await this.reader.getEventsOutsideFund(fromBlock, this.publicKey, toBlock, numEvents);
+    async getEventsOutsideFund(
+        fromBlock: number,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<AccountOutsideFundEvent[]> {
+        const events = await this.reader.getEventsOutsideFund(
+            fromBlock,
+            this.publicKey,
+            toBlock,
+            numEvents,
+        );
         return events.map(
             (event) =>
                 ({
-                    type: ReaderToAccountEvents[event.type],
+                    type: event.type,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     amount: event.amount,
@@ -602,13 +691,21 @@ export class Account implements IAccount {
         );
     }
 
-
-    async getEventsRollover(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountRolloverEvent[]> {
-        const events = await this.reader.getEventsRollover(fromBlock, this.publicKey, toBlock, numEvents);
+    async getEventsRollover(
+        fromBlock: number,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<AccountRolloverEvent[]> {
+        const events = await this.reader.getEventsRollover(
+            fromBlock,
+            this.publicKey,
+            toBlock,
+            numEvents,
+        );
         return events.map(
             (event) =>
                 ({
-                    type: ReaderToAccountEvents[event.type],
+                    type: event.type,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     nonce: event.nonce,
@@ -617,12 +714,21 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsWithdraw(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountWithdrawEvent[]> {
-        const events = await this.reader.getEventsWithdraw(fromBlock, this.publicKey, toBlock, numEvents);
+    async getEventsWithdraw(
+        fromBlock: number,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<AccountWithdrawEvent[]> {
+        const events = await this.reader.getEventsWithdraw(
+            fromBlock,
+            this.publicKey,
+            toBlock,
+            numEvents,
+        );
         return events.map(
             (event) =>
                 ({
-                    type: ReaderToAccountEvents[event.type],
+                    type: event.type,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     nonce: event.nonce,
@@ -632,12 +738,21 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsRagequit(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountRagequitEvent[]> {
-        const events = await this.reader.getEventsRagequit(fromBlock, this.publicKey, toBlock, numEvents);
+    async getEventsRagequit(
+        fromBlock: number,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<AccountRagequitEvent[]> {
+        const events = await this.reader.getEventsRagequit(
+            fromBlock,
+            this.publicKey,
+            toBlock,
+            numEvents,
+        );
         return events.map(
             (event) =>
                 ({
-                    type: ReaderToAccountEvents[event.type],
+                    type: event.type,
                     tx_hash: event.tx_hash,
                     block_number: event.block_number,
                     nonce: event.nonce,
@@ -647,60 +762,111 @@ export class Account implements IAccount {
         );
     }
 
-    async getEventsTransferOut(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountTransferOutEvent[]> {
-        const events = await this.reader.getEventsTransferOut(fromBlock, this.publicKey, toBlock, numEvents);
-        return Promise.all(events.map(
-            async (event) =>
-                ({
-                    type: ReaderToAccountEvents[event.type],
-                    tx_hash: event.tx_hash,
-                    block_number: event.block_number,
-                    nonce: event.nonce,
-                    amount: this.decryptCipherBalance(
-                        parseCipherBalance(event.transferBalanceSelf),
-                        await this.decryptAEHintForPubKey(event.hintTransfer, event.nonce, event.to)
-                    ),
-                    to: pubKeyAffineToBase58(event.to),
-                }) as AccountTransferOutEvent,
-        ));
+    async getEventsTransferOut(
+        fromBlock: number,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<AccountTransferOutEvent[]> {
+        const events = await this.reader.getEventsTransferOut(
+            fromBlock,
+            this.publicKey,
+            toBlock,
+            numEvents,
+        );
+        return Promise.all(
+            events.map(
+                async (event) =>
+                    ({
+                        type: event.type,
+                        tx_hash: event.tx_hash,
+                        block_number: event.block_number,
+                        nonce: event.nonce,
+                        amount: this.decryptCipherBalance(
+                            parseCipherBalance(event.transferBalanceSelf),
+                            await this.decryptAEHintForPubKey(
+                                event.hintTransfer,
+                                event.nonce,
+                                event.to,
+                            ),
+                        ),
+                        to: pubKeyAffineToBase58(event.to),
+                    }) as AccountTransferOutEvent,
+            ),
+        );
     }
 
-    async getEventsTransferIn(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountTransferInEvent[]> {
-        const events = await this.reader.getEventsTransferIn(fromBlock, this.publicKey, toBlock, numEvents);
-        return Promise.all(events.map(
-            async (event) => ({
-                type: ReaderToAccountEvents[event.type],
-                tx_hash: event.tx_hash,
-                block_number: event.block_number,
-                nonce: event.nonce,
-                amount: this.decryptCipherBalance(
-                    parseCipherBalance(event.transferBalance),
-                    await this.decryptAEHintForPubKey(event.hintTransfer, event.nonce, event.from)
-                ),
-                from: pubKeyAffineToBase58(event.from),
-            }) as AccountTransferInEvent,
-        ));
+    async getEventsTransferIn(
+        fromBlock: number,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<AccountTransferInEvent[]> {
+        const events = await this.reader.getEventsTransferIn(
+            fromBlock,
+            this.publicKey,
+            toBlock,
+            numEvents,
+        );
+        return Promise.all(
+            events.map(
+                async (event) =>
+                    ({
+                        type: event.type,
+                        tx_hash: event.tx_hash,
+                        block_number: event.block_number,
+                        nonce: event.nonce,
+                        amount: this.decryptCipherBalance(
+                            parseCipherBalance(event.transferBalance),
+                            await this.decryptAEHintForPubKey(
+                                event.hintTransfer,
+                                event.nonce,
+                                event.from,
+                            ),
+                        ),
+                        from: pubKeyAffineToBase58(event.from),
+                    }) as AccountTransferInEvent,
+            ),
+        );
     }
 
-    async getEventsReceivedExternalTransfer(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountReceivedExternalTransfer[]> {
-        const events = await this.reader.getReceivedExternalTransferTo(fromBlock, this.publicKey, toBlock, numEvents);
-        return Promise.all(events.map(
-            async (event) => ({
-                type: ReaderToAccountEvents[event.type],
-                tx_hash: event.tx_hash,
-                block_number: event.block_number,
-                amount: this.decryptCipherBalance(
-                    parseCipherBalance(event.transferBalance),
-                    await this.decryptAEHintForPubKey(event.hintTransfer, event.nonce, event.from)
-                ),
-                nonce: event.nonce,
-                from: pubKeyAffineToBase58(event.from),
-                fromTongo: num.toHex(event.fromTongo),
-            }) as AccountReceivedExternalTransfer,
-        ));
+    async getEventsReceivedExternalTransfer(
+        fromBlock: number,
+        toBlock?: number | "latest",
+        numEvents?: number | "all",
+    ): Promise<AccountReceivedExternalTransfer[]> {
+        const events = await this.reader.getReceivedExternalTransferTo(
+            fromBlock,
+            this.publicKey,
+            toBlock,
+            numEvents,
+        );
+        return Promise.all(
+            events.map(
+                async (event) =>
+                    ({
+                        type: event.type,
+                        tx_hash: event.tx_hash,
+                        block_number: event.block_number,
+                        amount: this.decryptCipherBalance(
+                            parseCipherBalance(event.transferBalance),
+                            await this.decryptAEHintForPubKey(
+                                event.hintTransfer,
+                                event.nonce,
+                                event.from,
+                            ),
+                        ),
+                        nonce: event.nonce,
+                        from: pubKeyAffineToBase58(event.from),
+                        fromTongo: num.toHex(event.fromTongo),
+                    }) as AccountReceivedExternalTransfer,
+            ),
+        );
     }
 
-    async getTxHistory(fromBlock: number, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<AccountEvents[]> {
+    async getTxHistory(
+        fromBlock: number,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<AccountEvents[]> {
         const promises = Promise.all([
             this.getEventsFund(fromBlock, toBlock, numEvents),
             this.getEventsOutsideFund(fromBlock, toBlock, numEvents),

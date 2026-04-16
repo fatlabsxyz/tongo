@@ -1,6 +1,6 @@
 import { cairo, Call, CallData, Contract, num } from "starknet";
 
-import { ProjectivePoint } from "../types";
+import { ProjectivePoint } from "../types.js";
 
 import { castBigInt } from "../utils.js";
 import { IOperation, OperationType } from "./operation.js";
@@ -24,14 +24,13 @@ interface OutsideFundOpParams {
 }
 
 export class OutsideFundOperation implements IOutsideFundOperation {
-    type: typeof OperationType.OutsideFund;
+    type: typeof OperationType.OutsideFund = OperationType.OutsideFund;
     Tongo: Contract;
     to: ProjectivePoint;
     amount: bigint;
     approve?: Call;
 
     constructor({ to, amount, Tongo }: OutsideFundOpParams) {
-        this.type = OperationType.OutsideFund;
         this.to = to;
         this.amount = amount;
         this.Tongo = Tongo;
@@ -49,11 +48,11 @@ export class OutsideFundOperation implements IOutsideFundOperation {
     // TODO: better ux for this. Maybe return the call?
     async populateApprove() {
         const erc20 = await this.Tongo.ERC20();
-        const erc20_addres = num.toHex(erc20);
-        const tongo_address = this.Tongo.address;
+        const erc20Address = num.toHex(erc20);
+        const tongoAddress = this.Tongo.address;
         const rate = await this.Tongo.get_rate();
         const amount = cairo.uint256(this.amount * castBigInt(rate));
-        const calldata = CallData.compile({ spender: tongo_address, amount: amount });
-        this.approve = { contractAddress: erc20_addres, entrypoint: "approve", calldata };
+        const calldata = CallData.compile({ spender: tongoAddress, amount: amount });
+        this.approve = { contractAddress: erc20Address, entrypoint: "approve", calldata };
     }
 }

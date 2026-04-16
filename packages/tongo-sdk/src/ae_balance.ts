@@ -2,29 +2,28 @@ import { xchacha20poly1305 } from "@noble/ciphers/chacha.js";
 import { bytesToNumberBE, numberToBytesBE } from "@noble/ciphers/utils.js";
 import { randomBytes } from "@noble/ciphers/webcrypto.js";
 import { BigNumberish, uint256, Uint256 } from "starknet";
-
-import { isUint256 } from "./utils.js";
+import { castBigInt, isUint256 } from "./utils.js";
+import { TongoAbiType } from "./abi/abi.types.js";
+import { PubKey, pubKeyAffineToHex } from "./types.js";
+import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "./key.js";
 
 /**
  * The AEBalance represents a simetrically encrypted balance using authenticated
- * encryption. This interface represents the upstream values found in the
+ * encryption. This type represents the upstream values found in the
  * contract, which are stored as numbers, although they must be interpreted
- * as bytes.
+ * as bytes. (ciphertext: Cairo.U512, nonce: Cairo.U256)
  */
-export interface AEBalance {
-    ciphertext: bigint;   // Cairo.U512
-    nonce: bigint;        // Cairo.U256
-}
+export type AEBalance = TongoAbiType<"tongo::structs::aecipher::AEBalance">;
 
 export interface AEBalanceBytes {
-    ciphertext: Uint8Array;    // 64 B
-    nonce: Uint8Array;         // 32 B
+    ciphertext: Uint8Array; // 64 B
+    nonce: Uint8Array; // 32 B
 }
 
 export function AEHintToBytes({ ciphertext, nonce }: AEBalance): AEBalanceBytes {
     return {
-        ciphertext: numberToBytesBE(ciphertext, 64),
-        nonce: numberToBytesBE(nonce, 24),                // XChaCha20 nonce is 192 bits
+        ciphertext: numberToBytesBE(BigInt(ciphertext as BigNumberish), 64),
+        nonce: numberToBytesBE(castBigInt(nonce), 24), // XChaCha20 nonce is 192 bits
     };
 }
 
@@ -72,7 +71,7 @@ export class AEChaCha {
         }
         // 512  = ( TAG [128] ) + ( NOISE/RESERVED [352] ) + ( BALANCE [32] )
         // 64 B      16 B                44 B                    4 B
-        const nonce = randomBytes(24);  // XChaCha20 uses random nonces of 192 bit = 24 B
+        const nonce = randomBytes(24); // XChaCha20 uses random nonces of 192 bit = 24 B
         const noise = randomBytes(3 * 16 - 4);
         const numberBytes = numberToBytesBE(balance, 48);
         numberBytes.set(noise, 0);
@@ -91,4 +90,21 @@ export class AEChaCha {
             throw new Error("Malformed or tampered ciphertext");
         }
     }
+}
+
+export async function decryptAEHint(
+    pk: bigint,
+    hint: AEBalance,
+    accountNonce: bigint,
+    otherPubKey: PubKey,
+    contractAddress: string,
+): Promise<bigint> {
+    const sharedSecret = ECDiffieHellman(pk, pubKeyAffineToHex(otherPubKey));
+    const keyAEHint = await deriveSymmetricEncryptionKey({
+        contractAddress,
+        nonce: accountNonce,
+        secret: sharedSecret,
+    });
+    const { ciphertext, nonce: cipherNonce } = AEHintToBytes(hint);
+    return new AEChaCha(keyAEHint).decryptBalance({ ciphertext, nonce: cipherNonce });
 }

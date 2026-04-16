@@ -1,10 +1,12 @@
-import { ProjectivePoint, RelayData } from "../types";
-import { ProofOfWithdraw } from "../provers/withdraw";
-import { CipherBalance } from "../types.js";
-import { Call, Contract, num, CairoOption } from "starknet";
+import { ProofOfWithdraw } from "../provers/withdraw.js";
+import { BigNumberish, Call, Contract, num, CairoOption } from "starknet";
 import { AEBalance } from "../ae_balance.js";
+import { StarkCipherBalance, StarkPoint } from "../types.js";
+import { TongoAbiType, tongoCodec } from "../abi/abi.types.js";
 import { IOperation, OperationType } from "./operation.js";
 import { Audit } from "./audit.js";
+
+export type WithdrawOptions = TongoAbiType<"tongo::structs::operations::withdraw::WithdrawOptions">;
 
 export interface IWithdrawOperation extends IOperation {
     type: typeof OperationType.Withdraw;
@@ -13,59 +15,57 @@ export interface IWithdrawOperation extends IOperation {
 /**
  * Represents the calldata of a withdraw operation.
  * @interface WithdrawOpParams
- * @property {ProjectivePoint} from - The Tongo account to withdraw from
+ * @property {StarkPoint} from - The Tongo account to withdraw from
  * @property {bigint} amount - The amount of tongo to withdraw
- * @property {bigint} to - The starknet contract address to send the funds to
+ * @property {BigNumberish} to - The starknet contract address to send the funds to
  * @property {AEBalance} hint - AE encryption of the final balance of the account
  * @property {ProofOfWithdraw} proof - ZK proof for the withdraw operation
  * @property {CairoOption<Audit>} auditPart - Optional Audit to declare the balance of the account after the tx
- * @property {RelayData} relayData - relay data for the operation
+ * @property {CairoOption<WithdrawOptions>} withdrawOptions - Options including relay data
  * @property {Contract} Tongo - The Tongo instance to interact with
  */
 interface WithdrawOpParams {
-    from: ProjectivePoint;
-    to: bigint;
-    amount: bigint;
-    auxiliarCipher:CipherBalance;
+    from: StarkPoint;
+    to: BigNumberish;
+    amount: BigNumberish;
+    auxiliarCipher: StarkCipherBalance;
     hint: AEBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
-    withdraw_options: CairoOption<WithdrawOptions>;
+    withdrawOptions: CairoOption<WithdrawOptions>;
     Tongo: Contract;
 }
 
-export interface WithdrawOptions {
-    relayData: CairoOption<RelayData>,
-}
-
-//TODO: handle this better, maybe something similar to the cairo contracts
-export function serializeWithdrawOptions(withdraw_options: CairoOption<WithdrawOptions>): bigint[] {
-    if (withdraw_options.isNone()) {return [1n]}
-
-    let arr = [0n];
-    const {relayData} = withdraw_options.unwrap()!;
-    if (relayData.isNone()) {
-        arr.push(1n)
-    } else {
-        arr.push(0n)
-        arr.push(relayData.unwrap()!.fee_to_sender)
-    }
-    return arr
+const OptionalWithdrawOption =
+    "core::option::Option::<tongo::structs::operations::withdraw::WithdrawOptions>" as const;
+export type CairoWithdrawOptions = TongoAbiType<typeof OptionalWithdrawOption>;
+export function serializeWithdrawOptions(withdrawOptions: CairoWithdrawOptions): bigint[] {
+    return tongoCodec.encode(OptionalWithdrawOption, withdrawOptions).map(BigInt);
 }
 
 export class WithdrawOperation implements IWithdrawOperation {
     type: typeof OperationType.Withdraw = OperationType.Withdraw;
     Tongo: Contract;
-    from: ProjectivePoint;
-    to: bigint;
-    amount: bigint;
+    from: StarkPoint;
+    to: BigNumberish;
+    amount: BigNumberish;
     hint: AEBalance;
-    auxiliarCipher: CipherBalance;
+    auxiliarCipher: StarkCipherBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
-    withdraw_options: CairoOption<WithdrawOptions>;
+    withdrawOptions: CairoOption<WithdrawOptions>;
 
-    constructor({ from, to, amount, proof, auditPart, Tongo, hint, auxiliarCipher, withdraw_options}: WithdrawOpParams) {
+    constructor({
+        from,
+        to,
+        amount,
+        proof,
+        auditPart,
+        Tongo,
+        hint,
+        auxiliarCipher,
+        withdrawOptions,
+    }: WithdrawOpParams) {
         this.Tongo = Tongo;
         this.from = from;
         this.to = to;
@@ -74,7 +74,7 @@ export class WithdrawOperation implements IWithdrawOperation {
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
-        this.withdraw_options = withdraw_options
+        this.withdrawOptions = withdrawOptions;
     }
 
     toCalldata(): Call {
@@ -88,7 +88,7 @@ export class WithdrawOperation implements IWithdrawOperation {
                 auditPart: this.auditPart,
                 proof: this.proof,
             },
-            this.withdraw_options
+            this.withdrawOptions,
         ]);
     }
 }

@@ -7,8 +7,7 @@ use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::relayer::{RelayData, SerializeRelayData};
 use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::operations::audit::Audit;
-use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
-use crate::structs::traits::SerializedData;
+use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix, SerializedData};
 
 /// Represents the calldata of a ragequit operation.
 ///
@@ -33,20 +32,22 @@ pub struct Ragequit {
 
 #[derive(Drop, Serde)]
 pub struct RagequitOptions {
-    pub relayData: Option<RelayData>
+    pub relayData: Option<RelayData>,
 }
 
 pub impl SerializeRagequitOptions of SerializedData<Option<RagequitOptions>> {
     fn serialize_data(self: @Option<RagequitOptions>) -> Span<felt252> {
         match self {
-            None => { return array![1].span(); }, 
+            None => { return array![1].span(); },
             Some(options) => {
                 let mut arr: Array<felt252> = array![0];
 
                 let relay = options.relayData.serialize_data();
-                for r in relay { arr.append(*r) }
+                for r in relay {
+                    arr.append(*r)
+                }
                 return arr.span();
-            }
+            },
         }
     }
 }
@@ -78,19 +79,9 @@ impl RagequitPrefix of Prefix<InputsRagequit> {
         let CipherBalance { L, R } = *self.currentBalance;
 
         let mut array: Array<felt252> = array![
-            *chain_id,
-            (*tongo_address).into(),
-            (*sender_address).into(),
-            ragequit_selector,
-            *self.y.x,
-            *self.y.y,
-            (*self.nonce).into(),
-            (*self.amount).into(),
-            (*self.to).into(),
-            L.x,
-            L.y,
-            R.x,
-            R.y,
+            *chain_id, (*tongo_address).into(), (*sender_address).into(), ragequit_selector,
+            *self.y.x, *self.y.y, (*self.nonce).into(), (*self.amount).into(), (*self.to).into(),
+            L.x, L.y, R.x, R.y,
         ];
         for d in self.data {
             array.append(*d)

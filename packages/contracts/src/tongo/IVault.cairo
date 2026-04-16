@@ -1,8 +1,6 @@
-use starknet::{ContractAddress, ClassHash};
-use crate::structs::common::{
-    pubkey::PubKey,
-    state::VaultConfig,
-};
+use starknet::{ClassHash, ContractAddress};
+use crate::structs::common::pubkey::PubKey;
+use crate::structs::common::state::VaultConfig;
 
 #[starknet::interface]
 pub trait IVault<TContractState> {
@@ -29,13 +27,16 @@ pub trait IVault<TContractState> {
     /// The Vault will only work with these contracts.
     fn is_known_tongo(self: @TContractState, address: ContractAddress) -> bool;
 
-    /// Returns the address of a given tag if a Tongo contract was deployed with that particular tag.
+    /// Returns the address of a given tag if a Tongo contract was deployed with that particular
+    /// tag.
     fn tag_to_address(self: @TContractState, tag: felt252) -> Option<ContractAddress>;
 
     /// Deploys a Tongo instance for the given owner and tag with the given auditor.
     ///
     /// Emits TongoDeployed event.
-    fn deploy_tongo(ref self: TContractState, owner: ContractAddress, tag: felt252, auditorKey: Option<PubKey>) -> ContractAddress;
+    fn deploy_tongo(
+        ref self: TContractState, owner: ContractAddress, tag: felt252, auditorKey: Option<PubKey>,
+    ) -> ContractAddress;
 
     /// Pulls ERC20 from the caller. The caller can only be a Tongo instance deployed by this Vault.
     fn deposit(ref self: TContractState, amount: u256);

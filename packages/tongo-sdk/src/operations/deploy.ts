@@ -1,9 +1,10 @@
-import { StarkPoint } from "../types";
-import { Call, CairoOption, CairoOptionVariant, num, hash, CallData} from "starknet";
-import { tongoAbi } from "../abi/tongo.abi.js"
+import { StarkPoint } from "../types.js";
+import { Call, CairoOption, num, hash, CallData } from "starknet";
+import { tongoAbi } from "../abi/tongo.abi.js";
 import { IOperation, OperationType } from "./operation.js";
 import { VaultConfig } from "../vault/vault.interface.js";
-import { VaultContract } from "../vault/vault.js";
+import { VaultContract } from "../contracts.js";
+import { None, Some } from "../utils.js";
 
 export interface IDeployOperation extends IOperation {
     type: typeof OperationType.Deploy;
@@ -17,7 +18,6 @@ interface DeployOpParams {
     Vault: VaultContract;
 }
 
-
 export class DeployOperation implements IDeployOperation {
     type: typeof OperationType.Deploy = OperationType.Deploy;
     owner: bigint;
@@ -27,11 +27,11 @@ export class DeployOperation implements IDeployOperation {
     Vault: VaultContract;
 
     constructor({ owner, tag, auditorKey: auditor, Vault, vaultSetup }: DeployOpParams) {
-        const {vault_address, tongo_class_hash, ERC20, rate, bit_size} = vaultSetup;
+        const { vault_address, tongo_class_hash, ERC20, rate, bit_size } = vaultSetup;
 
-        let auditorKey = new CairoOption<StarkPoint>(CairoOptionVariant.None);
+        let auditorKey = None<StarkPoint>();
         if (auditor) {
-            auditorKey = new CairoOption<StarkPoint>(CairoOptionVariant.Some, auditor);
+            auditorKey = Some<StarkPoint>(auditor);
         }
 
         this.owner = owner;
@@ -39,7 +39,7 @@ export class DeployOperation implements IDeployOperation {
         this.auditorKey = auditorKey;
         this.Vault = Vault;
 
-        const constructor_calldata = new CallData(tongoAbi).compile("constructor",[
+        const constructor_calldata = new CallData(tongoAbi).compile("constructor", [
             owner,
             tag,
             ERC20,
@@ -49,19 +49,19 @@ export class DeployOperation implements IDeployOperation {
         ]);
 
         const address = hash.calculateContractAddressFromHash(
-            tag, 
+            tag,
             tongo_class_hash,
             constructor_calldata,
             vault_address,
-        )
-        this.targetAddress =  address;
+        );
+        this.targetAddress = address;
     }
 
     toCalldata(): Call {
         return this.Vault.populate("deploy_tongo", [
             num.toHex(this.owner),
             num.toHex(this.tag),
-            this.auditorKey
+            this.auditorKey,
         ]);
     }
 }

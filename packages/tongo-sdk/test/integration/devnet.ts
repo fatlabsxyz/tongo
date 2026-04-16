@@ -1,24 +1,33 @@
+import { TestProject } from "vitest/node";
 import { Devnet } from "starknet-devnet";
+import { setupContracts } from "./setupContracts";
 
 async function startDevnet({
     dumpPath,
     chainId = "MAINNET",
     predeployedAccounts = 10,
 }): Promise<Devnet> {
-    return new Promise(async (resolve) => {
-        const devnet = await Devnet.spawnInstalled({
-            stdout: "ignore",
-            stderr: "ignore",
-            args: [
-                "--seed", "100",
-                "--chain-id", chainId,
-                "--block-generation-on", "transaction",
-                "--accounts", predeployedAccounts.toString(),
-                "--dump-path", dumpPath,
-                "--port", "5050"
-            ]
-        });
-        resolve(devnet);
+    return Devnet.spawnInstalled({
+        stdout: "ignore",
+        stderr: "ignore",
+        // stdout: process.stdout,
+        // stderr: process.stderr,
+        maxStartupMillis: 15_000,
+        // prettier-ignore-start
+        args: [
+            "--seed",
+            "100",
+            "--chain-id",
+            chainId,
+            "--block-generation-on",
+            "transaction",
+            "--accounts",
+            predeployedAccounts.toString(),
+            // "--dump-path", dumpPath,
+            "--port",
+            "5050",
+        ],
+        // prettier-ignore-end
     });
 }
 
@@ -26,10 +35,12 @@ async function startDevnet({
 let teardownHappened = false;
 let devnet: Devnet;
 
-export async function setup() {
+export async function setup({ provide }: TestProject) {
     devnet = await startDevnet({
-        dumpPath: "./test/state/devnet.state"
+        dumpPath: "./test/state/devnet.state",
     });
+    const contracts = await setupContracts();
+    provide("contracts", contracts);
 }
 
 export async function teardown() {
@@ -39,4 +50,10 @@ export async function teardown() {
     teardownHappened = true;
     // tear it down here
     devnet.kill();
+}
+
+declare module "vitest" {
+    export interface ProvidedContext {
+        contracts: Awaited<ReturnType<typeof setupContracts>>;
+    }
 }

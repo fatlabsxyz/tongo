@@ -1,27 +1,21 @@
-import { ProjectivePoint as SheProjectivePoint, type ProjectivePoint as SheProjectivePointType } from "@fatsolutions/she";
+import {
+    ProjectivePoint as SheProjectivePoint,
+    type ProjectivePoint as SheProjectivePointType,
+} from "@fatsolutions/she";
 import { BigNumberish } from "starknet";
 import { base58 } from "@scure/base";
 import { bytesToHex } from "@noble/hashes/utils";
+import { poseidonHashMany } from "@scure/starknet";
+import { GENERATOR } from "./constants.js";
+import { AuxAbiType, TongoAbiType } from "./abi/abi.types.js";
 
-import {
-    poseidonHashMany,
-} from "@scure/starknet";
-import { GENERATOR } from "./constants";
-
-export interface GeneralPrefixData {
-    chain_id: bigint,
-    tongo_address: bigint,
-    sender_address: bigint,
-}
-
-export interface RelayData {
-    fee_to_sender:bigint,
-}
+export type GeneralPrefixData = AuxAbiType<"tongo::structs::traits::GeneralPrefixData">;
+export type RelayData = TongoAbiType<"tongo::structs::common::relayer::RelayData">;
 
 export const ProjectivePoint: typeof SheProjectivePoint = SheProjectivePoint;
 export type ProjectivePoint = SheProjectivePointType;
 
-export type TongoAddress = string & { __type: "tongo"; };
+export type TongoAddress = string & { __type: "tongo" };
 
 /**
  * This struct is intended to wrap the coordinates of a NonZeroEcPoint.
@@ -39,12 +33,21 @@ export type PubKey = StarkPoint;
 
 /**
  * Balances are encrypted with ElGammal, which consists in a tuple of curve points (L, R). Internally the points
- * are constructed with L = g**b y**r, R = g**r where g is the generator of the starknet curve, y is a pubkey, r is 
+ * are constructed with L = g**b y**r, R = g**r where g is the generator of the starknet curve, y is a pubkey, r is
  * a random value and b is the balance to encrypt.
  */
 export interface CipherBalance {
     L: ProjectivePoint;
     R: ProjectivePoint;
+}
+
+/**
+ * The StarkPoint-based counterpart of {@link CipherBalance}. Used at the contract
+ * boundary where curve points are serialized as affine `(x, y)` coordinates.
+ */
+export interface StarkCipherBalance {
+    L: StarkPoint;
+    R: StarkPoint;
 }
 
 /**
@@ -76,7 +79,6 @@ export function projectivePointToStarkPoint(p: ProjectivePoint): StarkPoint {
     const pAffine = p.toAffine();
     return { x: pAffine.x, y: pAffine.y };
 }
-
 
 /**
  * Constructs a public key from a given private key.
@@ -112,7 +114,7 @@ export function pubKeyAffineToBase58(pub: PubKey): TongoAddress {
  * @param {string} b58string - The base58 encoded string
  * @returns {{x: bigint, y: bigint}} The affine coordinates
  */
-export function pubKeyBase58ToAffine(b58string: string): { x: bigint; y: bigint; } {
+export function pubKeyBase58ToAffine(b58string: string): { x: bigint; y: bigint } {
     const bytes = base58.decode(b58string);
     return ProjectivePoint.fromHex(bytesToHex(bytes));
 }
@@ -134,9 +136,21 @@ export function pubKeyBase58ToHex(b58string: string): string {
  * @param {StarkPoint} param0.R - The right point
  * @returns {CipherBalance} The resulting CipherBalance
  */
-export function parseCipherBalance({ L, R }: { L: StarkPoint; R: StarkPoint; }): CipherBalance {
+export function parseCipherBalance({ L, R }: StarkCipherBalance): CipherBalance {
     return {
         L: starkPointToProjectivePoint(L),
         R: starkPointToProjectivePoint(R),
+    };
+}
+
+/**
+ * Converts a CipherBalance (ProjectivePoint pair) to its StarkPoint (affine) form.
+ * @param {CipherBalance} cb - The cipher balance to convert
+ * @returns {StarkCipherBalance} The StarkPoint counterpart
+ */
+export function cipherToStark(cb: CipherBalance): StarkCipherBalance {
+    return {
+        L: projectivePointToStarkPoint(cb.L),
+        R: projectivePointToStarkPoint(cb.R),
     };
 }
