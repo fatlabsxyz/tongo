@@ -8,7 +8,7 @@ use crate::tongo::operations::{fundOperation, transferOperation};
 
 #[test]
 fn test_transfer() {
-    let (_address, dispatcher) = setup_tongo();
+    let (tongo_address, dispatcher) = setup_tongo();
 
     let x = 2384230948239;
     let x_bar = 2190381209380321;
@@ -19,12 +19,12 @@ fn test_transfer() {
 
     let sender = USER_ADDRESS;
     let fee_to_sender =  0;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, fee_to_sender,dispatcher);
+    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
     dispatcher.fund(operation);
 
 
     let transfer_amount = 100;
-    let operation = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,dispatcher);
-    dispatcher.transfer(operation);
+    let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address,dispatcher);
+    dispatcher.transfer(operation, transfer_options);
 }
 

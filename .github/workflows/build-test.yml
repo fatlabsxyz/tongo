@@ -24,7 +24,7 @@ jobs:
       - name: Set up Starknet Foundry
         uses: foundry-rs/setup-snfoundry@v3
         with:
-          starknet-foundry-version: "0.50.0"
+          starknet-foundry-version: "0.58.0"
 
       - name: Install Universal Sierra Compiler
         run: |

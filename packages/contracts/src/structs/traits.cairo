@@ -1,6 +1,7 @@
 use starknet::ContractAddress;
 use crate::structs::common::starkpoint::StarkPoint;
 
+
 #[derive(Serde, Drop, Copy, Debug)]
 pub struct GeneralPrefixData {
     pub chain_id: felt252,
@@ -20,6 +21,10 @@ pub trait Prefix<T> {
 /// proof by hashing the comitments of the sigma protocol. Each
 pub trait Challenge<T> {
     fn compute_challenge(self: @T, prefix: felt252) -> felt252;
+}
+
+pub trait SerializedData<T> {
+    fn serialize_data(self: @T) -> Span<felt252>;
 }
 
 

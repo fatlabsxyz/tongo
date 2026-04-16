@@ -41,6 +41,7 @@ pub struct VaultConfig {
 
 /// Represent the setup of the Tongo contract
 ///
+/// - tag: The tag this contract is registered with.
 /// - address: The address of the Tongo contract
 /// - ERC20: The address of of the ERC20 that this Tongo instances wraps
 /// - owner: The address of the owner of this Tongo instance
@@ -51,6 +52,7 @@ pub struct VaultConfig {
 #[derive(Serde, Drop)]
 pub struct TongoConfig {
     pub address: ContractAddress,
+    pub tag: felt252,
     pub ERC20: ContractAddress,
     pub owner: ContractAddress,
     pub vault: ContractAddress,

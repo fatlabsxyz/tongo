@@ -1,4 +1,4 @@
-import { ReaderEventType } from "../data.service.js";
+import { TongoReaderEventType } from "./account.data.service.js";
 
 const AccountEvent = {
     Fund: "fund",
@@ -8,18 +8,20 @@ const AccountEvent = {
     Rollover: "rollover",
     TransferIn: "transferIn",
     TransferOut: "transferOut",
+    ReceivedExternalTransfer: "externalTransferIn",
 } as const;
 
 type AccountEvent = typeof AccountEvent[keyof typeof AccountEvent];
 
 export const ReaderToAccountEvents = {
-    [ReaderEventType.Fund]: AccountEvent.Fund,
-    [ReaderEventType.OutsideFund]: AccountEvent.OutsideFund,
-    [ReaderEventType.Rollover]: AccountEvent.Rollover,
-    [ReaderEventType.Withdraw]: AccountEvent.Withdraw,
-    [ReaderEventType.Ragequit]: AccountEvent.Ragequit,
-    [ReaderEventType.TransferIn]: AccountEvent.TransferIn,
-    [ReaderEventType.TransferOut]: AccountEvent.TransferOut,
+    [TongoReaderEventType.Fund]: AccountEvent.Fund,
+    [TongoReaderEventType.OutsideFund]: AccountEvent.OutsideFund,
+    [TongoReaderEventType.Rollover]: AccountEvent.Rollover,
+    [TongoReaderEventType.Withdraw]: AccountEvent.Withdraw,
+    [TongoReaderEventType.Ragequit]: AccountEvent.Ragequit,
+    [TongoReaderEventType.TransferIn]: AccountEvent.TransferIn,
+    [TongoReaderEventType.TransferOut]: AccountEvent.TransferOut,
+    [TongoReaderEventType.ExternalTransfer]: AccountEvent.ReceivedExternalTransfer,
 };
 
 interface AccountBaseEvent {
@@ -75,6 +77,14 @@ export interface AccountTransferInEvent extends AccountBaseEvent {
     from: string;
 }
 
+export interface AccountReceivedExternalTransfer extends AccountBaseEvent {
+    type: typeof AccountEvent.ReceivedExternalTransfer;
+    amount: bigint;
+    nonce: bigint;
+    from: string;
+    fromTongo: string;
+}
+
 export type AccountEvents =
     | AccountFundEvent
     | AccountOutsideFundEvent
@@ -82,4 +92,5 @@ export type AccountEvents =
     | AccountRagequitEvent
     | AccountRolloverEvent
     | AccountTransferOutEvent
-    | AccountTransferInEvent;
+    | AccountTransferInEvent
+    | AccountReceivedExternalTransfer;

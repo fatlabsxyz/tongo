@@ -14,16 +14,16 @@ use crate::verifier::utils::generator_h;
 
 /// Verifies the withdraw operation. First, ussers have to show knowledge of the private key. Then,
 /// users  have to provide a cleartext of the amount b to withdraw. The contract will construct a
-/// cipher balance (L2, R2) = (g**b y**r2, g**r2)
-/// with randomness r2='withdraw'. The contract will subtract (L2,R2) to the stored balance of the
+/// cipher balance `(L2, R2) = (g**b y**r2, g**r2)`
+/// with randomness r2='withdraw'. The contract will subtract `(L2,R2)` to the stored balance of the
 /// user. The user have provide a zk proof that the final cipher balance is encrypting a positive (a
-/// value in (0, u**32)) amount b_left. To do this when the RangeProof is verified, it returns a V =
-/// g**b_left h**r, with b_left positive. V is used as a L part of a cipher blalance, users have to
-/// prove that the cipher balance (V, R_aux = g**r) is encrypting the same amount that the final
+/// value in `(0, 2**bit_size -1)`) amount b_left. To do this when the RangeProof is verified, it returns a `V =
+/// g**b_left h**r`, with b_left positive. `V` is used as a L part of a cipher blalance, users have to
+/// prove that the cipher balance `(V, R_aux = g**r)` is encrypting the same amount that the final
 /// cipher balance.
 ///
-/// EC_MUL: 12 + n*5 = 172 for u32
-/// EC_ADD: 8 + n*4  = 136 for u32
+/// `EC_MUL: 12 + n*5 = 172` for u32
+/// `EC_ADD: 8 + n*4  = 136` for u32
 pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
     let prefix = inputs.compute_prefix();
     let c = proof.compute_challenge(prefix);
@@ -35,11 +35,6 @@ pub fn verify_withdraw(inputs: InputsWithdraw, proof: ProofOfWithdraw) {
     //verifyOwnership(inputs.y, proof.A_x, c, proof.sx);
 
     let mut currentBalance = inputs.currentBalance;
-
-    if inputs.relayData.fee_to_sender != 0 {
-        let fee = CipherBalanceTrait::new(inputs.y, inputs.relayData.fee_to_sender.into(), 'fee');
-        currentBalance = currentBalance.subtract(fee)
-    }
 
     let (L0, R0) = currentBalance.points_nz();
     let L0 = L0.into() - g.into().mul(inputs.amount.into());

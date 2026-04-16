@@ -6,10 +6,10 @@ use crate::structs::common::{
 };
 use crate::structs::operations::{
     fund::{Fund, OutsideFund},
-    ragequit::Ragequit,
+    ragequit::{Ragequit, RagequitOptions},
     rollover::Rollover,
-    transfer::Transfer,
-    withdraw::Withdraw,
+    transfer::{Transfer, ExternalTransfer, TransferOptions},
+    withdraw::{Withdraw, WithdrawOptions},
 };
 
 #[starknet::interface]
@@ -53,23 +53,25 @@ pub trait ITongo<TContractState> {
     /// Withdraw Tongos and send the ERC20 to a starknet address.
     ///
     /// Emits WithdrawEvent
-    fn withdraw(ref self: TContractState, withdraw: Withdraw);
+    fn withdraw(ref self: TContractState, withdraw: Withdraw, withdraw_options: Option<WithdrawOptions>);
 
     /// Withdraw all the balance of an account and send the ERC20 to a starknet address. This proof
     /// avoids the limitations of the range prove that are present in the regular withdraw.
     ///
     /// Emits RagequitEvent
-    fn ragequit(ref self: TContractState, ragequit: Ragequit);
+    fn ragequit(ref self: TContractState, ragequit: Ragequit, ragequit_options: Option<RagequitOptions>);
 
     /// Transfer Tongos from the balanca of te sender to the pending of the receiver
     ///
     /// Emits TransferEvent
-    fn transfer(ref self: TContractState, transfer: Transfer);
+    fn transfer(ref self: TContractState, transfer: Transfer, transfer_options: Option<TransferOptions>);
+
 
     /// Moves to the balance the amount stored in the pending. Callable only by the account owner.
     ///
     /// Emits RolloverEvent
     fn rollover(ref self: TContractState, rollover: Rollover);
+    
 
     // State reading functions
     /// Returns the curretn stored balance of a Tongo account
@@ -94,4 +96,21 @@ pub trait ITongo<TContractState> {
 
     /// Rotates the current auditor public key.
     fn change_auditor_key(ref self: TContractState, new_auditor_key: PubKey);
+
+    // External Transfers 
+    /// Approve a Tongo instance
+
+    /// Receive an encrypted transfer from another Tongo contract deployed by the same Vault.
+    /// The interaction between these contract has to be approved by the owners.
+    ///
+    /// Emits ReceivedExternalTransfer
+    fn receive_external_transfer(ref self: TContractState, external: ExternalTransfer);
+
+    /// Approve a Tongo instance deployed by the same Vault to interact with
+    /// this contract with the External Transfer mechanism.
+    fn approveTongo(ref self: TContractState, address: ContractAddress);
+
+    /// Revoke a previously approved Tongo instance  to interact with
+    /// this contract with the External Transfer mechanism.
+    fn revokeTongo(ref self: TContractState, address: ContractAddress);
 }
