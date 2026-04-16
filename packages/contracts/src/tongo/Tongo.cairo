@@ -203,12 +203,7 @@ pub mod Tongo {
             let cipher = CipherBalanceTrait::new(to, amount.into(), 'fund');
             self._add_balance(to, cipher);
             self._overwrite_hint(to, hint);
-            self
-                .emit(
-                    FundEvent {
-                        to, amount: amount.try_into().unwrap(), from: get_caller_address(), nonce,
-                    },
-                );
+            self.emit(FundEvent { to, amount, from: get_caller_address(), nonce });
 
             if let Some(auditorKey) = self.auditor_key.read() {
                 self._handle_audit_balance(to, nonce, auditorKey, auditPart, prefix_data);
@@ -281,7 +276,7 @@ pub mod Tongo {
             self._withdraw_from_vault(self._unwrap_tongo_amount(amount));
             self._transfer_to(to, self._unwrap_tongo_amount(amount));
 
-            self.emit(WithdrawEvent { from, amount: amount.try_into().unwrap(), to, nonce });
+            self.emit(WithdrawEvent { from, amount, to, nonce });
 
             if let Some(auditorKey) = self.auditor_key.read() {
                 self._handle_audit_balance(from, nonce, auditorKey, auditPart, prefix_data);
@@ -328,13 +323,13 @@ pub mod Tongo {
             verify_ragequit(inputs, proof);
 
             let zero_balance: CipherBalance = CipherBalanceTrait::new(from, 0, 1);
-            self.balance.entry(from).write(zero_balance.into());
+            self.balance.entry(from).write(zero_balance);
             self._overwrite_hint(from, hint);
 
             self._withdraw_from_vault(self._unwrap_tongo_amount(amount));
             self._transfer_to(to, self._unwrap_tongo_amount(amount));
 
-            self.emit(RagequitEvent { from, amount: amount.try_into().unwrap(), to, nonce });
+            self.emit(RagequitEvent { from, amount, to, nonce });
 
             if let Some(auditorKey) = self.auditor_key.read() {
                 self._handle_audit_balance(from, nonce, auditorKey, auditPart, prefix_data);
@@ -497,12 +492,12 @@ pub mod Tongo {
 
         /// Returns the curretn stored balance of a Tongo account
         fn get_balance(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.balance.entry(y).read().handle_null(y).into()
+            self.balance.entry(y).read().handle_null(y)
         }
 
         /// Returns the current pending balance of a Tongo account
         fn get_pending(self: @ContractState, y: PubKey) -> CipherBalance {
-            self.pending.entry(y).read().handle_null(y).into()
+            self.pending.entry(y).read().handle_null(y)
         }
 
         /// Return, if the Tongo instance allows, the current declared balance of a Tongo account
@@ -512,7 +507,7 @@ pub mod Tongo {
                 return Option::<CipherBalance>::None;
             }
             let auditorPubKey = self.auditor_key.read().unwrap();
-            Option::Some(self.audit_balance.entry(y).read().handle_null(auditorPubKey).into())
+            Option::Some(self.audit_balance.entry(y).read().handle_null(auditorPubKey))
         }
 
         /// Returns the current nonce of a Tongo account
@@ -522,8 +517,8 @@ pub mod Tongo {
 
         /// Returns the current state of a Tongo account.
         fn get_state(self: @ContractState, y: PubKey) -> State {
-            let balance = self.balance.entry(y).read().handle_null(y).into();
-            let pending = self.pending.entry(y).read().handle_null(y).into();
+            let balance = self.balance.entry(y).read().handle_null(y);
+            let pending = self.pending.entry(y).read().handle_null(y);
             let nonce = self.nonce.entry(y).read();
 
             let audit = self.get_audit(y);
@@ -581,21 +576,21 @@ pub mod Tongo {
         /// Adds the given balance to the current balance of the given tongo Account.
         fn _add_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
             let old_balance = self.get_balance(y);
-            let sum = old_balance.add(new_balance.into());
+            let sum = old_balance.add(new_balance);
             self.balance.entry(y).write(sum);
         }
 
         /// Subtract the given balance to the current balance of the given Tongo account.
         fn _subtract_balance(ref self: ContractState, y: PubKey, new_balance: CipherBalance) {
             let old_balance = self.get_balance(y);
-            let sum = old_balance.subtract(new_balance.into());
+            let sum = old_balance.subtract(new_balance);
             self.balance.entry(y).write(sum);
         }
 
         /// Adds the given balance to the current pending state of the given Tongo account.
         fn _add_pending(ref self: ContractState, y: PubKey, new_pending: CipherBalance) {
             let old_pending = self.get_pending(y);
-            let sum = old_pending.add(new_pending.into());
+            let sum = old_pending.add(new_pending);
             let balance = self.get_balance(y);
 
             self._assert_is_rollovereable(balance, sum);
@@ -625,13 +620,13 @@ pub mod Tongo {
             if pending.is_null() {
                 return;
             }
-            self._add_balance(y, pending.into());
-            self.pending.entry(y.into()).write(CipherBalanceTrait::null());
+            self._add_balance(y, pending);
+            self.pending.entry(y).write(CipherBalanceTrait::null());
         }
 
         /// Overwrites the current audited cipherBalance to the the given one.
         fn _set_audit(ref self: ContractState, y: PubKey, new_audit: CipherBalance) {
-            self.audit_balance.entry(y).write(new_audit.into());
+            self.audit_balance.entry(y).write(new_audit);
         }
 
         /// Pull some ERC20 amount from the caller.
@@ -761,8 +756,6 @@ pub mod Tongo {
         fn _handle_external_transfer_audit(
             self: @ContractState,
             from: PubKey,
-            nonce: u64,
-            to: PubKey,
             auditorPubKey: PubKey,
             transferBalance: CipherBalance,
             audit: Option<Audit>,
@@ -814,13 +807,7 @@ pub mod Tongo {
             if let Some(targetAuditor) = targetTongo.auditor_key() {
                 self
                     ._handle_external_transfer_audit(
-                        from,
-                        nonce,
-                        to,
-                        targetAuditor,
-                        transferBalanceSelf,
-                        auditPart,
-                        target_prefix_data,
+                        from, targetAuditor, transferBalanceSelf, auditPart, target_prefix_data,
                     )
             }
 
