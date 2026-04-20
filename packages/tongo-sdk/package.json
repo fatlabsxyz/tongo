@@ -3,6 +3,7 @@
   "version": "1.4.0",
   "description": "An SDK for interacting with Tongo contracts",
   "homepage": "https://github.com/fatlabsxyz/tongo",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/fatlabsxyz/tongo.git",
@@ -57,7 +58,7 @@
     "@noble/hashes": "catalog:",
     "@scure/base": "catalog:",
     "@scure/starknet": "catalog:",
-    "starknet": "9.4.2"
+    "starknet": "catalog:"
   },
   "publishConfig": {
     "access": "public",

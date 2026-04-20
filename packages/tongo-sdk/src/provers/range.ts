@@ -1,7 +1,7 @@
 import { range } from "@fatsolutions/she/protocols";
 
-import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
-import { ProjectivePoint } from "../types";
+import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants.js";
+import { ProjectivePoint } from "../types.js";
 
 export interface ProofOfBit {
     A0: ProjectivePoint;

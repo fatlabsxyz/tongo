@@ -2,10 +2,10 @@ import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she"
 import { SameEncryptUnknownRandom } from "@fatsolutions/she/protocols";
 import { range as SHE_range} from "@fatsolutions/she/protocols"
 
-import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants";
-import { generateRangeProof, Range, verifyRangeProof } from "../provers/range";
-import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
-import { createCipherBalance} from "../utils";
+import { GENERATOR as g, SECONDARY_GENERATOR as h } from "../constants.js";
+import { generateRangeProof, Range, verifyRangeProof } from "../provers/range.js";
+import { CipherBalance, compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types.js";
+import { createCipherBalance} from "../utils.js";
 
 // cairo string 'withdraw'
 export const WITHDRAW_CAIRO_STRING = 8604536554778681719n;
