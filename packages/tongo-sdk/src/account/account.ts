@@ -1,11 +1,11 @@
 import { BigNumberish, CairoOption, CairoOptionVariant, Contract, num, RpcProvider, TypedContractV2 } from "starknet";
 
-import { proveAudit, verifyAudit } from "../provers/audit";
-import { proveFund } from "../provers/fund";
-import { proveRagequit } from "../provers/ragequit";
-import { proveRollover } from "../provers/rollover";
-import { proveTransfer } from "../provers/transfer";
-import { proveWithdraw } from "../provers/withdraw";
+import { proveAudit, verifyAudit } from "../provers/audit.js";
+import { proveFund } from "../provers/fund.js";
+import { proveRagequit } from "../provers/ragequit.js";
+import { proveRollover } from "../provers/rollover.js";
+import { proveTransfer } from "../provers/transfer.js";
+import { proveWithdraw } from "../provers/withdraw.js";
 
 import { AEBalance, AEChaCha, AEHintToBytes, bytesToAEHint, parseAEBalance } from "../ae_balance.js";
 import { StarknetEventReader } from "../data.service.js";

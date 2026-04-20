@@ -1,7 +1,7 @@
 import { BigNumberish, Contract, RpcProvider, TypedContractV2 } from "starknet";
 import { StarknetEventReader } from "./data.service.js";
-import { CipherBalance } from "./types";
-import { assertBalance, decipherBalance } from "./utils";
+import { CipherBalance } from "./types.js";
+import { assertBalance, decipherBalance } from "./utils.js";
 
 import {
     derivePublicKey,

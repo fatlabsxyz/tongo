@@ -1,8 +1,8 @@
 import { compute_challenge } from "@fatsolutions/she";
 import { poe } from "@fatsolutions/she/protocols";
 
-import { GENERATOR as g } from "../constants";
-import { compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types";
+import { GENERATOR as g } from "../constants.js";
+import { compute_prefix, GeneralPrefixData, ProjectivePoint } from "../types.js";
 
 
 // cairo string 'rollover'

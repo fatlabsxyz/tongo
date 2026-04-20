@@ -6,7 +6,7 @@ import { bytesToHex } from "@noble/hashes/utils";
 import {
     poseidonHashMany,
 } from "@scure/starknet";
-import { GENERATOR } from "./constants";
+import { GENERATOR } from "./constants.js";
 
 export interface GeneralPrefixData {
     chain_id: bigint,

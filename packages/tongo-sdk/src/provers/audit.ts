@@ -1,8 +1,8 @@
 import { compute_challenge, compute_s, generateRandom } from "@fatsolutions/she";
 import { SameEncryptUnknownRandom } from "@fatsolutions/she/protocols";
-import { GENERATOR as g } from "../constants";
-import { CipherBalance, ProjectivePoint, GeneralPrefixData, compute_prefix } from "../types";
-import { createCipherBalance} from "../utils";
+import { GENERATOR as g } from "../constants.js";
+import { CipherBalance, ProjectivePoint, GeneralPrefixData, compute_prefix } from "../types.js";
+import { createCipherBalance} from "../utils.js";
 
 // cairo string 'audit'
 export const AUDIT_CAIRO_STRING = 418581342580n;
