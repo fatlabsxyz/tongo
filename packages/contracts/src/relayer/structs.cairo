@@ -37,6 +37,12 @@ pub impl FeeStatusImpl of FeeStatusTrait{
 }
 
 
+#[derive(Copy, Drop, Serde, starknet::Store)]
+pub struct TargetConfig {
+    pub erc20: starknet::ContractAddress,
+    pub rate: u256,
+}
+
 #[derive(Copy, Drop, Serde)]
 pub struct OutsideExecution {
     pub caller: ContractAddress,

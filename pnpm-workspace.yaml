@@ -8,3 +8,4 @@ catalog:
   '@noble/curves': 1.7.0
   '@scure/base': 1.2.5
   '@scure/starknet': 1.1.0
+  'starknet': 9.4.2

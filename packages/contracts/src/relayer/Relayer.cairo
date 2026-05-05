@@ -9,23 +9,28 @@ mod Relayer {
     use starknet::storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry};
     use starknet::storage::{Vec, VecTrait, MutableVecTrait};
 
-    use crate::relayer::structs::{FeeStatus, FeeStatusTrait, OutsideExecution};
+    use crate::relayer::structs::{FeeStatus, FeeStatusTrait, OutsideExecution, TargetConfig};
     use crate::relayer::IRelayer::{IRelayer, ISRC5, ISRC5_ID, ISRC9_V2, ISRC9_V2_ID, IExecute};
 
-    use crate::relayer::utils::{execute_calls, is_tx_version_valid };
+    use crate::relayer::utils::{execute_calls, extract_relay_fee, is_tx_version_valid};
+    use crate::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
 
     #[storage]
     pub struct Storage {
         pub SRC9_nonces: Map<felt252, bool>,
         pub owner: ContractAddress,
-        pub targets: Map<ContractAddress, bool>,
+        pub targets: Map<ContractAddress, TargetConfig>,
         pub assets: Map<ContractAddress, bool>,
-        pub selectors: Map<ContractAddress, Vec<felt252>>,
+        pub tongo_selectors: Vec<felt252>,
+        pub asset_selectors: Map<ContractAddress, Vec<felt252>>,
     }
 
     #[constructor]
     fn constructor(ref self: ContractState, owner: ContractAddress) {
         self.owner.write(owner);
+        self.tongo_selectors.push(selector!("withdraw"));
+        self.tongo_selectors.push(selector!("ragequit"));
+        self.tongo_selectors.push(selector!("transfer"));
     }
 
     #[abi(embed_v0)]
@@ -68,15 +73,11 @@ mod Relayer {
             execute_calls(outside_execution.calls)
         }
 
-        /// Returns the status of a given nonce. `true` if the nonce is available to use.
-        fn is_valid_outside_execution_nonce(
-            self: @ContractState, nonce: felt252,
-        ) -> bool {
+        fn is_valid_outside_execution_nonce(self: @ContractState, nonce: felt252) -> bool {
             !self.SRC9_nonces.read(nonce)
         }
     }
 
-    
     #[abi(embed_v0)]
     impl Execute of IExecute<ContractState> {
         fn __execute__(self: @ContractState, calls: Array<Call>) {
@@ -97,83 +98,139 @@ mod Relayer {
         }
 
         fn is_target_whitelisted(self: @ContractState, target: ContractAddress) -> bool {
-            self.targets.entry(target).read()
+            !self.targets.entry(target).read().erc20.is_zero()
         }
 
         fn is_asset_whitelisted(self: @ContractState, asset: ContractAddress) -> bool {
             self.assets.entry(asset).read()
         }
 
-        fn selectors_for_target(self: @ContractState, target: ContractAddress) -> Span<felt252> {
+        fn get_tongo_selectors(self: @ContractState) -> Span<felt252> {
             let mut selectors = array![];
-            let path = self.selectors.entry(target);
-            for i in 0..path.len() {
-                selectors.append(path[i].read())
-            }
-
+            for i in 0..self.tongo_selectors.len() {
+                selectors.append(self.tongo_selectors[i].read());
+            };
             selectors.span()
+        }
+
+        fn get_asset_selectors(self: @ContractState, asset: ContractAddress) -> Span<felt252> {
+            let mut selectors = array![];
+            let path = self.asset_selectors.entry(asset);
+            for i in 0..path.len() {
+                selectors.append(path[i].read());
+            };
+            selectors.span()
+        }
+
+        fn get_target_config(self: @ContractState, target: ContractAddress) -> TargetConfig {
+            self.targets.entry(target).read()
         }
 
         fn whitelist_target(ref self: ContractState, target: ContractAddress) {
             self._assert_only_owner();
-            self.targets.entry(target).write(true);
+            let tongo = ITongoDispatcher { contract_address: target };
+            let erc20 = tongo.ERC20();
+            assert!(self.is_asset_whitelisted(erc20), "ASSET NOT WHITELISTED");
+            let rate = tongo.get_rate();
+            self.targets.entry(target).write(TargetConfig { erc20, rate });
         }
+
         fn whitelist_asset(ref self: ContractState, asset: ContractAddress) {
             self._assert_only_owner();
             self.assets.entry(asset).write(true);
+            self.asset_selectors.entry(asset).push(selector!("transfer"));
         }
 
-        fn set_selectors_for_target(ref self: ContractState, target: ContractAddress, selectors: Span<felt252>) {
+        fn set_tongo_selectors(ref self: ContractState, selectors: Span<felt252>) {
             self._assert_only_owner();
-            assert!(!self.is_target_whitelisted(target), "TARGET IS NOT WHITELISTED");
+            let mut p = self.tongo_selectors.pop();
+            while p.is_some() {
+                p = self.tongo_selectors.pop();
+            };
+            for selector in selectors {
+                self.tongo_selectors.push(*selector);
+            };
+        }
 
-            let path = self.selectors.entry(target);
-
+        fn set_asset_selectors(ref self: ContractState, asset: ContractAddress, selectors: Span<felt252>) {
+            self._assert_only_owner();
+            assert!(self.is_asset_whitelisted(asset), "ASSET IS NOT WHITELISTED");
+            let path = self.asset_selectors.entry(asset);
             let mut p = path.pop();
             while p.is_some() {
-                p = path.pop()
-            }
-
+                p = path.pop();
+            };
             for selector in selectors {
-                path.push(*selector)
-            }
+                path.push(*selector);
+            };
         }
     }
 
     #[generate_trait]
     impl Private of IPrivate {
-        fn assert_valid_transaction(self: @ContractState, calls: Span<Call>)  {
-            assert!(calls.len() == 2, "2 CALLS ARE NEEDED")
+        fn assert_valid_transaction(self: @ContractState, calls: Span<Call>) {
+            assert!(calls.len() >= 2, "AT LEAST 2 CALLS REQUIRED");
             let mut feeStatus = FeeStatusTrait::new();
 
             for call in calls {
-               self._assert_valid_call(call, feeStatus) 
-            }
+                if self.is_target_whitelisted(*call.to) {
+                    self._process_tongo_call(call, ref feeStatus);
+                } else if self.is_asset_whitelisted(*call.to) {
+                    self._process_asset_call(call, ref feeStatus);
+                } else {
+                    panic!("UNAUTHORIZED TARGET");
+                }
+            };
 
-            assert!(feeStatus.to_add > feeStatus.to_subtract, "RELLAY FEE TO LOW");
+            assert!(feeStatus.to_add >= feeStatus.to_subtract, "RELAY FEE TOO LOW");
         }
 
-
-        fn _assert_valid_call(self: @ContractState, call: @Call, feeStatus: FeeStatus) {
-            if self.is_target_whitelisted(*call.to) {
-//                self.process_tongo_call(call, feeStatus);
-            } else if self.is_asset_whitelisted(*call.to) {
-//                self.process_asset_call(call, feeStatus);
-            }
+        fn _process_tongo_call(self: @ContractState, call: @Call, ref feeStatus: FeeStatus) {
+            assert!(self._is_tongo_selector_allowed(*call.selector), "SELECTOR NOT WHITELISTED");
+            let fee = extract_relay_fee(*call.selector, *call.calldata);
+            assert!(fee > 0, "RELAY FEE MUST BE POSITIVE");
+            let config = self.targets.entry(*call.to).read();
+            let fee_in_erc20: u256 = fee.into() * config.rate;
+            feeStatus.add(fee_in_erc20);
+            feeStatus.compare_and_set_asset(config.erc20);
         }
 
-        fn process_tongo_call(self: @ContractState, call: @Call, feeStatus: FeeStatus) {
-//            let Call { to, selector, calldata } = call;
-//            assert!(self.selectors.entry(
+        fn _process_asset_call(self: @ContractState, call: @Call, ref feeStatus: FeeStatus) {
+            assert!(self._is_asset_selector_allowed(*call.to, *call.selector), "ASSET SELECTOR NOT WHITELISTED");
+            let mut cd = *call.calldata;
+            let _: starknet::ContractAddress = Serde::deserialize(ref cd).expect('bad erc20 calldata');
+            let amount: u256 = Serde::deserialize(ref cd).expect('bad erc20 amount');
+            feeStatus.compare_and_set_asset(*call.to);
+            feeStatus.subtract(amount);
+        }
+
+        fn _is_tongo_selector_allowed(self: @ContractState, selector: felt252) -> bool {
+            let mut found = false;
+            for i in 0..self.tongo_selectors.len() {
+                if self.tongo_selectors[i].read() == selector {
+                    found = true;
+                    break;
+                }
+            };
+            found
+        }
+
+        fn _is_asset_selector_allowed(self: @ContractState, asset: ContractAddress, selector: felt252) -> bool {
+            let path = self.asset_selectors.entry(asset);
+            let mut found = false;
+            for i in 0..path.len() {
+                if path[i].read() == selector {
+                    found = true;
+                    break;
+                }
+            };
+            found
         }
 
         fn _assert_only_owner(self: @ContractState) {
-//            TODO: UNCOMMENT
-//            let caller = get_caller_address();
-//            let owner = self.owner.read();
-//            assert!(caller == owner, "CALLER IS NOT THE OWNER");
+            let caller = get_caller_address();
+            let owner = self.owner.read();
+            assert!(caller == owner, "CALLER IS NOT THE OWNER");
         }
     }
 }
-
-

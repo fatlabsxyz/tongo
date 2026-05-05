@@ -58,7 +58,7 @@
     "@noble/hashes": "catalog:",
     "@scure/base": "catalog:",
     "@scure/starknet": "catalog:",
-    "starknet": "9.2.1"
+    "starknet": "catalog:"
   },
   "publishConfig": {
     "access": "public",
