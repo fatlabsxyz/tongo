@@ -57,11 +57,9 @@ export class DeployOperation implements IDeployOperation {
         this.targetAddress = address;
     }
 
-    toCalldata(): Call {
-        return this.Vault.populate("deploy_tongo", [
-            num.toHex(this.owner),
-            num.toHex(this.tag),
-            this.auditorKey,
-        ]);
+    toCalldata(): Call[] {
+        return [
+            this.Vault.populate("deploy_tongo", [ num.toHex(this.owner), num.toHex(this.tag), this.auditorKey ])
+        ]
     }
 }

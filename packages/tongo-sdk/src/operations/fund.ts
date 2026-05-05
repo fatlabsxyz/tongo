@@ -1,6 +1,7 @@
 import { cairo, CairoOption, Call, CallData, Contract, num } from "starknet";
 
 import { ProofOfFund } from "../provers/fund.js";
+import { BalanceState } from "../types.js";
 
 import { AEBalance } from "../ae_balance.js";
 import { StarkPoint } from "../types.js";
@@ -30,10 +31,12 @@ interface FundOpParams {
     proof: ProofOfFund;
     auditPart: CairoOption<Audit>;
     Tongo: Contract;
+    nextState: BalanceState;
 }
 
 export class FundOperation implements IFundOperation {
     type: typeof OperationType.Fund = OperationType.Fund;
+    feeToSender: bigint = 0n;
     Tongo: Contract;
     to: StarkPoint;
     amount: bigint;
@@ -41,26 +44,30 @@ export class FundOperation implements IFundOperation {
     proof: ProofOfFund;
     auditPart: CairoOption<Audit>;
     approve?: Call;
+    nextState: BalanceState;
 
-    constructor({ to, amount, proof, auditPart, Tongo, hint }: FundOpParams) {
+    constructor({ to, amount, proof, auditPart, Tongo, hint, nextState }: FundOpParams) {
+        this.type = OperationType.Fund;
         this.to = to;
         this.amount = amount;
         this.hint = hint;
         this.auditPart = auditPart;
         this.proof = proof;
         this.Tongo = Tongo;
+        this.nextState = nextState;
     }
 
-    toCalldata(): Call {
-        return this.Tongo.populate("fund", [
-            {
+    toCalldata(): Call[] {
+        return [
+            this.Tongo.populate("fund", [{
                 to: this.to,
                 amount: this.amount,
                 hint: this.hint,
                 proof: this.proof,
                 auditPart: this.auditPart,
-            },
-        ]);
+            }]
+            )
+        ];
     }
 
     // TODO: better ux for this. Maybe return the call?

@@ -1,4 +1,6 @@
 import { CairoOption, Call, Contract } from "starknet";
+=======
+import { BalanceState, CipherBalance } from "../types.js";
 
 import { ProofOfTransfer } from "../provers/transfer.js";
 import { StarkCipherBalance, StarkPoint } from "../types.js";
@@ -37,6 +39,7 @@ interface TransferOpParams {
     transferBalanceSelf: StarkCipherBalance;
     auxiliarCipher: StarkCipherBalance;
     auxiliarCipher2: StarkCipherBalance;
+    feeToSender: bigint;
     proof: ProofOfTransfer;
     hintTransfer: AEBalance;
     hintLeftover: AEBalance;
@@ -44,6 +47,7 @@ interface TransferOpParams {
     auditPartTransfer: CairoOption<Audit>;
     transferOptions: CairoOption<TransferOptions>;
     Tongo: Contract;
+    nextState: BalanceState;
 }
 
 const OptionalTransferOption =
@@ -55,6 +59,7 @@ export function serializeTransferOptions(transferOptions: CairoTransferOptions):
 
 export class TransferOperation implements ITransferOperation {
     type: typeof OperationType.Transfer = OperationType.Transfer;
+    feeToSender: bigint;
     Tongo: Contract;
     from: StarkPoint;
     to: StarkPoint;
@@ -68,10 +73,12 @@ export class TransferOperation implements ITransferOperation {
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
     transferOptions: CairoOption<TransferOptions>;
+    nextState: BalanceState;
 
     constructor({
         from,
         to,
+        feeToSender,
         transferBalance,
         transferBalanceSelf,
         proof,
@@ -83,9 +90,11 @@ export class TransferOperation implements ITransferOperation {
         hintTransfer,
         hintLeftover,
         transferOptions,
+        nextState,
     }: TransferOpParams) {
         this.from = from;
         this.to = to;
+        this.feeToSender = feeToSender;
         this.transferBalance = transferBalance;
         this.transferBalanceSelf = transferBalanceSelf;
         this.auxiliarCipher = auxiliarCipher;
@@ -97,11 +106,12 @@ export class TransferOperation implements ITransferOperation {
         this.auditPartTransfer = auditPartTransfer;
         this.transferOptions = transferOptions;
         this.Tongo = Tongo;
+        this.nextState = nextState;
     }
 
-    toCalldata(): Call {
-        return this.Tongo.populate("transfer", [
-            {
+    toCalldata(): Call[] {
+        return [
+            this.Tongo.populate("transfer", [{
                 from: this.from,
                 to: this.to,
                 transferBalance: this.transferBalance,
@@ -115,6 +125,7 @@ export class TransferOperation implements ITransferOperation {
                 auditPartTransfer: this.auditPartTransfer,
             },
             this.transferOptions,
-        ]);
+            ])
+        ]
     }
 }

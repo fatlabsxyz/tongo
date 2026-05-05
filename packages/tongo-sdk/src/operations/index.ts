@@ -6,3 +6,4 @@ export * from "./rollover.js";
 export * from "./transfer.js";
 export * from "./withdraw.js";
 export * from "./deploy.js";
+export * from "./multi_operation.js";

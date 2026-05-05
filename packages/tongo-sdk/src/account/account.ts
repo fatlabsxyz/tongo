@@ -1,4 +1,4 @@
-import { BigNumberish, CairoOption, Contract, num, RpcProvider } from "starknet";
+import { BigNumberish, CairoOption, CairoOptionVariant, Contract, num, RpcProvider,  Signer, TypedData, Signature } from "starknet";
 import { TongoContract } from "../contracts.js";
 
 import { proveAudit, verifyAudit } from "../provers/audit.js";
@@ -7,7 +7,6 @@ import { proveRagequit } from "../provers/ragequit.js";
 import { proveRollover } from "../provers/rollover.js";
 import { proveTransfer } from "../provers/transfer.js";
 import { proveWithdraw } from "../provers/withdraw.js";
-import { tongoAbi } from "../abi/tongo.abi.js";
 import {
     AEBalance,
     AEChaCha,
@@ -20,47 +19,21 @@ import { deriveSymmetricEncryptionKey, ECDiffieHellman } from "../key.js";
 import { Audit, ExPost } from "../operations/audit.js";
 import { FundOperation } from "../operations/fund.js";
 import { OutsideFundOperation } from "../operations/outside_fund.js";
-import {
-    RagequitOperation,
-    RagequitOptions,
-    serializeRagequitOptions,
-} from "../operations/ragequit.js";
 import { RollOverOperation } from "../operations/rollover.js";
+import { TransferOperation, ExternalData, TransferOptions, serializeTransferOptions} from "../operations/transfer.js";
+import { WithdrawOperation, WithdrawOptions, serializeWithdrawOptions } from "../operations/withdraw.js";
+import { RagequitOperation, RagequitOptions, serializeRagequitOptions } from "../operations/ragequit.js";
+import { MultiOperation } from "../operations/multi_operation.js";
+import { tongoAbi } from "../abi/tongo.abi.js";
+import { RPC_SPEC_VERSION } from "../constants.js";
+import { BalanceState, CipherBalance, GeneralPrefixData, parseCipherBalance, PubKey, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, RelayData, starkPointToProjectivePoint, TongoAddress, } from "../types.js";
 import {
-    ExternalData,
-    serializeTransferOptions,
-    TransferOperation,
-    TransferOptions,
-} from "../operations/transfer.js";
-import {
-    serializeWithdrawOptions,
-    WithdrawOperation,
-    WithdrawOptions,
-} from "../operations/withdraw.js";
-import {
-    CipherBalance,
-    GeneralPrefixData,
-    parseCipherBalance,
-    PubKey,
-    pubKeyAffineToBase58,
-    pubKeyAffineToHex,
-    pubKeyBase58ToHex,
-    RelayData,
-    starkPointToProjectivePoint,
-    TongoAddress,
-} from "../types.js";
-import {
-    assertBalance,
-    bytesOrNumToBigInt,
-    castBigInt,
-    createCipherBalance,
-    decipherBalance,
     None,
-    pubKeyFromSecret,
     Some,
     toNumber,
 } from "../utils.js";
 import { AccountEventReader } from "./account.data.service.js";
+import { assertBalance, bytesOrNumToBigInt, castBigInt, decipherBalance, pubKeyFromSecret, createCipherBalance, erc20ToTongo, tongoToErc20 } from "../utils.js";
 import {
     AccountState,
     FundDetails,
@@ -83,6 +56,7 @@ import {
     AccountTransferOutEvent,
     AccountWithdrawEvent,
 } from "./events.js";
+import { poseidonHashMany } from "@scure/starknet";
 
 export class Account implements IAccount {
     publicKey: PubKey;
@@ -91,16 +65,20 @@ export class Account implements IAccount {
     Tongo: TongoContract;
     reader: AccountEventReader;
 
-    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider) {
+    constructor(pk: BigNumberish | Uint8Array, contractAddress: string, provider: RpcProvider | string) {
         this.pk = bytesOrNumToBigInt(pk);
+        const rpc: RpcProvider =  provider instanceof RpcProvider ? provider : new RpcProvider({
+            nodeUrl: provider,
+            specVersion: RPC_SPEC_VERSION,
+        });
         this.Tongo = new Contract({
             abi: tongoAbi,
             address: contractAddress,
-            providerOrAccount: provider,
+            providerOrAccount: rpc
         }).typedv2(tongoAbi);
         this.publicKey = pubKeyFromSecret(this.pk);
-        this.provider = provider;
-        this.reader = new AccountEventReader(provider, contractAddress);
+        this.provider = rpc;
+        this.reader = new AccountEventReader(rpc, contractAddress);
     }
 
     tongoAddress(): TongoAddress {
@@ -154,21 +132,12 @@ export class Account implements IAccount {
         return toNumber(await this.Tongo.get_bit_size());
     }
 
-    // Warning: This is only for display. This is not the correct amount
-    // of tongos that corresponds to erc20Amount
     async erc20ToTongo(erc20Amount: bigint): Promise<bigint> {
-        const rate = await this.rate();
-        const temp = erc20Amount / rate;
-        if (erc20Amount % rate != 0n) {
-            return temp + 1n;
-        } else {
-            return temp;
-        }
+        return erc20ToTongo(erc20Amount, await this.rate());
     }
 
     async tongoToErc20(tongoAmount: bigint): Promise<bigint> {
-        const rate = await this.rate();
-        return tongoAmount * rate;
+        return tongoToErc20(tongoAmount, await this.rate());
     }
 
     async auditorKey(): Promise<CairoOption<PubKey>> {
@@ -208,7 +177,174 @@ export class Account implements IAccount {
         };
     }
 
-    /// Returns Option(None) if tongo has not and auditor and Some(Audit) if tongo has an auditor
+    async fund(fundDetails: FundDetails): Promise<FundOperation> {
+        const { amount, sender } = fundDetails;
+        const [state, chain_id] = await Promise.all([this._fetchBalanceState(), this.provider.getChainId()]);
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(chain_id),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
+        };
+        const operation = await this._createFundOperation(state, { amount, prefix_data });
+        await operation.populateApprove();
+        return operation;
+    }
+    
+    async outsideFund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation> {
+        const { amount, to } = outsideFundDetails;
+
+        const operation = new OutsideFundOperation({
+            to: starkPointToProjectivePoint(to),
+            amount,
+            Tongo: this.Tongo
+        });
+        await operation.populateApprove();
+        return operation;
+    }
+
+
+    async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
+        const { amount, sender } = transferDetails;
+        const feeToSender = transferDetails.feeToSender || 0n;
+        const [state, bitSize, chain_id] = await Promise.all([this._fetchBalanceState(), this.bitSize(), this.provider.getChainId()]);
+
+        if (state.balanceAmount < amount + feeToSender) {
+            throw new Error(`Insufficient balance for transfer: have ${state.balanceAmount}, need ${amount + feeToSender} (amount=${amount}, fee=${feeToSender})`);
+        }
+
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(chain_id),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
+        };
+
+        return this._createTransferOperation(state, { prefix_data, bitSize, transferDetails});
+    }
+
+    async ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation> {
+        const { to, sender } = ragequitDetails;
+        const feeToSender = ragequitDetails.feeToSender || 0n;
+        const [state, chain_id] = await Promise.all([this._fetchBalanceState(), this.provider.getChainId()]);
+
+        if (state.balanceAmount < feeToSender) {
+            throw new Error(`Insufficient balance for ragequit: have ${state.balanceAmount}, need ${feeToSender} (relay fee)`);
+        }
+
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(chain_id),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
+        };
+
+        return this._createRagequitOperation(state, { prefix_data, ragequitDetails});
+    }
+
+    async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
+        const { amount, sender } = withdrawDetails;
+        const feeToSender = withdrawDetails.feeToSender || 0n;
+        const [state, bitSize, chain_id] = await Promise.all([this._fetchBalanceState(), this.bitSize(), this.provider.getChainId()]);
+
+        if (state.balanceAmount < amount + feeToSender) {
+            throw new Error(`Insufficient balance for withdrawal: have ${state.balanceAmount}, need ${amount + feeToSender} (amount=${amount}, fee=${feeToSender})`);
+        }
+
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(chain_id),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
+        };
+
+        return this._createWithdrawOperation(state, { prefix_data, bitSize, withdrawDetails });
+    }
+
+
+    async rollover(rolloverDetails: RolloverDetails): Promise<RollOverOperation> {
+        const { sender } = rolloverDetails;
+        const [state, chain_id] = await Promise.all([this._fetchBalanceState(), this.provider.getChainId()]);
+
+        if (state.pendingAmount === 0n) {
+            throw new Error("Nothing to roll over: pending balance is 0");
+        }
+
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(chain_id),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
+        };
+
+        return this._createRolloverOperation(state, prefix_data);
+    }
+
+
+    async relayerRollover({ sender, fee_to_sender }: { sender: string; fee_to_sender: bigint }): Promise<RelayRolloverOperation> {
+        const bitSize = await this.bitSize();
+        const { nonce, balance, aeBalance, pending } = await this.rawState();
+
+        const current_hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const currentAmount = this.decryptCipherBalance(balance, current_hint);
+        const pendingAmount = this.decryptCipherBalance(pending);
+
+        if (pendingAmount === 0n) {
+            throw new Error("Nothing to roll over: pending balance is 0");
+        }
+        if (currentAmount + pendingAmount < fee_to_sender) {
+            throw new Error(`Insufficient balance for relay fee: have ${currentAmount + pendingAmount}, need ${fee_to_sender}`);
+        }
+
+        const prefix_data: GeneralPrefixData = {
+            chain_id: BigInt(await this.provider.getChainId()),
+            tongo_address: BigInt(this.Tongo.address),
+            sender_address: BigInt(sender),
+        };
+
+        if (currentAmount >= fee_to_sender) {
+            // Fee covered by current balance: withdraw first, then rollover.
+            // The withdraw proof commits to currentAmount, which cannot be invalidated
+            // by a tx that lands before ours (that would only grow pending, not balance).
+            const withdrawOp = await this._createWithdrawOperation({
+                nonce,
+                balance,
+                currentAmount,
+                amount: 0n,
+                to: sender,
+                prefix_data,
+                fee_to_sender,
+                bitSize,
+            });
+            const rolloverOp = await this._createRolloverOperation({
+                nonce: withdrawOp.nextNonce,
+                balance: withdrawOp.nextBalance,
+                pending,
+                currentAmount: currentAmount - fee_to_sender,
+                pendingAmount,
+                prefix_data,
+            });
+            return new RelayRolloverOperation(withdrawOp, rolloverOp, 'withdraw_first');
+        } else {
+            // Fee requires pending funds: rollover first to consolidate, then withdraw.
+            const rolloverOp = await this._createRolloverOperation({
+                nonce,
+                balance,
+                pending,
+                currentAmount,
+                pendingAmount,
+                prefix_data,
+            });
+            const withdrawOp = await this._createWithdrawOperation({
+                nonce: rolloverOp.nextNonce,
+                balance: rolloverOp.nextBalance,
+                currentAmount: currentAmount + pendingAmount,
+                amount: 0n,
+                to: sender,
+                prefix_data,
+                fee_to_sender,
+                bitSize,
+            });
+            return new RelayRolloverOperation(withdrawOp, rolloverOp, 'rollover_first');
+        }
+    }
+
+
     async createAuditPart(
         balance: bigint,
         nonce: bigint,
@@ -237,310 +373,6 @@ export class Account implements IAccount {
         return auditPart;
     }
 
-    async fund(fundDetails: FundDetails): Promise<FundOperation> {
-        const { amount, sender } = fundDetails;
-        const { nonce, balance: currentBalance, aeBalance } = await this.rawState();
-
-        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const initialBalance = this.decryptCipherBalance(currentBalance, currentHint);
-
-        const prefix_data = await this.prefixData(sender);
-
-        const { inputs, proof, newBalance } = proveFund(
-            this.pk,
-            amount,
-            initialBalance,
-            currentBalance,
-            nonce,
-            prefix_data,
-        );
-
-        //audit
-        const auditor = await this.auditorKey();
-        const auditPart = await this.createAuditPart(
-            amount + initialBalance,
-            nonce,
-            newBalance,
-            prefix_data,
-            auditor,
-        );
-        const hint = await this.computeAEHintForSelf(amount + initialBalance, nonce + 1n);
-
-        const operation = new FundOperation({
-            to: inputs.y,
-            amount,
-            hint,
-            proof,
-            auditPart,
-            Tongo: this.Tongo,
-        });
-        await operation.populateApprove();
-        return operation;
-    }
-
-    async outsideFund(outsideFundDetails: OutsideFundDetails): Promise<OutsideFundOperation> {
-        const { amount, to } = outsideFundDetails;
-
-        const operation = new OutsideFundOperation({
-            to: starkPointToProjectivePoint(to),
-            amount,
-            Tongo: this.Tongo,
-        });
-        await operation.populateApprove();
-        return operation;
-    }
-
-    async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
-        const { amount, sender } = transferDetails;
-        const bitSize: number = await this.bitSize();
-
-        const { nonce, balance, aeBalance } = await this.rawState();
-
-        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const initialAmount = this.decryptCipherBalance(balance, currentHint);
-
-        //TODO check if the mount in pending would help
-        if (initialAmount < amount) {
-            throw new Error("You don't have enough balance");
-        }
-
-        const to = starkPointToProjectivePoint(transferDetails.to);
-        const prefix_data = await this.prefixData(sender);
-
-        let externalData = None<ExternalData>();
-
-        //TODO implement a max fee in the contract?
-        const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
-            transferDetails.feeToSender || 0n,
-            initialAmount,
-            balance,
-        );
-
-        if (transferDetails.toTongo) {
-            const toTongo = transferDetails.toTongo;
-            if (toTongo == this.Tongo.address) {
-                throw new Error("Cannot make an external transfer to same tongo");
-            }
-            externalData = Some<ExternalData>({
-                toTongo,
-                auditPart: None<Audit>(),
-            });
-        }
-
-        let transferOptions = Some<TransferOptions>({ relayData, externalData });
-        const serializedData = serializeTransferOptions(transferOptions);
-
-        const { inputs, proof, newBalance } = proveTransfer(
-            this.pk,
-            to,
-            currentAmount,
-            amount,
-            currentBalance,
-            nonce,
-            bitSize,
-            prefix_data,
-            serializedData,
-        );
-
-        const balanceLeft = currentAmount - amount;
-        const hintTransfer = await this.computeAEHintForPubKey(amount, nonce, to);
-        const hintLeftover = await this.computeAEHintForSelf(balanceLeft, nonce + 1n);
-
-        //audit
-        const transferBalanceSelfCipher: CipherBalance = parseCipherBalance(
-            inputs.transferBalanceSelf,
-        );
-        const auditor = await this.auditorKey();
-        const auditPart = await this.createAuditPart(
-            balanceLeft,
-            nonce,
-            newBalance,
-            prefix_data,
-            auditor,
-        );
-        const auditPartTransfer = await this.createAuditPart(
-            amount,
-            nonce,
-            transferBalanceSelfCipher,
-            prefix_data,
-            auditor,
-        );
-
-        if (externalData.isSome()) {
-            const toTongo = externalData.unwrap()!.toTongo;
-
-            //TODO: Check with the vault that it is a valid tongo contract
-            const Tongo2 = new Contract({
-                abi: tongoAbi,
-                address: num.toHex(toTongo),
-                providerOrAccount: this.provider,
-            }).typedv2(tongoAbi);
-            const auditorTarget: CairoOption<PubKey> = await Tongo2.auditor_key();
-
-            const prefix_data_target: GeneralPrefixData = {
-                ...prefix_data,
-                tongo_address: toTongo,
-            };
-
-            const auditTarget = await this.createAuditPart(
-                amount,
-                nonce,
-                transferBalanceSelfCipher,
-                prefix_data_target,
-                auditorTarget,
-            );
-            const external: ExternalData = {
-                toTongo,
-                auditPart: auditTarget,
-            };
-            externalData = Some<ExternalData>(external);
-            transferOptions = Some<TransferOptions>({ relayData, externalData });
-        }
-
-        return new TransferOperation({
-            from: inputs.from,
-            to: inputs.to,
-            transferBalance: inputs.transferBalance,
-            transferBalanceSelf: inputs.transferBalanceSelf,
-            auxiliarCipher: inputs.auxiliarCipher,
-            auxiliarCipher2: inputs.auxiliarCipher2,
-            hintTransfer,
-            hintLeftover,
-            proof,
-            auditPart,
-            auditPartTransfer,
-            transferOptions,
-            Tongo: this.Tongo,
-        });
-    }
-
-    async ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation> {
-        const { to, sender } = ragequitDetails;
-        const { nonce, balance, aeBalance } = await this.rawState();
-
-        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const initialAmount = this.decryptCipherBalance(balance, currentHint);
-
-        if (initialAmount === 0n) {
-            throw new Error("You don't have enough balance");
-        }
-
-        const prefix_data = await this.prefixData(sender);
-
-        const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
-            ragequitDetails.feeToSender || 0n,
-            initialAmount,
-            balance,
-        );
-
-        const ragequitOptions = Some<RagequitOptions>({ relayData });
-        const serializedData = serializeRagequitOptions(ragequitOptions);
-
-        const { inputs, proof, newBalance } = proveRagequit(
-            this.pk,
-            currentBalance,
-            nonce,
-            BigInt(to),
-            currentAmount,
-            prefix_data,
-            serializedData,
-        );
-
-        // zeroing out aehints
-        const auditor = await this.auditorKey();
-        const auditPart = await this.createAuditPart(0n, nonce, newBalance, prefix_data, auditor);
-        const hint = await this.computeAEHintForSelf(0n, nonce + 1n);
-
-        return new RagequitOperation({
-            from: inputs.y,
-            to: inputs.to,
-            amount: inputs.amount,
-            hint,
-            proof,
-            ragequitOptions,
-            Tongo: this.Tongo,
-            auditPart,
-        });
-    }
-
-    async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
-        const { amount, to, sender } = withdrawDetails;
-        const bitSize = await this.bitSize();
-        const { nonce, balance, aeBalance } = await this.rawState();
-
-        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const initialAmount = this.decryptCipherBalance(balance, currentHint);
-
-        if (initialAmount < amount) {
-            throw new Error("You don't have enough balance");
-        }
-
-        const prefix_data = await this.prefixData(sender);
-
-        const { relayData, currentAmount, currentBalance } = this.applyRelayFee(
-            withdrawDetails.feeToSender || 0n,
-            initialAmount,
-            balance,
-        );
-
-        const withdrawOptions = Some<WithdrawOptions>({ relayData });
-        const serializedData = serializeWithdrawOptions(withdrawOptions);
-
-        const { inputs, proof, newBalance } = proveWithdraw(
-            this.pk,
-            currentAmount,
-            amount,
-            BigInt(to),
-            currentBalance,
-            nonce,
-            bitSize,
-            prefix_data,
-            serializedData,
-        );
-        const hint = await this.computeAEHintForSelf(currentAmount - amount, nonce + 1n);
-
-        //audit
-        const auditor = await this.auditorKey();
-        const auditPart = await this.createAuditPart(
-            currentAmount - amount,
-            nonce,
-            newBalance,
-            prefix_data,
-            auditor,
-        );
-
-        return new WithdrawOperation({
-            from: inputs.y,
-            to: inputs.to,
-            amount: inputs.amount,
-            auxiliarCipher: inputs.auxiliarCipher,
-            hint,
-            proof,
-            auditPart,
-            Tongo: this.Tongo,
-            withdrawOptions,
-        });
-    }
-
-    async rollover(rolloverDetails: RolloverDetails): Promise<RollOverOperation> {
-        const { sender } = rolloverDetails;
-        const state = await this.rawState();
-        const { nonce, balance: currentBalance, aeBalance, pending } = state;
-
-        const currentHint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const unlockedAmount = this.decryptCipherBalance(currentBalance, currentHint);
-
-        const pendingAmount = this.decryptCipherBalance(pending!);
-
-        if (pendingAmount == 0n) {
-            throw new Error("Your pending amount is 0");
-        }
-        const prefix_data = await this.prefixData(sender);
-        const { inputs, proof } = proveRollover(this.pk, nonce, prefix_data);
-
-        const hint = await this.computeAEHintForSelf(pendingAmount + unlockedAmount, nonce + 1n);
-        return new RollOverOperation({ to: inputs.y, proof, Tongo: this.Tongo, hint });
-    }
 
     async decryptAEBalance(aeBalance: AEBalance, accountNonce: bigint): Promise<bigint> {
         return this.decryptAEHintForPubKey(aeBalance, accountNonce, this.publicKey);
@@ -566,10 +398,10 @@ export class Account implements IAccount {
     //TODO: rethink this to better ux
     async generateExPost(to: PubKey, cipher: CipherBalance, sender: string): Promise<ExPost> {
         if (cipher.L == null) {
-            throw new Error("L is null");
+            throw new Error("Invalid cipher balance: L point is null");
         }
         if (cipher.R == null) {
-            throw new Error("R is null");
+            throw new Error("Invalid cipher balance: R point is null");
         }
         const prefix_data = await this.prefixData(sender);
 
@@ -587,7 +419,7 @@ export class Account implements IAccount {
     verifyExPost(expost: ExPost): bigint {
         const y = expost.inputs.y;
         if (y != this.publicKey) {
-            throw new Error("The expost is not for you");
+            throw new Error(`ExPost does not belong to this account: proof targets (${y.x}, ${y.y}), this account is (${this.publicKey.x}, ${this.publicKey.y})`);
         }
         verifyAudit(expost.inputs, expost.proof);
         const amount = this.decryptCipherBalance({
@@ -880,5 +712,283 @@ export class Account implements IAccount {
 
         const events = (await promises).flat();
         return events.sort((a, b) => b.block_number - a.block_number);
+    }
+
+    async nonceHash(): Promise<string> {
+        const nonce = await this.nonce();
+        return num.toHex(poseidonHashMany([BigInt(this.publicKey.x), BigInt(this.publicKey.y), nonce]));
+    }
+
+    async signMessage(typedData: TypedData, accountAddress: string): Promise<Signature> {
+        const signer = new Signer(num.toHex(this.pk));
+        return  await signer.signMessage(typedData, accountAddress);
+    }
+
+    // -------------------------------------------------------------------------
+    // Private operation builders
+    // -------------------------------------------------------------------------
+
+    private async _createFundOperation(state: BalanceState, { amount, prefix_data }: { amount: bigint; prefix_data: GeneralPrefixData }): Promise<FundOperation> {
+        const { inputs, proof, newBalance } = proveFund(
+            this.pk,
+            amount,
+            state.balanceAmount,
+            state.balance,
+            state.nonce,
+            prefix_data,
+        );
+
+        const auditor = await this.auditorKey();
+        const auditPart = await this.createAuditPart(amount + state.balanceAmount, state.nonce, newBalance, prefix_data, auditor);
+        const hint = await this.computeAEHintForSelf(amount + state.balanceAmount, state.nonce + 1n);
+        const nextState: BalanceState = {
+            nonce: state.nonce + 1n,
+            balance: newBalance,
+            balanceAmount: state.balanceAmount + amount,
+            pending: state.pending,
+            pendingAmount: state.pendingAmount,
+        };
+
+        return new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo, nextState });
+    }
+
+    private async _createTransferOperation(state: BalanceState, {prefix_data,  bitSize, transferDetails}: {
+        prefix_data: GeneralPrefixData;
+        bitSize: number;
+        transferDetails: TransferDetails;
+    }): Promise<TransferOperation> {
+        const { nonce, balance: initialBalance, balanceAmount: initialAmount } = state;
+        const { amount, to } = transferDetails;
+        const feeToSender = transferDetails.feeToSender || 0n;
+
+        let externalData = None<ExternalData>();
+
+        const { relayData, currentAmount: adjustedAmount, currentBalance: adjustedBalance } = this.applyRelayFee(
+            feeToSender,
+            initialAmount,
+            initialBalance,
+        );
+
+        if (transferDetails.toTongo) {
+            const toTongo = transferDetails.toTongo;
+            if (toTongo == this.Tongo.address) {
+                throw new Error("Cannot make an external transfer to same tongo");
+            }
+            externalData = Some<ExternalData>({
+                toTongo,
+                auditPart: None<Audit>(),
+            });
+        }
+
+        let transferOptions = Some<TransferOptions>({ relayData, externalData });
+        const serializedData = serializeTransferOptions(transferOptions);
+
+        const { inputs, proof, newBalance } = proveTransfer(
+            this.pk,
+            starkPointToProjectivePoint(to),
+            adjustedAmount,
+            amount,
+            adjustedBalance,
+            nonce,
+            bitSize,
+            prefix_data,
+            serializedData,
+        );
+
+        const balance_left = adjustedAmount - amount;
+        const hintTransfer = await this.computeAEHintForPubKey(amount, nonce, to);
+        const hintLeftover = await this.computeAEHintForSelf(balance_left, nonce + 1n);
+
+        const auditor = await this.auditorKey();
+        const auditPart = await this.createAuditPart(balance_left, nonce, newBalance, prefix_data, auditor);
+        const auditPartTransfer = await this.createAuditPart(amount, nonce, inputs.transferBalanceSelf, prefix_data, auditor);
+
+        if (externalData.isSome()) {
+            const toTongoAddr = externalData.unwrap()!.toTongo;
+
+            //TODO: Check with the vault that it is a valid tongo contract
+            const Tongo2 = new Contract({
+                abi: tongoAbi,
+                address: num.toHex(toTongoAddr),
+                providerOrAccount: this.provider,
+            }).typedv2(tongoAbi);
+            const auditorTarget: CairoOption<PubKey> = await Tongo2.auditor_key();
+
+            const prefix_data_target: GeneralPrefixData = {
+                chain_id: prefix_data.chain_id,
+                sender_address: prefix_data.sender_address,
+                tongo_address: toTongoAddr,
+            };
+
+            const auditTarget = await this.createAuditPart(amount, nonce, inputs.transferBalanceSelf, prefix_data_target, auditorTarget);
+            const external: ExternalData = { toTongo: toTongoAddr, auditPart: auditTarget };
+            externalData = new CairoOption<ExternalData>(CairoOptionVariant.Some, external);
+            transferOptions = new CairoOption<TransferOptions>(CairoOptionVariant.Some, { relayData, externalData });
+        }
+
+        const nextState: BalanceState = {
+            nonce: nonce + 1n,
+            balance: newBalance,
+            balanceAmount: adjustedAmount - amount,
+            pending: state.pending,
+            pendingAmount: state.pendingAmount,
+        };
+
+        return new TransferOperation({
+            from: inputs.from,
+            to: inputs.to,
+            feeToSender,
+            transferBalance: inputs.transferBalance,
+            transferBalanceSelf: inputs.transferBalanceSelf,
+            auxiliarCipher: inputs.auxiliarCipher,
+            auxiliarCipher2: inputs.auxiliarCipher2,
+            hintTransfer,
+            hintLeftover,
+            proof,
+            auditPart,
+            auditPartTransfer,
+            transferOptions,
+            Tongo: this.Tongo,
+            nextState,
+        });
+    }
+
+    private async _createRagequitOperation(state: BalanceState, { prefix_data, ragequitDetails }: {
+        prefix_data: GeneralPrefixData;
+        ragequitDetails: RagequitDetails;
+    }): Promise<RagequitOperation> {
+
+        const { nonce, balance: initialBalance, balanceAmount: initialAmount } = state;
+        const to = ragequitDetails.to;
+        const feeToSender = ragequitDetails.feeToSender || 0n;
+
+
+        const { relayData, currentAmount: adjustedAmount, currentBalance: adjustedBalance } = this.applyRelayFee(
+            feeToSender,
+            initialAmount,
+            initialBalance,
+        );
+
+        const ragequitOptions = Some<RagequitOptions>({ relayData });
+        const serializedData = serializeRagequitOptions(ragequitOptions);
+
+        const { inputs, proof, newBalance } = proveRagequit(
+            this.pk,
+            adjustedBalance,
+            nonce,
+            BigInt(to),
+            adjustedAmount,
+            prefix_data,
+            serializedData,
+        );
+
+        const auditor = await this.auditorKey();
+        const auditPart = await this.createAuditPart(0n, nonce, newBalance, prefix_data, auditor);
+        const hint = await this.computeAEHintForSelf(0n, nonce + 1n);
+
+        const nextState: BalanceState = {
+            nonce: nonce + 1n,
+            balance: newBalance,
+            balanceAmount: 0n,
+            pending: state.pending,
+            pendingAmount: state.pendingAmount,
+        };
+
+        return new RagequitOperation({
+            from: inputs.y,
+            to: inputs.to,
+            amount: inputs.amount,
+            feeToSender,
+            hint,
+            proof,
+            ragequitOptions,
+            Tongo: this.Tongo,
+            auditPart,
+            nextState,
+        });
+    }
+
+    private async _createRolloverOperation(state: BalanceState, prefix_data: GeneralPrefixData): Promise<RollOverOperation> {
+        const { nonce, balance, pending, balanceAmount, pendingAmount } = state;
+        const { inputs, proof } = proveRollover(this.pk, nonce, prefix_data);
+        const nextBalance: CipherBalance = {
+            L: balance.L.add(pending.L),
+            R: balance.R.add(pending.R),
+        };
+        const hint = await this.computeAEHintForSelf(pendingAmount + balanceAmount, nonce + 1n);
+        const nextState: BalanceState = {
+            nonce: nonce + 1n,
+            balance: nextBalance,
+            balanceAmount: balanceAmount + pendingAmount,
+            pending: createCipherBalance(starkPointToProjectivePoint(this.publicKey), 0n, 1n),
+            pendingAmount: 0n,
+        };
+        return new RollOverOperation({ to: inputs.y, proof, Tongo: this.Tongo, hint, nextState });
+    }
+
+    private async _createWithdrawOperation(state: BalanceState, { prefix_data, bitSize, withdrawDetails }: {
+        prefix_data: GeneralPrefixData;
+        bitSize: number;
+        withdrawDetails: WithdrawDetails;
+    }): Promise<WithdrawOperation> {
+
+        const { nonce, balance: initialBalance, balanceAmount: initialAmount } = state;
+        const {to, amount} = withdrawDetails.to;
+        const feeToSender = withdrawDetails.feeToSender || 0n;
+
+
+        const { relayData, currentAmount: adjustedAmount, currentBalance: adjustedBalance } = this.applyRelayFee(
+            feeToSender,
+            initialAmount,
+            initialBalance,
+        );
+
+        const withdrawOptions = Some<WithdrawOptions>({ relayData });
+        const serializedData = serializeWithdrawOptions(withdrawOptions);
+
+        const { inputs, proof, newBalance } = proveWithdraw(
+            this.pk,
+            adjustedAmount,
+            amount,
+            BigInt(to),
+            adjustedBalance,
+            nonce,
+            bitSize,
+            prefix_data,
+            serializedData,
+        );
+        const hint = await this.computeAEHintForSelf(adjustedAmount - amount, nonce + 1n);
+
+        const auditor = await this.auditorKey();
+        const auditPart = await this.createAuditPart(adjustedAmount - amount, nonce, newBalance, prefix_data, auditor);
+
+        const nextState: BalanceState = {
+            nonce: nonce + 1n,
+            balance: newBalance,
+            balanceAmount: adjustedAmount - amount,
+            pending: state.pending,
+            pendingAmount: state.pendingAmount,
+        };
+        return new WithdrawOperation({
+            from: inputs.y,
+            to: inputs.to,
+            amount: inputs.amount,
+            feeToSender,
+            auxiliarCipher: inputs.auxiliarCipher,
+            hint,
+            proof,
+            auditPart,
+            Tongo: this.Tongo,
+            withdrawOptions,
+            nextState,
+        });
+    }
+
+    private async _fetchBalanceState(): Promise<BalanceState> {
+        const { nonce, balance, aeBalance, pending } = await this.rawState();
+        const hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
+        const balanceAmount = this.decryptCipherBalance(balance, hint);
+        const pendingAmount = this.decryptCipherBalance(pending);
+        return { nonce, balance, balanceAmount, pending, pendingAmount };
     }
 }

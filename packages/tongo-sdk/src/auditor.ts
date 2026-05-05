@@ -15,6 +15,7 @@ import { AEBalance, decryptAEHint } from "./ae_balance.js";
 import { EventType } from "./events.js";
 import { tongoAbi } from "./abi/tongo.abi.js";
 import { bytesOrNumToBigInt } from "./utils.js";
+import { RPC_SPEC_VERSION } from "./constants.js";
 
 interface AuditorBaseEvent {
     type: EventType;
@@ -62,18 +63,22 @@ export class Auditor {
     constructor(
         pk: BigNumberish | Uint8Array | (BigNumberish | Uint8Array)[],
         contractAddress: string,
-        provider: RpcProvider,
+        provider: RpcProvider | string
     ) {
         const keys = Array.isArray(pk) ? pk : [pk];
-        this.pks = keys.map((k) => bytesOrNumToBigInt(k));
-        this.publicKeys = this.pks.map((k) => derivePublicKey(k));
+        this.pks = keys.map(k => bytesOrNumToBigInt(k));
+        this.publicKeys = this.pks.map(k => derivePublicKey(k));
+        const rpc: RpcProvider =  provider instanceof RpcProvider ? provider : new RpcProvider({
+            nodeUrl: provider,
+            specVersion: RPC_SPEC_VERSION,
+        });
         this.Tongo = new Contract({
             abi: tongoAbi,
             address: contractAddress,
-            providerOrAccount: provider,
+            providerOrAccount: rpc
         }).typedv2(tongoAbi);
-        this.provider = provider;
-        this.reader = new AccountEventReader(provider, contractAddress);
+        this.provider = rpc;
+        this.reader = new AccountEventReader(rpc, contractAddress);
     }
 
     get pk(): bigint {

@@ -1,6 +1,8 @@
 import { CURVE } from "@scure/starknet";
 import { ProjectivePoint } from "./types.js";
 
+export const RPC_SPEC_VERSION = "0.10.0";
+
 export const CURVE_ORDER = CURVE.n;
 export const GENERATOR: ProjectivePoint = new ProjectivePoint(CURVE.Gx, CURVE.Gy, 1n);
 export const SECONDARY_GENERATOR: ProjectivePoint = new ProjectivePoint(

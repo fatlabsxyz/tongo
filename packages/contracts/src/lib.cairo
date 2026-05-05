@@ -41,5 +41,12 @@ pub mod tongo {
     pub mod Vault;
 }
 
+pub mod relayer {
+    pub mod IRelayer;
+    pub mod Relayer;
+    pub mod structs;
+    pub mod utils;
+}
+
 //OZ interface
 pub mod erc20;

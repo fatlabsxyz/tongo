@@ -36,13 +36,13 @@ export class OutsideFundOperation implements IOutsideFundOperation {
         this.Tongo = Tongo;
     }
 
-    toCalldata(): Call {
-        return this.Tongo.populate("outside_fund", [
-            {
+    toCalldata(): Call[] {
+        return [
+            this.Tongo.populate("outside_fund", [{
                 to: this.to,
                 amount: this.amount,
-            },
-        ]);
+            }])
+        ]
     }
 
     // TODO: better ux for this. Maybe return the call?

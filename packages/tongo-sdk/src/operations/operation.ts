@@ -1,4 +1,5 @@
 import { Call } from "starknet";
+import { BalanceState } from "../types.js";
 
 export const OperationType = {
     Audit: "audit",
@@ -9,10 +10,13 @@ export const OperationType = {
     Rollover: "rollover",
     Transfer: "transfer",
     Deploy: "deploy",
+    Multi: "Multi",
 } as const;
 export type OperationType = (typeof OperationType)[keyof typeof OperationType];
 
 export interface IOperation {
     type: OperationType;
-    toCalldata(): Call;
+    feeToSender: bigint;
+    toCalldata(): Call[];
+    nextState?: BalanceState;
 }

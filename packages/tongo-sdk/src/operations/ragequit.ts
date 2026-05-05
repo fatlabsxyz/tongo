@@ -1,5 +1,6 @@
 import { ProofOfRagequit } from "../provers/ragequit.js";
 import { BigNumberish, Call, Contract, CairoOption } from "starknet";
+import { BalanceState } from "../types.js";
 import { IOperation, OperationType } from "./operation.js";
 import { AEBalance } from "../ae_balance.js";
 import { StarkPoint } from "../types.js";
@@ -28,11 +29,13 @@ interface RagequitOpParams {
     from: StarkPoint;
     amount: BigNumberish;
     to: BigNumberish;
+    feeToSender: bigint;
     hint: AEBalance;
     proof: ProofOfRagequit;
     auditPart: CairoOption<Audit>;
     ragequitOptions: CairoOption<RagequitOptions>;
     Tongo: Contract;
+    nextState: BalanceState;
 }
 
 const OptionalRagequitOption =
@@ -44,6 +47,7 @@ export function serializeRagequitOptions(ragequitOptions: CairoRagequitOptions):
 
 export class RagequitOperation implements IRagequitOperation {
     type: typeof OperationType.Ragequit = OperationType.Ragequit;
+    feeToSender: bigint;
     Tongo: Contract;
     from: StarkPoint;
     to: BigNumberish;
@@ -52,30 +56,24 @@ export class RagequitOperation implements IRagequitOperation {
     auditPart: CairoOption<Audit>;
     proof: ProofOfRagequit;
     ragequitOptions: CairoOption<RagequitOptions>;
+    nextState: BalanceState;
 
-    constructor({
-        from,
-        to,
-        amount,
-        proof,
-        Tongo,
-        hint,
-        auditPart,
-        ragequitOptions,
-    }: RagequitOpParams) {
+    constructor({ from, to, amount, feeToSender, proof, Tongo, hint, auditPart, ragequitOptions, nextState }: RagequitOpParams) {
         this.Tongo = Tongo;
         this.from = from;
         this.to = to;
         this.amount = amount;
+        this.feeToSender = feeToSender;
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
         this.ragequitOptions = ragequitOptions;
+        this.nextState = nextState;
     }
 
-    toCalldata(): Call {
-        return this.Tongo.populate("ragequit", [
-            {
+    toCalldata(): Call[] {
+        return [
+            this.Tongo.populate("ragequit", [{
                 from: this.from,
                 amount: this.amount,
                 to: this.to,
@@ -84,6 +82,7 @@ export class RagequitOperation implements IRagequitOperation {
                 auditPart: this.auditPart,
             },
             this.ragequitOptions,
-        ]);
+        ])
+        ]
     }
 }

@@ -1,22 +1,30 @@
-import { Contract, RpcProvider, num } from "starknet";
+import { Contract, RpcProvider, TypedContractV2, num } from "starknet";
 import { DeployOperation } from "../operations/deploy.js";
 import { IVault, VaultConfig, DeployDetails } from "./vault.interface.js";
 import { vaultAbi } from "../abi/vault.abi.js";
-import { VaultContract } from "../contracts.js";
 import { castBigInt, toNumber } from "../utils.js";
+import { RPC_SPEC_VERSION } from "../constants.js";
+
+
+export type VaultContract = TypedContractV2<typeof vaultAbi>;
 
 export class Vault implements IVault {
     address: string;
     contract: VaultContract;
     provider: RpcProvider;
 
-    constructor(contractAddress: string, provider: RpcProvider) {
+    constructor(contractAddress: string, provider: RpcProvider | string) {
         this.address = contractAddress;
-        this.provider = provider;
+
+        const rpc: RpcProvider =  provider instanceof RpcProvider ? provider : new RpcProvider({
+            nodeUrl: provider,
+            specVersion: RPC_SPEC_VERSION,
+        });
+        this.provider = rpc;
         this.contract = new Contract({
             abi: vaultAbi,
             address: contractAddress,
-            providerOrAccount: provider,
+            providerOrAccount: rpc
         }).typedv2(vaultAbi);
     }
 
