@@ -40,6 +40,32 @@ fn __execute__(self: @ContractState, calls: Array<Call>) {
 }
 ```
 
+- Problem 3: Currently, forwarders have to be whitelisted for the Relayer to be able to operate. It is not clear to me if avnus will rotate the forwarders, but I added functionallity to add/remove ContractAddres for forawrders.
+
+- Problem 4: There is a noce frontrunning problem. The snip-9 nonce when calling `executePaymasterTransaction` is chosen by avnu (afaik). If someone see the tx on the pool and form a valid OutsideExecution tx for the Relayer (this will imply for him to form a valid tongo tx with his private key...etc), using the same nonce, they could in theory frontrun the nonce and render the tx in the pool invalid.  This is posible even with the restriction of the forwarder (Problem 3).  The problems comes from the posibility of changing the snip-9 nonce that AVNU returns. The flow is:
+
+- Solution: We can implement a nonce that is function of the calls. Precompute it to use it as snip-9 nonce and compute it on the Relayer for validation. 
+
+Extra
+1. The SDK calls `buildPaymasterTransaction(calls, paymasterDetails)` — an HTTP request to AVNU's backend.
+2. AVNU's backend generates an `OutsideExecution` struct with a random nonce (`Uuid::new_v4().to_u128_le()`), appends its own fee transfer call (`STRK.transfer(forwarder, gas_amount)`) to the user's calls, and returns a signed `typed_data`.
+3. starknet.js runs `assertPaymasterTransactionSafety` **client-side**: it checks that `typed_data.calls.length == user_calls.length + 1`, verifying AVNU only added one extra call. This protects the **user** from AVNU sneaking in extra calls — it does not protect AVNU from the user.
+4. The user signs `typed_data` and sends `{ typed_data, signature }` back to AVNU's `executeTransaction` endpoint.
+5. AVNU's backend does **no server-side signature check** — it extracts the `OutsideExecution` fields directly from whatever `typed_data` it receives and forwards everything to the forwarder contract.
+6. The forwarder calls `relayer.execute_from_outside_v2(outside_execution, signature)`.
+7. After execution, the forwarder checks its ERC20 balance delta and sweeps to `feeRecipient` (see below).
+
+
+The SNIP-9 nonce is chosen server-side by AVNU and is not exposed as a parameter in `executePaymasterTransaction`. However, it can be changed:
+
+1. Call `buildPaymasterTransaction` to get `typed_data` from AVNU.
+2. Modify `typed_data.message.Nonce` to your chosen value.
+3. Sign the modified `typed_data` — producing a signature over the new hash.
+4. Bypass `executePaymasterTransaction` and call AVNU's `paymaster_executeTransaction` endpoint directly with `{ typed_data_modified, signature }`.
+
+This works because AVNU's backend does not compare the received `typed_data` against the one it originally generated — it simply extracts whatever is sent.
+
+If the fee transfer call is removed or its amount reduced, `received` falls below `gas_amount` and the assertion fails, reverting the entire transaction. This will fail on the simulation step.
 
 Sepolia:
 
