@@ -14,6 +14,7 @@ mod Relayer {
 
     use crate::relayer::utils::{execute_calls, extract_relay_fee, is_tx_version_valid};
     use crate::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
+    use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     #[storage]
     pub struct Storage {
@@ -21,8 +22,9 @@ mod Relayer {
         pub owner: ContractAddress,
         pub targets: Map<ContractAddress, TargetConfig>,
         pub assets: Map<ContractAddress, bool>,
+        pub forwarders: Map<ContractAddress, bool>,
         pub tongo_selectors: Vec<felt252>,
-        pub asset_selectors: Map<ContractAddress, Vec<felt252>>,
+        pub asset_selectors: Vec<felt252>,
     }
 
     #[constructor]
@@ -31,6 +33,7 @@ mod Relayer {
         self.tongo_selectors.push(selector!("withdraw"));
         self.tongo_selectors.push(selector!("ragequit"));
         self.tongo_selectors.push(selector!("transfer"));
+        self.asset_selectors.push(selector!("transfer"));
     }
 
     #[abi(embed_v0)]
@@ -47,12 +50,13 @@ mod Relayer {
             outside_execution: OutsideExecution,
             signature: Span<felt252>,
         ) -> Array<Span<felt252>> {
-            // 'ANY_CALLER' can be used to bypass the caller validation
+            // 0. Assert caller is a whitelisted forwarder
+            let caller = starknet::get_caller_address();
+            assert!(self.is_forwarder_whitelisted(caller), "CALLER NOT WHITELISTED FORWARDER");
+
+            // 'ANY_CALLER' can be used to bypass the specific-address validation
             if outside_execution.caller.into() != 'ANY_CALLER' {
-                assert(
-                    starknet::get_caller_address() == outside_execution.caller,
-                    'INVALID_CALLER'
-                );
+                assert(caller == outside_execution.caller, 'INVALID_CALLER');
             }
 
             // 1. Validate the execution time span
@@ -105,6 +109,10 @@ mod Relayer {
             self.assets.entry(asset).read()
         }
 
+        fn is_forwarder_whitelisted(self: @ContractState, forwarder: ContractAddress) -> bool {
+            self.forwarders.entry(forwarder).read()
+        }
+
         fn get_tongo_selectors(self: @ContractState) -> Span<felt252> {
             let mut selectors = array![];
             for i in 0..self.tongo_selectors.len() {
@@ -113,11 +121,10 @@ mod Relayer {
             selectors.span()
         }
 
-        fn get_asset_selectors(self: @ContractState, asset: ContractAddress) -> Span<felt252> {
+        fn get_asset_selectors(self: @ContractState) -> Span<felt252> {
             let mut selectors = array![];
-            let path = self.asset_selectors.entry(asset);
-            for i in 0..path.len() {
-                selectors.append(path[i].read());
+            for i in 0..self.asset_selectors.len() {
+                selectors.append(self.asset_selectors[i].read());
             };
             selectors.span()
         }
@@ -138,7 +145,16 @@ mod Relayer {
         fn whitelist_asset(ref self: ContractState, asset: ContractAddress) {
             self._assert_only_owner();
             self.assets.entry(asset).write(true);
-            self.asset_selectors.entry(asset).push(selector!("transfer"));
+        }
+
+        fn whitelist_forwarder(ref self: ContractState, forwarder: ContractAddress) {
+            self._assert_only_owner();
+            self.forwarders.entry(forwarder).write(true);
+        }
+
+        fn delist_forwarder(ref self: ContractState, forwarder: ContractAddress) {
+            self._assert_only_owner();
+            self.forwarders.entry(forwarder).write(false);
         }
 
         fn set_tongo_selectors(ref self: ContractState, selectors: Span<felt252>) {
@@ -152,16 +168,19 @@ mod Relayer {
             };
         }
 
-        fn set_asset_selectors(ref self: ContractState, asset: ContractAddress, selectors: Span<felt252>) {
+        fn pull(ref self: ContractState, asset: ContractAddress, amount: u256) {
             self._assert_only_owner();
-            assert!(self.is_asset_whitelisted(asset), "ASSET IS NOT WHITELISTED");
-            let path = self.asset_selectors.entry(asset);
-            let mut p = path.pop();
+            IERC20Dispatcher { contract_address: asset }.transfer(self.owner.read(), amount);
+        }
+
+        fn set_asset_selectors(ref self: ContractState, selectors: Span<felt252>) {
+            self._assert_only_owner();
+            let mut p = self.asset_selectors.pop();
             while p.is_some() {
-                p = path.pop();
+                p = self.asset_selectors.pop();
             };
             for selector in selectors {
-                path.push(*selector);
+                self.asset_selectors.push(*selector);
             };
         }
     }
@@ -196,10 +215,11 @@ mod Relayer {
         }
 
         fn _process_asset_call(self: @ContractState, call: @Call, ref feeStatus: FeeStatus) {
-            assert!(self._is_asset_selector_allowed(*call.to, *call.selector), "ASSET SELECTOR NOT WHITELISTED");
+            assert!(self._is_asset_selector_allowed(*call.selector), "ASSET SELECTOR NOT WHITELISTED");
             let mut cd = *call.calldata;
-            let _: starknet::ContractAddress = Serde::deserialize(ref cd).expect('bad erc20 calldata');
+            let recipient: starknet::ContractAddress = Serde::deserialize(ref cd).expect('bad erc20 calldata');
             let amount: u256 = Serde::deserialize(ref cd).expect('bad erc20 amount');
+            assert!(recipient == get_caller_address(), "RECIPIENT IS NOT THE FORWARDER");
             feeStatus.compare_and_set_asset(*call.to);
             feeStatus.subtract(amount);
         }
@@ -215,11 +235,10 @@ mod Relayer {
             found
         }
 
-        fn _is_asset_selector_allowed(self: @ContractState, asset: ContractAddress, selector: felt252) -> bool {
-            let path = self.asset_selectors.entry(asset);
+        fn _is_asset_selector_allowed(self: @ContractState, selector: felt252) -> bool {
             let mut found = false;
-            for i in 0..path.len() {
-                if path[i].read() == selector {
+            for i in 0..self.asset_selectors.len() {
+                if self.asset_selectors[i].read() == selector {
                     found = true;
                     break;
                 }
