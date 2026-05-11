@@ -12,7 +12,9 @@ mod Relayer {
     use crate::relayer::structs::{FeeStatus, FeeStatusTrait, OutsideExecution, TargetConfig};
     use crate::relayer::IRelayer::{IRelayer, ISRC5, ISRC5_ID, ISRC9_V2, ISRC9_V2_ID, IExecute};
 
-    use crate::relayer::utils::{execute_calls, extract_relay_fee, is_tx_version_valid};
+    use core::poseidon::poseidon_hash_span;
+    use crate::structs::common::pubkey::PubKey;
+    use crate::relayer::utils::{execute_calls, extract_call_info, is_tx_version_valid};
     use crate::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
 
@@ -71,7 +73,7 @@ mod Relayer {
             self.SRC9_nonces.write(outside_execution.nonce, true);
 
             // 4. Validate the transactions
-            self.assert_valid_transaction(outside_execution.calls);
+            self.assert_valid_transaction(outside_execution.calls, outside_execution.nonce);
 
             // 5. Execute the calls
             execute_calls(outside_execution.calls)
@@ -187,13 +189,26 @@ mod Relayer {
 
     #[generate_trait]
     impl Private of IPrivate {
-        fn assert_valid_transaction(self: @ContractState, calls: Span<Call>) {
+        fn assert_valid_transaction(self: @ContractState, calls: Span<Call>, snip9_nonce: felt252) {
             assert!(calls.len() >= 2, "AT LEAST 2 CALLS REQUIRED");
             let mut feeStatus = FeeStatusTrait::new();
+            let mut tongo_target: Option<ContractAddress> = Option::None;
+            let mut tongo_pubkey: Option<PubKey> = Option::None;
 
             for call in calls {
                 if self.is_target_whitelisted(*call.to) {
-                    self._process_tongo_call(call, ref feeStatus);
+                    let pubkey = self._process_tongo_call(call, ref feeStatus);
+                    match tongo_target {
+                        Option::None => {
+                            tongo_target = Option::Some(*call.to);
+                            tongo_pubkey = Option::Some(pubkey);
+                        },
+                        Option::Some(target) => {
+                            assert!(*call.to == target, "MULTIPLE TONGO TARGETS");
+                            let expected = tongo_pubkey.unwrap();
+                            assert!(pubkey.x == expected.x && pubkey.y == expected.y, "MULTIPLE TONGO PUBKEYS");
+                        },
+                    }
                 } else if self.is_asset_whitelisted(*call.to) {
                     self._process_asset_call(call, ref feeStatus);
                 } else {
@@ -202,16 +217,23 @@ mod Relayer {
             };
 
             assert!(feeStatus.to_add >= feeStatus.to_subtract, "RELAY FEE TOO LOW");
+
+            let target = tongo_target.expect('NO TONGO CALLS');
+            let pubkey = tongo_pubkey.unwrap();
+            let tongo_nonce: u64 = ITongoDispatcher { contract_address: target }.get_nonce(pubkey);
+            let expected_nonce = poseidon_hash_span(array![pubkey.x, pubkey.y, tongo_nonce.into()].span());
+            assert!(snip9_nonce == expected_nonce, "INVALID SNIP9 NONCE");
         }
 
-        fn _process_tongo_call(self: @ContractState, call: @Call, ref feeStatus: FeeStatus) {
+        fn _process_tongo_call(self: @ContractState, call: @Call, ref feeStatus: FeeStatus) -> PubKey {
             assert!(self._is_tongo_selector_allowed(*call.selector), "SELECTOR NOT WHITELISTED");
-            let fee = extract_relay_fee(*call.selector, *call.calldata);
+            let (pubkey, fee) = extract_call_info(*call.selector, *call.calldata);
             assert!(fee > 0, "RELAY FEE MUST BE POSITIVE");
             let config = self.targets.entry(*call.to).read();
             let fee_in_erc20: u256 = fee.into() * config.rate;
             feeStatus.add(fee_in_erc20);
             feeStatus.compare_and_set_asset(config.erc20);
+            pubkey
         }
 
         fn _process_asset_call(self: @ContractState, call: @Call, ref feeStatus: FeeStatus) {

@@ -1,6 +1,7 @@
 use starknet::account::Call;
 use starknet::SyscallResultTrait;
 
+use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::relayer::RelayData;
 use crate::structs::operations::ragequit::{Ragequit, RagequitOptions};
 use crate::structs::operations::transfer::{Transfer, TransferOptions};
@@ -34,28 +35,27 @@ pub fn is_tx_version_valid() -> bool {
     }
 }
 
-/// Extracts the relay fee from the calldata of a Tongo operation.
-/// Deserializes the main operation struct to advance past it, then reads the Options to get fee_to_sender.
-pub fn extract_relay_fee(selector: felt252, calldata: Span<felt252>) -> u128 {
+/// Extracts the sender pubkey and relay fee from the calldata of a Tongo operation in one pass.
+pub fn extract_call_info(selector: felt252, calldata: Span<felt252>) -> (PubKey, u128) {
     let mut cd = calldata;
     if selector == selector!("withdraw") {
-        let Withdraw { .. } = Serde::deserialize(ref cd).expect('bad withdraw calldata');
+        let Withdraw { from, .. } = Serde::deserialize(ref cd).expect('bad withdraw calldata');
         let opts: Option<WithdrawOptions> = Serde::deserialize(ref cd).expect('bad withdraw opts');
         let WithdrawOptions { relayData } = opts.expect('NO OPTIONS');
         let RelayData { fee_to_sender } = relayData.expect('NO RELAY DATA');
-        fee_to_sender
+        (from, fee_to_sender)
     } else if selector == selector!("ragequit") {
-        let Ragequit { .. } = Serde::deserialize(ref cd).expect('bad ragequit calldata');
+        let Ragequit { from, .. } = Serde::deserialize(ref cd).expect('bad ragequit calldata');
         let opts: Option<RagequitOptions> = Serde::deserialize(ref cd).expect('bad ragequit opts');
         let RagequitOptions { relayData } = opts.expect('NO OPTIONS');
         let RelayData { fee_to_sender } = relayData.expect('NO RELAY DATA');
-        fee_to_sender
+        (from, fee_to_sender)
     } else if selector == selector!("transfer") {
-        let Transfer { .. } = Serde::deserialize(ref cd).expect('bad transfer calldata');
+        let Transfer { from, .. } = Serde::deserialize(ref cd).expect('bad transfer calldata');
         let opts: Option<TransferOptions> = Serde::deserialize(ref cd).expect('bad transfer opts');
         let TransferOptions { relayData, .. } = opts.expect('NO OPTIONS');
         let RelayData { fee_to_sender } = relayData.expect('NO RELAY DATA');
-        fee_to_sender
+        (from, fee_to_sender)
     } else {
         panic!("UNSUPPORTED SELECTOR")
     }
