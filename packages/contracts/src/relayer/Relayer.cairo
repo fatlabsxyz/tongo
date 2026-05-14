@@ -9,11 +9,10 @@ mod Relayer {
     use starknet::storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry};
     use starknet::storage::{Vec, VecTrait, MutableVecTrait};
 
-    use crate::relayer::structs::{FeeStatus, FeeStatusTrait, OutsideExecution, TargetConfig};
+    use crate::relayer::structs::{RelayStatus, RelayStatusTrait, OutsideExecution, TargetConfig};
     use crate::relayer::IRelayer::{IRelayer, ISRC5, ISRC5_ID, ISRC9_V2, ISRC9_V2_ID, IExecute};
 
     use core::poseidon::poseidon_hash_span;
-    use crate::structs::common::pubkey::PubKey;
     use crate::relayer::utils::{execute_calls, extract_call_info, is_tx_version_valid};
     use crate::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
@@ -191,59 +190,47 @@ mod Relayer {
     impl Private of IPrivate {
         fn assert_valid_transaction(self: @ContractState, calls: Span<Call>, snip9_nonce: felt252) {
             assert!(calls.len() >= 2, "AT LEAST 2 CALLS REQUIRED");
-            let mut feeStatus = FeeStatusTrait::new();
-            let mut tongo_target: Option<ContractAddress> = Option::None;
-            let mut tongo_pubkey: Option<PubKey> = Option::None;
+            let mut status = RelayStatusTrait::new();
 
             for call in calls {
                 if self.is_target_whitelisted(*call.to) {
-                    let pubkey = self._process_tongo_call(call, ref feeStatus);
-                    match tongo_target {
-                        Option::None => {
-                            tongo_target = Option::Some(*call.to);
-                            tongo_pubkey = Option::Some(pubkey);
-                        },
-                        Option::Some(target) => {
-                            assert!(*call.to == target, "MULTIPLE TONGO TARGETS");
-                            let expected = tongo_pubkey.unwrap();
-                            assert!(pubkey.x == expected.x && pubkey.y == expected.y, "MULTIPLE TONGO PUBKEYS");
-                        },
-                    }
+                    self._process_tongo_call(call, ref status);
                 } else if self.is_asset_whitelisted(*call.to) {
-                    self._process_asset_call(call, ref feeStatus);
+                    self._process_asset_call(call, ref status);
                 } else {
                     panic!("UNAUTHORIZED TARGET");
                 }
             };
 
-            assert!(feeStatus.to_add >= feeStatus.to_subtract, "RELAY FEE TOO LOW");
+            assert!(status.to_add >= status.to_subtract, "RELAY FEE TOO LOW");
 
-            let target = tongo_target.expect('NO TONGO CALLS');
-            let pubkey = tongo_pubkey.unwrap();
+            let target = status.target.expect('NO TONGO CALLS');
+            let pubkey = status.pubkey.unwrap();
             let tongo_nonce: u64 = ITongoDispatcher { contract_address: target }.get_nonce(pubkey);
             let expected_nonce = poseidon_hash_span(array![pubkey.x, pubkey.y, tongo_nonce.into()].span());
             assert!(snip9_nonce == expected_nonce, "INVALID SNIP9 NONCE");
         }
 
-        fn _process_tongo_call(self: @ContractState, call: @Call, ref feeStatus: FeeStatus) -> PubKey {
+        fn _process_tongo_call(self: @ContractState, call: @Call, ref status: RelayStatus) {
             assert!(self._is_tongo_selector_allowed(*call.selector), "SELECTOR NOT WHITELISTED");
             let (pubkey, fee) = extract_call_info(*call.selector, *call.calldata);
             assert!(fee > 0, "RELAY FEE MUST BE POSITIVE");
             let config = self.targets.entry(*call.to).read();
             let fee_in_erc20: u256 = fee.into() * config.rate;
-            feeStatus.add(fee_in_erc20);
-            feeStatus.compare_and_set_asset(config.erc20);
-            pubkey
+            status.add(fee_in_erc20);
+            status.compare_and_set_asset(config.erc20);
+            status.compare_and_set_target(*call.to);
+            status.compare_and_set_pubkey(pubkey);
         }
 
-        fn _process_asset_call(self: @ContractState, call: @Call, ref feeStatus: FeeStatus) {
+        fn _process_asset_call(self: @ContractState, call: @Call, ref status: RelayStatus) {
             assert!(self._is_asset_selector_allowed(*call.selector), "ASSET SELECTOR NOT WHITELISTED");
             let mut cd = *call.calldata;
             let recipient: starknet::ContractAddress = Serde::deserialize(ref cd).expect('bad erc20 calldata');
             let amount: u256 = Serde::deserialize(ref cd).expect('bad erc20 amount');
             assert!(recipient == get_caller_address(), "RECIPIENT IS NOT THE FORWARDER");
-            feeStatus.compare_and_set_asset(*call.to);
-            feeStatus.subtract(amount);
+            status.compare_and_set_asset(*call.to);
+            status.subtract(amount);
         }
 
         fn _is_tongo_selector_allowed(self: @ContractState, selector: felt252) -> bool {

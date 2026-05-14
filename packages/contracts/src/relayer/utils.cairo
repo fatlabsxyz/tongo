@@ -22,6 +22,10 @@ pub fn execute_calls(calls: Span<Call>) -> Array<Span<felt252>> {
     res
 }
 
+pub const WITHDRAW_SELECTOR: felt252 = 0x015511cc3694f64379908437d6d64458dc76d02482052bfb8a5b33a72c054c77;
+pub const RAGEQUIT_SELECTOR: felt252 = 0x00527537e04b80d3b3bd9dfa43834f03d4b745f8411ca72260a3c7e02ea7fa3f;
+pub const TRANSFER_SELECTOR: felt252 = 0x0083afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e;
+
 const MIN_TRANSACTION_VERSION: u256 = 1;
 const QUERY_OFFSET: u256 = 0x100000000000000000000000000000000;
 const QUERY_VERSION: u256 = 0x100000000000000000000000000000001;
@@ -38,25 +42,28 @@ pub fn is_tx_version_valid() -> bool {
 /// Extracts the sender pubkey and relay fee from the calldata of a Tongo operation in one pass.
 pub fn extract_call_info(selector: felt252, calldata: Span<felt252>) -> (PubKey, u128) {
     let mut cd = calldata;
-    if selector == selector!("withdraw") {
-        let Withdraw { from, .. } = Serde::deserialize(ref cd).expect('bad withdraw calldata');
-        let opts: Option<WithdrawOptions> = Serde::deserialize(ref cd).expect('bad withdraw opts');
-        let WithdrawOptions { relayData } = opts.expect('NO OPTIONS');
-        let RelayData { fee_to_sender } = relayData.expect('NO RELAY DATA');
-        (from, fee_to_sender)
-    } else if selector == selector!("ragequit") {
-        let Ragequit { from, .. } = Serde::deserialize(ref cd).expect('bad ragequit calldata');
-        let opts: Option<RagequitOptions> = Serde::deserialize(ref cd).expect('bad ragequit opts');
-        let RagequitOptions { relayData } = opts.expect('NO OPTIONS');
-        let RelayData { fee_to_sender } = relayData.expect('NO RELAY DATA');
-        (from, fee_to_sender)
-    } else if selector == selector!("transfer") {
-        let Transfer { from, .. } = Serde::deserialize(ref cd).expect('bad transfer calldata');
-        let opts: Option<TransferOptions> = Serde::deserialize(ref cd).expect('bad transfer opts');
-        let TransferOptions { relayData, .. } = opts.expect('NO OPTIONS');
-        let RelayData { fee_to_sender } = relayData.expect('NO RELAY DATA');
-        (from, fee_to_sender)
-    } else {
-        panic!("UNSUPPORTED SELECTOR")
+    match selector {
+        0x015511cc3694f64379908437d6d64458dc76d02482052bfb8a5b33a72c054c77 => { // withdraw
+            let Withdraw { from, .. } = Serde::deserialize(ref cd).expect('bad withdraw calldata');
+            let opts: Option<WithdrawOptions> = Serde::deserialize(ref cd).expect('bad withdraw opts');
+            let WithdrawOptions { relayData } = opts.expect('NO OPTIONS');
+            let RelayData { fee_to_sender } = relayData.expect('NO RELAY DATA');
+            (from, fee_to_sender)
+        },
+        0x00527537e04b80d3b3bd9dfa43834f03d4b745f8411ca72260a3c7e02ea7fa3f => { // ragequit
+            let Ragequit { from, .. } = Serde::deserialize(ref cd).expect('bad ragequit calldata');
+            let opts: Option<RagequitOptions> = Serde::deserialize(ref cd).expect('bad ragequit opts');
+            let RagequitOptions { relayData } = opts.expect('NO OPTIONS');
+            let RelayData { fee_to_sender } = relayData.expect('NO RELAY DATA');
+            (from, fee_to_sender)
+        },
+        0x0083afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e => { // transfer
+            let Transfer { from, .. } = Serde::deserialize(ref cd).expect('bad transfer calldata');
+            let opts: Option<TransferOptions> = Serde::deserialize(ref cd).expect('bad transfer opts');
+            let TransferOptions { relayData, .. } = opts.expect('NO OPTIONS');
+            let RelayData { fee_to_sender } = relayData.expect('NO RELAY DATA');
+            (from, fee_to_sender)
+        },
+        _ => panic!("UNSUPPORTED SELECTOR"),
     }
 }
