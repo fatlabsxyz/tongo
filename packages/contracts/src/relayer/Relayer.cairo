@@ -10,10 +10,11 @@ mod Relayer {
     use starknet::storage::{Vec, VecTrait, MutableVecTrait};
 
     use crate::relayer::structs::{RelayStatus, RelayStatusTrait, OutsideExecution, TargetConfig};
+    use crate::structs::common::pubkey::PubKey;
     use crate::relayer::IRelayer::{IRelayer, ISRC5, ISRC5_ID, ISRC9_V2, ISRC9_V2_ID, IExecute};
 
     use core::poseidon::poseidon_hash_span;
-    use crate::relayer::utils::{execute_calls, extract_call_info, is_tx_version_valid};
+    use crate::relayer::utils::{execute_calls, extract_call_info, is_tx_version_valid, get_outside_execution_hash, verify_outside_execution_signature};
     use crate::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
 
@@ -71,10 +72,14 @@ mod Relayer {
             // 3. Mark the nonce as used
             self.SRC9_nonces.write(outside_execution.nonce, true);
 
-            // 4. Validate the transactions
-            self.assert_valid_transaction(outside_execution.calls, outside_execution.nonce);
+            // 4. Validate the transactions and extract the sender pubkey
+            let pubkey = self.assert_valid_transaction(outside_execution.calls, outside_execution.nonce);
 
-            // 5. Execute the calls
+            // 5. Verify the OutsideExecution signature against the sender's Tongo pubkey
+            let hash = get_outside_execution_hash(@outside_execution, starknet::get_contract_address());
+            verify_outside_execution_signature(hash, pubkey, signature);
+
+            // 6. Execute the calls
             execute_calls(outside_execution.calls)
         }
 
@@ -188,7 +193,7 @@ mod Relayer {
 
     #[generate_trait]
     impl Private of IPrivate {
-        fn assert_valid_transaction(self: @ContractState, calls: Span<Call>, snip9_nonce: felt252) {
+        fn assert_valid_transaction(self: @ContractState, calls: Span<Call>, snip9_nonce: felt252) -> PubKey {
             assert!(calls.len() >= 2, "AT LEAST 2 CALLS REQUIRED");
             let mut status = RelayStatusTrait::new();
 
@@ -209,6 +214,7 @@ mod Relayer {
             let tongo_nonce: u64 = ITongoDispatcher { contract_address: target }.get_nonce(pubkey);
             let expected_nonce = poseidon_hash_span(array![pubkey.x, pubkey.y, tongo_nonce.into()].span());
             assert!(snip9_nonce == expected_nonce, "INVALID SNIP9 NONCE");
+            pubkey
         }
 
         fn _process_tongo_call(self: @ContractState, call: @Call, ref status: RelayStatus) {

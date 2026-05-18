@@ -1,8 +1,13 @@
 use starknet::account::Call;
 use starknet::SyscallResultTrait;
+use starknet::ContractAddress;
+use core::ecdsa::check_ecdsa_signature;
+use core::poseidon::PoseidonTrait;
+use core::hash::{HashStateExTrait, HashStateTrait};
 
 use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::relayer::RelayData;
+use crate::relayer::structs::{OutsideExecution, StarknetDomain, StructHash, StructHashStarknetDomain, StructHashOutsideExecution};
 use crate::structs::operations::ragequit::{Ragequit, RagequitOptions};
 use crate::structs::operations::transfer::{Transfer, TransferOptions};
 use crate::structs::operations::withdraw::{Withdraw, WithdrawOptions};
@@ -37,6 +42,33 @@ pub fn is_tx_version_valid() -> bool {
     } else {
         MIN_TRANSACTION_VERSION <= tx_version
     }
+}
+
+pub fn get_outside_execution_hash(
+    outside_execution: @OutsideExecution, signer: ContractAddress,
+) -> felt252 {
+    let domain = StarknetDomain {
+        name: 'Account.execute_from_outside',
+        version: 2,
+        chain_id: starknet::get_tx_info().unbox().chain_id,
+        revision: 1,
+    };
+    PoseidonTrait::new()
+        .update_with('StarkNet Message')
+        .update_with(domain.hash_struct())
+        .update_with(signer)
+        .update_with(outside_execution.hash_struct())
+        .finalize()
+}
+
+pub fn verify_outside_execution_signature(
+    hash: felt252, pubkey: PubKey, signature: Span<felt252>,
+) {
+    assert!(signature.len() == 2, "INVALID_SIGNATURE_LENGTH");
+    assert!(
+        check_ecdsa_signature(hash, pubkey.x, *signature.at(0), *signature.at(1)),
+        "INVALID_SIGNATURE",
+    );
 }
 
 /// Extracts the sender pubkey and relay fee from the calldata of a Tongo operation in one pass.
