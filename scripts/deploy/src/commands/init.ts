@@ -20,6 +20,7 @@ export async function initCommand(
 
   const constructorArgs = {
     owner: tongoArgs.owner || account.address,
+    tag: tongoArgs.tag,
     erc20: tongoArgs.erc20 || ETH_ADDRESS,
     rate: tongoArgs.rate || 1n,
     bit_size: tongoArgs.bit_size || 32,

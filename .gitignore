@@ -1,3 +1,9 @@
 **/node_modules
 **/dist
 .DS_Store
+**/.env.local
+**/.env*.local
+**/service-wallet.json
+**/.next
+**/.turbo
+**/build

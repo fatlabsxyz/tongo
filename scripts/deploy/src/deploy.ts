@@ -60,6 +60,7 @@ program
   .command("init")
   .description("Deploy Tongo contract")
   .option("--owner <address>", "Tongo owner (optional, defaults to deployer)")
+  .option("--tag <felt252>", "Tongo registration tag (optional, defaults to 'tongo_v2_usdc')")
   .option("--erc20 <address>", "ERC20 token (optional, defaults to ETH)")
   .option("--rate <u256>", "Conversion rate (optional, defaults to 1)")
   .option("--bit-size <number>", "Balance upper bound (optional, defaults to 32)")
@@ -68,18 +69,20 @@ program
   .action(async (options: any = {}) => {
     try {
       const globalOpts = program.opts();
-      const { owner, erc20, rate, bitSize, auditorPubkey, auditorPrivkey } = options;
-      let _auditorPubkey: [string, string];
+      const { owner, tag, erc20, rate, bitSize, auditorPubkey, auditorPrivkey } = options;
+      let _auditorPubkey: [string, string] | undefined;
       if (auditorPrivkey) {
         const { x, y } = pubKeyFromSecret(BigInt(auditorPrivkey));
         _auditorPubkey = [
           "0x" + x.toString(16).padStart(64, "0"),
           "0x" + y.toString(16).padStart(64, "0")
         ];
-      } else {
+      } else if (auditorPubkey) {
         _auditorPubkey = parsePubKey(auditorPubkey);
+      } else {
+        _auditorPubkey = undefined;
       }
-      const tongoArgs = { owner, erc20, rate, bit_size: bitSize, auditorPubkey: _auditorPubkey };
+      const tongoArgs = { owner, tag, erc20, rate, bit_size: bitSize, auditorPubkey: _auditorPubkey };
       const { config, account, state } = await setupDependencies(globalOpts.network);
       await initCommand(account, state, tongoArgs, globalOpts.skipConfirmation);
     } catch (error) {

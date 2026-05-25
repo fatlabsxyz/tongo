@@ -9,14 +9,12 @@ export const NETWORKS: Record<Network, NetworkConfig> = {
   },
   sepolia: {
     name: "sepolia",
-    // rpcUrl: "https://starknet-sepolia.g.alchemy.com/starknet/version/rpc/v0_8",
-    rpcUrl: constants.RPC_DEFAULT_NODES.SN_SEPOLIA[0],
+    rpcUrl: process.env.SEPOLIA_RPC_URL || constants.RPC_DEFAULT_NODES.SN_SEPOLIA[0],
     chainId: "0x534e5f5345504f4c4941"
   },
   mainnet: {
     name: "mainnet",
-    // rpcUrl: "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_8",
-    rpcUrl: constants.RPC_DEFAULT_NODES.SN_MAIN[0],
+    rpcUrl: process.env.MAINNET_RPC_URL || constants.RPC_DEFAULT_NODES.SN_MAIN[0],
     chainId: "0x534e5f4d41494e"
   }
 };

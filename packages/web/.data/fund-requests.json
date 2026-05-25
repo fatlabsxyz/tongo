@@ -1,0 +1,194 @@
+{
+  "fundRequests": [
+    {
+      "network": "mainnet",
+      "tongoPubKey": {
+        "x": "0x54ead812821e335e3fd16fdaaef170addcda3c9d947a2e5ca9e6247235dad83",
+        "y": "0x4037ebde9759c604360fc349814c62f48706fd18429ec68497d4d110e4493ca"
+      },
+      "tongoAddress": "bpMN3Gxncv7CHGuo8YFSYsWd9UmqX7EqMYbamGtXFyuk",
+      "requestedAmountStrk": "1948419",
+      "depositAddress": "0x03ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6",
+      "bridge": {
+        "provider": "layerswap",
+        "swapId": "557f3215-63e9-4d32-b03f-78bbe697c142",
+        "fromChain": "BASE_MAINNET",
+        "fromAsset": "USDC"
+      },
+      "id": "bf9d7e5d-f12b-4078-b754-f2726f04de3e",
+      "status": "awaiting_deposit",
+      "createdAt": 1779194423839,
+      "updatedAt": 1779194423839
+    },
+    {
+      "network": "mainnet",
+      "tongoPubKey": {
+        "x": "0x44dfec828e9db29c8be09405ca582953cbebad7989e2e17d765d3172ace3548",
+        "y": "0x357b34881ab2645aa66cd9168243850fba8021ea4079a0aec8d5720c969d3c3"
+      },
+      "tongoAddress": "tykit1LqK8KvJ28SLLawE7GBbKXGVzh6GVmxMjVB8FW7",
+      "requestedAmountStrk": "948540",
+      "depositAddress": "0x03ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6",
+      "bridge": {
+        "provider": "layerswap",
+        "swapId": "213bc7e1-4409-4736-96e5-9f6df597530f",
+        "fromChain": "BASE_MAINNET",
+        "fromAsset": "USDC"
+      },
+      "id": "f8f584c4-4478-41d9-a72b-cacd9beb6c1e",
+      "status": "awaiting_deposit",
+      "createdAt": 1779195151178,
+      "updatedAt": 1779195151178
+    },
+    {
+      "network": "mainnet",
+      "tongoPubKey": {
+        "x": "0x44dfec828e9db29c8be09405ca582953cbebad7989e2e17d765d3172ace3548",
+        "y": "0x357b34881ab2645aa66cd9168243850fba8021ea4079a0aec8d5720c969d3c3"
+      },
+      "tongoAddress": "tykit1LqK8KvJ28SLLawE7GBbKXGVzh6GVmxMjVB8FW7",
+      "requestedAmountStrk": "4947911",
+      "depositAddress": "0x03ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6",
+      "bridge": {
+        "provider": "layerswap",
+        "swapId": "66b636f0-4dc0-4db7-b41b-172dabee2f65",
+        "fromChain": "BASE_MAINNET",
+        "fromAsset": "USDC"
+      },
+      "id": "fc4323f0-75bc-421d-8c3c-cc7c51f844f1",
+      "status": "awaiting_deposit",
+      "createdAt": 1779356619198,
+      "updatedAt": 1779356619198
+    },
+    {
+      "network": "mainnet",
+      "tongoPubKey": {
+        "x": "0x44dfec828e9db29c8be09405ca582953cbebad7989e2e17d765d3172ace3548",
+        "y": "0x357b34881ab2645aa66cd9168243850fba8021ea4079a0aec8d5720c969d3c3"
+      },
+      "tongoAddress": "tykit1LqK8KvJ28SLLawE7GBbKXGVzh6GVmxMjVB8FW7",
+      "requestedAmountStrk": "4947911",
+      "depositAddress": "0x03ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6",
+      "bridge": {
+        "provider": "layerswap",
+        "swapId": "7c4814e4-aebe-4ba2-b439-fc03760aac72",
+        "fromChain": "BASE_MAINNET",
+        "fromAsset": "USDC"
+      },
+      "id": "4514df34-9983-42b5-92f6-69db91300db7",
+      "status": "awaiting_deposit",
+      "createdAt": 1779356735290,
+      "updatedAt": 1779356735290
+    },
+    {
+      "network": "mainnet",
+      "tongoPubKey": {
+        "x": "0x44dfec828e9db29c8be09405ca582953cbebad7989e2e17d765d3172ace3548",
+        "y": "0x357b34881ab2645aa66cd9168243850fba8021ea4079a0aec8d5720c969d3c3"
+      },
+      "tongoAddress": "tykit1LqK8KvJ28SLLawE7GBbKXGVzh6GVmxMjVB8FW7",
+      "requestedAmountStrk": "4947911",
+      "depositAddress": "0x03ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6",
+      "bridge": {
+        "provider": "layerswap",
+        "swapId": "87287f2c-f1ef-4382-ab57-f2a0070b424c",
+        "fromChain": "BASE_MAINNET",
+        "fromAsset": "USDC"
+      },
+      "id": "86cf1a8f-eda6-40a4-8b04-961e33a42d52",
+      "status": "awaiting_deposit",
+      "createdAt": 1779356896091,
+      "updatedAt": 1779356896091
+    },
+    {
+      "network": "mainnet",
+      "tongoPubKey": {
+        "x": "0x44dfec828e9db29c8be09405ca582953cbebad7989e2e17d765d3172ace3548",
+        "y": "0x357b34881ab2645aa66cd9168243850fba8021ea4079a0aec8d5720c969d3c3"
+      },
+      "tongoAddress": "tykit1LqK8KvJ28SLLawE7GBbKXGVzh6GVmxMjVB8FW7",
+      "requestedAmountStrk": "948391",
+      "depositAddress": "0x03ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6",
+      "bridge": {
+        "provider": "layerswap",
+        "swapId": "6492e946-1195-44ed-92f4-6ad6cf347860",
+        "fromChain": "BASE_MAINNET",
+        "fromAsset": "USDC"
+      },
+      "id": "6174bf37-f3e2-42d9-921b-a68c02c9d190",
+      "status": "awaiting_deposit",
+      "createdAt": 1779356913361,
+      "updatedAt": 1779356913361
+    },
+    {
+      "network": "mainnet",
+      "tongoPubKey": {
+        "x": "0x7dd2c2a6537491463e9b9306060c76ab9d36c4f6436474d50a87ce56412da5",
+        "y": "0x61b5e7368ad55f8a902048563e86cb35e88514e342350e9a8719eed012d92ed"
+      },
+      "tongoAddress": "tisPf5XgGZBoksu8ZLc4KFQkmC3baJmZ5v8RLS17vELU",
+      "requestedAmountStrk": "946857",
+      "depositAddress": "0x03ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6",
+      "bridge": {
+        "provider": "layerswap",
+        "swapId": "81df9a66-0fd0-4048-aac1-d93a2e171a9b",
+        "fromChain": "BASE_MAINNET",
+        "fromAsset": "USDC"
+      },
+      "id": "5810b3c3-7683-4496-a811-4677aa1dad7e",
+      "status": "failed",
+      "createdAt": 1779358464470,
+      "updatedAt": 1779698207597,
+      "detectedDepositTxHash": "0x62bdf6439e2c344bc8996661d0314c80f851d60298a4835d8e37898d467f284",
+      "error": "RPC: starknet_estimateFee with params {\n  \"request\": [\n    {\n      \"type\": \"INVOKE\",\n      \"sender_address\": \"0x03ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6\",\n      \"calldata\": [\n        \"0x2\",\n        \"0x33068f6539f8e6e6b131e6b2b814e6c34a5224bc66947c47dab9dfee93b35fb\",\n        \"0x219209e083275171774dab1df80982e9df2096516f06319c5c6d71ae0a8480c\",\n        \"0x3\",\n        \"0x24cb00231c8e265b5187c3dd532268da4e14c61a47cb4a5d59d380e8f41ef9f\",\n        \"0xe7338\",\n        \"0x0\",\n        \"0x24cb00231c8e265b5187c3dd532268da4e14c61a47cb4a5d59d380e8f41ef9f\",\n        \"0x2b8af13c3828ab58e912de845b04f4f27ef55bc553d62cc483b42017cb2294c\",\n        \"0x3\",\n        \"0x7dd2c2a6537491463e9b9306060c76ab9d36c4f6436474d50a87ce56412da5\",\n        \"0x61b5e7368ad55f8a902048563e86cb35e88514e342350e9a8719eed012d92ed\",\n        \"0x3b3\"\n      ],\n      \"signature\": [],\n      \"nonce\": \"0x15\",\n      \"resource_bounds\": {\n        \"l2_gas\": {\n          \"max_amount\": \"0x0\",\n          \"max_price_per_unit\": \"0x0\"\n        },\n        \"l1_gas\": {\n          \"max_amount\": \"0x0\",\n          \"max_price_per_unit\": \"0x0\"\n        },\n        \"l1_data_gas\": {\n          \"max_amount\": \"0x0\",\n          \"max_price_per_unit\": \"0x0\"\n        }\n      },\n      \"tip\": \"0x3b9aca00\",\n      \"paymaster_data\": [],\n      \"nonce_data_availability_mode\": \"L1\",\n      \"fee_data_availability_mode\": \"L1\",\n      \"account_deployment_data\": [],\n      \"version\": \"0x100000000000000000000000000000003\"\n    }\n  ],\n  \"block_id\": \"latest\",\n  \"simulation_flags\": [\n    \"SKIP_VALIDATE\"\n  ]\n}\n\n      41: Transaction execution error: {\"execution_error\":{\"class_hash\":\"0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f\",\"contract_address\":\"0x3ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6\",\"error\":{\"class_hash\":\"0x61dac032f228abef9c6626f995015233097ae253a7f72d68552db02f2971b8f\",\"contract_address\":\"0x3ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6\",\"error\":\"0x526573756c743a3a756e77726170206661696c65642e ('Result::unwrap failed.')\",\"selector\":\"0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad\"},\"selector\":\"0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad\"},\"transaction_index\":0}"
+    },
+    {
+      "network": "mainnet",
+      "tongoPubKey": {
+        "x": "0x7dd2c2a6537491463e9b9306060c76ab9d36c4f6436474d50a87ce56412da5",
+        "y": "0x61b5e7368ad55f8a902048563e86cb35e88514e342350e9a8719eed012d92ed"
+      },
+      "tongoAddress": "tisPf5XgGZBoksu8ZLc4KFQkmC3baJmZ5v8RLS17vELU",
+      "requestedAmountStrk": "946956",
+      "depositAddress": "0x03ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6",
+      "bridge": {
+        "provider": "layerswap",
+        "swapId": "cb9332d7-66cf-40f2-ad46-5b611307e6f8",
+        "fromChain": "BASE_MAINNET",
+        "fromAsset": "USDC"
+      },
+      "id": "d4dc232f-fed3-4bdc-a30f-1fb77e399ea8",
+      "status": "completed",
+      "createdAt": 1779451617670,
+      "updatedAt": 1779451723781,
+      "detectedDepositTxHash": "0x1b0ee0d3514bc3adaed33f19083c7dc89ec4888a6d2934cc6dcd071f36f8b72",
+      "fundTxHash": "0x602a6cf595ef7c354878b78dcf7ec532a706602b9870d57d43617b89b8de986",
+      "fundedAmountStrk": "946957",
+      "fundedAmountTongo": "946"
+    },
+    {
+      "network": "mainnet",
+      "tongoPubKey": {
+        "x": "0x7dd2c2a6537491463e9b9306060c76ab9d36c4f6436474d50a87ce56412da5",
+        "y": "0x61b5e7368ad55f8a902048563e86cb35e88514e342350e9a8719eed012d92ed"
+      },
+      "tongoAddress": "tisPf5XgGZBoksu8ZLc4KFQkmC3baJmZ5v8RLS17vELU",
+      "requestedAmountStrk": "947004",
+      "depositAddress": "0x03ec9fc39934d91d47f41cef90898deabd5f34f2ec504d9208ff892c75fb5ce6",
+      "bridge": {
+        "provider": "layerswap",
+        "swapId": "530c358a-c7e3-4e22-9469-0f2ea7ea9f8e",
+        "fromChain": "BASE_MAINNET",
+        "fromAsset": "USDC"
+      },
+      "id": "c0399601-7bb2-44b4-93ec-5b1c9e750a36",
+      "status": "completed",
+      "createdAt": 1779698083924,
+      "updatedAt": 1779698194338,
+      "detectedDepositTxHash": "0x62bdf6439e2c344bc8996661d0314c80f851d60298a4835d8e37898d467f284",
+      "fundTxHash": "0x10e758b9a74eee554406254ccedb8193fde2c77644b30921bd85d7a24e60e3d",
+      "fundedAmountStrk": "947005",
+      "fundedAmountTongo": "947"
+    }
+  ]
+}

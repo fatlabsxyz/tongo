@@ -201,6 +201,10 @@ const TongoConstructor_ABI = [
         "type": "core::starknet::contract_address::ContractAddress"
       },
       {
+        "name": "tag",
+        "type": "core::felt252"
+      },
+      {
         "name": "ERC20",
         "type": "core::starknet::contract_address::ContractAddress"
       },
@@ -250,20 +254,21 @@ const TongoConstructor_ABI = [
 
 export interface TongoConstructorArgs {
   owner: string;
+  tag?: string;
   erc20: string;
   rate: BigInt;
   bit_size: Number;
   auditorPubkey: any;
 }
 
-function serializeTongoConstructor({ owner, erc20, rate, bit_size, auditorPubkey }: TongoConstructorArgs): string[] {
+function serializeTongoConstructor({ owner, tag, erc20, rate, bit_size, auditorPubkey }: TongoConstructorArgs): string[] {
   const contract = new Contract({ abi: TongoConstructor_ABI, address: '0x0' });
   let auditor_key = new CairoOption<{x:BigInt, y:BigInt}>(CairoOptionVariant.None);
   if (typeof auditorPubkey !== 'undefined') {
     auditor_key = new CairoOption<{x:BigInt, y:BigInt}>(CairoOptionVariant.Some, {x:auditorPubkey[0],y:auditorPubkey[1]});
   }
   return contract.populate("constructor", {
-    owner, ERC20: erc20, rate, bit_size, auditor_key
+    owner, tag: tag ?? 'tongo_v2_usdc', ERC20: erc20, rate, bit_size, auditor_key
   }).calldata as string[];
 }
 
