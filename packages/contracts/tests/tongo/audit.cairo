@@ -1,11 +1,11 @@
 use starknet::ContractAddress;
 use tongo::tongo::ITongo::ITongoDispatcherTrait;
-use tongo::structs::common::{
-};
 use crate::consts::{AUDITOR_PRIVATE, USER_ADDRESS};
-use crate::tongo::setup::{setup_tongo};
-use crate::tongo::operations::{fundOperation, withdrawOperation, ragequitOperation, transferOperation, rolloverOperation};
-use crate::prover::utils::{pubkey_from_secret,generate_random, decipher_balance};
+use crate::prover::utils::{decipher_balance, generate_random, pubkey_from_secret};
+use crate::tongo::operations::{
+    fundOperation, ragequitOperation, rolloverOperation, transferOperation, withdrawOperation,
+};
+use crate::tongo::setup::setup_tongo;
 
 
 #[test]
@@ -33,7 +33,7 @@ fn audit_fund() {
     let initial_fund = 250_u128;
 
     let sender = USER_ADDRESS;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
+    let operation = fundOperation(x, initial_balance, initial_fund, sender, dispatcher);
     dispatcher.fund(operation);
 
     let audit = dispatcher.get_audit(y);
@@ -54,11 +54,13 @@ fn audit_withdraw() {
     let initial_fund = 250_u128;
 
     let sender = USER_ADDRESS;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
+    let operation = fundOperation(x, initial_balance, initial_fund, sender, dispatcher);
     dispatcher.fund(operation);
 
     let withdraw_amount = 25_u128;
-    let (operation, withdraw_options) = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address, USER_ADDRESS,0, dispatcher);
+    let (operation, withdraw_options) = withdrawOperation(
+        x, initial_fund, withdraw_amount, transfer_address, USER_ADDRESS, 0, dispatcher,
+    );
     dispatcher.withdraw(operation, withdraw_options);
 
     let audit = dispatcher.get_audit(y);
@@ -77,13 +79,14 @@ fn audit_ragequit() {
 
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
-    
+
     let sender = USER_ADDRESS;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender,dispatcher);
+    let operation = fundOperation(x, initial_balance, initial_fund, sender, dispatcher);
     dispatcher.fund(operation);
 
-
-    let (operation, ragequit_options) = ragequitOperation(x, initial_fund,transfer_address,USER_ADDRESS,0,dispatcher);
+    let (operation, ragequit_options) = ragequitOperation(
+        x, initial_fund, transfer_address, USER_ADDRESS, 0, dispatcher,
+    );
     dispatcher.ragequit(operation, ragequit_options);
 
     let audit = dispatcher.get_audit(y);
@@ -102,22 +105,34 @@ fn audit_transfer() {
     let x_bar = 21983092183910283;
     let y_bar = pubkey_from_secret(x_bar);
 
-
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
 
     let sender = USER_ADDRESS;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender,dispatcher);
+    let operation = fundOperation(x, initial_balance, initial_fund, sender, dispatcher);
     dispatcher.fund(operation);
 
     let transfer_amount = 100_u128;
-    let fee_to_sender =  10;
-    let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund, USER_ADDRESS, fee_to_sender,tongo_address, dispatcher);
-    dispatcher.transfer(operation,transfer_options);
+    let fee_to_sender = 10;
+    let (operation, transfer_options) = transferOperation(
+        x,
+        y_bar,
+        transfer_amount,
+        initial_fund,
+        USER_ADDRESS,
+        fee_to_sender,
+        tongo_address,
+        dispatcher,
+    );
+    dispatcher.transfer(operation, transfer_options);
 
     let audit = dispatcher.get_audit(y);
     if audit.is_some() {
-        decipher_balance((initial_fund - fee_to_sender - transfer_amount).into(), AUDITOR_PRIVATE, audit.unwrap());
+        decipher_balance(
+            (initial_fund - fee_to_sender - transfer_amount).into(),
+            AUDITOR_PRIVATE,
+            audit.unwrap(),
+        );
     }
 
     let audit = dispatcher.get_audit(y_bar);
@@ -135,20 +150,28 @@ fn audit_rollover() {
     let x_bar = 95849543;
     let y_bar = pubkey_from_secret(x_bar);
 
-
     let initial_balance = 0;
     let initial_fund = 250;
 
     let sender = USER_ADDRESS;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
+    let operation = fundOperation(x, initial_balance, initial_fund, sender, dispatcher);
     dispatcher.fund(operation);
 
     let transfer_amount = 100;
     let fee_to_sender = 0;
-    let (operation, transfer_options) = transferOperation(x, y_bar,transfer_amount,initial_fund,USER_ADDRESS, fee_to_sender, tongo_address, dispatcher);
-    dispatcher.transfer(operation,transfer_options);
+    let (operation, transfer_options) = transferOperation(
+        x,
+        y_bar,
+        transfer_amount,
+        initial_fund,
+        USER_ADDRESS,
+        fee_to_sender,
+        tongo_address,
+        dispatcher,
+    );
+    dispatcher.transfer(operation, transfer_options);
 
-    let operation = rolloverOperation(x_bar,dispatcher);
+    let operation = rolloverOperation(x_bar, dispatcher);
     dispatcher.rollover(operation);
 
     let audit = dispatcher.get_audit(y_bar);

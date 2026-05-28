@@ -10,8 +10,8 @@ use crate::verifier::utils::verifyOwnership;
 /// Verifies the ragequit operation. First, ussers have to show knowledge of the private key. Then,
 /// users  have to provide a cleartext of the amount b stored in their balances. The stored balance
 /// `(L,R) = (g**b y**r, g**r) == (g**b R**x, R)`.
-/// The owner can show that b is stored in (L,R) showing that b satisfies `L/g**b == R**x` (poe) with
-/// x the private key.
+/// The owner can show that b is stored in (L,R) showing that b satisfies `L/g**b == R**x` (poe)
+/// with x the private key.
 /// The protocols runs as follows,
 ///
 /// P:  k <-- R        sends    Ax= g**k, AR=R**k
@@ -28,7 +28,7 @@ pub fn verify_ragequit(inputs: InputsRagequit, proof: ProofOfRagequit) {
     let c = proof.compute_challenge(prefix);
 
     let InputsRagequit {
-        y, currentBalance, amount, to: _, nonce: _, prefix_data: _, data:_
+        y, currentBalance, amount, to: _, nonce: _, prefix_data: _, data: _,
     } = inputs;
     let ProofOfRagequit { Ax, AR, sx } = proof;
 

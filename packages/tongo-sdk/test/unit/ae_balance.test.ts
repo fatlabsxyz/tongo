@@ -9,12 +9,13 @@ describe("[ae_balance] conversions", () => {
         });
         expect(aeHintBytes).toStrictEqual({
             ciphertext: new Uint8Array([
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xca, 0xfe,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0xca, 0xfe,
             ]),
             nonce: new Uint8Array([
-                255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-                255, 255, 254,
+                255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                255, 255, 255, 255, 255, 255, 254,
             ]),
         });
     });
@@ -22,7 +23,9 @@ describe("[ae_balance] conversions", () => {
     it("decodes ciphertext and nonce from bytes", async () => {
         const aeHintBigInt = bytesToAEHint({
             ciphertext: new Uint8Array([0xca, 0xfe]),
-            nonce: new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 166, 254]),
+            nonce: new Uint8Array([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 166, 254,
+            ]),
         });
         expect(aeHintBigInt).toStrictEqual({
             ciphertext: 0xcafen,
@@ -34,7 +37,8 @@ describe("[ae_balance] conversions", () => {
 describe("[ae_balance] AEChaCha", () => {
     it("constructs correctly", () => {
         const privateKey = new Uint8Array([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1,
         ]);
         const aeChaCha = new AEChaCha(privateKey);
         expect(aeChaCha).toBeDefined();
@@ -46,15 +50,16 @@ describe("[ae_balance] AEChaCha", () => {
         expect(() => new AEChaCha(privateKeyShorter)).toThrowError();
 
         const privateKeyLonger = new Uint8Array([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
         ]);
         expect(() => new AEChaCha(privateKeyLonger)).toThrowError();
     });
 
     it("ciphertext has correct properties (length, type)", () => {
         const privateKey = new Uint8Array([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1,
         ]);
         const aeChaCha = new AEChaCha(privateKey);
         const cleartext = 55555n;
@@ -67,7 +72,8 @@ describe("[ae_balance] AEChaCha", () => {
 
     it("cleartext encrypts different every time", () => {
         const privateKey = new Uint8Array([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1,
         ]);
         const aeChaCha = new AEChaCha(privateKey);
         const cleartext = 55555n;
@@ -79,7 +85,8 @@ describe("[ae_balance] AEChaCha", () => {
 
     it("cleartext is decrypted from ciphertext", () => {
         const privateKey = new Uint8Array([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1,
         ]);
         const aeChaCha = new AEChaCha(privateKey);
         const cleartext = 55555n;

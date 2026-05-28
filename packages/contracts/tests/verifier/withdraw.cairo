@@ -1,13 +1,10 @@
-use crate::prover::utils::{generate_random};
 use starknet::ContractAddress;
-use crate::prover::functions::prove_withdraw;
+use tongo::structs::common::cipherbalance::CipherBalanceTrait;
+use tongo::structs::traits::GeneralPrefixData;
 use tongo::verifier::withdraw::verify_withdraw;
-use tongo::structs::traits::{GeneralPrefixData};
-use tongo::structs::common::{
-    cipherbalance::CipherBalanceTrait,
-};
-use crate::prover::utils::pubkey_from_secret;
-use crate::consts::{BIT_SIZE, USER_ADDRESS, CHAIN_ID};
+use crate::consts::{BIT_SIZE, CHAIN_ID, USER_ADDRESS};
+use crate::prover::functions::prove_withdraw;
+use crate::prover::utils::{generate_random, pubkey_from_secret};
 
 #[test]
 fn test_withdraw() {
@@ -29,9 +26,7 @@ fn test_withdraw() {
     let sender = USER_ADDRESS;
 
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
-        chain_id: CHAIN_ID,
-        tongo_address:tongoAddress,
-        sender_address:sender,
+        chain_id: CHAIN_ID, tongo_address: tongoAddress, sender_address: sender,
     };
 
     let serialized_data: Span<felt252> = array![13].span();
@@ -46,7 +41,7 @@ fn test_withdraw() {
         BIT_SIZE,
         prefix_data,
         serialized_data,
-        generate_random(seed, 3)
+        generate_random(seed, 3),
     );
     verify_withdraw(inputs, proof);
 }

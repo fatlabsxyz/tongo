@@ -11,9 +11,9 @@ pub impl SerializeRelayData of SerializedData<Option<RelayData>> {
             None => { return array![1].span(); },
             Some(relay) => {
                 let mut arr: Array<felt252> = array![0];
-                arr.append((*relay.fee_to_sender).into()); 
+                arr.append((*relay.fee_to_sender).into());
                 return arr.span();
-            }
+            },
         }
     }
 }

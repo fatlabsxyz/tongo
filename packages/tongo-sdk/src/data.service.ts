@@ -1,5 +1,5 @@
-import { RpcProvider, events, CallData, ParsedEvent, AbiParser2 } from "starknet";
-import {TongoAbi,VaultAbi} from "./abi/abi.types.js"
+import { AbiParser2, CallData, ParsedEvent, RpcProvider, events } from "starknet";
+import { TongoAbi, VaultAbi } from "./abi/abi.types.js";
 
 const CHUNK_SIZE = 100;
 
@@ -8,14 +8,13 @@ export class ContractEventReader {
     private static readonly abiParser: AbiParser2;
     private readonly abiParser: AbiParser2 = ContractEventReader.abiParser;
     contractAddress: string;
-    contractAbi: TongoAbi | VaultAbi ;
+    contractAbi: TongoAbi | VaultAbi;
 
-    constructor(provider: RpcProvider, contractAddress: string, contractAbi: TongoAbi | VaultAbi ) {
+    constructor(provider: RpcProvider, contractAddress: string, contractAbi: TongoAbi | VaultAbi) {
         this.provider = provider;
         this.abiParser = new AbiParser2(contractAbi);
         this.contractAddress = contractAddress;
-        this.contractAbi = contractAbi
-
+        this.contractAbi = contractAbi;
     }
 
     async fetchEvents<T>(
@@ -26,14 +25,13 @@ export class ContractEventReader {
         toBlock: number | "latest" = "latest",
         numEvents: number | "all" = "all",
     ): Promise<T[]> {
-
         const abiEvents = events.getAbiEvents(this.contractAbi);
         const abiStructs = CallData.getAbiStruct(this.contractAbi);
         const abiEnums = CallData.getAbiEnum(this.contractAbi);
 
-        const allRawEvents: any[] = [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const allRawEvents: any[] = []; // TODO: figure out a way of handling v10 | v09 events
         let continuationToken: string | undefined;
-
         do {
             const result = await this.provider.getEvents({
                 address: this.contractAddress,
@@ -53,10 +51,15 @@ export class ContractEventReader {
         } while (continuationToken);
 
         const trimmedEvents = numEvents === "all" ? allRawEvents : allRawEvents.slice(0, numEvents);
-        const parsedEvents = events.parseEvents(trimmedEvents, abiEvents, abiStructs, abiEnums, this.abiParser);
+        const parsedEvents = events.parseEvents(
+            trimmedEvents,
+            abiEvents,
+            abiStructs,
+            abiEnums,
+            this.abiParser,
+        );
         return parsedEvents
             .filter((event) => event[eventPath] !== undefined)
             .map((event) => parser(event));
     }
-
 }

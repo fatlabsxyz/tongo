@@ -1,20 +1,17 @@
 #[starknet::contract]
 pub mod Vault {
-    use starknet::storage::{ Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess };
-    use starknet::{ ContractAddress, ClassHash, get_caller_address, get_contract_address };
+    use starknet::storage::{
+        Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess,
+    };
+    use starknet::syscalls::deploy_syscall;
     use starknet::{
-        SyscallResultTrait,
-        syscalls::deploy_syscall,
+        ClassHash, ContractAddress, SyscallResultTrait, get_caller_address, get_contract_address,
     };
-    use crate::tongo::IVault::{IVault};
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use crate::structs::{
-        events::TongoDeployed,
-        common::{
-            pubkey::PubKey,
-            state::VaultConfig,
-        },
-    };
+    use crate::structs::common::pubkey::PubKey;
+    use crate::structs::common::state::VaultConfig;
+    use crate::structs::events::TongoDeployed;
+    use crate::tongo::IVault::IVault;
 
     #[storage]
     struct Storage {
@@ -34,8 +31,8 @@ pub mod Vault {
         tongo_class: ClassHash,
         /// A registry to know the Tongo instances deployed by this Vault.
         tongo_deployed: Map<ContractAddress, bool>,
-        /// The Tongo address for a given tag. Tags are ussed as salt in the deploy syscall they are enforced to be
-        /// unique for each instance.
+        /// The Tongo address for a given tag. Tags are ussed as salt in the deploy syscall they are
+        /// enforced to be unique for each instance.
         tag_to_address: Map<felt252, ContractAddress>,
     }
 
@@ -106,7 +103,8 @@ pub mod Vault {
             self.tongo_deployed.entry(address).read()
         }
 
-        /// Returns the address of a given tag if a Tongo contract was deployed with that particular tag.
+        /// Returns the address of a given tag if a Tongo contract was deployed with that particular
+        /// tag.
         fn tag_to_address(self: @ContractState, tag: felt252) -> Option<ContractAddress> {
             if self._is_known_tag(tag) {
                 return Some(self.tag_to_address.entry(tag).read());
@@ -118,7 +116,12 @@ pub mod Vault {
         /// Deploys a Tongo instance for the given owner and tag with the given auditor.
         ///
         /// Emits TongoDeployed event.
-        fn deploy_tongo(ref self: ContractState, owner: ContractAddress, tag:felt252, auditorKey: Option<PubKey>) -> ContractAddress {
+        fn deploy_tongo(
+            ref self: ContractState,
+            owner: ContractAddress,
+            tag: felt252,
+            auditorKey: Option<PubKey>,
+        ) -> ContractAddress {
             assert!(!self._is_known_tag(tag), "Tag is already used in other contract");
 
             let tongo_class_hash: ClassHash = self.tongo_class.read();
@@ -127,49 +130,38 @@ pub mod Vault {
             let bit_size = self.get_bit_size();
 
             let mut constructor_calldata: Array<felt252> = array![
-                owner.into(),
-                tag,
-                ERC20.into(),
-                rate.low.into(),
-                rate.high.into(),
-                bit_size.into(),
+                owner.into(), tag, ERC20.into(), rate.low.into(), rate.high.into(), bit_size.into(),
             ];
             auditorKey.serialize(ref constructor_calldata);
 
             let deploy_from_zero = false;
             let salt = tag;
-            
-            let (address, _ ) = deploy_syscall(
-                tongo_class_hash,
-                salt,
-                constructor_calldata.span(),
-                deploy_from_zero
-            ).unwrap_syscall();
+
+            let (address, _) = deploy_syscall(
+                tongo_class_hash, salt, constructor_calldata.span(), deploy_from_zero,
+            )
+                .unwrap_syscall();
 
             self.tongo_deployed.entry(address).write(true);
 
-            self.emit(
-                TongoDeployed {
-                    tag,
-                    address,
-                    ERC20,
-                    rate,
-                    bit_size,
-                    auditor_key: auditorKey
-                }
-            );
+            self
+                .emit(
+                    TongoDeployed { tag, address, ERC20, rate, bit_size, auditor_key: auditorKey },
+                );
 
             address
         }
 
-        /// Pulls ERC20 from the caller. The caller can only be a Tongo instance deployed by this Vault.
-        fn deposit(ref self: ContractState, amount: u256){
+        /// Pulls ERC20 from the caller. The caller can only be a Tongo instance deployed by this
+        /// Vault.
+        fn deposit(ref self: ContractState, amount: u256) {
             let caller = get_caller_address();
             assert!(self.is_known_tongo(caller), "Caller is not a valid Tongo contract");
             self._pull_from_caller(amount);
         }
 
-        /// Sends ERC20 to the caller. The caller can only be a Tongo instance deployed by this Vault.
+        /// Sends ERC20 to the caller. The caller can only be a Tongo instance deployed by this
+        /// Vault.
         fn withdraw(ref self: ContractState, amount: u256) {
             let caller = get_caller_address();
             assert!(self.is_known_tongo(caller), "Caller is not a valid Tongo contract");
@@ -184,8 +176,7 @@ pub mod Vault {
             let from = get_caller_address();
             let asset_address = self.ERC20.read();
             let ERC20 = IERC20Dispatcher { contract_address: asset_address };
-            let response = ERC20
-                .transfer_from(from, get_contract_address(), amount);
+            let response = ERC20.transfer_from(from, get_contract_address(), amount);
             assert!(response, "ERC20 transfer_from failed");
         }
 
@@ -199,15 +190,18 @@ pub mod Vault {
         }
 
         /// Returns true if the tag is known.
-        fn _is_known_tag(self: @ContractState, tag:felt252) -> bool {
+        fn _is_known_tag(self: @ContractState, tag: felt252) -> bool {
             let address: felt252 = self.tag_to_address.entry(tag).read().into();
             address != 0
         }
 
-        /// Register a Tongo contract for the given tag and address. It is only called as part of the
-        /// deploy_tongo() function.
+        /// Register a Tongo contract for the given tag and address. It is only called as part of
+        /// the deploy_tongo() function.
         fn _register_tongo(ref self: ContractState, tag: felt252, tongo_address: ContractAddress) {
-            assert!(!self.is_known_tongo(tongo_address), "Tongo Contract already deployed for this Address");
+            assert!(
+                !self.is_known_tongo(tongo_address),
+                "Tongo Contract already deployed for this Address",
+            );
             self.tongo_deployed.entry(tongo_address).write(true);
             self.tag_to_address.entry(tag).write(tongo_address);
         }

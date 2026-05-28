@@ -7,9 +7,8 @@ use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::relayer::{RelayData, SerializeRelayData};
 use crate::structs::common::starkpoint::StarkPoint;
 use crate::structs::operations::audit::Audit;
-use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix};
+use crate::structs::traits::{AppendPoint, Challenge, GeneralPrefixData, Prefix, SerializedData};
 use crate::verifier::range::Range;
-use crate::structs::traits::SerializedData;
 
 /// Represents the calldata of a withdraw operation.
 ///
@@ -33,20 +32,22 @@ pub struct Withdraw {
 
 #[derive(Drop, Serde)]
 pub struct WithdrawOptions {
-    pub relayData: Option<RelayData>
+    pub relayData: Option<RelayData>,
 }
 
 pub impl SerializeWithdrawOptions of SerializedData<Option<WithdrawOptions>> {
     fn serialize_data(self: @Option<WithdrawOptions>) -> Span<felt252> {
         match self {
-            None => { return array![1].span(); }, 
+            None => { return array![1].span(); },
             Some(options) => {
                 let mut arr: Array<felt252> = array![0];
 
                 let relay = options.relayData.serialize_data();
-                for r in relay { arr.append(*r) }
+                for r in relay {
+                    arr.append(*r)
+                }
                 return arr.span();
-            }
+            },
         }
     }
 }
@@ -76,33 +77,8 @@ pub struct InputsWithdraw {
 impl WithdrawPrefix of Prefix<InputsWithdraw> {
     fn compute_prefix(self: @InputsWithdraw) -> felt252 {
         let withdraw_selector = 'withdraw';
-        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
-
-
-        let CipherBalance { L, R } = *self.currentBalance;
-        let CipherBalance { L: V, R: R_aux } = *self.auxiliarCipher;
-        let mut array: Array<felt252> = array![
-            *chain_id,
-            (*tongo_address).into(),
-            (*sender_address).into(),
-            withdraw_selector,
-            *self.y.x,
-            *self.y.y,
-            (*self.nonce).into(),
-            (*self.amount).into(),
-            (*self.to).into(),
-            L.x,
-            L.y,
-            R.x,
-            R.y,
-            V.x,
-            V.y,
-            R_aux.x,
-            R_aux.y,
-        ];
-        for d in self.data {
-            array.append(*d)
-        }
+        let mut array: Array<felt252> = array![withdraw_selector];
+        self.serialize(ref array);
         poseidon_hash_span(array.span())
     }
 }

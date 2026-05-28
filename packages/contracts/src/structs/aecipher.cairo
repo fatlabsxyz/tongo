@@ -7,8 +7,8 @@ use starknet::storage_access::StorePacking;
 /// leveraged offchain to make decrytptions faster for the user and the auditor.
 #[derive(Serde, Drop, Copy, Default, starknet::Store)]
 pub struct AEBalance {
-    ciphertext: u512,
-    nonce: u256,
+    pub ciphertext: u512,
+    pub nonce: u256,
 }
 
 /// Transforms an AEBalance into an Option<AEBalance>. Only used for state

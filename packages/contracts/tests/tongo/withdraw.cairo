@@ -1,12 +1,10 @@
 use starknet::ContractAddress;
+use tongo::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
 use tongo::tongo::ITongo::ITongoDispatcherTrait;
-
+use crate::consts::{STRK_ADDRESS, USER_ADDRESS, VAULT_ADDRESS};
+use crate::prover::utils::{decipher_balance, generate_random, pubkey_from_secret};
 use crate::tongo::operations::{fundOperation, ragequitOperation, withdrawOperation};
-use crate::tongo::setup::{setup_tongo};
-
-use crate::prover::utils::{generate_random, decipher_balance, pubkey_from_secret};
-use tongo::erc20::{IERC20DispatcherTrait, IERC20Dispatcher};
-use crate::consts::{USER_ADDRESS,STRK_ADDRESS, VAULT_ADDRESS};
+use crate::tongo::setup::setup_tongo;
 
 
 #[test]
@@ -15,22 +13,23 @@ fn test_ragequit() {
     let (_address, dispatcher) = setup_tongo();
     let transfer_address: ContractAddress = 'asdf'.try_into().unwrap();
 
-
     let y = pubkey_from_secret(x);
-    
+
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
     let sender = USER_ADDRESS;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
+    let operation = fundOperation(x, initial_balance, initial_fund, sender, dispatcher);
     dispatcher.fund(operation);
 
-    let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
+    let erc20dispatcher = IERC20Dispatcher { contract_address: STRK_ADDRESS };
     let initialErc20 = erc20dispatcher.balance_of(transfer_address);
     let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
-    let (operation, ragequit_options) = ragequitOperation(x, initial_fund,transfer_address,USER_ADDRESS,0,dispatcher);
+    let (operation, ragequit_options) = ragequitOperation(
+        x, initial_fund, transfer_address, USER_ADDRESS, 0, dispatcher,
+    );
     dispatcher.ragequit(operation, ragequit_options);
-    
+
     let balance = dispatcher.get_balance(y);
     decipher_balance(0, x, balance);
 
@@ -41,8 +40,11 @@ fn test_ragequit() {
     let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
     let rate = dispatcher.get_rate();
 
-    assert(finalErc20  - initialErc20 == rate*initial_fund.into(), 'nope');
-    assert!(initialErc20Vault  - finalErc20Vault == rate*initial_fund.into(), "Incorrect final balance for Vault");
+    assert(finalErc20 - initialErc20 == rate * initial_fund.into(), 'nope');
+    assert!(
+        initialErc20Vault - finalErc20Vault == rate * initial_fund.into(),
+        "Incorrect final balance for Vault",
+    );
 }
 
 #[test]
@@ -58,26 +60,31 @@ fn test_withdraw() {
     let initial_balance = 0_u128;
     let initial_fund = 250_u128;
     let sender = USER_ADDRESS;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
+    let operation = fundOperation(x, initial_balance, initial_fund, sender, dispatcher);
     dispatcher.fund(operation);
 
-    let erc20dispatcher = IERC20Dispatcher {contract_address: STRK_ADDRESS};
+    let erc20dispatcher = IERC20Dispatcher { contract_address: STRK_ADDRESS };
     let initialErc20 = erc20dispatcher.balance_of(transfer_address);
     let initialErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
     let withdraw_amount = 25_u128;
-    let fee_to_sender =  0;
+    let fee_to_sender = 0;
 
-    let (operation, withdraw_options) = withdrawOperation(x,initial_fund, withdraw_amount, transfer_address, USER_ADDRESS, fee_to_sender, dispatcher);
+    let (operation, withdraw_options) = withdrawOperation(
+        x, initial_fund, withdraw_amount, transfer_address, USER_ADDRESS, fee_to_sender, dispatcher,
+    );
     dispatcher.withdraw(operation, withdraw_options);
 
     let balance = dispatcher.get_balance(y);
-    decipher_balance((initial_fund- withdraw_amount).into(), x, balance);
+    decipher_balance((initial_fund - withdraw_amount).into(), x, balance);
 
     let finalErc20 = erc20dispatcher.balance_of(transfer_address);
     let finalErc20Vault = erc20dispatcher.balance_of(VAULT_ADDRESS);
 
     let rate = dispatcher.get_rate();
-    assert(finalErc20  - initialErc20 == rate*withdraw_amount.into(), 'nope');
-    assert!(initialErc20Vault  - finalErc20Vault == rate*withdraw_amount.into(), "Incorrect final balance for Vault");
+    assert(finalErc20 - initialErc20 == rate * withdraw_amount.into(), 'nope');
+    assert!(
+        initialErc20Vault - finalErc20Vault == rate * withdraw_amount.into(),
+        "Incorrect final balance for Vault",
+    );
 }

@@ -34,9 +34,10 @@ pub mod structs {
 
 
 pub mod tongo {
+    pub mod Aux;
     pub mod ITongo;
-    pub mod Tongo;
     pub mod IVault;
+    pub mod Tongo;
     pub mod Vault;
 }
 

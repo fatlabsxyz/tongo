@@ -7,7 +7,7 @@
 const config = {
   tabWidth: 4,
   endOfLine: "lf",
-  printWidth: 120
+  printWidth: 100
 };
 
 export default config;

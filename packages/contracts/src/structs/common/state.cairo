@@ -1,9 +1,7 @@
-use starknet::{ContractAddress, ClassHash};
+use starknet::{ClassHash, ContractAddress};
 use crate::structs::aecipher::AEBalance;
-use crate::structs::common::{
-    cipherbalance::CipherBalance,
-    pubkey::PubKey,
-};
+use crate::structs::common::cipherbalance::CipherBalance;
+use crate::structs::common::pubkey::PubKey;
 
 /// Represent the full state of an account.
 ///

@@ -1,53 +1,34 @@
-use starknet::ContractAddress;
-use core::ec::{
-    NonZeroEcPoint,
-    EcPointTrait,
-    EcStateTrait,
-    stark_curve::{GEN_X,GEN_Y},
-};
-
-use tongo::structs::common::{
-    pubkey::{PubKey},
-    cipherbalance::{CipherBalance, CipherBalanceTrait},
-    starkpoint::StarkPoint,
-};
-use tongo::structs::traits::{GeneralPrefixData,Prefix};
-use tongo::structs::operations::{
-    fund::{InputsFund, ProofOfFund},
-    withdraw::{InputsWithdraw, ProofOfWithdraw},
-    transfer::{InputsTransfer, ProofOfTransfer},
-    ragequit::{InputsRagequit, ProofOfRagequit},
-    rollover::{InputsRollOver, ProofOfRollOver},
-    audit::{InputsAudit, ProofOfAudit},
-};
-
-use tongo::verifier::{
-    range::{Range, bitProof},
-    utils::generator_h,
-};
-
-use she::utils::{compute_challenge, compute_s};
-use she::protocols::range::{prover_for_testing, pregenerate_random_for_testing};
+use core::ec::stark_curve::{GEN_X, GEN_Y};
+use core::ec::{EcPointTrait, EcStateTrait, NonZeroEcPoint};
 use she::protocols::bit::BitProofWithPrefix;
-
-use crate::consts::{CHAIN_ID};
-use crate::prover::utils::{
-    generate_random,
-    decipher_balance,
-    pubkey_from_secret,
-};
+use she::protocols::range::{pregenerate_random_for_testing, prover_for_testing};
+use she::utils::{compute_challenge, compute_s};
+use starknet::ContractAddress;
+use tongo::structs::common::cipherbalance::{CipherBalance, CipherBalanceTrait};
+use tongo::structs::common::pubkey::PubKey;
+use tongo::structs::common::starkpoint::StarkPoint;
+use tongo::structs::operations::audit::{InputsAudit, ProofOfAudit};
+use tongo::structs::operations::fund::{InputsFund, ProofOfFund};
+use tongo::structs::operations::ragequit::{InputsRagequit, ProofOfRagequit};
+use tongo::structs::operations::rollover::{InputsRollOver, ProofOfRollOver};
+use tongo::structs::operations::transfer::{InputsTransfer, ProofOfTransfer};
+use tongo::structs::operations::withdraw::{InputsWithdraw, ProofOfWithdraw};
+use tongo::structs::traits::{GeneralPrefixData, Prefix};
+use tongo::verifier::range::{Range, bitProof};
+use tongo::verifier::utils::generator_h;
+use crate::consts::CHAIN_ID;
+use crate::prover::utils::{decipher_balance, generate_random, pubkey_from_secret};
 
 
 pub fn prove_audit(
-    x:felt252,
+    x: felt252,
     balance: u128,
     storedBalance: CipherBalance,
     auditorPubKey: PubKey,
-    sender:ContractAddress,
+    sender: ContractAddress,
     tongoAddress: ContractAddress,
-    seed:felt252,
+    seed: felt252,
 ) -> (InputsAudit, ProofOfAudit) {
-
     decipher_balance(balance.into(), x, storedBalance);
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y = pubkey_from_secret(x);
@@ -56,12 +37,12 @@ pub fn prove_audit(
     let r = generate_random(seed, 1);
     let auditedBalance = CipherBalanceTrait::new(auditorPubKey, balance.into(), r);
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
-        chain_id: CHAIN_ID,
-        tongo_address:tongoAddress,
-        sender_address:sender,
+        chain_id: CHAIN_ID, tongo_address: tongoAddress, sender_address: sender,
     };
 
-    let inputs: InputsAudit = InputsAudit {y, auditorPubKey, storedBalance, auditedBalance, prefix_data};
+    let inputs: InputsAudit = InputsAudit {
+        y, auditorPubKey, storedBalance, auditedBalance, prefix_data,
+    };
     let prefix = inputs.compute_prefix();
 
     //prover
@@ -73,22 +54,23 @@ pub fn prove_audit(
     let AR1: NonZeroEcPoint = g.mul(kr).try_into().unwrap();
 
     let mut state = EcStateTrait::init();
-        state.add_mul(kb, g.try_into().unwrap());
-        state.add_mul(kx, R0.try_into().unwrap());
+    state.add_mul(kb, g.try_into().unwrap());
+    state.add_mul(kx, R0.try_into().unwrap());
     let AL0 = state.finalize_nz().unwrap();
 
     let mut state = EcStateTrait::init();
-        state.add_mul(kb, g.try_into().unwrap());
-        state.add_mul(kr, auditorPubKey.try_into().unwrap());
+    state.add_mul(kb, g.try_into().unwrap());
+    state.add_mul(kr, auditorPubKey.try_into().unwrap());
     let AL1 = state.finalize_nz().unwrap();
 
-    let commits: Array<NonZeroEcPoint> = array![Ax, AL0, AL1,AR1];
+    let commits: Array<NonZeroEcPoint> = array![Ax, AL0, AL1, AR1];
     let c = compute_challenge(prefix, commits);
 
     let sx = compute_s(kx, x, c);
     let sr = compute_s(kr, r, c);
     let sb = compute_s(kb, balance.into(), c);
 
+    #[cairofmt::skip]
     let proof: ProofOfAudit = ProofOfAudit {
         Ax: Ax.into(),
         AL0: AL0.into(),
@@ -131,26 +113,20 @@ pub fn prove_fund(
     let proof: ProofOfFund = ProofOfFund { Ax: Ax.into(), sx };
 
     let cipher = CipherBalanceTrait::new(y, amount.into(), 'fund');
-    let newBalance = CipherBalanceTrait::add(currentBalance , cipher);
+    let newBalance = CipherBalanceTrait::add(currentBalance, cipher);
     return (inputs, proof, newBalance);
 }
 
 
 pub fn prove_rollover(
-    x: felt252,
-    nonce: u64,
-    sender:ContractAddress,
-    tongoAddress: ContractAddress,
-    seed: felt252,
+    x: felt252, nonce: u64, sender: ContractAddress, tongoAddress: ContractAddress, seed: felt252,
 ) -> (InputsRollOver, ProofOfRollOver) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap().try_into().unwrap();
     let y = pubkey_from_secret(x);
     let prefix_data: GeneralPrefixData = GeneralPrefixData {
-        chain_id: CHAIN_ID,
-        tongo_address:tongoAddress,
-        sender_address:sender,
+        chain_id: CHAIN_ID, tongo_address: tongoAddress, sender_address: sender,
     };
-    let inputs: InputsRollOver = InputsRollOver { y: y.try_into().unwrap(), nonce, prefix_data};
+    let inputs: InputsRollOver = InputsRollOver { y: y.try_into().unwrap(), nonce, prefix_data };
     let prefix = inputs.compute_prefix();
 
     //prover
@@ -175,22 +151,22 @@ pub fn prove_ragequit(
     nonce: u64,
     prefix_data: GeneralPrefixData,
     serialized_data: Span<felt252>,
-    seed: felt252
+    seed: felt252,
 ) -> (InputsRagequit, ProofOfRagequit, CipherBalance) {
     let g = EcPointTrait::new(GEN_X, GEN_Y).unwrap();
     let y = pubkey_from_secret(x);
     decipher_balance(amount.into(), x, currentBalance);
 
-    let ( _ , R) = currentBalance.points_nz();
+    let (_, R) = currentBalance.points_nz();
 
     let inputs: InputsRagequit = InputsRagequit {
-        y:y.try_into().unwrap(),
+        y: y.try_into().unwrap(),
         amount,
         to,
         nonce,
         currentBalance,
         prefix_data,
-        data: serialized_data, 
+        data: serialized_data,
     };
     let prefix = inputs.compute_prefix();
 
@@ -200,16 +176,14 @@ pub fn prove_ragequit(
     let Ax: NonZeroEcPoint = (g.into().mul(kx)).try_into().unwrap();
     let AR: NonZeroEcPoint = R.into().mul(kx).try_into().unwrap();
 
-    let commits: Array<NonZeroEcPoint> = array![Ax,AR];
+    let commits: Array<NonZeroEcPoint> = array![Ax, AR];
     let c = compute_challenge(prefix, commits);
 
     let sx = compute_s(kx, x, c);
 
-    let proof: ProofOfRagequit = ProofOfRagequit {
-        Ax: Ax.into(), AR: AR.into(),  sx: sx
-    };
+    let proof: ProofOfRagequit = ProofOfRagequit { Ax: Ax.into(), AR: AR.into(), sx: sx };
 
-    let newBalance: CipherBalance  = CipherBalanceTrait::new(y, 0, 1);
+    let newBalance: CipherBalance = CipherBalanceTrait::new(y, 0, 1);
     return (inputs, proof, newBalance);
 }
 
@@ -221,10 +195,10 @@ pub fn prove_withdraw(
     initialBalance: u128,
     currentBalance: CipherBalance,
     nonce: u64,
-    bit_size:u32,
+    bit_size: u32,
     prefix_data: GeneralPrefixData,
     serialized_data: Span<felt252>,
-    seed: felt252
+    seed: felt252,
 ) -> (InputsWithdraw, ProofOfWithdraw, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let h = generator_h();
@@ -233,8 +207,8 @@ pub fn prove_withdraw(
 
     let left = initialBalance - amount;
 
-    let (randomness, total_random ) = pregenerate_random_for_testing(bit_size, seed + 1);
-    let auxiliarCipher = CipherBalanceTrait::new(h.into(),left.into(), total_random);
+    let (randomness, total_random) = pregenerate_random_for_testing(bit_size, seed + 1);
+    let auxiliarCipher = CipherBalanceTrait::new(h.into(), left.into(), total_random);
 
     let inputs: InputsWithdraw = InputsWithdraw {
         y: y.try_into().unwrap(),
@@ -250,11 +224,12 @@ pub fn prove_withdraw(
 
     let prefix = inputs.compute_prefix();
 
-    let (_,R) = currentBalance.points();
+    let (_, R) = currentBalance.points();
 
-    let (r, range) = prove_range(left.try_into().unwrap(),bit_size,randomness, prefix, generate_random(seed + 1, 1));
+    let (r, range) = prove_range(
+        left.try_into().unwrap(), bit_size, randomness, prefix, generate_random(seed + 1, 1),
+    );
     assert!(r == total_random, "random mismatch");
-
 
     let kb = generate_random(seed, 1);
     let kx = generate_random(seed, 2);
@@ -273,26 +248,26 @@ pub fn prove_withdraw(
     state.add_mul(kr, h);
     let A_v = state.finalize_nz().unwrap();
 
-
-    let commits: Array<NonZeroEcPoint> = array![A_x,A_r, A, A_v];
-    let c = compute_challenge(prefix,commits);
+    let commits: Array<NonZeroEcPoint> = array![A_x, A_r, A, A_v];
+    let c = compute_challenge(prefix, commits);
     let sb = compute_s(kb, left.into(), c);
     let sx = compute_s(kx, x, c);
     let sr = compute_s(kr, r, c);
 
+    #[cairofmt::skip]
     let proof: ProofOfWithdraw = ProofOfWithdraw {
         A_x: A_x.into(),
-        A_r:A_r.into(),
+        A_r: A_r.into(),
         A: A.into(),
         A_v: A_v.into(),
         sx,
         sb,
         sr,
-        range,
+        range
     };
 
     let cipher = CipherBalanceTrait::new(y, amount.into(), 'withdraw');
-    let newBalance = CipherBalanceTrait::subtract(currentBalance , cipher);
+    let newBalance = CipherBalanceTrait::subtract(currentBalance, cipher);
 
     return (inputs, proof, newBalance);
 }
@@ -304,25 +279,24 @@ pub fn prove_transfer(
     amount: felt252,
     currentBalance: CipherBalance,
     nonce: u64,
-    bit_size:u32,
+    bit_size: u32,
     prefix_data: GeneralPrefixData,
     serialized_data: Span<felt252>,
-    seed: felt252
+    seed: felt252,
 ) -> (InputsTransfer, ProofOfTransfer, CipherBalance) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let y = pubkey_from_secret(x);
     decipher_balance(initialBalance, x, currentBalance);
 
-
     let h = generator_h();
     let balanceLeft = initialBalance - amount;
 
-    let (randomness, total_random ) = pregenerate_random_for_testing(bit_size, seed + 1);
-    let auxiliarCipher = CipherBalanceTrait::new(h.into(),amount, total_random);
+    let (randomness, total_random) = pregenerate_random_for_testing(bit_size, seed + 1);
+    let auxiliarCipher = CipherBalanceTrait::new(h.into(), amount, total_random);
     let transferBalanceSelf = CipherBalanceTrait::new(y, amount, total_random);
     let transferBalance = CipherBalanceTrait::new(to, amount, total_random);
 
-    let (randomness2, total_random2 ) = pregenerate_random_for_testing(bit_size, seed + 1);
+    let (randomness2, total_random2) = pregenerate_random_for_testing(bit_size, seed + 1);
     let auxiliarCipher2 = CipherBalanceTrait::new(h.into(), balanceLeft, total_random2);
 
     let inputs: InputsTransfer = InputsTransfer {
@@ -340,14 +314,22 @@ pub fn prove_transfer(
     };
     let prefix = inputs.compute_prefix();
 
-    let (r, proof) = prove_range(amount.try_into().unwrap(),bit_size,randomness, prefix, generate_random(seed + 1, 1));
+    let (r, proof) = prove_range(
+        amount.try_into().unwrap(), bit_size, randomness, prefix, generate_random(seed + 1, 1),
+    );
     assert!(r == total_random, "random mismatch");
 
-    let (r2, proof2) = prove_range(balanceLeft.try_into().unwrap(),bit_size,randomness2,prefix, generate_random(seed + 2, 1));
+    let (r2, proof2) = prove_range(
+        balanceLeft.try_into().unwrap(),
+        bit_size,
+        randomness2,
+        prefix,
+        generate_random(seed + 2, 1),
+    );
     assert!(r2 == total_random2, "random2 mismatch");
 
     let (_, CR) = currentBalance.points();
-    let (_, R)  = transferBalance.points();
+    let (_, R) = transferBalance.points();
 
     let G: NonZeroEcPoint = (CR - R.into()).try_into().unwrap();
 
@@ -362,49 +344,39 @@ pub fn prove_transfer(
     let A_r2: NonZeroEcPoint = EcPointTrait::mul(g.try_into().unwrap(), kr2).try_into().unwrap();
 
     let mut state = EcStateTrait::init();
-        state.add_mul(kb, g);
-        state.add_mul(kr, y.try_into().unwrap());
+    state.add_mul(kb, g);
+    state.add_mul(kr, y.try_into().unwrap());
     let A_b = state.finalize_nz().unwrap();
 
     let mut state = EcStateTrait::init();
-        state.add_mul(kb, g);
-        state.add_mul(kr, EcPointTrait::new_nz(to.x, to.y).unwrap());
+    state.add_mul(kb, g);
+    state.add_mul(kr, EcPointTrait::new_nz(to.x, to.y).unwrap());
     let A_bar = state.finalize_nz().unwrap();
 
     let mut state = EcStateTrait::init();
-        state.add_mul(kb, g);
-        state.add_mul(kr, h);
+    state.add_mul(kb, g);
+    state.add_mul(kr, h);
     let A_v = state.finalize_nz().unwrap();
 
     let mut state = EcStateTrait::init();
-        state.add_mul(kb2, g);
-        state.add_mul(kx, G);
+    state.add_mul(kb2, g);
+    state.add_mul(kx, G);
     let A_b2 = state.finalize_nz().unwrap();
 
     let mut state = EcStateTrait::init();
-        state.add_mul(kb2, g);
-        state.add_mul(kr2, h);
+    state.add_mul(kb2, g);
+    state.add_mul(kr2, h);
     let A_v2 = state.finalize_nz().unwrap();
 
-    let commits: Array<NonZeroEcPoint> = array![
-        A_x,
-        A_r,
-        A_r2,
-        A_b,
-        A_b2,
-        A_v,
-        A_v2,
-        A_bar,
-    ];
+    let commits: Array<NonZeroEcPoint> = array![A_x, A_r, A_r2, A_b, A_b2, A_v, A_v2, A_bar];
 
-    let c = compute_challenge(prefix,commits);
+    let c = compute_challenge(prefix, commits);
 
     let s_x = compute_s(kx, x, c);
     let s_b = compute_s(kb, amount, c);
-    let s_r = compute_s(kr, r,c);
+    let s_r = compute_s(kr, r, c);
     let s_b2 = compute_s(kb2, balanceLeft, c);
     let s_r2 = compute_s(kr2, r2, c);
-
 
     let proof: ProofOfTransfer = ProofOfTransfer {
         A_x: A_x.into(),
@@ -424,31 +396,29 @@ pub fn prove_transfer(
         range2: proof2,
     };
 
-    let newBalance= CipherBalanceTrait::subtract(currentBalance , transferBalanceSelf);
+    let newBalance = CipherBalanceTrait::subtract(currentBalance, transferBalanceSelf);
     return (inputs, proof, newBalance);
 }
 
 
-pub fn prove_range(amount: u32,bit_size:u32,randomness: Array<felt252>, initial_prefix: felt252, seed: felt252) -> (felt252, Range) {
+pub fn prove_range(
+    amount: u32, bit_size: u32, randomness: Array<felt252>, initial_prefix: felt252, seed: felt252,
+) -> (felt252, Range) {
     let g = EcPointTrait::new_nz(GEN_X, GEN_Y).unwrap();
     let h = generator_h();
 
-    let (she_inputs, she_proof, r) = prover_for_testing(amount, g,h, bit_size, randomness, initial_prefix,generate_random(seed,0));
+    let (she_inputs, she_proof, r) = prover_for_testing(
+        amount, g, h, bit_size, randomness, initial_prefix, generate_random(seed, 0),
+    );
 
     let mut commitments: Array<StarkPoint> = array![];
     let mut proofs: Array<bitProof> = array![];
     for i in 0..she_inputs.commitments.len() {
         commitments.append((*she_inputs.commitments.at(i)).into());
-        let BitProofWithPrefix {A0, A1, c0,prefix: _, s0, s1} = *she_proof.proofs.at(i);
-        let temp: bitProof = bitProof {
-            A0: A0.into(),
-            A1: A1.into(),
-            c0,
-            s0,
-            s1
-        };
+        let BitProofWithPrefix { A0, A1, c0, prefix: _, s0, s1 } = *she_proof.proofs.at(i);
+        let temp: bitProof = bitProof { A0: A0.into(), A1: A1.into(), c0, s0, s1 };
         proofs.append(temp);
     }
 
-    return (r, Range {commitments: commitments.span(), proofs: proofs.span()});
+    return (r, Range { commitments: commitments.span(), proofs: proofs.span() });
 }

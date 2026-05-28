@@ -1,11 +1,9 @@
-use tongo::tongo::ITongo::{ITongoDispatcherTrait};
 use tongo::structs::common::pubkey::PubKey;
 use tongo::structs::operations::fund::Fund;
-
-use crate::tongo::operations::fundOperation;
-
-use crate::tongo::setup::{setup_tongo};
+use tongo::tongo::ITongo::ITongoDispatcherTrait;
 use crate::consts::USER_ADDRESS;
+use crate::tongo::operations::fundOperation;
+use crate::tongo::setup::setup_tongo;
 
 #[test]
 #[should_panic(expected: "PubKey is not an EcPoint")]
@@ -18,11 +16,10 @@ fn tamperPubKey() {
     let initial_fund = 250;
 
     let sender = USER_ADDRESS;
-    let operation = fundOperation(x, initial_balance,initial_fund,sender, dispatcher);
+    let operation = fundOperation(x, initial_balance, initial_fund, sender, dispatcher);
 
-
-    let tamperTo =  PubKey {x: operation.to.x, y: operation.to.y + 1 };
-    let tamperOperation = Fund { to: tamperTo, ..operation};
+    let tamperTo = PubKey { x: operation.to.x, y: operation.to.y + 1 };
+    let tamperOperation = Fund { to: tamperTo, ..operation };
     dispatcher.fund(tamperOperation);
 }
 

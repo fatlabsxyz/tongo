@@ -21,14 +21,15 @@ use crate::verifier::utils::{generator_h, verifyOwnership};
 /// under its public key, the other `(L_bar, R_bar)`
 /// a encryption of the trasnfer amount b under the receiver public key. Users have to provide a ZK
 /// proof that both encryption are indeed encrypting the same amount for the correct public keys. To
-/// show the transfer amount b is positive, when the first RangeProof is verified, it returns a `V1 =
-/// g**b h**r1`, with `b` positive. `V1` is used as a `L` part of a cipher blalance, users have to prove
-/// that the cipher balance `(V1, R_aux1 = g**r1)` is encrypting the same amount that `(L,R)`. The
-/// cipher balance after the operation would be `(L0,R0) = (CL/L, CR/R)` where `(CL,CR)` is the current
-/// balance. To show that `(L0, R0)` is encrypting an amount `b_left` positive, when the second
-/// RangeProof is verified, it returns a `V2 = g**b_left h**r2`, with b_left positive. `V2` is used as a
-/// `L` part of a cipher blalance, users have to prove that the cipher balance `(V2, R_aux2 = g**r2)` is
-/// encrypting the same amount that `(L0,R0)`
+/// show the transfer amount b is positive, when the first RangeProof is verified, it returns a `V1
+/// =
+/// g**b h**r1`, with `b` positive. `V1` is used as a `L` part of a cipher blalance, users have to
+/// prove that the cipher balance `(V1, R_aux1 = g**r1)` is encrypting the same amount that `(L,R)`.
+/// The cipher balance after the operation would be `(L0,R0) = (CL/L, CR/R)` where `(CL,CR)` is the
+/// current balance. To show that `(L0, R0)` is encrypting an amount `b_left` positive, when the
+/// second RangeProof is verified, it returns a `V2 = g**b_left h**r2`, with b_left positive. `V2`
+/// is used as a `L` part of a cipher blalance, users have to prove that the cipher balance `(V2,
+/// R_aux2 = g**r2)` is encrypting the same amount that `(L0,R0)`
 ///
 /// EC_MUL: 27 + 2*n*5  = 347 for u32
 /// EC_ADD: 18  + 2*n*4 = 274 for u32

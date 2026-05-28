@@ -1,84 +1,60 @@
-import { TongoReaderEventType } from "./account.data.service.js";
-
-const AccountEvent = {
-    Fund: "fund",
-    OutsideFund: "outsideFund",
-    Withdraw: "withdraw",
-    Ragequit: "ragequit",
-    Rollover: "rollover",
-    TransferIn: "transferIn",
-    TransferOut: "transferOut",
-    ReceivedExternalTransfer: "externalTransferIn",
-} as const;
-
-type AccountEvent = typeof AccountEvent[keyof typeof AccountEvent];
-
-export const ReaderToAccountEvents = {
-    [TongoReaderEventType.Fund]: AccountEvent.Fund,
-    [TongoReaderEventType.OutsideFund]: AccountEvent.OutsideFund,
-    [TongoReaderEventType.Rollover]: AccountEvent.Rollover,
-    [TongoReaderEventType.Withdraw]: AccountEvent.Withdraw,
-    [TongoReaderEventType.Ragequit]: AccountEvent.Ragequit,
-    [TongoReaderEventType.TransferIn]: AccountEvent.TransferIn,
-    [TongoReaderEventType.TransferOut]: AccountEvent.TransferOut,
-    [TongoReaderEventType.ExternalTransfer]: AccountEvent.ReceivedExternalTransfer,
-};
+import { EventType } from "../events.js";
 
 interface AccountBaseEvent {
-    type: AccountEvent;
+    type: EventType;
     tx_hash: string;
     block_number: number;
 }
 
 export interface AccountFundEvent extends AccountBaseEvent {
-    type: typeof AccountEvent.Fund;
+    type: typeof EventType.Fund;
     nonce: bigint;
     from: string;
     amount: bigint;
 }
 
 export interface AccountOutsideFundEvent extends AccountBaseEvent {
-    type: typeof AccountEvent.OutsideFund;
+    type: typeof EventType.OutsideFund;
     amount: bigint;
     from: string;
 }
 
 export interface AccountRolloverEvent extends AccountBaseEvent {
-    type: typeof AccountEvent.Rollover;
+    type: typeof EventType.Rollover;
     nonce: bigint;
     amount: bigint;
 }
 
 export interface AccountWithdrawEvent extends AccountBaseEvent {
-    type: typeof AccountEvent.Withdraw;
+    type: typeof EventType.Withdraw;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountRagequitEvent extends AccountBaseEvent {
-    type: typeof AccountEvent.Ragequit;
+    type: typeof EventType.Ragequit;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountTransferOutEvent extends AccountBaseEvent {
-    type: typeof AccountEvent.TransferOut;
+    type: typeof EventType.TransferOut;
     nonce: bigint;
     amount: bigint;
     to: string;
 }
 
 export interface AccountTransferInEvent extends AccountBaseEvent {
-    type: typeof AccountEvent.TransferIn;
+    type: typeof EventType.TransferIn;
     nonce: bigint;
     amount: bigint;
     from: string;
 }
 
 export interface AccountReceivedExternalTransfer extends AccountBaseEvent {
-    type: typeof AccountEvent.ReceivedExternalTransfer;
+    type: typeof EventType.ExternalTransferIn;
     amount: bigint;
     nonce: bigint;
     from: string;

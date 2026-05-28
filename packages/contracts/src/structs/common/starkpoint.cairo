@@ -57,12 +57,9 @@ pub impl StarkPointTryIntoEcPoint of TryInto<StarkPoint, EcPoint> {
 /// because the EcPoint might be the ZeroEcPoint (wich does not have coordinates).
 pub impl EcPointTryIntoStarkPoint of TryInto<EcPoint, StarkPoint> {
     fn try_into(self: EcPoint) -> Option<StarkPoint> {
-        let option: Option<NonZeroEcPoint> = self.try_into();
-        if option.is_none() {
-            return None(());
-        } else {
-            let (x, y) = option.unwrap().coordinates();
-            Some(StarkPoint { x, y })
-        }
+        self.try_into().map(|p| {
+            let (x, y) = p.coordinates();
+            StarkPoint { x, y }
+        })
     }
 }

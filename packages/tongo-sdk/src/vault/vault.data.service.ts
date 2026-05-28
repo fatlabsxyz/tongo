@@ -1,4 +1,4 @@
-import { num, RpcProvider, hash, ParsedEvent, } from "starknet";
+import { num, RpcProvider, hash, ParsedEvent } from "starknet";
 import { vaultAbi } from "../abi/vault.abi.js";
 import { StarkPoint } from "../types.js";
 
@@ -8,11 +8,10 @@ const TONGO_DEPLOYED_EVENT = num.toHex(hash.starknetKeccak("TongoDeployed"));
 
 const TONGO_DEPLOYED_EVENT_PATH = "tongo::structs::events::TongoDeployed";
 
-
 export const VaultReaderEventType = {
     TongoDeployed: "tongoDeployed",
 } as const;
-type VaultReaderEventType = typeof VaultReaderEventType[keyof typeof VaultReaderEventType];
+type VaultReaderEventType = (typeof VaultReaderEventType)[keyof typeof VaultReaderEventType];
 
 interface BaseEvent {
     type: VaultReaderEventType;
@@ -23,19 +22,16 @@ interface BaseEvent {
 }
 
 interface TongoDeployedEventData {
-    tag: bigint,
-    address: bigint,
-    ERC20: bigint,
-    rate: bigint,
-    bit_size: bigint,
-    auditor_key: StarkPoint | undefined,
+    tag: bigint;
+    address: bigint;
+    ERC20: bigint;
+    rate: bigint;
+    bit_size: bigint;
+    auditor_key: StarkPoint | undefined;
 }
 
-type VaultReaderTongoDeployedEvent = TongoDeployedEventData & BaseEvent & { type: typeof VaultReaderEventType.TongoDeployed; } ;
-
-// type VaultReaderEvent =
-//     VaultReaderTongoDeployedEvent;
-
+type VaultReaderTongoDeployedEvent = TongoDeployedEventData &
+    BaseEvent & { type: typeof VaultReaderEventType.TongoDeployed };
 
 function parseTongoDeployedEvent(event: ParsedEvent): VaultReaderTongoDeployedEvent {
     const data = event[TONGO_DEPLOYED_EVENT_PATH] as unknown as TongoDeployedEventData;
@@ -46,7 +42,7 @@ function parseTongoDeployedEvent(event: ParsedEvent): VaultReaderTongoDeployedEv
         event_index: event.event_index! as unknown as number,
         transaction_index: event.transaction_index! as unknown as number,
         ...data,
-    }
+    };
 }
 
 export class VaultEventReader {
@@ -58,10 +54,19 @@ export class VaultEventReader {
         this.eventReader = new ContractEventReader(provider, vaultAddress, vaultAbi);
     }
 
-    async getEventsFund(fromBlock: number, tag: bigint, toBlock: number | "latest" = "latest", numEvents: number | "all" = "all"): Promise<VaultReaderTongoDeployedEvent[]> {
+    async getEventsFund(
+        fromBlock: number,
+        tag: bigint,
+        toBlock: number | "latest" = "latest",
+        numEvents: number | "all" = "all",
+    ): Promise<VaultReaderTongoDeployedEvent[]> {
         return this.eventReader.fetchEvents(
-            [[TONGO_DEPLOYED_EVENT], [num.toHex(tag)] ],
-            fromBlock,TONGO_DEPLOYED_EVENT_PATH, parseTongoDeployedEvent, toBlock, numEvents,
+            [[TONGO_DEPLOYED_EVENT], [num.toHex(tag)]],
+            fromBlock,
+            TONGO_DEPLOYED_EVENT_PATH,
+            parseTongoDeployedEvent,
+            toBlock,
+            numEvents,
         );
     }
 }

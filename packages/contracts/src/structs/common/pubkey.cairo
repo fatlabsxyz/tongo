@@ -31,13 +31,10 @@ impl NonZeroEcIntoPubKey of Into<NonZeroEcPoint, PubKey> {
 /// because the EcPoint might be the ZeroEcPoint (wich does not have coordinates).
 impl EcPointTryIntoPubKey of TryInto<EcPoint, PubKey> {
     fn try_into(self: EcPoint) -> Option<PubKey> {
-        let option: Option<NonZeroEcPoint> = self.try_into();
-        if option.is_none() {
-            return None(());
-        } else {
-            let (x, y) = option.unwrap().coordinates();
-            Some(PubKey { x, y })
-        }
+        self.try_into().map(|p| {
+            let (x, y) = p.coordinates();
+            PubKey { x, y }
+        })
     }
 }
 

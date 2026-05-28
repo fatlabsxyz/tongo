@@ -3,6 +3,7 @@
   "version": "1.3.2",
   "description": "An SDK for interacting with Tongo contracts",
   "homepage": "https://github.com/fatlabsxyz/tongo",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/fatlabsxyz/tongo.git",
@@ -37,27 +38,30 @@
   },
   "scripts": {
     "clean": "rm -rf dist",
+    "check": "tsc -p ./tsconfig.json --noEmit",
     "build": "tsc -p ./tsconfig.json --outDir dist",
-    "update-abi": "echo -n 'export const tongoAbi = ' > ./src/abi/tongo.abi.ts && jq --indent 4 -j '.abi' < ../contracts/target/dev/tongo_Tongo.contract_class.json >> ./src/abi/tongo.abi.ts && echo ' as const;' >> ./src/abi/tongo.abi.ts",
-    "update-abi-vault": "echo -n 'export const vaultAbi = ' > ./src/abi/vault.abi.ts && jq --indent 4 -j '.abi' < ../contracts/target/dev/tongo_Vault.contract_class.json >> ./src/abi/vault.abi.ts && echo ' as const;' >> ./src/abi/vault.abi.ts",
+    "update-abi": "./scripts/update-abi.sh",
     "test": ". ./test/envvars && vitest run --testTimeout 0 --config vitest.config.ts --passWithNoTests",
     "test:unit": ". ./test/envvars && vitest --project unit -c ./vitest.config.ts",
-    "test:integration": ". ./test/envvars && vitest --project integration -c ./vitest.config.ts",
-    "lint": "eslint --config ./eslint.config.js \"{src,test}/**/*.{js,ts,json}\"",
-    "lint:fix": "eslint --config ./eslint.config.js \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
+    "test:integration": ". ./test/envvars && vitest --project=integration -c ./vitest.config.ts",
+    "lint": "eslint --config ./eslint.config.mjs \"{src,test}/**/*.{js,ts,json}\"",
+    "lint:fix": "eslint --config ./eslint.config.mjs \"{src,test,tests}/**/*.{js,ts,json}\" --fix",
     "format": "prettier --config ./prettier.config.js --check \"{src,test}/**/*.{js,ts,json}\"",
     "format:fix": "prettier --config ./prettier.config.js --write \"{src,test,tests}/**/*.{js,ts,json}\"",
     "devnet:state": ". ./test/envvars && starknet-devnet --dump-path ./test/state/devnet.state",
+    "serde": "vitest 'serde'",
     "aux": "tsx ./aux.ts"
   },
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.4.1",
   "dependencies": {
+    "@fatsolutions/cairo-abi-codec": "0.0.4",
     "@fatsolutions/she": "0.4.0",
     "@noble/ciphers": "catalog:",
     "@noble/hashes": "catalog:",
     "@scure/base": "catalog:",
     "@scure/starknet": "catalog:",
+    "abi-wan-kanabi": "^2.2.4",
     "starknet": "9.2.1"
   },
   "publishConfig": {
