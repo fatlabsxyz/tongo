@@ -1,4 +1,4 @@
-import { PubKey, GeneralPrefixData } from "../types.js";
+import { AccountState, PubKey, GeneralPrefixData } from "../types.js";
 import { FundOperation } from "../operations/fund.js";
 import { OutsideFundOperation } from "../operations/outside_fund.js";
 import { RollOverOperation } from "../operations/rollover.js";
@@ -122,16 +122,12 @@ export type PushOperationDescriptor =
 
 
 export interface RawAccountState {
-    balance: CipherBalance;
-    pending: CipherBalance;
-    audit: CipherBalance | undefined;
+    balanceCipher: CipherBalance;
+    pendingCipher: CipherBalance;
+    auditCipher: CipherBalance | undefined;
     aeBalance?: AEBalance;
     aeAuditBalance?: AEBalance;
     nonce: bigint;
 }
 
-export interface AccountState {
-    balance: bigint;
-    pending: bigint;
-    nonce: bigint;
-}
+export type { AccountState };

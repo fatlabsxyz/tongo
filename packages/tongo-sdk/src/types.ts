@@ -49,12 +49,15 @@ export interface CipherBalance {
     R: ProjectivePoint;
 }
 
-export interface BalanceState {
+export interface AccountState {
     nonce: bigint;
-    balance: CipherBalance;
-    balanceAmount: bigint;
-    pending: CipherBalance;
-    pendingAmount: bigint;
+    balance: bigint;
+    pending: bigint;
+}
+
+export interface CipherAccountState extends AccountState {
+    balanceCipher: CipherBalance;
+    pendingCipher: CipherBalance;
 }
 
 /**

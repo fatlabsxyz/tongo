@@ -1,5 +1,5 @@
 import { StarkPoint } from "../types.js";
-import { BalanceState, GeneralPrefixData } from "../types.js";
+import { CipherAccountState, GeneralPrefixData } from "../types.js";
 import { Call, Contract } from "starknet";
 import { IBasicOperation, OperationType } from "./operation.js";
 import { ProofOfRollover } from "../provers/rollover.js";
@@ -18,7 +18,7 @@ interface RollOverOpParams {
     hint: AEBalance;
     proof: ProofOfRollover;
     Tongo: Contract;
-    nextState: BalanceState;
+    nextState: CipherAccountState;
     prefix_data: GeneralPrefixData;
 }
 
@@ -29,7 +29,7 @@ export class RollOverOperation implements IBasicOperation {
     proof: ProofOfRollover;
     Tongo: Contract;
     hint: AEBalance;
-    nextState: BalanceState;
+    nextState: CipherAccountState;
     prefix_data: GeneralPrefixData;
 
     constructor({ to, proof, Tongo, hint, nextState, prefix_data }: RollOverOpParams) {

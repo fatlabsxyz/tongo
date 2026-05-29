@@ -1,5 +1,5 @@
 import { Call } from "starknet";
-import { BalanceState, GeneralPrefixData } from "../types.js";
+import { CipherAccountState, GeneralPrefixData } from "../types.js";
 
 export enum OperationType {
     Fund        = "fund",
@@ -29,7 +29,7 @@ export interface IOperation {
 export interface ITongoOperation extends IOperation {
     type: TongoOperationType;
     feeToSender: bigint;
-    nextState: BalanceState;
+    nextState: CipherAccountState;
     prefix_data: GeneralPrefixData;
 }
 

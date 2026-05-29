@@ -1,5 +1,5 @@
 import { Call } from "starknet";
-import { BalanceState, GeneralPrefixData } from "../types.js";
+import { CipherAccountState, GeneralPrefixData } from "../types.js";
 import { ITongoOperation, OperationType } from "./operation.js";
 import { WithdrawOperation } from "./withdraw.js";
 import { TransferOperation } from "./transfer.js";
@@ -13,18 +13,18 @@ export type TongoOperation = BasicOperation | MultiOperation;
 export class MultiOperation implements ITongoOperation {
     readonly type = OperationType.Multi;
     private ops: BasicOperation[] = [];
-    finalState: BalanceState;
+    finalState: CipherAccountState;
     feeToSender: bigint = 0n;
     readonly prefix_data: GeneralPrefixData;
     readonly bit_size: number;
 
-    constructor(initialState: BalanceState, prefix_data: GeneralPrefixData, bit_size: number) {
+    constructor(initialState: CipherAccountState, prefix_data: GeneralPrefixData, bit_size: number) {
         this.finalState = { ...initialState };
         this.prefix_data = prefix_data;
         this.bit_size = bit_size;
     }
 
-    get nextState(): BalanceState { return this.finalState; }
+    get nextState(): CipherAccountState { return this.finalState; }
 
     _append(op: BasicOperation): void {
         if (

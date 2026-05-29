@@ -27,7 +27,7 @@ import { BasicOperation, MultiOperation } from "../operations/multi_operation.js
 import { OperationType } from "../operations/operation.js";
 import { tongoAbi } from "../abi/tongo.abi.js";
 import { RPC_SPEC_VERSION } from "../constants.js";
-import { BalanceState, CipherBalance, GeneralPrefixData, parseCipherBalance, PubKey, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, RelayData, starkPointToProjectivePoint, TongoAddress, } from "../types.js";
+import { AccountState, CipherAccountState, CipherBalance, GeneralPrefixData, parseCipherBalance, PubKey, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, RelayData, starkPointToProjectivePoint, TongoAddress, } from "../types.js";
 import {
     None,
     Some,
@@ -36,7 +36,6 @@ import {
 import { AccountEventReader } from "./account.data.service.js";
 import { assertBalance, bytesOrNumToBigInt, castBigInt, decipherBalance, pubKeyFromSecret, createCipherBalance, erc20ToTongo, tongoToErc20 } from "../utils.js";
 import {
-    AccountState,
     PushOperationDescriptor,
     FundDetails,
     IAccount,
@@ -111,13 +110,8 @@ export class Account implements IAccount {
     /// Returns the State of the account. This functions decrypts the balance and pending
     /// CipherBalances.
     async state(): Promise<AccountState> {
-        const { balance, pending, aeBalance, nonce } = await this.rawState();
-
-        const hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const balanceAmount = this.decryptCipherBalance(balance, hint);
-        const pendingAmount = this.decryptCipherBalance(pending);
-
-        return { balance: balanceAmount, pending: pendingAmount, nonce };
+        const { balance, pending, nonce } = await this._fetchCipherAccountState();
+        return { balance, pending, nonce };
     }
 
     /// Returns the `almost` raw account state. The only handling that happens here is type
@@ -157,7 +151,7 @@ export class Account implements IAccount {
 
     async fund(fundDetails: FundDetails): Promise<FundOperation> {
         const { amount, sender } = fundDetails;
-        const [state, prefix_data] = await Promise.all([this._fetchBalanceState(), this.prefixData(sender)]);
+        const [state, prefix_data] = await Promise.all([this._fetchCipherAccountState(), this.prefixData(sender)]);
         const operation = await this._createFundOperation(state, { amount, prefix_data });
         await operation.populateApprove();
         return operation;
@@ -178,10 +172,10 @@ export class Account implements IAccount {
     async transfer(transferDetails: TransferDetails): Promise<TransferOperation> {
         const { amount, sender } = transferDetails;
         const feeToSender = transferDetails.feeToSender || 0n;
-        const [state, bitSize, prefix_data] = await Promise.all([this._fetchBalanceState(), this.bitSize(), this.prefixData(sender)]);
+        const [state, bitSize, prefix_data] = await Promise.all([this._fetchCipherAccountState(), this.bitSize(), this.prefixData(sender)]);
 
-        if (state.balanceAmount < amount + feeToSender) {
-            throw new Error(`Insufficient balance for transfer: have ${state.balanceAmount}, need ${amount + feeToSender} (amount=${amount}, fee=${feeToSender})`);
+        if (state.balance < amount + feeToSender) {
+            throw new Error(`Insufficient balance for transfer: have ${state.balance}, need ${amount + feeToSender} (amount=${amount}, fee=${feeToSender})`);
         }
 
         return this._createTransferOperation(state, { prefix_data, bitSize, transferDetails});
@@ -190,10 +184,10 @@ export class Account implements IAccount {
     async ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation> {
         const { sender } = ragequitDetails;
         const feeToSender = ragequitDetails.feeToSender || 0n;
-        const [state, prefix_data] = await Promise.all([this._fetchBalanceState(), this.prefixData(sender)]);
+        const [state, prefix_data] = await Promise.all([this._fetchCipherAccountState(), this.prefixData(sender)]);
 
-        if (state.balanceAmount < feeToSender) {
-            throw new Error(`Insufficient balance for ragequit: have ${state.balanceAmount}, need ${feeToSender} (relay fee)`);
+        if (state.balance < feeToSender) {
+            throw new Error(`Insufficient balance for ragequit: have ${state.balance}, need ${feeToSender} (relay fee)`);
         }
 
         return this._createRagequitOperation(state, { prefix_data, ragequitDetails});
@@ -202,10 +196,10 @@ export class Account implements IAccount {
     async withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation> {
         const { amount, sender } = withdrawDetails;
         const feeToSender = withdrawDetails.feeToSender || 0n;
-        const [state, bitSize, prefix_data] = await Promise.all([this._fetchBalanceState(), this.bitSize(), this.prefixData(sender)]);
+        const [state, bitSize, prefix_data] = await Promise.all([this._fetchCipherAccountState(), this.bitSize(), this.prefixData(sender)]);
 
-        if (state.balanceAmount < amount + feeToSender) {
-            throw new Error(`Insufficient balance for withdrawal: have ${state.balanceAmount}, need ${amount + feeToSender} (amount=${amount}, fee=${feeToSender})`);
+        if (state.balance < amount + feeToSender) {
+            throw new Error(`Insufficient balance for withdrawal: have ${state.balance}, need ${amount + feeToSender} (amount=${amount}, fee=${feeToSender})`);
         }
 
         return this._createWithdrawOperation(state, { prefix_data, bitSize, withdrawDetails });
@@ -213,9 +207,9 @@ export class Account implements IAccount {
 
     async rollover(rolloverDetails: RolloverDetails): Promise<RollOverOperation> {
         const { sender } = rolloverDetails;
-        const [state, prefix_data] = await Promise.all([this._fetchBalanceState(), this.prefixData(sender)]);
+        const [state, prefix_data] = await Promise.all([this._fetchCipherAccountState(), this.prefixData(sender)]);
 
-        if (state.pendingAmount === 0n) {
+        if (state.pending === 0n) {
             throw new Error("Nothing to roll over: pending balance is 0");
         }
 
@@ -226,14 +220,14 @@ export class Account implements IAccount {
         const multi = await this.startMultiOperation(sender);
         const state = multi.finalState;
 
-        if (state.pendingAmount === 0n) {
+        if (state.pending === 0n) {
             throw new Error("Nothing to roll over: pending balance is 0");
         }
-        if (state.balanceAmount + state.pendingAmount < feeToSender) {
-            throw new Error(`Insufficient balance for relay fee: have ${state.balanceAmount + state.pendingAmount}, need ${feeToSender}`);
+        if (state.balance + state.pending < feeToSender) {
+            throw new Error(`Insufficient balance for relay fee: have ${state.balance + state.pending}, need ${feeToSender}`);
         }
 
-        if (state.balanceAmount >= feeToSender) {
+        if (state.balance >= feeToSender) {
             // Fee covered by current balance: withdraw first, then rollover.
             // The withdraw proof commits to currentAmount, which cannot be invalidated
             // by a tx that lands before ours (that would only grow pending, not balance).
@@ -250,7 +244,7 @@ export class Account implements IAccount {
     async startMultiOperation(opOrSender: BasicOperation | string): Promise<MultiOperation> {
         const bitSize = await this.bitSize();
         if (typeof opOrSender === 'string') {
-            const [state, prefix_data] = await Promise.all([this._fetchBalanceState(), this.prefixData(opOrSender)]);
+            const [state, prefix_data] = await Promise.all([this._fetchCipherAccountState(), this.prefixData(opOrSender)]);
             return new MultiOperation(state, prefix_data, bitSize);
         }
         const op = opOrSender;
@@ -714,26 +708,26 @@ export class Account implements IAccount {
         });
     }
 
-    private async _fetchBalanceState(): Promise<BalanceState> {
-        const { nonce, balance, aeBalance, pending } = await this.rawState();
+    private async _fetchCipherAccountState(): Promise<CipherAccountState> {
+        const { nonce, balanceCipher, aeBalance, pendingCipher } = await this.rawState();
         const hint = aeBalance ? await this.decryptAEBalance(aeBalance, nonce) : undefined;
-        const balanceAmount = this.decryptCipherBalance(balance, hint);
-        const pendingAmount = this.decryptCipherBalance(pending);
-        return { nonce, balance, balanceAmount, pending, pendingAmount };
+        const balance = this.decryptCipherBalance(balanceCipher, hint);
+        const pending = this.decryptCipherBalance(pendingCipher);
+        return { nonce, balance, balanceCipher, pending, pendingCipher };
     }
 
     private static parseAccountState(state: Awaited<ReturnType<TongoContract["get_state"]>>) {
         const { balance, pending, audit, nonce, ae_balance, ae_audit_balance } = state;
 
-        let parsedAudit: CipherBalance | undefined;
+        let auditCipher: CipherBalance | undefined;
         if (audit.isSome()) {
-            parsedAudit = parseCipherBalance(audit.unwrap()!);
+            auditCipher = parseCipherBalance(audit.unwrap()!);
         }
 
         return {
-            balance: parseCipherBalance(balance),
-            pending: parseCipherBalance(pending),
-            audit: parsedAudit,
+            balanceCipher: parseCipherBalance(balance),
+            pendingCipher: parseCipherBalance(pending),
+            auditCipher,
             nonce: num.toBigInt(nonce),
             aeBalance: ae_balance.isSome() ? parseAEBalance(ae_balance.unwrap()!) : undefined,
             aeAuditBalance: ae_audit_balance.isSome()
@@ -742,36 +736,36 @@ export class Account implements IAccount {
         };
     }
 
-    private async _createFundOperation(state: BalanceState, { amount, prefix_data }: { amount: bigint; prefix_data: GeneralPrefixData }): Promise<FundOperation> {
+    private async _createFundOperation(state: CipherAccountState, { amount, prefix_data }: { amount: bigint; prefix_data: GeneralPrefixData }): Promise<FundOperation> {
         const { inputs, proof, newBalance } = proveFund(
             this.pk,
             amount,
-            state.balanceAmount,
             state.balance,
+            state.balanceCipher,
             state.nonce,
             prefix_data,
         );
 
         const auditor = await this.auditorKey();
-        const auditPart = await this.createAuditPart(amount + state.balanceAmount, state.nonce, newBalance, prefix_data, auditor);
-        const hint = await this.computeAEHintForSelf(amount + state.balanceAmount, state.nonce + 1n);
-        const nextState: BalanceState = {
+        const auditPart = await this.createAuditPart(amount + state.balance, state.nonce, newBalance, prefix_data, auditor);
+        const hint = await this.computeAEHintForSelf(amount + state.balance, state.nonce + 1n);
+        const nextState: CipherAccountState = {
             nonce: state.nonce + 1n,
-            balance: newBalance,
-            balanceAmount: state.balanceAmount + amount,
+            balanceCipher: newBalance,
+            balance: state.balance + amount,
+            pendingCipher: state.pendingCipher,
             pending: state.pending,
-            pendingAmount: state.pendingAmount,
         };
 
         return new FundOperation({ to: inputs.y, amount, hint, proof, auditPart, Tongo: this.Tongo, nextState, prefix_data });
     }
 
-    private async _createTransferOperation(state: BalanceState, {prefix_data,  bitSize, transferDetails}: {
+    private async _createTransferOperation(state: CipherAccountState, {prefix_data,  bitSize, transferDetails}: {
         prefix_data: GeneralPrefixData;
         bitSize: number;
         transferDetails: TransferDetails;
     }): Promise<TransferOperation> {
-        const { nonce, balance: initialBalance, balanceAmount: initialAmount } = state;
+        const { nonce, balanceCipher: initialBalance, balance: initialAmount } = state;
         const { amount, to } = transferDetails;
         const feeToSender = transferDetails.feeToSender || 0n;
 
@@ -851,12 +845,12 @@ export class Account implements IAccount {
             transferOptions = Some<TransferOptions>({ relayData, externalData });
         }
 
-        const nextState: BalanceState = {
+        const nextState: CipherAccountState = {
             nonce: nonce + 1n,
-            balance: newBalance,
-            balanceAmount: adjustedAmount - amount,
+            balanceCipher: newBalance,
+            balance: adjustedAmount - amount,
+            pendingCipher: state.pendingCipher,
             pending: state.pending,
-            pendingAmount: state.pendingAmount,
         };
 
         return new TransferOperation({
@@ -879,12 +873,12 @@ export class Account implements IAccount {
         });
     }
 
-    private async _createRagequitOperation(state: BalanceState, { prefix_data, ragequitDetails }: {
+    private async _createRagequitOperation(state: CipherAccountState, { prefix_data, ragequitDetails }: {
         prefix_data: GeneralPrefixData;
         ragequitDetails: RagequitDetails;
     }): Promise<RagequitOperation> {
 
-        const { nonce, balance: initialBalance, balanceAmount: initialAmount } = state;
+        const { nonce, balanceCipher: initialBalance, balance: initialAmount } = state;
         const to = ragequitDetails.to;
         const feeToSender = ragequitDetails.feeToSender || 0n;
 
@@ -911,12 +905,12 @@ export class Account implements IAccount {
         const auditPart = await this.createAuditPart(0n, nonce, newBalance, prefix_data, auditor);
         const hint = await this.computeAEHintForSelf(0n, nonce + 1n);
 
-        const nextState: BalanceState = {
+        const nextState: CipherAccountState = {
             nonce: nonce + 1n,
-            balance: newBalance,
-            balanceAmount: 0n,
+            balanceCipher: newBalance,
+            balance: 0n,
+            pendingCipher: state.pendingCipher,
             pending: state.pending,
-            pendingAmount: state.pendingAmount,
         };
 
         return new RagequitOperation({
@@ -934,31 +928,31 @@ export class Account implements IAccount {
         });
     }
 
-    private async _createRolloverOperation(state: BalanceState, prefix_data: GeneralPrefixData): Promise<RollOverOperation> {
-        const { nonce, balance, pending, balanceAmount, pendingAmount } = state;
+    private async _createRolloverOperation(state: CipherAccountState, prefix_data: GeneralPrefixData): Promise<RollOverOperation> {
+        const { nonce, balanceCipher, pendingCipher, balance, pending } = state;
         const { inputs, proof } = proveRollover(this.pk, nonce, prefix_data);
         const nextBalance: CipherBalance = {
-            L: balance.L.add(pending.L),
-            R: balance.R.add(pending.R),
+            L: balanceCipher.L.add(pendingCipher.L),
+            R: balanceCipher.R.add(pendingCipher.R),
         };
-        const hint = await this.computeAEHintForSelf(pendingAmount + balanceAmount, nonce + 1n);
-        const nextState: BalanceState = {
+        const hint = await this.computeAEHintForSelf(pending + balance, nonce + 1n);
+        const nextState: CipherAccountState = {
             nonce: nonce + 1n,
-            balance: nextBalance,
-            balanceAmount: balanceAmount + pendingAmount,
-            pending: createCipherBalance(starkPointToProjectivePoint(this.publicKey), 0n, 1n),
-            pendingAmount: 0n,
+            balanceCipher: nextBalance,
+            balance: balance + pending,
+            pendingCipher: createCipherBalance(starkPointToProjectivePoint(this.publicKey), 0n, 1n),
+            pending: 0n,
         };
         return new RollOverOperation({ to: inputs.y, proof, Tongo: this.Tongo, hint, nextState, prefix_data });
     }
 
-    private async _createWithdrawOperation(state: BalanceState, { prefix_data, bitSize, withdrawDetails }: {
+    private async _createWithdrawOperation(state: CipherAccountState, { prefix_data, bitSize, withdrawDetails }: {
         prefix_data: GeneralPrefixData;
         bitSize: number;
         withdrawDetails: WithdrawDetails;
     }): Promise<WithdrawOperation> {
 
-        const { nonce, balance: initialBalance, balanceAmount: initialAmount } = state;
+        const { nonce, balanceCipher: initialBalance, balance: initialAmount } = state;
         const {to, amount} = withdrawDetails;
         const feeToSender = withdrawDetails.feeToSender || 0n;
 
@@ -987,12 +981,12 @@ export class Account implements IAccount {
         const auditor = await this.auditorKey();
         const auditPart = await this.createAuditPart(adjustedAmount - amount, nonce, newBalance, prefix_data, auditor);
 
-        const nextState: BalanceState = {
+        const nextState: CipherAccountState = {
             nonce: nonce + 1n,
-            balance: newBalance,
-            balanceAmount: adjustedAmount - amount,
+            balanceCipher: newBalance,
+            balance: adjustedAmount - amount,
+            pendingCipher: state.pendingCipher,
             pending: state.pending,
-            pendingAmount: state.pendingAmount,
         };
         return new WithdrawOperation({
             from: inputs.y,
