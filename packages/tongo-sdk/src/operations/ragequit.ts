@@ -1,16 +1,13 @@
 import { ProofOfRagequit } from "../provers/ragequit.js";
-import { BigNumberish, Call, Contract, CairoOption } from "starknet";
-import { IOperation, OperationType } from "./operation.js";
+import { BigNumberish, Call, Contract, CairoOption, num } from "starknet";
+import { CipherAccountState, GeneralPrefixData } from "../types.js";
+import { IBasicOperation, OperationType } from "./operation.js";
 import { AEBalance } from "../ae_balance.js";
 import { StarkPoint } from "../types.js";
 import { TongoAbiType, tongoCodec } from "../abi/abi.types.js";
 import { Audit } from "./audit.js";
 
 export type RagequitOptions = TongoAbiType<"tongo::structs::operations::ragequit::RagequitOptions">;
-
-export interface IRagequitOperation extends IOperation {
-    type: typeof OperationType.Ragequit;
-}
 
 /**
  * Represents the calldata of a ragequit operation.
@@ -28,11 +25,14 @@ interface RagequitOpParams {
     from: StarkPoint;
     amount: BigNumberish;
     to: BigNumberish;
+    feeToSender: bigint;
     hint: AEBalance;
     proof: ProofOfRagequit;
     auditPart: CairoOption<Audit>;
     ragequitOptions: CairoOption<RagequitOptions>;
     Tongo: Contract;
+    nextState: CipherAccountState;
+    prefix_data: GeneralPrefixData;
 }
 
 const OptionalRagequitOption =
@@ -42,8 +42,9 @@ export function serializeRagequitOptions(ragequitOptions: CairoRagequitOptions):
     return tongoCodec.encode(OptionalRagequitOption, ragequitOptions).map(BigInt);
 }
 
-export class RagequitOperation implements IRagequitOperation {
-    type: typeof OperationType.Ragequit = OperationType.Ragequit;
+export class RagequitOperation implements IBasicOperation {
+    readonly type = OperationType.Ragequit;
+    feeToSender: bigint;
     Tongo: Contract;
     from: StarkPoint;
     to: BigNumberish;
@@ -52,38 +53,35 @@ export class RagequitOperation implements IRagequitOperation {
     auditPart: CairoOption<Audit>;
     proof: ProofOfRagequit;
     ragequitOptions: CairoOption<RagequitOptions>;
+    nextState: CipherAccountState;
+    prefix_data: GeneralPrefixData;
 
-    constructor({
-        from,
-        to,
-        amount,
-        proof,
-        Tongo,
-        hint,
-        auditPart,
-        ragequitOptions,
-    }: RagequitOpParams) {
+    constructor({ from, to, amount, feeToSender, proof, Tongo, hint, auditPart, ragequitOptions, nextState, prefix_data }: RagequitOpParams) {
         this.Tongo = Tongo;
         this.from = from;
         this.to = to;
         this.amount = amount;
+        this.feeToSender = feeToSender;
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
         this.ragequitOptions = ragequitOptions;
+        this.nextState = nextState;
+        this.prefix_data = prefix_data;
     }
 
-    toCalldata(): Call {
-        return this.Tongo.populate("ragequit", [
-            {
+    toCalldata(): Call[] {
+        return [
+            this.Tongo.populate("ragequit", [{
                 from: this.from,
                 amount: this.amount,
-                to: this.to,
+                to: num.toHex(this.to),
                 proof: this.proof,
                 hint: this.hint,
                 auditPart: this.auditPart,
             },
             this.ragequitOptions,
-        ]);
+        ])
+        ]
     }
 }

@@ -1,16 +1,12 @@
-import { ProofOfWithdraw } from "../provers/withdraw.js";
-import { BigNumberish, Call, Contract, num, CairoOption } from "starknet";
-import { AEBalance } from "../ae_balance.js";
-import { StarkCipherBalance, StarkPoint } from "../types.js";
+import { BigNumberish, CairoOption, Call, Contract, num } from "starknet";
 import { TongoAbiType, tongoCodec } from "../abi/abi.types.js";
-import { IOperation, OperationType } from "./operation.js";
+import { AEBalance } from "../ae_balance.js";
+import { ProofOfWithdraw } from "../provers/withdraw.js";
+import { CipherAccountState, GeneralPrefixData, StarkCipherBalance, StarkPoint } from "../types.js";
 import { Audit } from "./audit.js";
+import { IBasicOperation, OperationType } from "./operation.js";
 
 export type WithdrawOptions = TongoAbiType<"tongo::structs::operations::withdraw::WithdrawOptions">;
-
-export interface IWithdrawOperation extends IOperation {
-    type: typeof OperationType.Withdraw;
-}
 
 /**
  * Represents the calldata of a withdraw operation.
@@ -29,11 +25,14 @@ interface WithdrawOpParams {
     to: BigNumberish;
     amount: BigNumberish;
     auxiliarCipher: StarkCipherBalance;
+    feeToSender: bigint;
     hint: AEBalance;
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
     withdrawOptions: CairoOption<WithdrawOptions>;
     Tongo: Contract;
+    nextState: CipherAccountState;
+    prefix_data: GeneralPrefixData;
 }
 
 const OptionalWithdrawOption =
@@ -43,8 +42,9 @@ export function serializeWithdrawOptions(withdrawOptions: CairoWithdrawOptions):
     return tongoCodec.encode(OptionalWithdrawOption, withdrawOptions).map(BigInt);
 }
 
-export class WithdrawOperation implements IWithdrawOperation {
-    type: typeof OperationType.Withdraw = OperationType.Withdraw;
+export class WithdrawOperation implements IBasicOperation {
+    readonly type = OperationType.Withdraw;
+    feeToSender: bigint;
     Tongo: Contract;
     from: StarkPoint;
     to: BigNumberish;
@@ -54,32 +54,27 @@ export class WithdrawOperation implements IWithdrawOperation {
     proof: ProofOfWithdraw;
     auditPart: CairoOption<Audit>;
     withdrawOptions: CairoOption<WithdrawOptions>;
+    nextState: CipherAccountState;
+    prefix_data: GeneralPrefixData;
 
-    constructor({
-        from,
-        to,
-        amount,
-        proof,
-        auditPart,
-        Tongo,
-        hint,
-        auxiliarCipher,
-        withdrawOptions,
-    }: WithdrawOpParams) {
+    constructor({ from, to, amount, feeToSender, proof, auditPart, Tongo, hint, auxiliarCipher, withdrawOptions, nextState, prefix_data }: WithdrawOpParams) {
         this.Tongo = Tongo;
         this.from = from;
         this.to = to;
         this.amount = amount;
+        this.feeToSender = feeToSender;
         this.auxiliarCipher = auxiliarCipher;
         this.hint = hint;
         this.proof = proof;
         this.auditPart = auditPart;
         this.withdrawOptions = withdrawOptions;
+        this.nextState = nextState;
+        this.prefix_data = prefix_data;
     }
 
-    toCalldata(): Call {
-        return this.Tongo.populate("withdraw", [
-            {
+    toCalldata(): Call[] {
+        return [
+            this.Tongo.populate("withdraw", [{
                 from: this.from,
                 amount: this.amount,
                 hint: this.hint,
@@ -89,6 +84,7 @@ export class WithdrawOperation implements IWithdrawOperation {
                 proof: this.proof,
             },
             this.withdrawOptions,
-        ]);
+        ]),
+        ]
     }
 }

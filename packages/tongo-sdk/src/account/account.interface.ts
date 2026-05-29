@@ -1,10 +1,12 @@
-import { PubKey, GeneralPrefixData } from "../types.js";
+import { AccountState, PubKey, GeneralPrefixData } from "../types.js";
 import { FundOperation } from "../operations/fund.js";
 import { OutsideFundOperation } from "../operations/outside_fund.js";
 import { RollOverOperation } from "../operations/rollover.js";
 import { TransferOperation } from "../operations/transfer.js";
 import { WithdrawOperation } from "../operations/withdraw.js";
 import { RagequitOperation } from "../operations/ragequit.js";
+import { BasicOperation, MultiOperation } from "../operations/multi_operation.js";
+import { OperationType } from "../operations/operation.js";
 import { AEBalance } from "../ae_balance.js";
 import { Audit, ExPost } from "../operations/audit.js";
 import {
@@ -17,7 +19,7 @@ import {
     AccountWithdrawEvent,
     AccountReceivedExternalTransfer,
 } from "./events.js";
-import { CairoOption } from "starknet";
+import { CairoOption, Signature, TypedData } from "starknet";
 import { CipherBalance } from "../types.js";
 
 export interface IAccount {
@@ -31,6 +33,8 @@ export interface IAccount {
     withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation>;
     ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation>;
     rollover(rolloverDetails: RolloverDetails): Promise<RollOverOperation>;
+    startMultiOperation(opOrSender: BasicOperation | string): Promise<MultiOperation>;
+    pushOperation(multi: MultiOperation, descriptor: PushOperationDescriptor): Promise<void>;
 
     // state access
     rawState(): Promise<RawAccountState>;
@@ -60,46 +64,18 @@ export interface IAccount {
     verifyExPost(expost: ExPost): bigint;
 
     // events
-    getEventsFund(
-        fromBlock: number,
-        toBlock?: number | "latest",
-        numEvents?: number | "all",
-    ): Promise<AccountFundEvent[]>;
-    getEventsRollover(
-        fromBlock: number,
-        toBlock?: number | "latest",
-        numEvents?: number | "all",
-    ): Promise<AccountRolloverEvent[]>;
-    getEventsWithdraw(
-        fromBlock: number,
-        toBlock?: number | "latest",
-        numEvents?: number | "all",
-    ): Promise<AccountWithdrawEvent[]>;
-    getEventsRagequit(
-        fromBlock: number,
-        toBlock?: number | "latest",
-        numEvents?: number | "all",
-    ): Promise<AccountRagequitEvent[]>;
-    getEventsTransferOut(
-        fromBlock: number,
-        toBlock?: number | "latest",
-        numEvents?: number | "all",
-    ): Promise<AccountTransferOutEvent[]>;
-    getEventsTransferIn(
-        fromBlock: number,
-        toBlock?: number | "latest",
-        numEvents?: number | "all",
-    ): Promise<AccountTransferInEvent[]>;
-    getEventsReceivedExternalTransfer(
-        fromBlock: number,
-        toBlock?: number | "latest",
-        numEvents?: number | "all",
-    ): Promise<AccountReceivedExternalTransfer[]>;
-    getTxHistory(
-        fromBlock: number,
-        toBlock?: number | "latest",
-        numEvents?: number | "all",
-    ): Promise<AccountEvents[]>;
+    getEventsFund(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountFundEvent[]>;
+    getEventsRollover(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountRolloverEvent[]>;
+    getEventsWithdraw(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountWithdrawEvent[]>;
+    getEventsRagequit(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountRagequitEvent[]>;
+    getEventsTransferOut(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountTransferOutEvent[]>;
+    getEventsTransferIn(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountTransferInEvent[]>;
+    getEventsReceivedExternalTransfer(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountReceivedExternalTransfer[]>;
+    getTxHistory(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountEvents[]>;
+
+    // utils
+    nonceHash(): Promise<string>;
+    signMessage(typedData: TypedData, accountAddress: string): Promise<Signature>;
 }
 
 export interface FundDetails {
@@ -137,17 +113,21 @@ export interface WithdrawDetails {
     feeToSender?: bigint;
 }
 
+export type PushOperationDescriptor =
+    | { type: OperationType.Fund }     & Omit<FundDetails, 'sender'>
+    | { type: OperationType.Rollover }
+    | { type: OperationType.Withdraw } & Omit<WithdrawDetails, 'sender'>
+    | { type: OperationType.Transfer } & Omit<TransferDetails, 'sender'>
+    | { type: OperationType.Ragequit } & Omit<RagequitDetails, 'sender'>;
+
+
 export interface RawAccountState {
-    balance: CipherBalance;
-    pending: CipherBalance;
-    audit: CipherBalance | undefined;
+    balanceCipher: CipherBalance;
+    pendingCipher: CipherBalance;
+    auditCipher: CipherBalance | undefined;
     aeBalance?: AEBalance;
     aeAuditBalance?: AEBalance;
     nonce: bigint;
 }
 
-export interface AccountState {
-    balance: bigint;
-    pending: bigint;
-    nonce: bigint;
-}
+export type { AccountState };

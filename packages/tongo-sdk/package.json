@@ -62,7 +62,7 @@
     "@scure/base": "catalog:",
     "@scure/starknet": "catalog:",
     "abi-wan-kanabi": "^2.2.4",
-    "starknet": "9.2.1"
+    "starknet": "catalog:"
   },
   "publishConfig": {
     "access": "public",

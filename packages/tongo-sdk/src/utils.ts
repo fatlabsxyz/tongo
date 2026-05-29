@@ -109,3 +109,12 @@ export function Some<T>(data: T) {
 export function None<T>() {
     return new CairoOption<T>(CairoOptionVariant.None);
 }
+
+export function erc20ToTongo(erc20Amount: bigint, rate: bigint): bigint {
+    const q = erc20Amount / rate;
+    return erc20Amount % rate !== 0n ? q + 1n : q;
+}
+
+export function tongoToErc20(tongoAmount: bigint, rate: bigint): bigint {
+    return tongoAmount * rate;
+}

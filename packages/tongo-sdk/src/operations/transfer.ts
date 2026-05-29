@@ -1,4 +1,5 @@
 import { CairoOption, Call, Contract } from "starknet";
+import { CipherAccountState, GeneralPrefixData } from "../types.js";
 
 import { ProofOfTransfer } from "../provers/transfer.js";
 import { StarkCipherBalance, StarkPoint } from "../types.js";
@@ -6,14 +7,10 @@ import { StarkCipherBalance, StarkPoint } from "../types.js";
 import { AEBalance } from "../ae_balance.js";
 import { Audit } from "./audit.js";
 import { TongoAbiType, tongoCodec } from "../abi/abi.types.js";
-import { IOperation, OperationType } from "./operation.js";
+import { IBasicOperation, OperationType } from "./operation.js";
 
 export type ExternalData = TongoAbiType<"tongo::structs::operations::transfer::ExternalData">;
 export type TransferOptions = TongoAbiType<"tongo::structs::operations::transfer::TransferOptions">;
-
-export interface ITransferOperation extends IOperation {
-    type: typeof OperationType.Transfer;
-}
 
 /**
  * Represents the calldata of a transfer operation.
@@ -37,6 +34,7 @@ interface TransferOpParams {
     transferBalanceSelf: StarkCipherBalance;
     auxiliarCipher: StarkCipherBalance;
     auxiliarCipher2: StarkCipherBalance;
+    feeToSender: bigint;
     proof: ProofOfTransfer;
     hintTransfer: AEBalance;
     hintLeftover: AEBalance;
@@ -44,6 +42,8 @@ interface TransferOpParams {
     auditPartTransfer: CairoOption<Audit>;
     transferOptions: CairoOption<TransferOptions>;
     Tongo: Contract;
+    nextState: CipherAccountState;
+    prefix_data: GeneralPrefixData;
 }
 
 const OptionalTransferOption =
@@ -53,8 +53,9 @@ export function serializeTransferOptions(transferOptions: CairoTransferOptions):
     return tongoCodec.encode(OptionalTransferOption, transferOptions).map(BigInt);
 }
 
-export class TransferOperation implements ITransferOperation {
-    type: typeof OperationType.Transfer = OperationType.Transfer;
+export class TransferOperation implements IBasicOperation {
+    readonly type = OperationType.Transfer;
+    feeToSender: bigint;
     Tongo: Contract;
     from: StarkPoint;
     to: StarkPoint;
@@ -68,10 +69,13 @@ export class TransferOperation implements ITransferOperation {
     auditPart: CairoOption<Audit>;
     auditPartTransfer: CairoOption<Audit>;
     transferOptions: CairoOption<TransferOptions>;
+    nextState: CipherAccountState;
+    prefix_data: GeneralPrefixData;
 
     constructor({
         from,
         to,
+        feeToSender,
         transferBalance,
         transferBalanceSelf,
         proof,
@@ -83,9 +87,12 @@ export class TransferOperation implements ITransferOperation {
         hintTransfer,
         hintLeftover,
         transferOptions,
+        nextState,
+        prefix_data,
     }: TransferOpParams) {
         this.from = from;
         this.to = to;
+        this.feeToSender = feeToSender;
         this.transferBalance = transferBalance;
         this.transferBalanceSelf = transferBalanceSelf;
         this.auxiliarCipher = auxiliarCipher;
@@ -97,11 +104,13 @@ export class TransferOperation implements ITransferOperation {
         this.auditPartTransfer = auditPartTransfer;
         this.transferOptions = transferOptions;
         this.Tongo = Tongo;
+        this.nextState = nextState;
+        this.prefix_data = prefix_data;
     }
 
-    toCalldata(): Call {
-        return this.Tongo.populate("transfer", [
-            {
+    toCalldata(): Call[] {
+        return [
+            this.Tongo.populate("transfer", [{
                 from: this.from,
                 to: this.to,
                 transferBalance: this.transferBalance,
@@ -115,6 +124,7 @@ export class TransferOperation implements ITransferOperation {
                 auditPartTransfer: this.auditPartTransfer,
             },
             this.transferOptions,
-        ]);
+            ])
+        ]
     }
 }

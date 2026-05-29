@@ -4,7 +4,7 @@ use core::traits::{Into, TryInto};
 /// Represents a user public key. Private keys are numbers  x \in (0,
 /// core::ec::stark_curve::CURVE_ORDER) and public keys are the NonZeroEcPoint y = g**x where g is
 /// the starknet curve generator.
-#[derive(Drop, Debug, Copy, Hash, starknet::Store)]
+#[derive(Drop, Debug, Copy, Hash, PartialEq, starknet::Store)]
 pub struct PubKey {
     pub x: felt252,
     pub y: felt252,

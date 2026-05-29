@@ -47,7 +47,7 @@ export async function deriveSymmetricEncryptionKey(deriveSymKeyParams: {
         info: buildInfo(contractAddress),
         length: 32,
     };
-    const key = await crypto.subtle.importKey("raw", secret, "HKDF", false, ["deriveKey"]);
+    const key = await crypto.subtle.importKey("raw", secret as Uint8Array<ArrayBuffer>, "HKDF", false, ["deriveKey"]);
 
     /*
     * This is the web api to derive keys using HKDF. Note that because ChaCha does not have a supported use case

@@ -75,17 +75,8 @@ pub struct InputsRagequit {
 impl RagequitPrefix of Prefix<InputsRagequit> {
     fn compute_prefix(self: @InputsRagequit) -> felt252 {
         let ragequit_selector = 'ragequit';
-        let GeneralPrefixData { chain_id, tongo_address, sender_address } = self.prefix_data;
-        let CipherBalance { L, R } = *self.currentBalance;
-
-        let mut array: Array<felt252> = array![
-            *chain_id, (*tongo_address).into(), (*sender_address).into(), ragequit_selector,
-            *self.y.x, *self.y.y, (*self.nonce).into(), (*self.amount).into(), (*self.to).into(),
-            L.x, L.y, R.x, R.y,
-        ];
-        for d in self.data {
-            array.append(*d)
-        }
+        let mut array: Array<felt252> = array![ragequit_selector];
+        self.serialize(ref array);
         poseidon_hash_span(array.span())
     }
 }

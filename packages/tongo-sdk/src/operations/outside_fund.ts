@@ -1,14 +1,9 @@
 import { cairo, Call, CallData, Contract, num } from "starknet";
 
-import { ProjectivePoint } from "../types.js";
+import { StarkPoint } from "../types.js";
 
 import { castBigInt } from "../utils.js";
 import { IOperation, OperationType } from "./operation.js";
-
-interface IOutsideFundOperation extends IOperation {
-    type: typeof OperationType.OutsideFund;
-    populateApprove(): Promise<void>;
-}
 
 /**
  * Represents the calldata of a outsideFund operation.
@@ -18,16 +13,17 @@ interface IOutsideFundOperation extends IOperation {
  * @property {Contract} Tongo - The Tongo instance to interact with
  */
 interface OutsideFundOpParams {
-    to: ProjectivePoint;
+    to: StarkPoint;
     amount: bigint;
     Tongo: Contract;
 }
 
-export class OutsideFundOperation implements IOutsideFundOperation {
-    type: typeof OperationType.OutsideFund = OperationType.OutsideFund;
+export class OutsideFundOperation implements IOperation {
+    readonly type = OperationType.OutsideFund;
     Tongo: Contract;
-    to: ProjectivePoint;
+    to: StarkPoint;
     amount: bigint;
+    feeToSender: bigint = 0n;
     approve?: Call;
 
     constructor({ to, amount, Tongo }: OutsideFundOpParams) {
@@ -36,13 +32,13 @@ export class OutsideFundOperation implements IOutsideFundOperation {
         this.Tongo = Tongo;
     }
 
-    toCalldata(): Call {
-        return this.Tongo.populate("outside_fund", [
-            {
+    toCalldata(): Call[] {
+        return [
+            this.Tongo.populate("outside_fund", [{
                 to: this.to,
                 amount: this.amount,
-            },
-        ]);
+            }])
+        ]
     }
 
     // TODO: better ux for this. Maybe return the call?

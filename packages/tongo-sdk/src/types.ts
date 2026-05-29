@@ -12,6 +12,14 @@ import { AuxAbiType, TongoAbiType } from "./abi/abi.types.js";
 export type GeneralPrefixData = AuxAbiType<"tongo::structs::traits::GeneralPrefixData">;
 export type RelayData = TongoAbiType<"tongo::structs::common::relayer::RelayData">;
 
+export interface RelayFeeEstimate {
+    avnuEstimatedStrk: bigint;
+    avnuEstimatedTongo: bigint;
+    avnuSuggestedStrk: bigint;
+    avnuSuggestedTongo: bigint;
+    relayerSuggestedTongo: bigint;
+}
+
 export const ProjectivePoint: typeof SheProjectivePoint = SheProjectivePoint;
 export type ProjectivePoint = SheProjectivePointType;
 
@@ -39,6 +47,17 @@ export type PubKey = StarkPoint;
 export interface CipherBalance {
     L: ProjectivePoint;
     R: ProjectivePoint;
+}
+
+export interface AccountState {
+    nonce: bigint;
+    balance: bigint;
+    pending: bigint;
+}
+
+export interface CipherAccountState extends AccountState {
+    balanceCipher: CipherBalance;
+    pendingCipher: CipherBalance;
 }
 
 /**
