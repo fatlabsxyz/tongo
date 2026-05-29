@@ -166,9 +166,10 @@ fn supports_interface(self: @TContractState, interface_id: felt252) -> bool;
 
 | Contract | Address |
 |---|---|
-| Tongo V2 | `0x7b670f703cb67d07f2f07eb78e7713892fd00122099e7aef2d8692540233ca2` |
-| Relayer | `0x008b83447a2ec55d916e1089bb2492ce87aeccff216a2e0b1ec238663f81d0b2` |
+| Vault | `0x043eb3253e194640619155b7d9225b59d3b6420fee2266bcb00b44605fa7b710`|
+| Tongo V2 | `0x0185f56d2631a2f974fe177e2653695b6dfa801bfbd7cd05bf796613372251a5` |
+| Relayer | `0x02233f0678c87fc6b10712cfaba599e0d92d5899a5ec4440dc588a9a3cd41c1a` |
 | Owner | `0x1205a5a942f937a4354c3816dd94c4e5df8504fb19bbc55c10b0fc009ad5a9d` |
 | Whitelisted asset (STRK) | `0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d` |
-| Whitelisted target | `0x7b670f703cb67d07f2f07eb78e7713892fd00122099e7aef2d8692540233ca2` |
+| Whitelisted target | `0x0185f56d2631a2f974fe177e2653695b6dfa801bfbd7cd05bf796613372251a5` |
 | Forwarder | `0x075a180e18e56da1b1cae181c92a288f586f5fe22c18df21cf97886f1e4b316c` |
