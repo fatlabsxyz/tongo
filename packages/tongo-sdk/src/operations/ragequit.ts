@@ -1,5 +1,5 @@
 import { ProofOfRagequit } from "../provers/ragequit.js";
-import { BigNumberish, Call, Contract, CairoOption } from "starknet";
+import { BigNumberish, Call, Contract, CairoOption, num } from "starknet";
 import { CipherAccountState, GeneralPrefixData } from "../types.js";
 import { IBasicOperation, OperationType } from "./operation.js";
 import { AEBalance } from "../ae_balance.js";
@@ -75,7 +75,7 @@ export class RagequitOperation implements IBasicOperation {
             this.Tongo.populate("ragequit", [{
                 from: this.from,
                 amount: this.amount,
-                to: this.to,
+                to: num.toHex(this.to),
                 proof: this.proof,
                 hint: this.hint,
                 auditPart: this.auditPart,

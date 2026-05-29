@@ -161,7 +161,7 @@ export class Account implements IAccount {
         const { amount, to } = outsideFundDetails;
 
         const operation = new OutsideFundOperation({
-            to: starkPointToProjectivePoint(to),
+            to,
             amount,
             Tongo: this.Tongo
         });

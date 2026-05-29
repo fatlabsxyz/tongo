@@ -1,6 +1,6 @@
 import { cairo, Call, CallData, Contract, num } from "starknet";
 
-import { ProjectivePoint } from "../types.js";
+import { StarkPoint } from "../types.js";
 
 import { castBigInt } from "../utils.js";
 import { IOperation, OperationType } from "./operation.js";
@@ -13,7 +13,7 @@ import { IOperation, OperationType } from "./operation.js";
  * @property {Contract} Tongo - The Tongo instance to interact with
  */
 interface OutsideFundOpParams {
-    to: ProjectivePoint;
+    to: StarkPoint;
     amount: bigint;
     Tongo: Contract;
 }
@@ -21,7 +21,7 @@ interface OutsideFundOpParams {
 export class OutsideFundOperation implements IOperation {
     readonly type = OperationType.OutsideFund;
     Tongo: Contract;
-    to: ProjectivePoint;
+    to: StarkPoint;
     amount: bigint;
     feeToSender: bigint = 0n;
     approve?: Call;
