@@ -1,7 +1,7 @@
 import { cairo, CairoOption, Call, CallData, Contract, num } from "starknet";
 
 import { ProofOfFund } from "../provers/fund.js";
-import { BalanceState } from "../types.js";
+import { BalanceState, GeneralPrefixData } from "../types.js";
 
 import { AEBalance } from "../ae_balance.js";
 import { StarkPoint } from "../types.js";
@@ -32,6 +32,7 @@ interface FundOpParams {
     auditPart: CairoOption<Audit>;
     Tongo: Contract;
     nextState: BalanceState;
+    prefix_data: GeneralPrefixData;
 }
 
 export class FundOperation implements IFundOperation {
@@ -45,8 +46,9 @@ export class FundOperation implements IFundOperation {
     auditPart: CairoOption<Audit>;
     approve?: Call;
     nextState: BalanceState;
+    prefix_data: GeneralPrefixData;
 
-    constructor({ to, amount, proof, auditPart, Tongo, hint, nextState }: FundOpParams) {
+    constructor({ to, amount, proof, auditPart, Tongo, hint, nextState, prefix_data }: FundOpParams) {
         this.type = OperationType.Fund;
         this.to = to;
         this.amount = amount;
@@ -55,6 +57,7 @@ export class FundOperation implements IFundOperation {
         this.proof = proof;
         this.Tongo = Tongo;
         this.nextState = nextState;
+        this.prefix_data = prefix_data;
     }
 
     toCalldata(): Call[] {

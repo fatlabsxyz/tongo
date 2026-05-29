@@ -2,7 +2,7 @@ import { BigNumberish, CairoOption, Call, Contract, num } from "starknet";
 import { TongoAbiType, tongoCodec } from "../abi/abi.types.js";
 import { AEBalance } from "../ae_balance.js";
 import { ProofOfWithdraw } from "../provers/withdraw.js";
-import { BalanceState, StarkCipherBalance, StarkPoint } from "../types.js";
+import { BalanceState, GeneralPrefixData, StarkCipherBalance, StarkPoint } from "../types.js";
 import { Audit } from "./audit.js";
 import { IOperation, OperationType } from "./operation.js";
 
@@ -36,6 +36,7 @@ interface WithdrawOpParams {
     withdrawOptions: CairoOption<WithdrawOptions>;
     Tongo: Contract;
     nextState: BalanceState;
+    prefix_data: GeneralPrefixData;
 }
 
 const OptionalWithdrawOption =
@@ -58,8 +59,9 @@ export class WithdrawOperation implements IWithdrawOperation {
     auditPart: CairoOption<Audit>;
     withdrawOptions: CairoOption<WithdrawOptions>;
     nextState: BalanceState;
+    prefix_data: GeneralPrefixData;
 
-    constructor({ from, to, amount, feeToSender, proof, auditPart, Tongo, hint, auxiliarCipher, withdrawOptions, nextState }: WithdrawOpParams) {
+    constructor({ from, to, amount, feeToSender, proof, auditPart, Tongo, hint, auxiliarCipher, withdrawOptions, nextState, prefix_data }: WithdrawOpParams) {
         this.Tongo = Tongo;
         this.from = from;
         this.to = to;
@@ -71,6 +73,7 @@ export class WithdrawOperation implements IWithdrawOperation {
         this.auditPart = auditPart;
         this.withdrawOptions = withdrawOptions;
         this.nextState = nextState;
+        this.prefix_data = prefix_data;
     }
 
     toCalldata(): Call[] {

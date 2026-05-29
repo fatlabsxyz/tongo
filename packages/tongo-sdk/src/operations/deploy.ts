@@ -21,6 +21,7 @@ interface DeployOpParams {
 export class DeployOperation implements IDeployOperation {
     type: typeof OperationType.Deploy = OperationType.Deploy;
     owner: bigint;
+    feeToSender: bigint = 0n;
     tag: bigint;
     targetAddress: string;
     auditorKey: CairoOption<StarkPoint>;

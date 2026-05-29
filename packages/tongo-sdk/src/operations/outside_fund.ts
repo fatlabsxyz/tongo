@@ -28,6 +28,7 @@ export class OutsideFundOperation implements IOutsideFundOperation {
     Tongo: Contract;
     to: ProjectivePoint;
     amount: bigint;
+    feeToSender: bigint = 0n;
     approve?: Call;
 
     constructor({ to, amount, Tongo }: OutsideFundOpParams) {

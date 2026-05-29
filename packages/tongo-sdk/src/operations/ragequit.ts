@@ -1,6 +1,6 @@
 import { ProofOfRagequit } from "../provers/ragequit.js";
 import { BigNumberish, Call, Contract, CairoOption } from "starknet";
-import { BalanceState } from "../types.js";
+import { BalanceState, GeneralPrefixData } from "../types.js";
 import { IOperation, OperationType } from "./operation.js";
 import { AEBalance } from "../ae_balance.js";
 import { StarkPoint } from "../types.js";
@@ -36,6 +36,7 @@ interface RagequitOpParams {
     ragequitOptions: CairoOption<RagequitOptions>;
     Tongo: Contract;
     nextState: BalanceState;
+    prefix_data: GeneralPrefixData;
 }
 
 const OptionalRagequitOption =
@@ -57,8 +58,9 @@ export class RagequitOperation implements IRagequitOperation {
     proof: ProofOfRagequit;
     ragequitOptions: CairoOption<RagequitOptions>;
     nextState: BalanceState;
+    prefix_data: GeneralPrefixData;
 
-    constructor({ from, to, amount, feeToSender, proof, Tongo, hint, auditPart, ragequitOptions, nextState }: RagequitOpParams) {
+    constructor({ from, to, amount, feeToSender, proof, Tongo, hint, auditPart, ragequitOptions, nextState, prefix_data }: RagequitOpParams) {
         this.Tongo = Tongo;
         this.from = from;
         this.to = to;
@@ -69,6 +71,7 @@ export class RagequitOperation implements IRagequitOperation {
         this.auditPart = auditPart;
         this.ragequitOptions = ragequitOptions;
         this.nextState = nextState;
+        this.prefix_data = prefix_data;
     }
 
     toCalldata(): Call[] {

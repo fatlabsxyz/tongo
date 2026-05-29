@@ -13,8 +13,7 @@ export class MultiOperation implements IOperation {
     type: typeof OperationType.Multi = OperationType.Multi;
     private ops: BasicOperation[] = [];
     finalState: BalanceState;
-    private _total_fee_to_sender: bigint = 0n;
-    get feeToSender(): bigint { return this._total_fee_to_sender; }
+    feeToSender: bigint = 0n;
     readonly prefix_data: GeneralPrefixData;
     readonly bit_size: number;
 
@@ -27,8 +26,15 @@ export class MultiOperation implements IOperation {
     get nextState(): BalanceState { return this.finalState; }
 
     _append(op: BasicOperation): void {
+        if (
+            op.prefix_data.chain_id !== this.prefix_data.chain_id ||
+            op.prefix_data.tongo_address !== this.prefix_data.tongo_address ||
+            op.prefix_data.sender_address !== this.prefix_data.sender_address
+        ) {
+            throw new Error("Operation prefix_data does not match MultiOperation context");
+        }
         this.ops.push(op);
-        this._total_fee_to_sender += op.fee_to_sender;
+        this.feeToSender += op.feeToSender;
         this.finalState = op.nextState;
     }
 

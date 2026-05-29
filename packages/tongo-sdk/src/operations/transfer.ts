@@ -1,6 +1,5 @@
 import { CairoOption, Call, Contract } from "starknet";
-=======
-import { BalanceState, CipherBalance } from "../types.js";
+import { BalanceState, GeneralPrefixData } from "../types.js";
 
 import { ProofOfTransfer } from "../provers/transfer.js";
 import { StarkCipherBalance, StarkPoint } from "../types.js";
@@ -48,6 +47,7 @@ interface TransferOpParams {
     transferOptions: CairoOption<TransferOptions>;
     Tongo: Contract;
     nextState: BalanceState;
+    prefix_data: GeneralPrefixData;
 }
 
 const OptionalTransferOption =
@@ -74,6 +74,7 @@ export class TransferOperation implements ITransferOperation {
     auditPartTransfer: CairoOption<Audit>;
     transferOptions: CairoOption<TransferOptions>;
     nextState: BalanceState;
+    prefix_data: GeneralPrefixData;
 
     constructor({
         from,
@@ -91,6 +92,7 @@ export class TransferOperation implements ITransferOperation {
         hintLeftover,
         transferOptions,
         nextState,
+        prefix_data,
     }: TransferOpParams) {
         this.from = from;
         this.to = to;
@@ -107,6 +109,7 @@ export class TransferOperation implements ITransferOperation {
         this.transferOptions = transferOptions;
         this.Tongo = Tongo;
         this.nextState = nextState;
+        this.prefix_data = prefix_data;
     }
 
     toCalldata(): Call[] {

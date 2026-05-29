@@ -5,6 +5,7 @@ import { RollOverOperation } from "../operations/rollover.js";
 import { TransferOperation } from "../operations/transfer.js";
 import { WithdrawOperation } from "../operations/withdraw.js";
 import { RagequitOperation } from "../operations/ragequit.js";
+import { BasicOperation, MultiOperation } from "../operations/multi_operation.js";
 import { AEBalance } from "../ae_balance.js";
 import { Audit, ExPost } from "../operations/audit.js";
 import {
@@ -31,6 +32,8 @@ export interface IAccount {
     withdraw(withdrawDetails: WithdrawDetails): Promise<WithdrawOperation>;
     ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation>;
     rollover(rolloverDetails: RolloverDetails): Promise<RollOverOperation>;
+    startMultiOperation(opOrSender: BasicOperation | string): Promise<MultiOperation>;
+    addOperation(multi: MultiOperation, descriptor: AddOperationDescriptor): Promise<MultiOperation>;
 
     // state access
     rawState(): Promise<RawAccountState>;
@@ -108,6 +111,13 @@ export interface WithdrawDetails {
     sender: string;
     feeToSender?: bigint;
 }
+
+export type AddOperationDescriptor =
+    | { type: 'fund'; amount: bigint }
+    | { type: 'rollover' }
+    | { type: 'withdraw'; to: string; amount: bigint; feeToSender?: bigint }
+    | { type: 'transfer'; to: PubKey; amount: bigint; toTongo?: string; feeToSender?: bigint }
+    | { type: 'ragequit'; to: string; feeToSender?: bigint };
 
 
 export interface RawAccountState {
