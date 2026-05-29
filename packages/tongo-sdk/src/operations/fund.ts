@@ -7,12 +7,7 @@ import { AEBalance } from "../ae_balance.js";
 import { StarkPoint } from "../types.js";
 import { castBigInt } from "../utils.js";
 import { Audit } from "./audit.js";
-import { IOperation, OperationType } from "./operation.js";
-
-interface IFundOperation extends IOperation {
-    type: typeof OperationType.Fund;
-    populateApprove(): Promise<void>;
-}
+import { IBasicOperation, OperationType } from "./operation.js";
 
 /**
  * Represents the calldata of a fund operation.
@@ -35,8 +30,8 @@ interface FundOpParams {
     prefix_data: GeneralPrefixData;
 }
 
-export class FundOperation implements IFundOperation {
-    type: typeof OperationType.Fund = OperationType.Fund;
+export class FundOperation implements IBasicOperation {
+    readonly type = OperationType.Fund;
     feeToSender: bigint = 0n;
     Tongo: Contract;
     to: StarkPoint;
@@ -49,7 +44,6 @@ export class FundOperation implements IFundOperation {
     prefix_data: GeneralPrefixData;
 
     constructor({ to, amount, proof, auditPart, Tongo, hint, nextState, prefix_data }: FundOpParams) {
-        this.type = OperationType.Fund;
         this.to = to;
         this.amount = amount;
         this.hint = hint;

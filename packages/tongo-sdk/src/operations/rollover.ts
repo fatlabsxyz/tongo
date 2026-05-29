@@ -1,13 +1,9 @@
 import { StarkPoint } from "../types.js";
 import { BalanceState, GeneralPrefixData } from "../types.js";
 import { Call, Contract } from "starknet";
-import { IOperation, OperationType } from "./operation.js";
+import { IBasicOperation, OperationType } from "./operation.js";
 import { ProofOfRollover } from "../provers/rollover.js";
 import { AEBalance } from "../ae_balance.js";
-
-export interface IRollOverOperation extends IOperation {
-    type: typeof OperationType.Rollover;
-}
 
 /**
  * Represents the calldata of a rollover operation.
@@ -26,8 +22,8 @@ interface RollOverOpParams {
     prefix_data: GeneralPrefixData;
 }
 
-export class RollOverOperation implements IRollOverOperation {
-    type: typeof OperationType.Rollover = OperationType.Rollover;
+export class RollOverOperation implements IBasicOperation {
+    readonly type = OperationType.Rollover;
     to: StarkPoint;
     feeToSender: bigint = 0n;
     proof: ProofOfRollover;

@@ -5,11 +5,6 @@ import { ProjectivePoint } from "../types.js";
 import { castBigInt } from "../utils.js";
 import { IOperation, OperationType } from "./operation.js";
 
-interface IOutsideFundOperation extends IOperation {
-    type: typeof OperationType.OutsideFund;
-    populateApprove(): Promise<void>;
-}
-
 /**
  * Represents the calldata of a outsideFund operation.
  * @interface FundOpParams
@@ -23,8 +18,8 @@ interface OutsideFundOpParams {
     Tongo: Contract;
 }
 
-export class OutsideFundOperation implements IOutsideFundOperation {
-    type: typeof OperationType.OutsideFund = OperationType.OutsideFund;
+export class OutsideFundOperation implements IOperation {
+    readonly type = OperationType.OutsideFund;
     Tongo: Contract;
     to: ProjectivePoint;
     amount: bigint;

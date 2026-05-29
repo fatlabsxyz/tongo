@@ -7,14 +7,10 @@ import { StarkCipherBalance, StarkPoint } from "../types.js";
 import { AEBalance } from "../ae_balance.js";
 import { Audit } from "./audit.js";
 import { TongoAbiType, tongoCodec } from "../abi/abi.types.js";
-import { IOperation, OperationType } from "./operation.js";
+import { IBasicOperation, OperationType } from "./operation.js";
 
 export type ExternalData = TongoAbiType<"tongo::structs::operations::transfer::ExternalData">;
 export type TransferOptions = TongoAbiType<"tongo::structs::operations::transfer::TransferOptions">;
-
-export interface ITransferOperation extends IOperation {
-    type: typeof OperationType.Transfer;
-}
 
 /**
  * Represents the calldata of a transfer operation.
@@ -57,8 +53,8 @@ export function serializeTransferOptions(transferOptions: CairoTransferOptions):
     return tongoCodec.encode(OptionalTransferOption, transferOptions).map(BigInt);
 }
 
-export class TransferOperation implements ITransferOperation {
-    type: typeof OperationType.Transfer = OperationType.Transfer;
+export class TransferOperation implements IBasicOperation {
+    readonly type = OperationType.Transfer;
     feeToSender: bigint;
     Tongo: Contract;
     from: StarkPoint;

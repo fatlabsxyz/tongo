@@ -24,6 +24,7 @@ import { TransferOperation, ExternalData, TransferOptions, serializeTransferOpti
 import { WithdrawOperation, WithdrawOptions, serializeWithdrawOptions } from "../operations/withdraw.js";
 import { RagequitOperation, RagequitOptions, serializeRagequitOptions } from "../operations/ragequit.js";
 import { BasicOperation, MultiOperation } from "../operations/multi_operation.js";
+import { OperationType } from "../operations/operation.js";
 import { tongoAbi } from "../abi/tongo.abi.js";
 import { RPC_SPEC_VERSION } from "../constants.js";
 import { BalanceState, CipherBalance, GeneralPrefixData, parseCipherBalance, PubKey, pubKeyAffineToBase58, pubKeyAffineToHex, pubKeyBase58ToHex, RelayData, starkPointToProjectivePoint, TongoAddress, } from "../types.js";
@@ -36,7 +37,7 @@ import { AccountEventReader } from "./account.data.service.js";
 import { assertBalance, bytesOrNumToBigInt, castBigInt, decipherBalance, pubKeyFromSecret, createCipherBalance, erc20ToTongo, tongoToErc20 } from "../utils.js";
 import {
     AccountState,
-    AddOperationDescriptor,
+    PushOperationDescriptor,
     FundDetails,
     IAccount,
     OutsideFundDetails,
@@ -222,7 +223,8 @@ export class Account implements IAccount {
     }
 
     async relayerRollover({ sender, feeToSender }: { sender: string; feeToSender: bigint }): Promise<MultiOperation> {
-        const [state, bitSize, prefix_data] = await Promise.all([this._fetchBalanceState(), this.bitSize(), this.prefixData(sender)]);
+        const multi = await this.startMultiOperation(sender);
+        const state = multi.finalState;
 
         if (state.pendingAmount === 0n) {
             throw new Error("Nothing to roll over: pending balance is 0");
@@ -231,26 +233,18 @@ export class Account implements IAccount {
             throw new Error(`Insufficient balance for relay fee: have ${state.balanceAmount + state.pendingAmount}, need ${feeToSender}`);
         }
 
-        const withdrawDetails: WithdrawDetails = {to: sender, amount: 0n, sender, feeToSender};
-        const multi = new MultiOperation(state, prefix_data, bitSize);
-
         if (state.balanceAmount >= feeToSender) {
             // Fee covered by current balance: withdraw first, then rollover.
             // The withdraw proof commits to currentAmount, which cannot be invalidated
             // by a tx that lands before ours (that would only grow pending, not balance).
-            const withdrawOp = await this._createWithdrawOperation(state, {prefix_data, bitSize, withdrawDetails})
-            const rolloverOp = await this._createRolloverOperation(withdrawOp.nextState, prefix_data);
-            multi._append(withdrawOp);
-            multi._append(rolloverOp);
-            return multi;
+            await this.pushOperation(multi, { type: OperationType.Withdraw, to: sender, amount: 0n, feeToSender });
+            await this.pushOperation(multi, { type: OperationType.Rollover });
         } else {
             // Fee requires pending funds: rollover first to consolidate, then withdraw.
-            const rolloverOp = await this._createRolloverOperation(state, prefix_data);
-            const withdrawOp = await this._createWithdrawOperation(rolloverOp.nextState, {prefix_data, bitSize, withdrawDetails})
-            multi._append(rolloverOp);
-            multi._append(withdrawOp);
-            return multi;
+            await this.pushOperation(multi, { type: OperationType.Rollover });
+            await this.pushOperation(multi, { type: OperationType.Withdraw, to: sender, amount: 0n, feeToSender });
         }
+        return multi;
     }
 
     async startMultiOperation(opOrSender: BasicOperation | string): Promise<MultiOperation> {
@@ -265,42 +259,41 @@ export class Account implements IAccount {
         return multi;
     }
 
-    async addOperation(multi: MultiOperation, descriptor: AddOperationDescriptor): Promise<MultiOperation> {
+    async pushOperation(multi: MultiOperation, descriptor: PushOperationDescriptor): Promise<void> {
         const { prefix_data, bit_size: bitSize } = multi;
         const sender = prefix_data.sender_address;
         const state = multi.finalState;
 
         switch (descriptor.type) {
-            case 'fund': {
+            case OperationType.Fund: {
                 const op = await this._createFundOperation(state, { amount: descriptor.amount, prefix_data });
                 multi._append(op);
                 break;
             }
-            case 'rollover': {
+            case OperationType.Rollover: {
                 const op = await this._createRolloverOperation(state, prefix_data);
                 multi._append(op);
                 break;
             }
-            case 'withdraw': {
+            case OperationType.Withdraw: {
                 const { type: _, ...rest } = descriptor;
                 const op = await this._createWithdrawOperation(state, { prefix_data, bitSize, withdrawDetails: { ...rest, sender } });
                 multi._append(op);
                 break;
             }
-            case 'transfer': {
+            case OperationType.Transfer: {
                 const { type: _, ...rest } = descriptor;
                 const op = await this._createTransferOperation(state, { prefix_data, bitSize, transferDetails: { ...rest, sender } });
                 multi._append(op);
                 break;
             }
-            case 'ragequit': {
+            case OperationType.Ragequit: {
                 const { type: _, ...rest } = descriptor;
                 const op = await this._createRagequitOperation(state, { prefix_data, ragequitDetails: { ...rest, sender } });
                 multi._append(op);
                 break;
             }
         }
-        return multi;
     }
 
     // -------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { Account as StarknetAccount, num, paymaster, PaymasterDetails, PaymasterRpc, PreparedTransaction, Contract, RpcProvider, Account, TypedData, Signature } from "starknet";
 import { RelayFeeEstimate } from "../types.js";
-import { IOperation } from "../operations/operation.js";
+import { ITongoOperation } from "../operations/operation.js";
 import { tongoAbi } from "../abi/tongo.abi.js";
 import { RPC_SPEC_VERSION } from "../constants.js";
 import { RollOverOperation } from "../operations/rollover.js";
@@ -70,7 +70,7 @@ export class RelayerAccount {
     }
 
 
-    async estimateFee(operation: IOperation): Promise<RelayFeeEstimate> {
+    async estimateFee(operation: ITongoOperation): Promise<RelayFeeEstimate> {
         const feesDetails = await this.getFeesDetails();
         const { estimated_fee_in_gas_token, suggested_max_fee_in_gas_token } =
             await this.starkAccount.estimatePaymasterTransactionFee(operation.toCalldata(), feesDetails);
@@ -80,7 +80,7 @@ export class RelayerAccount {
         return computeRelayFeeEstimate(avnuEstimatedStrk, avnuSuggestedStrk, rate);
     }
 
-    async buildTransactionToSign(operation: IOperation, snip9_nonce: string): Promise<PreparedRelayData> {
+    async buildTransactionToSign(operation: ITongoOperation, snip9_nonce: string): Promise<PreparedRelayData> {
         const feesDetails = await this.getFeesDetails();
         const prepared = await this.starkAccount.buildPaymasterTransaction(operation.toCalldata(), feesDetails) as any;
 
@@ -123,7 +123,7 @@ export class RelayerAccount {
         return { feeMode: { mode: "default", gasToken: this._erc20Address } };
     }
 
-    private async getErc20FeeBudget(operation: IOperation): Promise<bigint> {
+    private async getErc20FeeBudget(operation: ITongoOperation): Promise<bigint> {
         if (operation instanceof RollOverOperation) {
             throw new Error("Standalone rollover relay not supported — use a MultiOperation bundle");
         }

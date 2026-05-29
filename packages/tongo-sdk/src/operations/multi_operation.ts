@@ -1,16 +1,17 @@
 import { Call } from "starknet";
 import { BalanceState, GeneralPrefixData } from "../types.js";
-import { IOperation, OperationType } from "./operation.js";
+import { ITongoOperation, OperationType } from "./operation.js";
 import { WithdrawOperation } from "./withdraw.js";
 import { TransferOperation } from "./transfer.js";
 import { RollOverOperation } from "./rollover.js";
 import { FundOperation } from "./fund.js";
 import { RagequitOperation } from "./ragequit.js";
 
-export type BasicOperation = WithdrawOperation | TransferOperation | RollOverOperation | FundOperation | RagequitOperation;
+export type BasicOperation = FundOperation | RollOverOperation | WithdrawOperation | TransferOperation | RagequitOperation;
+export type TongoOperation = BasicOperation | MultiOperation;
 
-export class MultiOperation implements IOperation {
-    type: typeof OperationType.Multi = OperationType.Multi;
+export class MultiOperation implements ITongoOperation {
+    readonly type = OperationType.Multi;
     private ops: BasicOperation[] = [];
     finalState: BalanceState;
     feeToSender: bigint = 0n;

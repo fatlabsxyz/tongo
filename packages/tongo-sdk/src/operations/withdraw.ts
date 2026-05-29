@@ -4,13 +4,9 @@ import { AEBalance } from "../ae_balance.js";
 import { ProofOfWithdraw } from "../provers/withdraw.js";
 import { BalanceState, GeneralPrefixData, StarkCipherBalance, StarkPoint } from "../types.js";
 import { Audit } from "./audit.js";
-import { IOperation, OperationType } from "./operation.js";
+import { IBasicOperation, OperationType } from "./operation.js";
 
 export type WithdrawOptions = TongoAbiType<"tongo::structs::operations::withdraw::WithdrawOptions">;
-
-export interface IWithdrawOperation extends IOperation {
-    type: typeof OperationType.Withdraw;
-}
 
 /**
  * Represents the calldata of a withdraw operation.
@@ -46,8 +42,8 @@ export function serializeWithdrawOptions(withdrawOptions: CairoWithdrawOptions):
     return tongoCodec.encode(OptionalWithdrawOption, withdrawOptions).map(BigInt);
 }
 
-export class WithdrawOperation implements IWithdrawOperation {
-    type: typeof OperationType.Withdraw = OperationType.Withdraw;
+export class WithdrawOperation implements IBasicOperation {
+    readonly type = OperationType.Withdraw;
     feeToSender: bigint;
     Tongo: Contract;
     from: StarkPoint;

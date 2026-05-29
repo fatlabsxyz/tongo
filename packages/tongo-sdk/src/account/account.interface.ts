@@ -6,6 +6,7 @@ import { TransferOperation } from "../operations/transfer.js";
 import { WithdrawOperation } from "../operations/withdraw.js";
 import { RagequitOperation } from "../operations/ragequit.js";
 import { BasicOperation, MultiOperation } from "../operations/multi_operation.js";
+import { OperationType } from "../operations/operation.js";
 import { AEBalance } from "../ae_balance.js";
 import { Audit, ExPost } from "../operations/audit.js";
 import {
@@ -33,7 +34,7 @@ export interface IAccount {
     ragequit(ragequitDetails: RagequitDetails): Promise<RagequitOperation>;
     rollover(rolloverDetails: RolloverDetails): Promise<RollOverOperation>;
     startMultiOperation(opOrSender: BasicOperation | string): Promise<MultiOperation>;
-    addOperation(multi: MultiOperation, descriptor: AddOperationDescriptor): Promise<MultiOperation>;
+    pushOperation(multi: MultiOperation, descriptor: PushOperationDescriptor): Promise<void>;
 
     // state access
     rawState(): Promise<RawAccountState>;
@@ -112,12 +113,12 @@ export interface WithdrawDetails {
     feeToSender?: bigint;
 }
 
-export type AddOperationDescriptor =
-    | { type: 'fund'; amount: bigint }
-    | { type: 'rollover' }
-    | { type: 'withdraw'; to: string; amount: bigint; feeToSender?: bigint }
-    | { type: 'transfer'; to: PubKey; amount: bigint; toTongo?: string; feeToSender?: bigint }
-    | { type: 'ragequit'; to: string; feeToSender?: bigint };
+export type PushOperationDescriptor =
+    | { type: OperationType.Fund }     & Omit<FundDetails, 'sender'>
+    | { type: OperationType.Rollover }
+    | { type: OperationType.Withdraw } & Omit<WithdrawDetails, 'sender'>
+    | { type: OperationType.Transfer } & Omit<TransferDetails, 'sender'>
+    | { type: OperationType.Ragequit } & Omit<RagequitDetails, 'sender'>;
 
 
 export interface RawAccountState {
