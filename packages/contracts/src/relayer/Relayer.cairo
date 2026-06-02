@@ -224,10 +224,8 @@ mod Relayer {
             let config = self.targets.entry(target).read();
             assert!(status.to_add >= status.to_subtract + config.relayer_fee, "RELAY FEE TOO LOW");
 
-            let pubkey = status.pubkey.unwrap();
-            let tongo_nonce: u64 = ITongoDispatcher { contract_address: target }.get_nonce(pubkey);
-            let expected_nonce = poseidon_hash_span(array![pubkey.x, pubkey.y, tongo_nonce.into()].span());
-            assert!(snip9_nonce == expected_nonce, "INVALID SNIP9 NONCE");
+            self._assert_snip9_nonce(@status, snip9_nonce);
+
             status
         }
 
@@ -308,6 +306,14 @@ mod Relayer {
             let caller = get_caller_address();
             let owner = self.owner.read();
             assert!(caller == owner, "CALLER IS NOT THE OWNER");
+        }
+
+        fn _assert_snip9_nonce(self: @ContractState, status: @RelayStatus, snip9_nonce: felt252) {
+            let pubkey = status.pubkey.unwrap();
+            let target = status.target.expect('NO TARGET IN RELAYSTATUS');
+            let tongo_nonce: u64 = ITongoDispatcher { contract_address: target }.get_nonce(pubkey);
+            let expected_nonce = poseidon_hash_span(array![target.into(), pubkey.x, pubkey.y, tongo_nonce.into()].span());
+            assert!(snip9_nonce == expected_nonce, "INVALID SNIP9 NONCE");
         }
     }
 }

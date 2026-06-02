@@ -241,6 +241,7 @@ export class Account implements IAccount {
         return multi;
     }
 
+    //TODO: Clarificar quien el sender.
     async startMultiOperation(opOrSender: BasicOperation | string): Promise<MultiOperation> {
         const bitSize = await this.bitSize();
         if (typeof opOrSender === 'string') {
@@ -253,6 +254,7 @@ export class Account implements IAccount {
         return multi;
     }
 
+    //TODO: rename _append to push
     async pushOperation(multi: MultiOperation, descriptor: PushOperationDescriptor): Promise<void> {
         const { prefix_data, bit_size: bitSize } = multi;
         const sender = prefix_data.sender_address;
@@ -615,9 +617,12 @@ export class Account implements IAccount {
     // Signing
     // -------------------------------------------------------------------------
 
-    async nonceHash(): Promise<string> {
+    // This is intended to give a unique `nonce` per account state. It is usefull as snip9 nonce if needed.
+    async nonceHash(data?: bigint[]): Promise<string> {
         const nonce = await this.nonce();
-        return num.toHex(poseidonHashMany([BigInt(this.publicKey.x), BigInt(this.publicKey.y), nonce]));
+        const tongoAddress = this.Tongo.address;
+        const extraData = data ? data : [] ;
+        return num.toHex(poseidonHashMany([BigInt(tongoAddress),BigInt(this.publicKey.x), BigInt(this.publicKey.y), nonce, ... extraData]));
     }
 
     async signMessage(typedData: TypedData, accountAddress: string): Promise<Signature> {
