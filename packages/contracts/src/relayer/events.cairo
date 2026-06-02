@@ -40,6 +40,18 @@ pub struct ForwarderDelisted {
 }
 
 #[derive(Drop, starknet::Event)]
+pub struct AssetDelisted {
+    #[key]
+    pub asset: ContractAddress,
+}
+
+#[derive(Drop, starknet::Event)]
+pub struct TargetDelisted {
+    #[key]
+    pub target: ContractAddress,
+}
+
+#[derive(Drop, starknet::Event)]
 pub struct RelayerFeeSet {
     #[key]
     pub target: ContractAddress,

@@ -31,7 +31,9 @@ pub trait IRelayer<TContractState> {
     fn get_asset_selectors(self: @TContractState) -> Span<felt252>;
 
     fn whitelist_asset(ref self: TContractState, asset: ContractAddress);
+    fn delist_asset(ref self: TContractState, asset: ContractAddress);
     fn whitelist_target(ref self: TContractState, target: ContractAddress);
+    fn delist_target(ref self: TContractState, target: ContractAddress);
     fn whitelist_forwarder(ref self: TContractState, forwarder: ContractAddress);
     fn delist_forwarder(ref self: TContractState, forwarder: ContractAddress);
     fn set_tongo_selectors(ref self: TContractState, selectors: Span<felt252>);

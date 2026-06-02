@@ -11,7 +11,7 @@ mod Relayer {
 
     use crate::relayer::structs::{RelayStatus, RelayStatusTrait, OutsideExecution, TargetConfig};
     use crate::relayer::IRelayer::{IRelayer, ISRC5, ISRC5_ID, ISRC9_V2, ISRC9_V2_ID, IExecute};
-    use crate::relayer::events::{RelayExecuted, AssetWhitelisted, TargetWhitelisted, ForwarderWhitelisted, ForwarderDelisted, RelayerFeeSet, Pull};
+    use crate::relayer::events::{RelayExecuted, AssetWhitelisted, AssetDelisted, TargetWhitelisted, TargetDelisted, ForwarderWhitelisted, ForwarderDelisted, RelayerFeeSet, Pull};
 
     use core::poseidon::poseidon_hash_span;
     use crate::relayer::utils::{execute_calls, extract_call_info, extract_transfer_info, extract_rollover_pubkey, is_tx_version_valid, get_outside_execution_hash, verify_outside_execution_signature, ROLLOVER_SELECTOR, TRANSFER_SELECTOR, WITHDRAW_SELECTOR, RAGEQUIT_SELECTOR};
@@ -34,7 +34,9 @@ mod Relayer {
     enum Event {
         RelayExecuted: RelayExecuted,
         AssetWhitelisted: AssetWhitelisted,
+        AssetDelisted: AssetDelisted,
         TargetWhitelisted: TargetWhitelisted,
+        TargetDelisted: TargetDelisted,
         ForwarderWhitelisted: ForwarderWhitelisted,
         ForwarderDelisted: ForwarderDelisted,
         RelayerFeeSet: RelayerFeeSet,
@@ -179,20 +181,37 @@ mod Relayer {
 
         fn whitelist_asset(ref self: ContractState, asset: ContractAddress) {
             self._assert_only_owner();
+            assert!(!self.is_asset_whitelisted(asset), "ASSET ALREADY WHITELISTED");
             self.assets.entry(asset).write(true);
             self.emit(Event::AssetWhitelisted(AssetWhitelisted { asset }));
         }
 
+        fn delist_asset(ref self: ContractState, asset: ContractAddress) {
+            self._assert_only_owner();
+            assert!(self.is_asset_whitelisted(asset), "ASSET NOT WHITELISTED");
+            self.assets.entry(asset).write(false);
+            self.emit(Event::AssetDelisted(AssetDelisted { asset }));
+        }
+
         fn whitelist_forwarder(ref self: ContractState, forwarder: ContractAddress) {
             self._assert_only_owner();
+            assert!(!self.is_forwarder_whitelisted(forwarder), "FORWARDER ALREADY WHITELISTED");
             self.forwarders.entry(forwarder).write(true);
             self.emit(Event::ForwarderWhitelisted(ForwarderWhitelisted { forwarder }));
         }
 
         fn delist_forwarder(ref self: ContractState, forwarder: ContractAddress) {
             self._assert_only_owner();
+            assert!(self.is_forwarder_whitelisted(forwarder), "FORWARDER NOT WHITELISTED");
             self.forwarders.entry(forwarder).write(false);
             self.emit(Event::ForwarderDelisted(ForwarderDelisted { forwarder }));
+        }
+
+        fn delist_target(ref self: ContractState, target: ContractAddress) {
+            self._assert_only_owner();
+            assert!(self.is_target_whitelisted(target), "TARGET NOT WHITELISTED");
+            self.targets.entry(target).write(TargetConfig { erc20: Zero::zero(), rate: 0, relayer_fee: 0 });
+            self.emit(Event::TargetDelisted(TargetDelisted { target }));
         }
 
         fn set_tongo_selectors(ref self: ContractState, selectors: Span<felt252>) {
