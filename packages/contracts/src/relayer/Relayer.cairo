@@ -282,6 +282,8 @@ mod Relayer {
 
         fn _process_tongo_call(ref self: ContractState, call: @Call, ref status: RelayStatus) {
             assert!(self._is_tongo_selector_allowed(*call.selector), "SELECTOR NOT WHITELISTED");
+            let config = self.targets.entry(*call.to).read();
+            assert!(self.is_asset_whitelisted(config.erc20), "TARGET ASSET NOT WHITELISTED");
             let selector = *call.selector;
             if selector == ROLLOVER_SELECTOR {
                 self._process_rollover_call(call, ref status)
