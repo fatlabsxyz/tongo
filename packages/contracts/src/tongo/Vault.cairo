@@ -142,7 +142,7 @@ pub mod Vault {
             )
                 .unwrap_syscall();
 
-            self.tongo_deployed.entry(address).write(true);
+            self._register_tongo(tag, address);
 
             self
                 .emit(
