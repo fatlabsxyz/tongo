@@ -13,7 +13,8 @@ pub mod Tongo {
     use crate::structs::common::state::{State, TongoConfig};
     use crate::structs::events::{
         AuditorPubKeySet, BalanceDeclared, FundEvent, OutsideFundEvent, RagequitEvent,
-        ReceivedExternalTransfer, RolloverEvent, TransferDeclared, TransferEvent, WithdrawEvent,
+        ReceivedExternalTransfer, RolloverEvent, TongoApproved, TongoRevoked, TransferDeclared,
+        TransferEvent, WithdrawEvent,
     };
     use crate::structs::operations::audit::{Audit, InputsAudit};
     use crate::structs::operations::fund::{Fund, InputsFund, OutsideFund};
@@ -133,6 +134,8 @@ pub mod Tongo {
         TransferDeclared: TransferDeclared,
         AuditorPubKeySet: AuditorPubKeySet,
         ReceivedExternalTransfer: ReceivedExternalTransfer,
+        TongoApproved: TongoApproved,
+        TongoRevoked: TongoRevoked,
     }
 
     #[abi(embed_v0)]
@@ -548,6 +551,7 @@ pub mod Tongo {
             assert!(!self.approvedTongo.entry(address).read(), "Contract allready white-listed");
             assert!(self._vault().is_known_tongo(address), "Target is not a valid Tongo contract");
             self.approvedTongo.entry(address).write(true);
+            self.emit(TongoApproved { address });
         }
 
         /// Revoke a previously approved Tongo instance  to interact with
@@ -556,6 +560,7 @@ pub mod Tongo {
             self._caller_is_owner();
             assert!(self.approvedTongo.entry(address).read(), "Contract is not white-listed");
             self.approvedTongo.entry(address).write(false);
+            self.emit(TongoRevoked { address });
         }
     }
 

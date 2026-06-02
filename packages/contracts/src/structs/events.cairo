@@ -179,6 +179,24 @@ pub struct AuditorPubKeySet {
     pub AuditorPubKey: PubKey,
 }
 
+/// Event emitted when an owner approves a Tongo instance for external transfers.
+///
+/// - address: The approved Tongo contract address.
+#[derive(Drop, starknet::Event)]
+pub struct TongoApproved {
+    #[key]
+    pub address: ContractAddress,
+}
+
+/// Event emitted when an owner revokes a previously approved Tongo instance.
+///
+/// - address: The revoked Tongo contract address.
+#[derive(Drop, starknet::Event)]
+pub struct TongoRevoked {
+    #[key]
+    pub address: ContractAddress,
+}
+
 /// Event emitted when a Tongo contract is deployed by the Vault
 ///
 /// - tag: The chosen tag for the contract. Must be unique across all deployed contracts
