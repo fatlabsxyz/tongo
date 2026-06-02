@@ -775,16 +775,6 @@ pub mod Tongo {
         }
 
 
-        /// Handles the withdraw (and ragequit) asset transfers.
-        fn _handle_relayed_withdraw(
-            self: @ContractState, amount: u128, to: ContractAddress, fee_to_sender: u128,
-        ) {
-            assert!(fee_to_sender <= amount, "Fee Amount to high");
-            let amount_after_fee = amount - fee_to_sender;
-            self._transfer_to(to, self._unwrap_tongo_amount(amount_after_fee));
-            self._transfer_to(get_caller_address(), self._unwrap_tongo_amount(fee_to_sender));
-        }
-
         /// Sends the external transfer operation to another Tongo instance
         fn _send_external_transfer(
             ref self: ContractState,
