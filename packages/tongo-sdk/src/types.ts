@@ -13,9 +13,9 @@ export type GeneralPrefixData = AuxAbiType<"tongo::structs::traits::GeneralPrefi
 export type RelayData = TongoAbiType<"tongo::structs::common::relayer::RelayData">;
 
 export interface RelayFeeEstimate {
-    avnuEstimatedStrk: bigint;
+    avnuEstimatedErc20: bigint;
     avnuEstimatedTongo: bigint;
-    avnuSuggestedStrk: bigint;
+    avnuSuggestedErc20: bigint;
     avnuSuggestedTongo: bigint;
     relayerSuggestedTongo: bigint;
 }

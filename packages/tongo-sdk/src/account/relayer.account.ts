@@ -8,17 +8,17 @@ import { castBigInt, erc20ToTongo, tongoToErc20 } from "../utils.js";
 import { TongoContract } from "../contracts.js";
 
 function computeRelayFeeEstimate(
-    avnuEstimatedStrk: bigint,
-    avnuSuggestedStrk: bigint,
+    avnuEstimatedErc20: bigint,
+    avnuSuggestedErc20: bigint,
     rate: bigint,
 ): RelayFeeEstimate {
-    const avnuEstimatedTongo = erc20ToTongo(avnuEstimatedStrk, rate);
-    const avnuSuggestedTongo = erc20ToTongo(avnuSuggestedStrk, rate);
+    const avnuEstimatedTongo = erc20ToTongo(avnuEstimatedErc20, rate);
+    const avnuSuggestedTongo = erc20ToTongo(avnuSuggestedErc20, rate);
     const relayerSuggestedTongo = 2n * avnuEstimatedTongo;
     return {
-        avnuEstimatedStrk,
+        avnuEstimatedErc20,
         avnuEstimatedTongo,
-        avnuSuggestedStrk,
+        avnuSuggestedErc20,
         avnuSuggestedTongo,
         relayerSuggestedTongo,
     };
@@ -74,10 +74,10 @@ export class RelayerAccount {
         const feesDetails = await this.getFeesDetails();
         const { estimated_fee_in_gas_token, suggested_max_fee_in_gas_token } =
             await this.starkAccount.estimatePaymasterTransactionFee(operation.toCalldata(), feesDetails);
-        const avnuEstimatedStrk = BigInt(estimated_fee_in_gas_token);
-        const avnuSuggestedStrk = BigInt(suggested_max_fee_in_gas_token);
+        const avnuEstimatedErc20 = BigInt(estimated_fee_in_gas_token);
+        const avnuSuggestedErc20 = BigInt(suggested_max_fee_in_gas_token);
         const rate = await this.get_tongo_rate();
-        return computeRelayFeeEstimate(avnuEstimatedStrk, avnuSuggestedStrk, rate);
+        return computeRelayFeeEstimate(avnuEstimatedErc20, avnuSuggestedErc20, rate);
     }
 
     async buildTransactionToSign(operation: ITongoOperation, snip9_nonce: string): Promise<PreparedRelayData> {
