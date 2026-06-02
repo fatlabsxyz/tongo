@@ -11,6 +11,7 @@ mod Relayer {
 
     use crate::relayer::structs::{RelayStatus, RelayStatusTrait, OutsideExecution, TargetConfig};
     use crate::relayer::IRelayer::{IRelayer, ISRC5, ISRC5_ID, ISRC9_V2, ISRC9_V2_ID, IExecute};
+    use crate::relayer::events::{RelayExecuted, AssetWhitelisted, TargetWhitelisted, ForwarderWhitelisted, ForwarderDelisted, RelayerFeeSet, Pull};
 
     use core::poseidon::poseidon_hash_span;
     use crate::relayer::utils::{execute_calls, extract_call_info, extract_transfer_info, extract_rollover_pubkey, is_tx_version_valid, get_outside_execution_hash, verify_outside_execution_signature, ROLLOVER_SELECTOR, TRANSFER_SELECTOR, WITHDRAW_SELECTOR, RAGEQUIT_SELECTOR};
@@ -26,6 +27,18 @@ mod Relayer {
         pub forwarders: Map<ContractAddress, bool>,
         pub tongo_selectors: Vec<felt252>,
         pub asset_selectors: Vec<felt252>,
+    }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        RelayExecuted: RelayExecuted,
+        AssetWhitelisted: AssetWhitelisted,
+        TargetWhitelisted: TargetWhitelisted,
+        ForwarderWhitelisted: ForwarderWhitelisted,
+        ForwarderDelisted: ForwarderDelisted,
+        RelayerFeeSet: RelayerFeeSet,
+        Pull: Pull,
     }
 
     #[constructor]
@@ -81,7 +94,20 @@ mod Relayer {
             verify_outside_execution_signature(hash, status.pubkey.unwrap(), signature);
 
             // 6. Execute the calls
-            execute_calls(outside_execution.calls)
+            let result = execute_calls(outside_execution.calls);
+
+            let target = status.target.unwrap();
+            let config = self.targets.entry(target).read();
+            self.emit(Event::RelayExecuted(RelayExecuted {
+                forwarder: caller,
+                target,
+                pubkey: status.pubkey.unwrap(),
+                nonce: outside_execution.nonce,
+                fee_tongo: status.to_add / config.rate,
+                fee_erc20: status.to_add,
+            }));
+
+            result
         }
 
         fn is_valid_outside_execution_nonce(self: @ContractState, nonce: felt252) -> bool {
@@ -148,21 +174,25 @@ mod Relayer {
             assert!(self.is_asset_whitelisted(erc20), "ASSET NOT WHITELISTED");
             let rate = tongo.get_rate();
             self.targets.entry(target).write(TargetConfig { erc20, rate, relayer_fee: 0 });
+            self.emit(Event::TargetWhitelisted(TargetWhitelisted { target, erc20, rate }));
         }
 
         fn whitelist_asset(ref self: ContractState, asset: ContractAddress) {
             self._assert_only_owner();
             self.assets.entry(asset).write(true);
+            self.emit(Event::AssetWhitelisted(AssetWhitelisted { asset }));
         }
 
         fn whitelist_forwarder(ref self: ContractState, forwarder: ContractAddress) {
             self._assert_only_owner();
             self.forwarders.entry(forwarder).write(true);
+            self.emit(Event::ForwarderWhitelisted(ForwarderWhitelisted { forwarder }));
         }
 
         fn delist_forwarder(ref self: ContractState, forwarder: ContractAddress) {
             self._assert_only_owner();
             self.forwarders.entry(forwarder).write(false);
+            self.emit(Event::ForwarderDelisted(ForwarderDelisted { forwarder }));
         }
 
         fn set_tongo_selectors(ref self: ContractState, selectors: Span<felt252>) {
@@ -181,6 +211,7 @@ mod Relayer {
             let balance = IERC20Dispatcher { contract_address: asset }.balance_of(starknet::get_contract_address());
             if balance > 0 {
                 IERC20Dispatcher { contract_address: asset }.transfer(self.owner.read(), balance);
+                self.emit(Event::Pull(Pull { asset, amount: balance }));
             }
         }
 
@@ -201,6 +232,7 @@ mod Relayer {
             let mut config = self.targets.entry(target).read();
             config.relayer_fee = fee;
             self.targets.entry(target).write(config);
+            self.emit(Event::RelayerFeeSet(RelayerFeeSet { target, fee }));
         }
     }
 

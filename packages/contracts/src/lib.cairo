@@ -44,6 +44,7 @@ pub mod tongo {
 pub mod relayer {
     pub mod IRelayer;
     pub mod Relayer;
+    pub mod events;
     pub mod structs;
     pub mod utils;
 }
