@@ -26,7 +26,7 @@ export class MultiOperation implements ITongoOperation {
 
     get nextState(): CipherAccountState { return this.finalState; }
 
-    _append(op: BasicOperation): void {
+    push(op: BasicOperation): void {
         if (
             op.prefix_data.chain_id !== this.prefix_data.chain_id ||
             op.prefix_data.tongo_address !== this.prefix_data.tongo_address ||

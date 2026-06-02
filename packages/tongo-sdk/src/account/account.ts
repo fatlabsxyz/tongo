@@ -250,7 +250,7 @@ export class Account implements IAccount {
         }
         const op = opOrSender;
         const multi = new MultiOperation(op.nextState, op.prefix_data, bitSize);
-        multi._append(op);
+        multi.push(op);
         return multi;
     }
 
@@ -263,30 +263,30 @@ export class Account implements IAccount {
         switch (descriptor.type) {
             case OperationType.Fund: {
                 const op = await this._createFundOperation(state, { amount: descriptor.amount, prefix_data });
-                multi._append(op);
+                multi.push(op);
                 break;
             }
             case OperationType.Rollover: {
                 const op = await this._createRolloverOperation(state, prefix_data);
-                multi._append(op);
+                multi.push(op);
                 break;
             }
             case OperationType.Withdraw: {
                 const { type: _, ...rest } = descriptor;
                 const op = await this._createWithdrawOperation(state, { prefix_data, bitSize, withdrawDetails: { ...rest, sender } });
-                multi._append(op);
+                multi.push(op);
                 break;
             }
             case OperationType.Transfer: {
                 const { type: _, ...rest } = descriptor;
                 const op = await this._createTransferOperation(state, { prefix_data, bitSize, transferDetails: { ...rest, sender } });
-                multi._append(op);
+                multi.push(op);
                 break;
             }
             case OperationType.Ragequit: {
                 const { type: _, ...rest } = descriptor;
                 const op = await this._createRagequitOperation(state, { prefix_data, ragequitDetails: { ...rest, sender } });
-                multi._append(op);
+                multi.push(op);
                 break;
             }
         }
