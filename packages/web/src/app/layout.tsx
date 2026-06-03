@@ -26,7 +26,7 @@ export default function RootLayout({
         <NetworkProvider>
           <WalletProvider>
             <Header />
-            <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-8">{children}</main>
+            <main className="flex-1 w-full max-w-2xl mx-auto px-3 sm:px-5 py-5 sm:py-8">{children}</main>
             <footer className="border-t border-[color:var(--color-border)] py-3 text-center text-[10px] uppercase tracking-[0.2em] text-[color:var(--color-fg-subtle)]">
               fat solutions · tongo crosschain · zk confidential payments
             </footer>

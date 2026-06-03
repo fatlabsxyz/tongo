@@ -18,7 +18,8 @@ export type FundStatus =
   | "deposit_detected"
   | "funding"
   | "completed"
-  | "failed";
+  | "failed"
+  | "expired";
 
 export interface FundRequest {
   id: string;
@@ -101,4 +102,39 @@ export async function updateFundRequest(id: string, patch: Partial<FundRequest>)
   db.fundRequests[idx] = { ...db.fundRequests[idx], ...patch, updatedAt: Date.now() };
   await write(db);
   return db.fundRequests[idx];
+}
+
+/**
+ * Marks any `awaiting_deposit` request older than `ttlMs` as expired.
+ * Returns the IDs that were expired. Called by the watcher each tick to keep
+ * stale requests from accidentally matching new deposits that fall within
+ * tolerance of their expected amount.
+ */
+export async function expireStaleAwaitingDeposits(ttlMs: number): Promise<string[]> {
+  const db = await read();
+  const now = Date.now();
+  const expired: string[] = [];
+  for (const r of db.fundRequests) {
+    if (r.status === "awaiting_deposit" && now - r.createdAt > ttlMs) {
+      r.status = "expired";
+      r.updatedAt = now;
+      r.error = "expired (no matching deposit within TTL)";
+      expired.push(r.id);
+    }
+  }
+  if (expired.length > 0) await write(db);
+  return expired;
+}
+
+/** Returns all txHashes that have already been attributed to a fund request.
+ *  Used by the watcher to skip a deposit that has already been processed
+ *  (defense against RPC duplicates and stale block-range refetches). */
+export async function listConsumedDepositTxHashes(network: NetworkId): Promise<Set<string>> {
+  const db = await read();
+  const set = new Set<string>();
+  for (const r of db.fundRequests) {
+    if (r.network !== network) continue;
+    if (r.detectedDepositTxHash) set.add(r.detectedDepositTxHash.toLowerCase());
+  }
+  return set;
 }

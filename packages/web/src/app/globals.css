@@ -82,13 +82,24 @@ input, button, textarea, select {
   letter-spacing: 0;
 }
 
-button { cursor: pointer; }
-button:disabled { cursor: not-allowed; opacity: 0.4; }
+button { cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease; }
+button:disabled { cursor: not-allowed; }
+
+a { transition: color 120ms ease, border-color 120ms ease; }
 
 /* Tasteful focus ring — sharp, terminal-cursor style */
 button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, select:focus-visible {
   outline: 1px solid var(--color-accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
+}
+
+/* Prevent iOS from zooming the viewport when focusing a text input. iOS
+ * only zooms when input font-size < 16px. On desktop we let the component
+ * choose its own size. */
+@media (max-width: 639px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
 }
 
 /* Native select dropdown styling for our dark theme */

@@ -107,32 +107,91 @@ export async function relayViaPaymaster(
 }
 
 /**
- * Flat relay fee charged by the Relayer per outside_execution call, in Tongos.
- * In USDC wei this is fee * rate (rate=1000 → 1 Tongo = 1000 wei = 0.001 USDC).
+ * UI-side reservation budget for the dynamic relay fee. The actual amount
+ * charged is computed per-tx by estimateSafeFeeTongos(), which queries the
+ * paymaster for the live AVNU gas cost and applies a small safety multiplier.
  *
- * Hidden from the user UI: the Relayer needs fee > 0 (contract assertion) and
- * `fee * rate >= sum(asset_calls)` to balance. Estimating gas dynamically would
- * be cleaner but for the demo we keep it constant. If gas spikes the Relayer
- * subsidizes — that's intentional for the demo since the relay fee is far
- * below the actual paymaster gas cost.
+ * Empirically AVNU charges ~67-100k USDC wei (0.067-0.1 USDC) per Relayer
+ * call on mainnet, which after the 1.5x safety multiplier comes out to
+ * ~100-150 Tongos. 150 gives MAX a tight but realistic reservation so the
+ * "send everything" UX doesn't strand 0.15+ USDC of headroom.
  */
-export const DEFAULT_RELAY_FEE_TONGOS = 1n;
+export const DEFAULT_RELAY_FEE_TONGOS = 150n;
+
+/** Multiplier applied to the live paymaster gas estimate. AVNU returns the
+ *  exact amount it wants right now; the only gap we hedge against is gas
+ *  drift between the estimate and the submit a couple of seconds later.
+ *  1.5x is plenty for that window and keeps user-visible fees close to the
+ *  true on-chain cost (relayer margin ~33%). Bigger buffers were observable
+ *  on Voyager as "way less than 0.3 USD" txs paying 0.2 USDC — pure waste. */
+const FEE_SAFETY_NUMERATOR = 15n;
+const FEE_SAFETY_DENOMINATOR = 10n;
+
+interface PreparedTypedData {
+  typed_data: TypedData;
+  parameters: unknown;
+}
+
+/**
+ * Runs buildPaymasterTransaction with a placeholder call to learn how much
+ * USDC (in wei) AVNU intends to deduct for gas. The returned amount is taken
+ * from the LAST call in the prepared OutsideExecution — that's the asset
+ * transfer to the forwarder which the Relayer also sees and validates against
+ * `fee_to_sender * rate`.
+ */
+async function estimateAvnuAmountInWei(network: NetworkConfig, placeholderCall: Call): Promise<bigint> {
+  const provider = getProvider(network);
+  const paymaster = new PaymasterRpc({ nodeUrl: network.paymasterUrl });
+  const relayer = new Account({
+    provider, address: network.relayerAddress,
+    signer: "0x1", paymaster, cairoVersion: "1", transactionVersion: "0x3",
+  });
+  const feesDetails: PaymasterDetails = {
+    feeMode: { mode: "default", gasToken: pickGasToken(network) },
+  };
+  const prepared = (await relayer.buildPaymasterTransaction([placeholderCall], feesDetails)) as unknown as PreparedTypedData;
+  const message = prepared.typed_data.message as { Calls?: Array<{ To: string; Selector: string; Calldata: string[] }> };
+  const calls = message.Calls ?? [];
+  if (calls.length === 0) throw new Error("paymaster returned empty Calls");
+  // Asset transfer is the last call. Calldata layout: [recipient, low, high].
+  const assetCall = calls[calls.length - 1]!;
+  const lo = BigInt(assetCall.Calldata[1] ?? "0x0");
+  const hi = BigInt(assetCall.Calldata[2] ?? "0x0");
+  return lo + (hi << 128n);
+}
+
+/**
+ * Estimates a safe fee_to_sender (in Tongos) by querying the paymaster once
+ * with a placeholder op, ceiling-dividing the resulting wei by the Tongo rate,
+ * then adding a buffer. Always returns at least 1 (contract asserts fee > 0).
+ */
+async function estimateSafeFeeTongos(network: NetworkConfig, placeholderCall: Call): Promise<bigint> {
+  const wei = await estimateAvnuAmountInWei(network, placeholderCall);
+  const requiredTongos = (wei + network.tongoRate - 1n) / network.tongoRate;
+  const safe = (requiredTongos * FEE_SAFETY_NUMERATOR) / FEE_SAFETY_DENOMINATOR + 1n;
+  console.log(`[relayer] avnu wants ${wei} wei → ${requiredTongos} tongos → safe fee ${safe}`);
+  return safe < 1n ? 1n : safe;
+}
 
 interface RelayArgsBase {
   account: TongoAccount;
   tongoPk: bigint;
+  /** Override the estimated fee. Mostly for tests. */
   feeToSender?: bigint;
   network: NetworkConfig;
 }
 
 export async function relayTransfer(args: RelayArgsBase & { to: PubKey; amount: bigint }): Promise<{ transactionHash: string }> {
-  const fee = args.feeToSender ?? DEFAULT_RELAY_FEE_TONGOS;
   const tongoNonce = await args.account.nonce();
+  // Build a placeholder op (fee=1) just to discover how much USDC AVNU wants.
+  const placeholderOp = await args.account.transfer({
+    amount: args.amount, to: args.to,
+    sender: args.network.relayerAddress, fee_to_sender: 1n,
+  });
+  const fee = args.feeToSender ?? await estimateSafeFeeTongos(args.network, placeholderOp.toCalldata());
   const op = await args.account.transfer({
-    amount: args.amount,
-    to: args.to,
-    sender: args.network.relayerAddress,
-    fee_to_sender: fee,
+    amount: args.amount, to: args.to,
+    sender: args.network.relayerAddress, fee_to_sender: fee,
   });
   return relayViaPaymaster(
     { call: op.toCalldata(), pubkey: args.account.publicKey, tongoNonce, tongoPk: args.tongoPk },
@@ -141,13 +200,15 @@ export async function relayTransfer(args: RelayArgsBase & { to: PubKey; amount: 
 }
 
 export async function relayWithdraw(args: RelayArgsBase & { to: string; amount: bigint }): Promise<{ transactionHash: string }> {
-  const fee = args.feeToSender ?? DEFAULT_RELAY_FEE_TONGOS;
   const tongoNonce = await args.account.nonce();
+  const placeholderOp = await args.account.withdraw({
+    amount: args.amount, to: args.to,
+    sender: args.network.relayerAddress, fee_to_sender: 1n,
+  });
+  const fee = args.feeToSender ?? await estimateSafeFeeTongos(args.network, placeholderOp.toCalldata());
   const op = await args.account.withdraw({
-    amount: args.amount,
-    to: args.to,
-    sender: args.network.relayerAddress,
-    fee_to_sender: fee,
+    amount: args.amount, to: args.to,
+    sender: args.network.relayerAddress, fee_to_sender: fee,
   });
   return relayViaPaymaster(
     { call: op.toCalldata(), pubkey: args.account.publicKey, tongoNonce, tongoPk: args.tongoPk },
@@ -156,12 +217,13 @@ export async function relayWithdraw(args: RelayArgsBase & { to: string; amount: 
 }
 
 export async function relayRagequit(args: RelayArgsBase & { to: string }): Promise<{ transactionHash: string }> {
-  const fee = args.feeToSender ?? DEFAULT_RELAY_FEE_TONGOS;
   const tongoNonce = await args.account.nonce();
+  const placeholderOp = await args.account.ragequit({
+    to: args.to, sender: args.network.relayerAddress, fee_to_sender: 1n,
+  });
+  const fee = args.feeToSender ?? await estimateSafeFeeTongos(args.network, placeholderOp.toCalldata());
   const op = await args.account.ragequit({
-    to: args.to,
-    sender: args.network.relayerAddress,
-    fee_to_sender: fee,
+    to: args.to, sender: args.network.relayerAddress, fee_to_sender: fee,
   });
   return relayViaPaymaster(
     { call: op.toCalldata(), pubkey: args.account.publicKey, tongoNonce, tongoPk: args.tongoPk },

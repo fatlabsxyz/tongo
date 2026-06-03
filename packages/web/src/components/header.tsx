@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/", label: "wallet" },
-  { href: "/fund", label: "fund" },
 ];
 
 export function Header() {
@@ -18,20 +17,20 @@ export function Header() {
   const { status, lock } = useWallet();
   return (
     <header className="border-b border-[color:var(--color-border)] bg-[color:var(--color-bg)]/85 backdrop-blur sticky top-0 z-30">
-      <div className="max-w-3xl mx-auto px-3 sm:px-4 h-12 flex items-center justify-between gap-2 sm:gap-4">
-        <Link href="/" className="flex items-center gap-1 sm:gap-2 group select-none shrink-0">
+      <div className="max-w-2xl mx-auto px-3 sm:px-5 h-12 flex items-center justify-between gap-2 sm:gap-4">
+        <Link href="/" className="flex items-center gap-1.5 group select-none shrink-0">
           <span className="text-[color:var(--color-accent)]">[</span>
           <span className="font-semibold tracking-tight text-sm sm:text-base">tongo</span>
-          <span className="hidden sm:inline text-[color:var(--color-fg-muted)]">crosschain</span>
+          <span className="hidden sm:inline text-[color:var(--color-fg-muted)] text-sm">crosschain</span>
           <span className="text-[color:var(--color-accent)]">]</span>
         </Link>
-        <nav className="hidden md:flex items-center gap-px text-xs">
-          {links.map((l) => (
+        <nav className="hidden sm:flex items-center gap-px text-xs">
+          {links.length > 1 && links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               className={cn(
-                "px-2.5 py-1 transition uppercase tracking-wider",
+                "px-3 py-1 uppercase tracking-wider transition-colors",
                 pathname === l.href
                   ? "text-[color:var(--color-accent)] border-b border-[color:var(--color-accent)]"
                   : "text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)] border-b border-transparent",
@@ -58,25 +57,26 @@ export function Header() {
           )}
         </div>
       </div>
-      {/* Mobile nav: horizontal scrollable strip below the header */}
-      <nav className="md:hidden border-t border-[color:var(--color-border)] overflow-x-auto">
-        <div className="flex items-center min-w-max px-2">
+      {/* Mobile nav hidden when there's only one link (everything is on the
+       *  main page now). Re-enable by adding entries to `links` above. */}
+      {links.length > 1 && (
+        <nav className="sm:hidden border-t border-[color:var(--color-border)] grid" style={{ gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))` }}>
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               className={cn(
-                "px-3 py-2 text-[11px] uppercase tracking-wider transition whitespace-nowrap",
+                "px-3 py-2 text-center text-[11px] uppercase tracking-wider transition-colors",
                 pathname === l.href
-                  ? "text-[color:var(--color-accent)] border-b border-[color:var(--color-accent)]"
-                  : "text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)] border-b border-transparent",
+                  ? "text-[color:var(--color-accent)] bg-[color:var(--color-accent)]/8"
+                  : "text-[color:var(--color-fg-muted)] hover:text-[color:var(--color-fg)]",
               )}
             >
               {l.label}
             </Link>
           ))}
-        </div>
-      </nav>
+        </nav>
+      )}
     </header>
   );
 }

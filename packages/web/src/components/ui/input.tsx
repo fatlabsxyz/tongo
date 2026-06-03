@@ -7,7 +7,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
     <input
       ref={ref}
       className={cn(
-        "w-full h-9 px-2.5 bg-[color:var(--color-bg)] border border-[color:var(--color-border)] focus:border-[color:var(--color-accent)] focus:outline-none placeholder:text-[color:var(--color-fg-subtle)] text-xs",
+        "w-full h-10 sm:h-9 px-3 bg-[color:var(--color-bg)] border border-[color:var(--color-border)] hover:border-[color:var(--color-border-strong)] focus:border-[color:var(--color-accent)] focus:outline-none placeholder:text-[color:var(--color-fg-subtle)] text-xs transition-colors",
         className,
       )}
       {...props}
@@ -21,7 +21,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
     <textarea
       ref={ref}
       className={cn(
-        "w-full px-2.5 py-2 bg-[color:var(--color-bg)] border border-[color:var(--color-border)] focus:border-[color:var(--color-accent)] focus:outline-none placeholder:text-[color:var(--color-fg-subtle)] text-xs leading-relaxed resize-none",
+        "w-full px-3 py-2.5 bg-[color:var(--color-bg)] border border-[color:var(--color-border)] hover:border-[color:var(--color-border-strong)] focus:border-[color:var(--color-accent)] focus:outline-none placeholder:text-[color:var(--color-fg-subtle)] text-xs leading-relaxed resize-none transition-colors",
         className,
       )}
       {...props}
