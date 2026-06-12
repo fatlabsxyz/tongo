@@ -5,7 +5,6 @@ import { vaultAbi } from "../abi/vault.abi.js";
 import { castBigInt, toNumber } from "../utils.js";
 import { RPC_SPEC_VERSION } from "../constants.js";
 
-
 export type VaultContract = TypedContractV2<typeof vaultAbi>;
 
 export class Vault implements IVault {
@@ -16,15 +15,18 @@ export class Vault implements IVault {
     constructor(contractAddress: string, provider: RpcProvider | string) {
         this.address = contractAddress;
 
-        const rpc: RpcProvider =  provider instanceof RpcProvider ? provider : new RpcProvider({
-            nodeUrl: provider,
-            specVersion: RPC_SPEC_VERSION,
-        });
+        const rpc: RpcProvider =
+            provider instanceof RpcProvider
+                ? provider
+                : new RpcProvider({
+                      nodeUrl: provider,
+                      specVersion: RPC_SPEC_VERSION,
+                  });
         this.provider = rpc;
         this.contract = new Contract({
             abi: vaultAbi,
             address: contractAddress,
-            providerOrAccount: rpc
+            providerOrAccount: rpc,
         }).typedv2(vaultAbi);
     }
 

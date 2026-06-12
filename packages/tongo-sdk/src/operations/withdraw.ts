@@ -57,7 +57,20 @@ export class WithdrawOperation implements IBasicOperation {
     nextState: CipherAccountState;
     prefix_data: GeneralPrefixData;
 
-    constructor({ from, to, amount, feeToSender, proof, auditPart, Tongo, hint, auxiliarCipher, withdrawOptions, nextState, prefix_data }: WithdrawOpParams) {
+    constructor({
+        from,
+        to,
+        amount,
+        feeToSender,
+        proof,
+        auditPart,
+        Tongo,
+        hint,
+        auxiliarCipher,
+        withdrawOptions,
+        nextState,
+        prefix_data,
+    }: WithdrawOpParams) {
         this.Tongo = Tongo;
         this.from = from;
         this.to = to;
@@ -74,17 +87,18 @@ export class WithdrawOperation implements IBasicOperation {
 
     toCalldata(): Call[] {
         return [
-            this.Tongo.populate("withdraw", [{
-                from: this.from,
-                amount: this.amount,
-                hint: this.hint,
-                to: num.toHex(this.to),
-                auxiliarCipher: this.auxiliarCipher,
-                auditPart: this.auditPart,
-                proof: this.proof,
-            },
-            this.withdrawOptions,
-        ]),
-        ]
+            this.Tongo.populate("withdraw", [
+                {
+                    from: this.from,
+                    amount: this.amount,
+                    hint: this.hint,
+                    to: num.toHex(this.to),
+                    auxiliarCipher: this.auxiliarCipher,
+                    auditPart: this.auditPart,
+                    proof: this.proof,
+                },
+                this.withdrawOptions,
+            ]),
+        ];
     }
 }

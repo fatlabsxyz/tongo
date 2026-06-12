@@ -32,7 +32,7 @@ interface FundOpParams {
 
 export class FundOperation implements IBasicOperation {
     readonly type = OperationType.Fund;
-    feeToSender: bigint = 0n;
+    feeToSender = 0n;
     Tongo: Contract;
     to: StarkPoint;
     amount: bigint;
@@ -43,7 +43,16 @@ export class FundOperation implements IBasicOperation {
     nextState: CipherAccountState;
     prefix_data: GeneralPrefixData;
 
-    constructor({ to, amount, proof, auditPart, Tongo, hint, nextState, prefix_data }: FundOpParams) {
+    constructor({
+        to,
+        amount,
+        proof,
+        auditPart,
+        Tongo,
+        hint,
+        nextState,
+        prefix_data,
+    }: FundOpParams) {
         this.to = to;
         this.amount = amount;
         this.hint = hint;
@@ -56,14 +65,15 @@ export class FundOperation implements IBasicOperation {
 
     toCalldata(): Call[] {
         return [
-            this.Tongo.populate("fund", [{
-                to: this.to,
-                amount: this.amount,
-                hint: this.hint,
-                proof: this.proof,
-                auditPart: this.auditPart,
-            }]
-            )
+            this.Tongo.populate("fund", [
+                {
+                    to: this.to,
+                    amount: this.amount,
+                    hint: this.hint,
+                    proof: this.proof,
+                    auditPart: this.auditPart,
+                },
+            ]),
         ];
     }
 

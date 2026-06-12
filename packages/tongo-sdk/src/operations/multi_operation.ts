@@ -7,24 +7,35 @@ import { RollOverOperation } from "./rollover.js";
 import { FundOperation } from "./fund.js";
 import { RagequitOperation } from "./ragequit.js";
 
-export type BasicOperation = FundOperation | RollOverOperation | WithdrawOperation | TransferOperation | RagequitOperation;
+export type BasicOperation =
+    | FundOperation
+    | RollOverOperation
+    | WithdrawOperation
+    | TransferOperation
+    | RagequitOperation;
 export type TongoOperation = BasicOperation | MultiOperation;
 
 export class MultiOperation implements ITongoOperation {
     readonly type = OperationType.Multi;
     private ops: BasicOperation[] = [];
     finalState: CipherAccountState;
-    feeToSender: bigint = 0n;
+    feeToSender = 0n;
     readonly prefix_data: GeneralPrefixData;
     readonly bit_size: number;
 
-    constructor(initialState: CipherAccountState, prefix_data: GeneralPrefixData, bit_size: number) {
+    constructor(
+        initialState: CipherAccountState,
+        prefix_data: GeneralPrefixData,
+        bit_size: number,
+    ) {
         this.finalState = { ...initialState };
         this.prefix_data = prefix_data;
         this.bit_size = bit_size;
     }
 
-    get nextState(): CipherAccountState { return this.finalState; }
+    get nextState(): CipherAccountState {
+        return this.finalState;
+    }
 
     push(op: BasicOperation): void {
         if (
@@ -40,6 +51,6 @@ export class MultiOperation implements ITongoOperation {
     }
 
     toCalldata(): Call[] {
-        return this.ops.flatMap(op => op.toCalldata());
+        return this.ops.flatMap((op) => op.toCalldata());
     }
 }

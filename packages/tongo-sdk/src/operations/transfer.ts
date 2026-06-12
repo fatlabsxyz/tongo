@@ -110,21 +110,22 @@ export class TransferOperation implements IBasicOperation {
 
     toCalldata(): Call[] {
         return [
-            this.Tongo.populate("transfer", [{
-                from: this.from,
-                to: this.to,
-                transferBalance: this.transferBalance,
-                transferBalanceSelf: this.transferBalanceSelf,
-                auxiliarCipher: this.auxiliarCipher,
-                auxiliarCipher2: this.auxiliarCipher2,
-                hintTransfer: this.hintTransfer,
-                hintLeftover: this.hintLeftover,
-                proof: this.proof,
-                auditPart: this.auditPart,
-                auditPartTransfer: this.auditPartTransfer,
-            },
-            this.transferOptions,
-            ])
-        ]
+            this.Tongo.populate("transfer", [
+                {
+                    from: this.from,
+                    to: this.to,
+                    transferBalance: this.transferBalance,
+                    transferBalanceSelf: this.transferBalanceSelf,
+                    auxiliarCipher: this.auxiliarCipher,
+                    auxiliarCipher2: this.auxiliarCipher2,
+                    hintTransfer: this.hintTransfer,
+                    hintLeftover: this.hintLeftover,
+                    proof: this.proof,
+                    auditPart: this.auditPart,
+                    auditPartTransfer: this.auditPartTransfer,
+                },
+                this.transferOptions,
+            ]),
+        ];
     }
 }

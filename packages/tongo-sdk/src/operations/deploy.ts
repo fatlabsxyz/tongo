@@ -21,7 +21,7 @@ interface DeployOpParams {
 export class DeployOperation implements IDeployOperation {
     type: typeof OperationType.Deploy = OperationType.Deploy;
     owner: bigint;
-    feeToSender: bigint = 0n;
+    feeToSender = 0n;
     tag: bigint;
     targetAddress: string;
     auditorKey: CairoOption<StarkPoint>;
@@ -60,7 +60,11 @@ export class DeployOperation implements IDeployOperation {
 
     toCalldata(): Call[] {
         return [
-            this.Vault.populate("deploy_tongo", [ num.toHex(this.owner), num.toHex(this.tag), this.auditorKey ])
-        ]
+            this.Vault.populate("deploy_tongo", [
+                num.toHex(this.owner),
+                num.toHex(this.tag),
+                this.auditorKey,
+            ]),
+        ];
     }
 }

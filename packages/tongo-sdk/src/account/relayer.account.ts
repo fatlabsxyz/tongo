@@ -1,4 +1,16 @@
-import { Account as StarknetAccount, num, paymaster, PaymasterDetails, PaymasterRpc, PreparedTransaction, Contract, RpcProvider, Account, TypedData, Signature } from "starknet";
+import {
+    Account as StarknetAccount,
+    num,
+    paymaster,
+    PaymasterDetails,
+    PaymasterRpc,
+    PreparedTransaction,
+    Contract,
+    RpcProvider,
+    Account,
+    TypedData,
+    Signature,
+} from "starknet";
 import { RelayFeeEstimate } from "../types.js";
 import { ITongoOperation } from "../operations/operation.js";
 import { tongoAbi } from "../abi/tongo.abi.js";
@@ -39,11 +51,19 @@ export class RelayerAccount {
     private _erc20Address: string | undefined;
     private _rate: bigint | undefined;
 
-    constructor(tongoAddress: string, relayerAddress: string, paymasterUrl: PaymasterRpc | string, provider: RpcProvider | string) {
-        const rpc: RpcProvider = provider instanceof RpcProvider ? provider : new RpcProvider({
-            nodeUrl: provider,
-            specVersion: RPC_SPEC_VERSION,
-        });
+    constructor(
+        tongoAddress: string,
+        relayerAddress: string,
+        paymasterUrl: PaymasterRpc | string,
+        provider: RpcProvider | string,
+    ) {
+        const rpc: RpcProvider =
+            provider instanceof RpcProvider
+                ? provider
+                : new RpcProvider({
+                      nodeUrl: provider,
+                      specVersion: RPC_SPEC_VERSION,
+                  });
 
         const paymaster =
             typeof paymasterUrl === "string"
@@ -69,22 +89,34 @@ export class RelayerAccount {
         });
     }
 
-
     async estimateFee(operation: ITongoOperation): Promise<RelayFeeEstimate> {
         const feesDetails = await this.getFeesDetails();
         const { estimated_fee_in_gas_token, suggested_max_fee_in_gas_token } =
-            await this.starkAccount.estimatePaymasterTransactionFee(operation.toCalldata(), feesDetails);
+            await this.starkAccount.estimatePaymasterTransactionFee(
+                operation.toCalldata(),
+                feesDetails,
+            );
         const avnuEstimatedErc20 = BigInt(estimated_fee_in_gas_token);
         const avnuSuggestedErc20 = BigInt(suggested_max_fee_in_gas_token);
         const rate = await this.get_tongo_rate();
         return computeRelayFeeEstimate(avnuEstimatedErc20, avnuSuggestedErc20, rate);
     }
 
-    async buildTransactionToSign(operation: ITongoOperation, snip9_nonce: string): Promise<PreparedRelayData> {
+    async buildTransactionToSign(
+        operation: ITongoOperation,
+        snip9_nonce: string,
+    ): Promise<PreparedRelayData> {
         const feesDetails = await this.getFeesDetails();
-        const prepared = await this.starkAccount.buildPaymasterTransaction(operation.toCalldata(), feesDetails) as any;
+        const prepared = (await this.starkAccount.buildPaymasterTransaction(
+            operation.toCalldata(),
+            feesDetails,
+        )) as any;
 
-        paymaster.assertPaymasterTransactionSafety(prepared as PreparedTransaction, operation.toCalldata(), feesDetails);
+        paymaster.assertPaymasterTransactionSafety(
+            prepared as PreparedTransaction,
+            operation.toCalldata(),
+            feesDetails,
+        );
 
         const feeAmount = await this.getErc20FeeBudget(operation);
         let avnuFeeCallFound = false;
@@ -97,7 +129,9 @@ export class RelayerAccount {
             }
         }
         if (!avnuFeeCallFound) {
-            throw new Error(`AVNU fee call targets an unexpected token — expected ${this._erc20Address}`);
+            throw new Error(
+                `AVNU fee call targets an unexpected token — expected ${this._erc20Address}`,
+            );
         }
 
         const typedData: TypedData = {
@@ -110,7 +144,14 @@ export class RelayerAccount {
 
     async execute(prepared: PreparedRelayData, signature: Signature): Promise<string> {
         const res = await (this.paymaster as any).executeTransaction(
-            { type: "invoke" as const, invoke: { userAddress: this.starkAccount.address, typedData: prepared.typedData, signature } },
+            {
+                type: "invoke" as const,
+                invoke: {
+                    userAddress: this.starkAccount.address,
+                    typedData: prepared.typedData,
+                    signature,
+                },
+            },
             prepared.parameters,
         );
         return res.transaction_hash;
@@ -125,19 +166,22 @@ export class RelayerAccount {
 
     private async getErc20FeeBudget(operation: ITongoOperation): Promise<bigint> {
         if (operation instanceof RollOverOperation) {
-            throw new Error("Standalone rollover relay not supported — use a MultiOperation bundle");
+            throw new Error(
+                "Standalone rollover relay not supported — use a MultiOperation bundle",
+            );
         }
         if (operation.feeToSender === 0n) {
-            throw new Error("Operation has no fee_to_sender — cannot relay without a fee commitment");
+            throw new Error(
+                "Operation has no fee_to_sender — cannot relay without a fee commitment",
+            );
         }
         return tongoToErc20(operation.feeToSender, await this.get_tongo_rate());
     }
 
     private async get_tongo_rate(): Promise<bigint> {
         if (!this._rate) {
-            this._rate= castBigInt(await this.Tongo.get_rate());
+            this._rate = castBigInt(await this.Tongo.get_rate());
         }
-        return this._rate
+        return this._rate;
     }
-
 }

@@ -63,30 +63,43 @@ export class Auditor {
     constructor(
         pk: BigNumberish | Uint8Array | (BigNumberish | Uint8Array)[],
         contractAddress: string,
-        provider: RpcProvider | string
+        provider: RpcProvider | string,
     ) {
         const keys = Array.isArray(pk) ? pk : [pk];
-        this.pks = keys.map(k => bytesOrNumToBigInt(k));
-        this.publicKeys = this.pks.map(k => derivePublicKey(k));
-        const rpc: RpcProvider =  provider instanceof RpcProvider ? provider : new RpcProvider({
-            nodeUrl: provider,
-            specVersion: RPC_SPEC_VERSION,
-        });
+        this.pks = keys.map((k) => bytesOrNumToBigInt(k));
+        this.publicKeys = this.pks.map((k) => derivePublicKey(k));
+        const rpc: RpcProvider =
+            provider instanceof RpcProvider
+                ? provider
+                : new RpcProvider({
+                      nodeUrl: provider,
+                      specVersion: RPC_SPEC_VERSION,
+                  });
         this.Tongo = new Contract({
             abi: tongoAbi,
             address: contractAddress,
-            providerOrAccount: rpc
+            providerOrAccount: rpc,
         }).typedv2(tongoAbi);
         this.provider = rpc;
         this.reader = new AccountEventReader(rpc, contractAddress);
     }
 
     get pk(): bigint {
-        return this.pks[this.pks.length - 1]!;
+        const lastPk = this.pks[this.pks.length - 1];
+        if (lastPk) {
+            return lastPk;
+        } else {
+            throw new Error("Pk not found");
+        }
     }
 
     get publicKey(): PubKey {
-        return this.publicKeys[this.publicKeys.length - 1]!;
+        const lastPublicKey = this.publicKeys[this.publicKeys.length - 1];
+        if (lastPublicKey) {
+            return lastPublicKey;
+        } else {
+            throw new Error("PublicKey not found");
+        }
     }
 
     addPrivateKey(pk: BigNumberish | Uint8Array): void {
@@ -109,8 +122,14 @@ export class Auditor {
         return index;
     }
 
+    getPKByIndex(index: number): bigint {
+        const pk = this.pks[index];
+        if (!pk) throw new Error(`Pk not found for index ${index}`);
+        return pk;
+    }
+
     decryptCipherBalance({ L, R }: CipherBalance, hint?: bigint, keyIndex?: number): bigint {
-        const pk = keyIndex !== undefined ? this.pks[keyIndex]! : this.pk;
+        const pk = keyIndex !== undefined ? this.getPKByIndex(keyIndex) : this.pk;
         if (hint) {
             if (assertBalance(pk, hint, L, R)) {
                 return hint;
@@ -127,7 +146,7 @@ export class Auditor {
     ): Promise<{ balance: bigint; keyIndex: number }> {
         const keyIndex = this.findKeyIndex(auditorPubKey);
         const balance = await decryptAEHint(
-            this.pks[keyIndex]!,
+            this.getPKByIndex(keyIndex),
             aeHint,
             accountNonce,
             other,
@@ -192,7 +211,7 @@ export class Auditor {
                 return b.transaction_index - a.transaction_index;
             }
             return b.event_index - a.event_index;
-        })[0]!;
+        })[0] as AuditorBalanceDeclared;
     }
 
     async getUserTransferOut(
@@ -295,7 +314,7 @@ export class Auditor {
 
         if (events.length === 0) return null;
 
-        return events[0]!;
+        return events[0] as AuditorEvents;
     }
 
     async getRealuserBalance(

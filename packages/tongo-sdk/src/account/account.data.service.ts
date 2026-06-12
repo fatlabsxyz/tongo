@@ -133,15 +133,25 @@ type TongoReaderEvent =
     | TongoReaderExternalTransferEvent;
 
 function makeEventParser<T extends EventType, D>(type: T, path: string) {
-    return (event: ParsedEvent): BaseEvent & D & { type: T } =>
-        ({
-            type,
-            tx_hash: event.transaction_hash!,
-            block_number: event.block_number! as number,
-            event_index: event.event_index! as unknown as number,
-            transaction_index: event.transaction_index! as unknown as number,
-            ...(event[path] as unknown as D),
-        }) as BaseEvent & D & { type: T };
+    return (event: ParsedEvent): BaseEvent & D & { type: T } => {
+        if (
+            event.transaction_hash &&
+            event.block_number &&
+            event.event_index &&
+            event.transaction_index
+        ) {
+            return {
+                type,
+                tx_hash: event.transaction_hash,
+                block_number: event.block_number as number,
+                event_index: event.event_index,
+                transaction_index: event.transaction_index,
+                ...(event[path] as unknown as D),
+            } as BaseEvent & D & { type: T };
+        } else {
+            throw new Error(`Malformed event: ${JSON.stringify(event)}`);
+        }
+    };
 }
 
 const parseFundEvent = makeEventParser<typeof EventType.Fund, FundEventData>(

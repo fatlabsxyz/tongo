@@ -23,7 +23,7 @@ export class OutsideFundOperation implements IOperation {
     Tongo: Contract;
     to: StarkPoint;
     amount: bigint;
-    feeToSender: bigint = 0n;
+    feeToSender = 0n;
     approve?: Call;
 
     constructor({ to, amount, Tongo }: OutsideFundOpParams) {
@@ -34,11 +34,13 @@ export class OutsideFundOperation implements IOperation {
 
     toCalldata(): Call[] {
         return [
-            this.Tongo.populate("outside_fund", [{
-                to: this.to,
-                amount: this.amount,
-            }])
-        ]
+            this.Tongo.populate("outside_fund", [
+                {
+                    to: this.to,
+                    amount: this.amount,
+                },
+            ]),
+        ];
     }
 
     // TODO: better ux for this. Maybe return the call?

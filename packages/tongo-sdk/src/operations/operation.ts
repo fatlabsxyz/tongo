@@ -1,6 +1,7 @@
 import { Call } from "starknet";
 import { CipherAccountState, GeneralPrefixData } from "../types.js";
 
+// prettier-ignore
 export enum OperationType {
     Fund        = "fund",
     Rollover    = "rollover",

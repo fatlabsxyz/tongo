@@ -25,7 +25,7 @@ interface RollOverOpParams {
 export class RollOverOperation implements IBasicOperation {
     readonly type = OperationType.Rollover;
     to: StarkPoint;
-    feeToSender: bigint = 0n;
+    feeToSender = 0n;
     proof: ProofOfRollover;
     Tongo: Contract;
     hint: AEBalance;
@@ -43,7 +43,7 @@ export class RollOverOperation implements IBasicOperation {
 
     toCalldata(): Call[] {
         return [
-            this.Tongo.populate("rollover", [{ to: this.to, proof: this.proof, hint: this.hint }])
+            this.Tongo.populate("rollover", [{ to: this.to, proof: this.proof, hint: this.hint }]),
         ];
     }
 }

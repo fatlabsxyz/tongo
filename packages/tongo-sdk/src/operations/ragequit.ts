@@ -56,7 +56,19 @@ export class RagequitOperation implements IBasicOperation {
     nextState: CipherAccountState;
     prefix_data: GeneralPrefixData;
 
-    constructor({ from, to, amount, feeToSender, proof, Tongo, hint, auditPart, ragequitOptions, nextState, prefix_data }: RagequitOpParams) {
+    constructor({
+        from,
+        to,
+        amount,
+        feeToSender,
+        proof,
+        Tongo,
+        hint,
+        auditPart,
+        ragequitOptions,
+        nextState,
+        prefix_data,
+    }: RagequitOpParams) {
         this.Tongo = Tongo;
         this.from = from;
         this.to = to;
@@ -72,16 +84,17 @@ export class RagequitOperation implements IBasicOperation {
 
     toCalldata(): Call[] {
         return [
-            this.Tongo.populate("ragequit", [{
-                from: this.from,
-                amount: this.amount,
-                to: num.toHex(this.to),
-                proof: this.proof,
-                hint: this.hint,
-                auditPart: this.auditPart,
-            },
-            this.ragequitOptions,
-        ])
-        ]
+            this.Tongo.populate("ragequit", [
+                {
+                    from: this.from,
+                    amount: this.amount,
+                    to: num.toHex(this.to),
+                    proof: this.proof,
+                    hint: this.hint,
+                    auditPart: this.auditPart,
+                },
+                this.ragequitOptions,
+            ]),
+        ];
     }
 }

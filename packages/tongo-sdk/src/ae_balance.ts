@@ -1,7 +1,7 @@
 import { xchacha20poly1305 } from "@noble/ciphers/chacha.js";
 import { bytesToNumberBE, numberToBytesBE } from "@noble/ciphers/utils.js";
 import { randomBytes } from "@noble/ciphers/webcrypto.js";
-import { BigNumberish, uint256, Uint256 } from "starknet";
+import { BigNumberish, uint256 } from "starknet";
 import { castBigInt, isUint256 } from "./utils.js";
 import { TongoAbiType } from "./abi/abi.types.js";
 import { PubKey, pubKeyAffineToHex } from "./types.js";
@@ -34,13 +34,10 @@ export function bytesToAEHint({ ciphertext, nonce }: AEBalanceBytes): AEBalance 
     };
 }
 
-export function parseAEBalance({
-    ciphertext,
-    nonce,
-}: {
-    ciphertext: BigNumberish;
-    nonce: number | bigint | Uint256;
-}): AEBalance {
+export function parseAEBalance({ ciphertext, nonce }: AEBalance): {
+    ciphertext: bigint;
+    nonce: bigint;
+} {
     let parsedNonce: bigint;
     if (isUint256(nonce)) {
         parsedNonce = uint256.uint256ToBN(nonce);

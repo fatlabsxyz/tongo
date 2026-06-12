@@ -64,13 +64,21 @@ export interface IAccount {
     verifyExPost(expost: ExPost): bigint;
 
     // events
+    // prettier-ignore
     getEventsFund(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountFundEvent[]>;
+    // prettier-ignore
     getEventsRollover(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountRolloverEvent[]>;
+    // prettier-ignore
     getEventsWithdraw(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountWithdrawEvent[]>;
+    // prettier-ignore
     getEventsRagequit(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountRagequitEvent[]>;
+    // prettier-ignore
     getEventsTransferOut(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountTransferOutEvent[]>;
+    // prettier-ignore
     getEventsTransferIn(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountTransferInEvent[]>;
+    // prettier-ignore
     getEventsReceivedExternalTransfer(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountReceivedExternalTransfer[]>;
+    // prettier-ignore
     getTxHistory(fromBlock: number, toBlock?: number | "latest", numEvents?: number | "all"): Promise<AccountEvents[]>;
 
     // utils
@@ -114,12 +122,11 @@ export interface WithdrawDetails {
 }
 
 export type PushOperationDescriptor =
-    | { type: OperationType.Fund }     & Omit<FundDetails, 'sender'>
+    | ({ type: OperationType.Fund } & Omit<FundDetails, "sender">)
     | { type: OperationType.Rollover }
-    | { type: OperationType.Withdraw } & Omit<WithdrawDetails, 'sender'>
-    | { type: OperationType.Transfer } & Omit<TransferDetails, 'sender'>
-    | { type: OperationType.Ragequit } & Omit<RagequitDetails, 'sender'>;
-
+    | ({ type: OperationType.Withdraw } & Omit<WithdrawDetails, "sender">)
+    | ({ type: OperationType.Transfer } & Omit<TransferDetails, "sender">)
+    | ({ type: OperationType.Ragequit } & Omit<RagequitDetails, "sender">);
 
 export interface RawAccountState {
     balanceCipher: CipherBalance;
