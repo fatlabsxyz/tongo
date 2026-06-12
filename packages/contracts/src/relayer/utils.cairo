@@ -1,13 +1,14 @@
-use starknet::account::Call;
-use starknet::SyscallResultTrait;
-use starknet::ContractAddress;
 use core::ecdsa::check_ecdsa_signature;
-use core::poseidon::PoseidonTrait;
 use core::hash::{HashStateExTrait, HashStateTrait};
-
+use core::poseidon::PoseidonTrait;
+use starknet::account::Call;
+use starknet::{ContractAddress, SyscallResultTrait};
+use crate::relayer::structs::{
+    OutsideExecution, StarknetDomain, StructHash, StructHashOutsideExecution,
+    StructHashStarknetDomain,
+};
 use crate::structs::common::pubkey::PubKey;
 use crate::structs::common::relayer::RelayData;
-use crate::relayer::structs::{OutsideExecution, StarknetDomain, StructHash, StructHashStarknetDomain, StructHashOutsideExecution};
 use crate::structs::operations::ragequit::{Ragequit, RagequitOptions};
 use crate::structs::operations::rollover::Rollover;
 use crate::structs::operations::transfer::{Transfer, TransferOptions};
@@ -28,10 +29,14 @@ pub fn execute_calls(calls: Span<Call>) -> Array<Span<felt252>> {
     res
 }
 
-pub const WITHDRAW_SELECTOR: felt252 = 0x015511cc3694f64379908437d6d64458dc76d02482052bfb8a5b33a72c054c77;
-pub const RAGEQUIT_SELECTOR: felt252 = 0x00527537e04b80d3b3bd9dfa43834f03d4b745f8411ca72260a3c7e02ea7fa3f;
-pub const TRANSFER_SELECTOR: felt252 = 0x0083afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e;
-pub const ROLLOVER_SELECTOR: felt252 = 0x03587511558a364dd791967d1d1190665c476e9588485c30c7473d6618fb8ed1;
+pub const WITHDRAW_SELECTOR: felt252 =
+    0x015511cc3694f64379908437d6d64458dc76d02482052bfb8a5b33a72c054c77;
+pub const RAGEQUIT_SELECTOR: felt252 =
+    0x00527537e04b80d3b3bd9dfa43834f03d4b745f8411ca72260a3c7e02ea7fa3f;
+pub const TRANSFER_SELECTOR: felt252 =
+    0x0083afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e;
+pub const ROLLOVER_SELECTOR: felt252 =
+    0x03587511558a364dd791967d1d1190665c476e9588485c30c7473d6618fb8ed1;
 
 const MIN_TRANSACTION_VERSION: u256 = 1;
 const QUERY_OFFSET: u256 = 0x100000000000000000000000000000000;
@@ -63,9 +68,7 @@ pub fn get_outside_execution_hash(
         .finalize()
 }
 
-pub fn verify_outside_execution_signature(
-    hash: felt252, pubkey: PubKey, signature: Span<felt252>,
-) {
+pub fn verify_outside_execution_signature(hash: felt252, pubkey: PubKey, signature: Span<felt252>) {
     assert!(signature.len() == 2, "INVALID_SIGNATURE_LENGTH");
     assert!(
         check_ecdsa_signature(hash, pubkey.x, *signature.at(0), *signature.at(1)),

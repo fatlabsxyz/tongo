@@ -1,22 +1,26 @@
 #[starknet::contract]
 mod Relayer {
     use core::num::traits::Zero;
-    use starknet::ContractAddress;
-    use starknet::get_caller_address;
-    use starknet::account::Call;
-
-    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-    use starknet::storage::{Map, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry};
-    use starknet::storage::{Vec, VecTrait, MutableVecTrait};
-
-    use crate::relayer::structs::{RelayStatus, RelayStatusTrait, OutsideExecution, TargetConfig};
-    use crate::relayer::IRelayer::{IRelayer, ISRC5, ISRC5_ID, ISRC9_V2, ISRC9_V2_ID, IExecute};
-    use crate::relayer::events::{RelayExecuted, AssetWhitelisted, AssetDelisted, TargetWhitelisted, TargetDelisted, ForwarderWhitelisted, ForwarderDelisted, RelayerFeeSet, Pull};
-
     use core::poseidon::poseidon_hash_span;
-    use crate::relayer::utils::{execute_calls, extract_call_info, extract_transfer_info, extract_rollover_pubkey, is_tx_version_valid, get_outside_execution_hash, verify_outside_execution_signature, ROLLOVER_SELECTOR, TRANSFER_SELECTOR, WITHDRAW_SELECTOR, RAGEQUIT_SELECTOR};
-    use crate::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
+    use starknet::account::Call;
+    use starknet::storage::{
+        Map, MutableVecTrait, StorageMapReadAccess, StorageMapWriteAccess, StoragePathEntry,
+        StoragePointerReadAccess, StoragePointerWriteAccess, Vec, VecTrait,
+    };
+    use starknet::{ContractAddress, get_caller_address};
     use crate::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use crate::relayer::IRelayer::{IExecute, IRelayer, ISRC5, ISRC5_ID, ISRC9_V2, ISRC9_V2_ID};
+    use crate::relayer::events::{
+        AssetDelisted, AssetWhitelisted, ForwarderDelisted, ForwarderWhitelisted, Pull,
+        RelayExecuted, RelayerFeeSet, TargetDelisted, TargetWhitelisted,
+    };
+    use crate::relayer::structs::{OutsideExecution, RelayStatus, RelayStatusTrait, TargetConfig};
+    use crate::relayer::utils::{
+        RAGEQUIT_SELECTOR, ROLLOVER_SELECTOR, TRANSFER_SELECTOR, WITHDRAW_SELECTOR, execute_calls,
+        extract_call_info, extract_rollover_pubkey, extract_transfer_info,
+        get_outside_execution_hash, is_tx_version_valid, verify_outside_execution_signature,
+    };
+    use crate::tongo::ITongo::{ITongoDispatcher, ITongoDispatcherTrait};
 
     #[storage]
     pub struct Storage {
@@ -46,7 +50,9 @@ mod Relayer {
     #[constructor]
     fn constructor(ref self: ContractState, owner: ContractAddress) {
         self.owner.write(owner);
-        use crate::relayer::utils::{WITHDRAW_SELECTOR, RAGEQUIT_SELECTOR, TRANSFER_SELECTOR, ROLLOVER_SELECTOR};
+        use crate::relayer::utils::{
+            RAGEQUIT_SELECTOR, ROLLOVER_SELECTOR, TRANSFER_SELECTOR, WITHDRAW_SELECTOR,
+        };
         self.tongo_selectors.push(WITHDRAW_SELECTOR);
         self.tongo_selectors.push(RAGEQUIT_SELECTOR);
         self.tongo_selectors.push(TRANSFER_SELECTOR);
@@ -64,9 +70,7 @@ mod Relayer {
     #[abi(embed_v0)]
     impl SNIP9 of ISRC9_V2<ContractState> {
         fn execute_from_outside_v2(
-            ref self: ContractState,
-            outside_execution: OutsideExecution,
-            signature: Span<felt252>,
+            ref self: ContractState, outside_execution: OutsideExecution, signature: Span<felt252>,
         ) -> Array<Span<felt252>> {
             // 0. Assert caller is a whitelisted forwarder
             let caller = starknet::get_caller_address();
@@ -89,10 +93,13 @@ mod Relayer {
             self.SRC9_nonces.write(outside_execution.nonce, true);
 
             // 4. Validate the transactions and extract relay status (includes sender pubkey)
-            let status = self.assert_valid_transaction(outside_execution.calls, outside_execution.nonce);
+            let status = self
+                .assert_valid_transaction(outside_execution.calls, outside_execution.nonce);
 
             // 5. Verify the OutsideExecution signature against the sender's Tongo pubkey
-            let hash = get_outside_execution_hash(@outside_execution, starknet::get_contract_address());
+            let hash = get_outside_execution_hash(
+                @outside_execution, starknet::get_contract_address(),
+            );
             verify_outside_execution_signature(hash, status.pubkey.unwrap(), signature);
 
             // 6. Execute the calls
@@ -100,14 +107,19 @@ mod Relayer {
 
             let target = status.target.unwrap();
             let config = self.targets.entry(target).read();
-            self.emit(Event::RelayExecuted(RelayExecuted {
-                forwarder: caller,
-                target,
-                pubkey: status.pubkey.unwrap(),
-                nonce: outside_execution.nonce,
-                fee_tongo: status.to_add / config.rate,
-                fee_erc20: status.to_add,
-            }));
+            self
+                .emit(
+                    Event::RelayExecuted(
+                        RelayExecuted {
+                            forwarder: caller,
+                            target,
+                            pubkey: status.pubkey.unwrap(),
+                            nonce: outside_execution.nonce,
+                            fee_tongo: status.to_add / config.rate,
+                            fee_erc20: status.to_add,
+                        },
+                    ),
+                );
 
             result
         }
@@ -152,7 +164,7 @@ mod Relayer {
             let mut selectors = array![];
             for i in 0..self.tongo_selectors.len() {
                 selectors.append(self.tongo_selectors[i].read());
-            };
+            }
             selectors.span()
         }
 
@@ -160,7 +172,7 @@ mod Relayer {
             let mut selectors = array![];
             for i in 0..self.asset_selectors.len() {
                 selectors.append(self.asset_selectors[i].read());
-            };
+            }
             selectors.span()
         }
 
@@ -210,7 +222,10 @@ mod Relayer {
         fn delist_target(ref self: ContractState, target: ContractAddress) {
             self._assert_only_owner();
             assert!(self.is_target_whitelisted(target), "TARGET NOT WHITELISTED");
-            self.targets.entry(target).write(TargetConfig { erc20: Zero::zero(), rate: 0, relayer_fee: 0 });
+            self
+                .targets
+                .entry(target)
+                .write(TargetConfig { erc20: Zero::zero(), rate: 0, relayer_fee: 0 });
             self.emit(Event::TargetDelisted(TargetDelisted { target }));
         }
 
@@ -219,7 +234,7 @@ mod Relayer {
             let mut p = self.tongo_selectors.pop();
             while p.is_some() {
                 p = self.tongo_selectors.pop();
-            };
+            }
             for selector in selectors {
                 self.tongo_selectors.push(*selector);
             };
@@ -227,7 +242,8 @@ mod Relayer {
 
         fn pull(ref self: ContractState, asset: ContractAddress) {
             self._assert_only_owner();
-            let balance = IERC20Dispatcher { contract_address: asset }.balance_of(starknet::get_contract_address());
+            let balance = IERC20Dispatcher { contract_address: asset }
+                .balance_of(starknet::get_contract_address());
             if balance > 0 {
                 IERC20Dispatcher { contract_address: asset }.transfer(self.owner.read(), balance);
                 self.emit(Event::Pull(Pull { asset, amount: balance }));
@@ -239,7 +255,7 @@ mod Relayer {
             let mut p = self.asset_selectors.pop();
             while p.is_some() {
                 p = self.asset_selectors.pop();
-            };
+            }
             for selector in selectors {
                 self.asset_selectors.push(*selector);
             };
@@ -257,7 +273,9 @@ mod Relayer {
 
     #[generate_trait]
     impl Private of IPrivate {
-        fn assert_valid_transaction(ref self: ContractState, calls: Span<Call>, snip9_nonce: felt252) -> RelayStatus {
+        fn assert_valid_transaction(
+            ref self: ContractState, calls: Span<Call>, snip9_nonce: felt252,
+        ) -> RelayStatus {
             assert!(calls.len() >= 2, "AT LEAST 2 CALLS REQUIRED");
             let mut status = RelayStatusTrait::new();
 
@@ -269,7 +287,7 @@ mod Relayer {
                 } else {
                     panic!("UNAUTHORIZED TARGET");
                 }
-            };
+            }
 
             let target = status.target.expect('NO TONGO CALLS');
             let config = self.targets.entry(target).read();
@@ -314,7 +332,9 @@ mod Relayer {
             status.compare_and_set_pubkey(from);
         }
 
-        fn _process_withdraw_ragequit_call(self: @ContractState, call: @Call, ref status: RelayStatus) {
+        fn _process_withdraw_ragequit_call(
+            self: @ContractState, call: @Call, ref status: RelayStatus,
+        ) {
             let (pubkey, fee) = extract_call_info(*call.selector, *call.calldata);
             let config = self.targets.entry(*call.to).read();
             status.add(fee.into() * config.rate);
@@ -324,9 +344,12 @@ mod Relayer {
         }
 
         fn _process_asset_call(self: @ContractState, call: @Call, ref status: RelayStatus) {
-            assert!(self._is_asset_selector_allowed(*call.selector), "ASSET SELECTOR NOT WHITELISTED");
+            assert!(
+                self._is_asset_selector_allowed(*call.selector), "ASSET SELECTOR NOT WHITELISTED",
+            );
             let mut cd = *call.calldata;
-            let recipient: starknet::ContractAddress = Serde::deserialize(ref cd).expect('bad erc20 calldata');
+            let recipient: starknet::ContractAddress = Serde::deserialize(ref cd)
+                .expect('bad erc20 calldata');
             let amount: u256 = Serde::deserialize(ref cd).expect('bad erc20 amount');
             assert!(recipient == get_caller_address(), "RECIPIENT IS NOT THE FORWARDER");
             status.compare_and_set_asset(*call.to);
@@ -340,7 +363,7 @@ mod Relayer {
                     found = true;
                     break;
                 }
-            };
+            }
             found
         }
 
@@ -351,7 +374,7 @@ mod Relayer {
                     found = true;
                     break;
                 }
-            };
+            }
             found
         }
 
@@ -365,7 +388,9 @@ mod Relayer {
             let pubkey = status.pubkey.unwrap();
             let target = status.target.expect('NO TARGET IN RELAYSTATUS');
             let tongo_nonce: u64 = ITongoDispatcher { contract_address: target }.get_nonce(pubkey);
-            let expected_nonce = poseidon_hash_span(array![target.into(), pubkey.x, pubkey.y, tongo_nonce.into()].span());
+            let expected_nonce = poseidon_hash_span(
+                array![target.into(), pubkey.x, pubkey.y, tongo_nonce.into()].span(),
+            );
             assert!(snip9_nonce == expected_nonce, "INVALID SNIP9 NONCE");
         }
     }

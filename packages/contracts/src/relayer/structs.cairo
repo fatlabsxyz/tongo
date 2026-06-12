@@ -1,16 +1,14 @@
-use starknet::account::Call;
-use starknet::ContractAddress;
-use core::poseidon::{PoseidonTrait, poseidon_hash_span};
 use core::hash::{HashStateExTrait, HashStateTrait};
-
+use core::poseidon::{PoseidonTrait, poseidon_hash_span};
+use starknet::ContractAddress;
+use starknet::account::Call;
 use crate::structs::common::pubkey::PubKey;
 
 const STARKNET_DOMAIN_TYPE_HASH: felt252 =
     0x1ff2f602e42168014d405a94f75e8a93d640751d71d16311266e140d8b0a210;
 pub const OUTSIDE_EXECUTION_TYPE_HASH: felt252 =
     0x312b56c05a7965066ddbda31c016d8d05afc305071c0ca3cdc2192c3c2f1f0f;
-const CALL_TYPE_HASH: felt252 =
-    0x3635c7f2a7ba93844c0d064e18e487f35ab90f7c39d00f186a781fc3f0c2ca9;
+const CALL_TYPE_HASH: felt252 = 0x3635c7f2a7ba93844c0d064e18e487f35ab90f7c39d00f186a781fc3f0c2ca9;
 
 #[derive(Drop, Copy, Hash)]
 pub struct StarknetDomain {
@@ -83,13 +81,7 @@ pub impl RelayStatusImpl of RelayStatusTrait {
     }
 
     fn new() -> RelayStatus {
-        RelayStatus {
-            asset: None,
-            target: None,
-            pubkey: None,
-            to_add: 0,
-            to_subtract: 0,
-        }
+        RelayStatus { asset: None, target: None, pubkey: None, to_add: 0, to_subtract: 0 }
     }
 }
 
@@ -115,7 +107,7 @@ pub impl StructHashOutsideExecution of StructHash<OutsideExecution> {
         let mut hashed_calls: Array<felt252> = array![];
         for call in *self.calls {
             hashed_calls.append(call.hash_struct());
-        };
+        }
         PoseidonTrait::new()
             .update_with(OUTSIDE_EXECUTION_TYPE_HASH)
             .update_with(*self.caller)
