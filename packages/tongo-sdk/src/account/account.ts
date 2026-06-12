@@ -246,6 +246,10 @@ export class Account implements IAccount {
             this.prefixData(sender),
         ]);
 
+        if (state.balance === 0n) {
+            throw new Error("Cannot ragequit: balance is 0");
+        }
+
         if (state.balance < feeToSender) {
             throw new Error(
                 `Insufficient balance for ragequit: have ${state.balance}, need ${feeToSender} (relay fee)`,
@@ -330,7 +334,6 @@ export class Account implements IAccount {
         return multi;
     }
 
-    //TODO: Clarificar quien el sender.
     async startMultiOperation(opOrSender: BasicOperation | string): Promise<MultiOperation> {
         const bitSize = await this.bitSize();
         if (typeof opOrSender === "string") {
@@ -346,7 +349,6 @@ export class Account implements IAccount {
         return multi;
     }
 
-    //TODO: rename _append to push
     async pushOperation(multi: MultiOperation, descriptor: PushOperationDescriptor): Promise<void> {
         const { prefix_data, bit_size: bitSize } = multi;
         const sender = prefix_data.sender_address;
