@@ -5,11 +5,13 @@ import {
     PaymasterDetails,
     PaymasterRpc,
     PreparedTransaction,
+    PreparedInvokeTransaction,
+    ExecutionParameters,
     Contract,
     RpcProvider,
     Account,
-    TypedData,
     Signature,
+    stark,
 } from "starknet";
 import { RelayFeeEstimate } from "../types.js";
 import { ITongoOperation } from "../operations/operation.js";
@@ -37,8 +39,8 @@ function computeRelayFeeEstimate(
 }
 
 export interface PreparedRelayData {
-    typedData: TypedData;
-    parameters: any;
+    typedData: PreparedInvokeTransaction["typed_data"];
+    parameters: ExecutionParameters;
 }
 
 export class RelayerAccount {
@@ -110,7 +112,16 @@ export class RelayerAccount {
         const prepared = (await this.starkAccount.buildPaymasterTransaction(
             operation.toCalldata(),
             feesDetails,
-        )) as any;
+        ));
+
+        if (prepared.type != "invoke") {
+            throw new Error("Only `invoke` type transaction can be relayed")
+        }
+
+        if (!("Calls" in prepared.typed_data.message)) {
+            throw new Error("Only `invoke` type transaction V2 can be relayed")
+        }
+
 
         paymaster.assertPaymasterTransactionSafety(
             prepared as PreparedTransaction,
@@ -120,7 +131,7 @@ export class RelayerAccount {
 
         const feeAmount = await this.getErc20FeeBudget(operation);
         let avnuFeeCallFound = false;
-        for (const call of prepared.typed_data.message.Calls as any[]) {
+        for (const call of prepared.typed_data.message.Calls) {
             if (num.toHex(call.To) === this._erc20Address) {
                 call.Calldata[1] = num.toHex(feeAmount);
                 call.Calldata[2] = "0x0";
@@ -134,7 +145,7 @@ export class RelayerAccount {
             );
         }
 
-        const typedData: TypedData = {
+        const typedData: PreparedInvokeTransaction["typed_data"] = {
             ...prepared.typed_data,
             message: { ...prepared.typed_data.message, Nonce: snip9_nonce },
         };
@@ -143,13 +154,13 @@ export class RelayerAccount {
     }
 
     async execute(prepared: PreparedRelayData, signature: Signature): Promise<string> {
-        const res = await (this.paymaster as any).executeTransaction(
+        const res = await (this.paymaster).executeTransaction(
             {
                 type: "invoke" as const,
                 invoke: {
                     userAddress: this.starkAccount.address,
                     typedData: prepared.typedData,
-                    signature,
+                    signature: stark.formatSignature(signature),
                 },
             },
             prepared.parameters,
