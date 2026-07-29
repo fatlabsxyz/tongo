@@ -134,12 +134,11 @@ type TongoReaderEvent =
 
 function makeEventParser<T extends EventType, D>(type: T, path: string) {
     return (event: ParsedEvent): BaseEvent & D & { type: T } => {
-        if (
-            event.transaction_hash &&
-            event.block_number &&
-            event.event_index &&
-            event.transaction_index
-        ) {
+        // starknet_getEvents returns transaction_hash and block_number, but not
+        // event_index / transaction_index. On top of that, index 0 is falsy, so
+        // the original truthy check on those fields flagged every real event as
+        // malformed. Only require the two fields the RPC actually returns.
+        if (event.transaction_hash != null && event.block_number != null) {
             return {
                 type,
                 tx_hash: event.transaction_hash,
@@ -149,7 +148,9 @@ function makeEventParser<T extends EventType, D>(type: T, path: string) {
                 ...(event[path] as unknown as D),
             } as BaseEvent & D & { type: T };
         } else {
-            throw new Error(`Malformed event: ${JSON.stringify(event)}`);
+            throw new Error(
+                `Malformed event: block=${event.block_number} tx=${event.transaction_hash}`,
+            );
         }
     };
 }
