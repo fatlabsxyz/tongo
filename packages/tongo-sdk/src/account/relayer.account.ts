@@ -127,6 +127,7 @@ export class RelayerAccount {
             prepared as PreparedTransaction,
             operation.toCalldata(),
             feesDetails,
+            await this.provider.getChainId(),
         );
 
         const feeAmount = await this.getErc20FeeBudget(operation);

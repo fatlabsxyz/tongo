@@ -55,7 +55,7 @@
   "license": "Apache-2.0",
   "packageManager": "pnpm@10.4.1",
   "dependencies": {
-    "@fatsolutions/cairo-abi-codec": "0.0.4",
+    "@fatsolutions/cairo-abi-codec": "0.1.1",
     "@fatsolutions/she": "0.4.0",
     "@noble/ciphers": "catalog:",
     "@noble/hashes": "catalog:",
